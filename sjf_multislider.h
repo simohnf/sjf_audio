@@ -1,12 +1,13 @@
 //
 //  sjf_multislider.h
-//  multiSlider
 //
 //  Created by Simon Fay on 20/08/2022.
 //
 
 #ifndef sjf_multislider_h
 #define sjf_multislider_h
+
+#include <vector>
 
 class sjf_multislider : public juce::Component
 {
@@ -32,80 +33,80 @@ public:
         g.setColour ( findColour(outlineColourId) );
         g.drawRect(0, 0, getWidth(), getHeight());
         
-        auto nSliders = sliders.size();
+        auto nSliders = m_sliders.size();
         for (int s = 0; s < nSliders; s++)
         {
-            sliders[s]->setColour( juce::Slider::textBoxOutlineColourId, juce::Colours::black.withAlpha(0.0f) ) ;
-            sliders[s]->setColour( juce::Slider::trackColourId, findColour( sliderColourID ) );
+            m_sliders[s]->setColour( juce::Slider::textBoxOutlineColourId, juce::Colours::black.withAlpha(0.0f) ) ;
+            m_sliders[s]->setColour( juce::Slider::trackColourId, findColour( sliderColourID ) );
         }
     }
     //==============================================================================
     void resized() override
     {
-        auto nSliders = sliders.size();
+        auto nSliders = m_sliders.size();
         for (int s = 0; s < nSliders; s++)
         {
-            if (!isHorizontalFlag)
+            if (!m_isHorizontalFlag)
             {
                 auto sWidth = (float)this->getWidth() / (float)nSliders;
-                sliders[s]->setSliderStyle(juce::Slider::LinearBarVertical);
-                sliders[s]->setBounds(sWidth*s, 0.0f, sWidth, getHeight());
+                m_sliders[s]->setSliderStyle(juce::Slider::LinearBarVertical);
+                m_sliders[s]->setBounds(sWidth*s, 0.0f, sWidth, getHeight());
             }
             else
             {
                 auto sHeight = (float)getHeight()/(float)nSliders;
-                sliders[s]->setSliderStyle(juce::Slider::LinearBar);
-                sliders[s]->setBounds(0.0f, sHeight*s, getWidth(), sHeight);
+                m_sliders[s]->setSliderStyle(juce::Slider::LinearBar);
+                m_sliders[s]->setBounds(0.0f, sHeight*s, getWidth(), sHeight);
             }
         }
     }
     //==============================================================================
     void setNumSliders( int numSliders )
     {
-        auto nSliders = sliders.size();
+        auto nSliders = m_sliders.size();
         if (numSliders < 1){ numSliders = 1; }
         if (numSliders == nSliders){ return; }
         
         std::vector<float> temp;
-        for(int s = 0; s < nSliders; s++){ temp.push_back(sliders[s]->getValue()); }
+        for(int s = 0; s < nSliders; s++){ temp.push_back(m_sliders[s]->getValue()); }
         
         createSliderArray(numSliders);
         
         for(int s = 0; s < numSliders; s++)
         {
-            if(s < temp.size()) { sliders[s]->setValue(temp[s]); }
+            if(s < temp.size()) { m_sliders[s]->setValue(temp[s]); }
         }
         resized();
     }
     //==============================================================================
     int getNumSliders()
     {
-        return sliders.size();
+        return m_sliders.size();
     }
     //==============================================================================
     float fetch(int sliderIndex)
     {
-        return ( sliders[sliderIndex]->getValue() );
+        return ( m_sliders[sliderIndex]->getValue() );
     }
     //==============================================================================
     void setRange(float min, float max)
     {
-        for (int s = 0; s < sliders.size(); s ++) { sliders[s]->setRange(min, max); }
+        for (int s = 0; s < m_sliders.size(); s ++) { m_sliders[s]->setRange(min, max); }
     }
     //==============================================================================
     std::vector<float> outputList()
     {
-        auto nSliders = sliders.size();
+        auto nSliders = m_sliders.size();
         std::vector<float> temp;
-        for(int s = 0; s < nSliders; s++){ temp.push_back(sliders[s]->getValue()); }
+        for(int s = 0; s < nSliders; s++){ temp.push_back(m_sliders[s]->getValue()); }
         return temp;
     }
     //==============================================================================
     void setHorizontal(bool horizontal)
     {
-        if(isHorizontalFlag != horizontal)
+        if(m_isHorizontalFlag != horizontal)
         {
-            isHorizontalFlag = horizontal;
+            m_isHorizontalFlag = horizontal;
             resized();
         }  
     }
@@ -136,17 +137,17 @@ private:
         }
         else
         {
-            sliders[theTouchedSlider]->setValue(val);
+            m_sliders[theTouchedSlider]->setValue(val);
         }
     }
     //==============================================================================
     int findTouchedSlider( const juce::MouseEvent& e )
     {
-        float nSliders = sliders.size();
+        float nSliders = m_sliders.size();
         auto x = e.position.getX();
         auto y = e.position.getY();
         int theTouchedSlider;
-        if (!isHorizontalFlag)
+        if (!m_isHorizontalFlag)
         {
             if (x < 0) { theTouchedSlider = 0; }
             else if ( x >= getWidth() ) { theTouchedSlider = nSliders - 1; }
@@ -179,31 +180,31 @@ private:
     {
         auto x = e.position.getX();
         auto y = e.position.getY();
-        if (!isHorizontalFlag) { return ((float)getHeight()-y)/(float)getHeight(); }
+        if (!m_isHorizontalFlag) { return ((float)getHeight()-y)/(float)getHeight(); }
         else { return ( x / (float)getWidth() ) ; }
     }
     //==============================================================================
     void mouseActionAndShiftLogic( float val )
     {
-        for (int s = 0; s < sliders.size(); s++) { sliders[s]->setValue( val ); }
+        for (int s = 0; s < m_sliders.size(); s++) { m_sliders[s]->setValue( val ); }
     }
     //==============================================================================
     void mouseActionAndAltLogic( float val, int theTouchedSlider )
     {
         
-        for (int s = 0; s < sliders.size(); s++)
+        for (int s = 0; s < m_sliders.size(); s++)
         {
             auto distance = abs(theTouchedSlider - s);
-            if (distance == 0){ sliders[s]->setValue( val ); }
+            if (distance == 0){ m_sliders[s]->setValue( val ); }
             else
             {
-                auto range = val - sliders[s]->getMinimum();
-                auto min = sliders[s]->getMinimum();
+                auto range = val - m_sliders[s]->getMinimum();
+                auto min = m_sliders[s]->getMinimum();
                 /* auto newVal = range / pow(2, distance); */
                 distance += 1;
-                auto newVal = range * ( (sliders.size() - distance) / (float)sliders.size() );
+                auto newVal = range * ( (m_sliders.size() - distance) / (float)m_sliders.size() );
                 newVal += min;
-                sliders[s]->setValue( newVal );
+                m_sliders[s]->setValue( newVal );
             }
         }
     }
@@ -211,20 +212,20 @@ private:
     void mouseActionAndAltAndShiftLogic( float val, int theTouchedSlider )
     {
         
-        for (int s = 0; s < sliders.size(); s++)
+        for (int s = 0; s < m_sliders.size(); s++)
         {
             auto distance = abs(theTouchedSlider - s);
-            if (distance == 0){ sliders[s]->setValue( val ); }
+            if (distance == 0){ m_sliders[s]->setValue( val ); }
             else
             {
-                auto max = sliders[s]->getMaximum();
+                auto max = m_sliders[s]->getMaximum();
                 auto range = max - val;
                 
                 //                auto newVal = range / pow(2, distance);
                 distance += 1;
-                auto newVal = range * ( (sliders.size() - distance) / (float)sliders.size() );
+                auto newVal = range * ( (m_sliders.size() - distance) / (float)m_sliders.size() );
                 newVal  = max - newVal;
-                sliders[s]->setValue( newVal );
+                m_sliders[s]->setValue( newVal );
             }
         }
     }
@@ -242,7 +243,7 @@ private:
     void createSliderArray(int nSliders)
     {
         deleteAllChildren();
-        sliders.clear();
+        m_sliders.clear();
         for (int s = 0; s < nSliders; s ++)
         {
             juce::Slider *slider = new juce::Slider;
@@ -250,12 +251,12 @@ private:
             slider->setRange(0.0, 1.0, 0.0);
             slider->setInterceptsMouseClicks(false, false);
             addAndMakeVisible(slider);
-            sliders.add(slider);
+            m_sliders.add(slider);
         }
     }
     //==============================================================================
 private:
-    juce::Array<juce::Slider*> sliders;
-    bool isHorizontalFlag = false;
+    juce::Array<juce::Slider*> m_sliders;
+    bool m_isHorizontalFlag = false;
 };
 #endif /* sjf_multislider_h */

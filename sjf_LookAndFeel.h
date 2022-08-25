@@ -1,6 +1,5 @@
 //
-//  sjf_LookAndFeel.h
-//  sjf_granSynth
+//  sjf_lookAndFeel.h
 //
 //  Created by Simon Fay on 24/08/2022.
 //
@@ -258,4 +257,4 @@ public:
     
 };
 
-#endif /* sjf_LookAndFeel_h */
+#endif /* sjf_lookAndFeel_h */

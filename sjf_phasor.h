@@ -1,6 +1,5 @@
 //
 //  sjf_phasor.h
-//  sjf_granSynth
 //
 //  Created by Simon Fay on 24/08/2022.
 //
@@ -17,50 +16,50 @@ public:
     
     void initialise(float sample_rate, float f)
     {
-        SR = sample_rate;
+        m_SR = sample_rate;
         setFrequency( f );
     };
     
     void setSampleRate( float sample_rate)
     {
-        SR = sample_rate;
+        m_SR = sample_rate;
         calculateIncrement();
     }
     void setFrequency(float f)
     {
-        frequency = f;
+        m_frequency = f;
         
-        if (frequency >= 0)
+        if (m_frequency >= 0)
         {
-            negFreq = false;
-            increment = frequency / SR ;
+            m_negFreqFlag = false;
+            m_increment = m_frequency / m_SR ;
         }
         else
         {
-            negFreq = true;
-            increment = -1*frequency / SR ;
+            m_negFreqFlag = true;
+            m_increment = -1*m_frequency / m_SR ;
         }
         
         
         
     };
     
-    float getFrequency(){ return frequency ;};
+    float getFrequency(){ return m_frequency ;};
     
     float output()
     {
-        if (!negFreq)
+        if (!m_negFreqFlag)
         {
-            float p = position;
-            position += increment;
-            if (position >= 1){ position -= 1; }
+            float p = m_position;
+            m_position += m_increment;
+            if (m_position >= 1){ m_position -= 1; }
             return p;
         }
         else
         {
-            float p = position;
-            position += increment;
-            while (position >= 1){ position -= 1; }
+            float p = m_position;
+            m_position += m_increment;
+            while (m_position >= 1){ m_position -= 1; }
             return 1 - p;
         }
     };
@@ -69,19 +68,19 @@ public:
     {
         if (p < 0) {p = 0;}
         else if (p > 1){ p = 1 ;}
-        position = p;
+        m_position = p;
     };
     float getPhase(){
-        return position;
+        return m_position;
     }
 private:
-    void calculateIncrement(){ increment = ( frequency / SR ); };
+    void calculateIncrement(){ m_increment = ( m_frequency / m_SR ); };
     
-    float frequency = 440;
-    float SR = 44100;
-    float increment;
-    float position = 0;
-    bool negFreq = false;
+    float m_frequency = 440;
+    float m_SR = 44100;
+    float m_increment;
+    float m_position = 0;
+    bool m_negFreqFlag = false;
 };
 
 #endif /* sjf_phasor_h */

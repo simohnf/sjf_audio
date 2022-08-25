@@ -1,6 +1,5 @@
 //
 //  sjf_smoothValue.h
-//  sjf_granSynth
 //
 //  Created by Simon Fay on 24/08/2022.
 //
@@ -15,21 +14,21 @@ public:
     ~sjf_smoothValue(){};
     float smooth (float input)
     {
-        float out = ( (1 - alpha ) * preOut ) + ( alpha * ( input +  preInput)/2 ) ;
-        preOut = out;
-        preInput = input;
+        float out = ( (1 - m_alpha ) * m_preOutput ) + ( m_alpha * ( input +  m_preInput)/2 ) ;
+        m_preOutput = out;
+        m_preInput = input;
         return out;
     }
     
     void setAlpha (float a){
-        if (a < 0){ alpha = 0; }
-        else if (a < 1){ alpha = 1; }
-        else { alpha = a; }
+        if (a < 0){ m_alpha = 0; }
+        else if (a < 1){ m_alpha = 1; }
+        else { m_alpha = a; }
     }
     
 private:
-    float preOut, preInput;
-    float alpha = 0.0001;
+    float m_preOutput, m_preInput;
+    float m_alpha = 0.0001;
 };
 
 #endif /* sjf_smoothValue_h */

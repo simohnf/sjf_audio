@@ -1,12 +1,14 @@
 //
 //  sjf_multitoggle.h
-//  multiSlider
 //
 //  Created by Simon Fay on 20/08/2022.
 //
 
 #ifndef sjf_multitoggle_h
 #define sjf_multitoggle_h
+
+
+#include <vector>
 
 class sjf_multitoggle : public juce::Component
 {
@@ -65,7 +67,7 @@ public:
     sjf_multitoggle()
     {
         setColour(tickDisabledColourId, juce::Colours::transparentBlack);
-        setLookAndFeel(&thisLookAndFeel);
+        setLookAndFeel(&m_thisLookAndFeel);
         setInterceptsMouseClicks(true, false);
         createButtonArray(2, 2);
         setSize (600, 400);
@@ -85,23 +87,23 @@ public:
         g.setColour ( findColour(outlineColourId) );
         g.drawRect(0, 0, getWidth(), getHeight());
         
-        for (int b = 0; b < buttons.size(); b ++)
+        for (int b = 0; b < m_buttons.size(); b ++)
         {
-            buttons[b]->setColour(juce::ToggleButton::tickColourId, findColour( tickColourId ));
-            buttons[b]->setColour(juce::ToggleButton::tickDisabledColourId, findColour( tickDisabledColourId ));
+            m_buttons[b]->setColour(juce::ToggleButton::tickColourId, findColour( tickColourId ));
+            m_buttons[b]->setColour(juce::ToggleButton::tickDisabledColourId, findColour( tickDisabledColourId ));
         }
     }
     //==============================================================================
     void resized() override
     {
-        auto bWidth = (float)this->getWidth() / (float)nColumns;
-        auto bHeight = (float)this->getHeight() / (float)nRows;
-        for (int r = 0; r < nRows; r++)
+        auto bWidth = (float)this->getWidth() / (float)m_nColumns;
+        auto bHeight = (float)this->getHeight() / (float)m_nRows;
+        for (int r = 0; r < m_nRows; r++)
         {
-            for (int c = 0; c < nColumns; c++)
+            for (int c = 0; c < m_nColumns; c++)
             {
-                auto b = c + r*nColumns;
-                buttons[ b ]->setBounds(bWidth*c, bHeight*r, bWidth, bHeight);
+                auto b = c + r*m_nColumns;
+                m_buttons[ b ]->setBounds(bWidth*c, bHeight*r, bWidth, bHeight);
             }
         }
     }
@@ -109,7 +111,7 @@ public:
     void setNumRowsAndColumns( int numRows, int numColumns )
     {
         auto newNumButtons  = numRows * numColumns;
-        auto nButtons = buttons.size();
+        auto nButtons = m_buttons.size();
         
         if (newNumButtons < 1){ newNumButtons = 1; }
         if (newNumButtons == nButtons){ return; }
@@ -117,13 +119,13 @@ public:
         std::vector<bool> temp;
         for (int b = 0; b < nButtons; b++)
         {
-            temp.push_back(buttons[b]->getToggleState());
+            temp.push_back(m_buttons[b]->getToggleState());
         }
         createButtonArray(numRows, numColumns);
         
-        for (int b = 0; b < buttons.size(); b++)
+        for (int b = 0; b < m_buttons.size(); b++)
         {
-            if(b < temp.size()) { buttons[b]->setToggleState(temp[b], juce::dontSendNotification); }
+            if(b < temp.size()) { m_buttons[b]->setToggleState(temp[b], juce::dontSendNotification); }
         }
         resized();
     }
@@ -131,20 +133,20 @@ public:
     void setNumRows( int numRows)
     {
         if (numRows < 1){ numRows = 1; }
-        auto newNumButtons  = numRows * nColumns;
-        auto nButtons = buttons.size();
+        auto newNumButtons  = numRows * m_nColumns;
+        auto nButtons = m_buttons.size();
         if (newNumButtons == nButtons){ return; }
         
         std::vector<bool> temp;
         for (int b = 0; b < nButtons; b++)
         {
-            temp.push_back(buttons[b]->getToggleState());
+            temp.push_back(m_buttons[b]->getToggleState());
         }
-        createButtonArray(numRows, nColumns);
+        createButtonArray(numRows, m_nColumns);
         
-        for (int b = 0; b < buttons.size(); b++)
+        for (int b = 0; b < m_buttons.size(); b++)
         {
-            if(b < temp.size()) { buttons[b]->setToggleState(temp[b], juce::dontSendNotification); }
+            if(b < temp.size()) { m_buttons[b]->setToggleState(temp[b], juce::dontSendNotification); }
         }
         resized();
     }
@@ -152,34 +154,34 @@ public:
     void setNumColumns( int numColumns )
     {
         if (numColumns < 1){ numColumns = 1; }
-        auto newNumButtons  = nRows * numColumns;
-        auto nButtons = buttons.size();
+        auto newNumButtons  = m_nRows * numColumns;
+        auto nButtons = m_buttons.size();
         if (newNumButtons == nButtons){ return; }
         
         std::vector<std::vector<bool>> temp;
-        temp.resize(nRows);
+        temp.resize(m_nRows);
         
         // copying to 2d array just ensures pattern stays the same when numColumns is changed
-        for (int r = 0; r < nRows; r++)
+        for (int r = 0; r < m_nRows; r++)
         {
-            temp[r].resize(nColumns);
-            for (int c = 0; c < nColumns; c ++)
+            temp[r].resize(m_nColumns);
+            for (int c = 0; c < m_nColumns; c ++)
             {
-                auto b = c + r*nColumns;
-                temp[r][c] = buttons[b]->getToggleState();
+                auto b = c + r*m_nColumns;
+                temp[r][c] = m_buttons[b]->getToggleState();
             }
         }
 
-        createButtonArray(nRows, numColumns);
+        createButtonArray(m_nRows, numColumns);
         
-        for (int r = 0; r < nRows; r++)
+        for (int r = 0; r < m_nRows; r++)
         {
             for (int c = 0; c < numColumns; c ++)
             {
-                if (c < nColumns)
+                if (c < m_nColumns)
                 {
                     auto b = c + r*numColumns;
-                    buttons[b]->setToggleState(temp[r][c], juce::dontSendNotification);
+                    m_buttons[b]->setToggleState(temp[r][c], juce::dontSendNotification);
                 }
             }
         }
@@ -189,9 +191,9 @@ public:
     std::vector<bool> getRow ( int rowToGet )
     {
         std::vector<bool> temp;
-        for (int c = 0; c < nColumns; c++)
+        for (int c = 0; c < m_nColumns; c++)
         {
-            temp.push_back( buttons[ c + rowToGet*nRows ]->getToggleState() );
+            temp.push_back( m_buttons[ c + rowToGet*m_nRows ]->getToggleState() );
         }
         return temp;
     }
@@ -199,30 +201,30 @@ public:
     std::vector<bool> getColumn ( int columnToGet )
     {
         std::vector<bool> temp;
-        for (int r = 0; r < nRows; r++)
+        for (int r = 0; r < m_nRows; r++)
         {
-            temp.push_back( buttons[ r + columnToGet*nColumns ]->getToggleState() );
+            temp.push_back( m_buttons[ r + columnToGet*m_nColumns ]->getToggleState() );
         }
         return temp;
     }
     //==============================================================================
     int getNumButtons()
     {
-        return buttons.size();
+        return m_buttons.size();
     }
     //==============================================================================
     float fetch(int buttonRow, int buttonIndex)
     {
         auto ind = buttonRow * buttonIndex;
-        return ( buttons[ind]->getToggleState() );
+        return ( m_buttons[ind]->getToggleState() );
     }
     
     //==============================================================================
     std::vector<float> outputList()
     {
-        auto nButtons = buttons.size();
+        auto nButtons = m_buttons.size();
         std::vector<float> temp;
-        for(int b = 0; b < nButtons; b++){ temp.push_back( buttons[b]->getToggleState() ); }
+        for(int b = 0; b < nButtons; b++){ temp.push_back( m_buttons[b]->getToggleState() ); }
         return temp;
     }
     //==============================================================================
@@ -240,16 +242,16 @@ private:
         auto pos = e.position;
         auto x = pos.getX();
         auto y = pos.getY();
-        auto bWidth = getWidth()/(float)nColumns;
-        auto bHeight = getHeight()/(float)nRows;
+        auto bWidth = getWidth()/(float)m_nColumns;
+        auto bHeight = getHeight()/(float)m_nRows;
         
-        for (int r = 0; r < nRows; r++)
+        for (int r = 0; r < m_nRows; r++)
         {
-            for (int c = 0; c < nColumns; c++)
+            for (int c = 0; c < m_nColumns; c++)
             {
                 if( y >= r*bHeight && y < (r+1)*bHeight && x >= c*bWidth && x < (c+1)*bWidth )
                 {
-                    auto b = c + r*nColumns;
+                    auto b = c + r*m_nColumns;
                     return b;
                 }
             }
@@ -261,26 +263,26 @@ private:
     {
         if( e.mods.isAltDown() )
         {
-            for (int b = 0; b < buttons.size(); b++)
+            for (int b = 0; b < m_buttons.size(); b++)
             {
-                buttons[b]->setToggleState( false, juce::dontSendNotification );
-                lastMouseDownToggleState = false;
+                m_buttons[b]->setToggleState( false, juce::dontSendNotification );
+                m_lastMouseDownToggleState = false;
             }
         }
         else if( e.mods.isShiftDown() )
         {
-            for (int b = 0; b < buttons.size(); b++)
+            for (int b = 0; b < m_buttons.size(); b++)
             {
-                buttons[b]->setToggleState( true, juce::dontSendNotification );
-                lastMouseDownToggleState = false;
+                m_buttons[b]->setToggleState( true, juce::dontSendNotification );
+                m_lastMouseDownToggleState = false;
             }
         }
         else
         {
             auto b = calulateMousePosToToggleNumber(e);
             if (b < 0) { return; }
-            buttons[b]->setToggleState(! buttons[b]->getToggleState(), juce::dontSendNotification );
-            lastMouseDownToggleState = buttons[b]->getToggleState();
+            m_buttons[b]->setToggleState(! m_buttons[b]->getToggleState(), juce::dontSendNotification );
+            m_lastMouseDownToggleState = m_buttons[b]->getToggleState();
         }
     }
     //==============================================================================
@@ -288,30 +290,30 @@ private:
     {
         auto b = calulateMousePosToToggleNumber(e);
         if (b < 0) { return; }
-        buttons[b]->setToggleState( lastMouseDownToggleState, juce::dontSendNotification );
+        m_buttons[b]->setToggleState( m_lastMouseDownToggleState, juce::dontSendNotification );
     }
     //==============================================================================
     void createButtonArray(int numRows, int numColumns)
     {
         deleteAllChildren();
-        buttons.clear();
-        nRows = numRows;
-        nColumns = numColumns;
-        auto nButtons = nRows * nColumns;
+        m_buttons.clear();
+        m_nRows = numRows;
+        m_nColumns = numColumns;
+        auto nButtons = m_nRows * m_nColumns;
         for (int b = 0; b < nButtons; b ++)
         {
             juce::ToggleButton *button = new juce::ToggleButton;
             button->setInterceptsMouseClicks(false, false);
             addAndMakeVisible(button);
-            buttons.add(button);
+            m_buttons.add(button);
         }
     }
     //==============================================================================
 private:
-    sjf_multitoggle_LookAndFeel thisLookAndFeel;
+    sjf_multitoggle_LookAndFeel m_thisLookAndFeel;
     
-    juce::Array<juce::ToggleButton*> buttons;
-    int nRows, nColumns;
-    bool lastMouseDownToggleState;
+    juce::Array<juce::ToggleButton*> m_buttons;
+    int m_nRows, m_nColumns;
+    bool m_lastMouseDownToggleState;
 };
 #endif /* sjf_multitoggle_h */

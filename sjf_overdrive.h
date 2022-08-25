@@ -1,6 +1,5 @@
 //
 //  sjf_overdrive.h
-//  sjf_granSynth
 //
 //  Created by Simon Fay on 24/08/2022.
 //

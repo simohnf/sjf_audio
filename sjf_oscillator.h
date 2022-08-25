@@ -1,6 +1,5 @@
 //
 //  sjf_oscillator.h
-//  sjf_granSynth
 //
 //  Created by Simon Fay on 24/08/2022.
 //
@@ -8,84 +7,86 @@
 #ifndef sjf_oscillator_h
 #define sjf_oscillator_h
 
+#include <vector>
+
 #define PI 3.14159265
 
 class sjf_oscillator {
     
 public:
     sjf_oscillator(){
-        waveTable.resize(waveTableSize);
+        m_waveTable.resize(m_waveTableSize);
         setSine();
     };
     ~sjf_oscillator(){};
     
     void setFrequency(float f)
     {
-        initialise(SR, f);
+        initialise(m_SR, f);
     };
     
     void initialise(int sampleRate, float f)
     {
-        SR = sampleRate;
-        frequency = f;
-        read_increment = frequency * waveTableSize / SR ;
+        m_SR = sampleRate;
+        m_frequency = f;
+        m_readIncrement = m_frequency * m_waveTableSize / m_SR ;
     };
     
     void setSine(){
-        for (int index = 0; index< waveTableSize; index++)
+        for (int index = 0; index< m_waveTableSize; index++)
         {
-            waveTable[index] = sin( index * 2 * PI / waveTableSize ) ;
+            m_waveTable[index] = sin( index * 2 * PI / m_waveTableSize ) ;
         }
     };
     
     std::vector<float> outputBlock(int numSamples)
     {
-        outBuff.resize( numSamples ) ;
+        m_outBuff.resize( numSamples ) ;
         for ( int index = 0; index < numSamples; index++ )
         {
-            outBuff[index] = cubicInterpolate(waveTable, read_pos);
-            read_pos += read_increment;
-            if (read_pos >= waveTableSize)
+            m_outBuff[index] = cubicInterpolate(m_waveTable, m_readPos);
+            m_readPos += m_readIncrement;
+            if (m_readPos >= m_waveTableSize)
             {
-                read_pos -= waveTableSize;
+                m_readPos -= m_waveTableSize;
             }
         }
-        return outBuff;
+        return m_outBuff;
     };
     
     std::vector<float> outputBlock(int numSamples, float gain)
     {
-        outBuff.resize( numSamples ) ;
+        m_outBuff.resize( numSamples ) ;
         for ( int index = 0; index < numSamples; index++ )
         {
-            outBuff[index] = cubicInterpolate(waveTable, read_pos) * gain;
-            read_pos += read_increment;
-            if (read_pos >= waveTableSize)
+            m_outBuff[index] = cubicInterpolate(m_waveTable, m_readPos) * gain;
+            m_readPos += m_readIncrement;
+            if (m_readPos >= m_waveTableSize)
             {
-                read_pos -= waveTableSize;
+                m_readPos -= m_waveTableSize;
             }
         }
-        return outBuff;
+        return m_outBuff;
     };
     
     float outputSample(int numSamples)
     {
-        float out = cubicInterpolate(waveTable, read_pos);
-        read_pos += numSamples * read_increment;
-        if (read_pos >= waveTableSize)
+        float out = cubicInterpolate(m_waveTable, m_readPos);
+        m_readPos += numSamples * m_readIncrement;
+        if (m_readPos >= m_waveTableSize)
         {
-            read_pos -= waveTableSize;
+            m_readPos -= m_waveTableSize;
         }
         return out;
     };
     
 private:
-    float waveTableSize = 512;
-    float SR = 44100;
-    float read_pos = 0;
-    float frequency = 440;
-    float read_increment = ( frequency * SR ) / waveTableSize;
-    std::vector<float> waveTable, outBuff;
+    float m_waveTableSize = 512;
+    float m_SR = 44100;
+    float m_readPos = 0;
+    float m_frequency = 440;
+    float m_readIncrement = ( m_frequency * m_SR ) / m_waveTableSize;
+    std::vector<float> m_waveTable, m_outBuff;
 };
 
 #endif /* sjf_oscillator_h */

@@ -7,8 +7,10 @@
 #ifndef sjf_pitchShifter_h
 #define sjf_pitchShifter_h
 
+#include <JuceHeader.h>
 #include "sjf_delayLine.h"
 #include "sjf_phasor.h"
+
 
 #define PI 3.14159265
 

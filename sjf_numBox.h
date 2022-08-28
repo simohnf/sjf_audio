@@ -7,6 +7,8 @@
 #ifndef sjf_numBox_h
 #define sjf_numBox_h
 
+#include <JuceHeader.h>
+
 class sjf_numBox : public juce::Slider
 /* Copied from https://suzuki-kengo.dev/posts/numberbox */
 {

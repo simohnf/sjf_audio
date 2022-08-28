@@ -7,6 +7,8 @@
 #ifndef sjf_Label_h
 #define sjf_Label_h
 
+#include <JuceHeader.h>
+
 class sjf_label : public juce::Label
 {
     juce::Colour outlineColour;

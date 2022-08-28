@@ -9,7 +9,8 @@
 
 #include <vector>
 #include "sjf_audioUtilities.h"
-
+#include "sjf_interpolationTypes.h"
+#include <time.h>
 
 class sjf_sampler{
     
@@ -452,8 +453,6 @@ private:
     };
     
 public:
-    
-    std::vector<float> m_revPat, m_speedPat, m_subDivPat, m_subDivAmpRampPat, m_ampPat, m_stepPat;
     float m_revProb = 0; float m_speedProb = 0; float m_subDivProb = 0; float m_ampProb = 0; float m_stepShuffleProb = 0;
     bool m_canPlayFlag = false; bool m_randomOnLoopFlag = false; bool m_syncToHostFlag = false;
     bool m_revFlag = false; bool m_speedFlag = false; bool m_speedRampFlag = true;
@@ -463,6 +462,8 @@ public:
     juce::File m_samplePath;
     
 private:
+    std::vector<float> m_revPat, m_speedPat, m_subDivPat, m_subDivAmpRampPat, m_ampPat, m_stepPat;
+    
     int m_nSteps = 16; int m_nSlices = 16;
     
     juce::AudioBuffer<float> m_AudioSample, m_tempBuffer;

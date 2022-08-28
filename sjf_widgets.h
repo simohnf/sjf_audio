@@ -6,6 +6,8 @@
 #ifndef sjf_widgets_h
 #define sjf_widgets_h
 
+#include <JuceHeader.h>
+
 #include "sjf_multislider.h"
 #include "sjf_multitoggle.h"
 #include "sjf_numBox.h"

@@ -9,6 +9,7 @@
 
 
 #include <vector>
+#include <JuceHeader.h>
 
 class sjf_multitoggle : public juce::Component
 {

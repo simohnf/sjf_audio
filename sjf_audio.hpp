@@ -8,6 +8,7 @@
 #ifndef sjf_audio_hpp
 #define sjf_audio_hpp
 
+#include <JuceHeader.h>
 
 #include "sjf_interpolationTypes.h"
 #include "sjf_delayLine.h"
@@ -21,7 +22,6 @@
 #include "sjf_audioUtilities.h"
 
 
-//#define outlineColour juce::LookAndFeel_V4::ColourScheme::UIColour::outline
 //==============================================================================
 /**
  */

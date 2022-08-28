@@ -7,6 +7,7 @@
 #ifndef sjf_audioUtilities_h
 #define sjf_audioUtilities_h
 
+#include <JuceHeader.h>
 
 
 #define PI 3.14159265

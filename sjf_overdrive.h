@@ -6,6 +6,7 @@
 
 #ifndef sjf_overdrive_h
 #define sjf_overdrive_h
+#include <JuceHeader.h>
 
 class sjf_overdrive {
     

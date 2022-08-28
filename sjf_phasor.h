@@ -6,6 +6,7 @@
 
 #ifndef sjf_phasor_h
 #define sjf_phasor_h
+#include <JuceHeader.h>
 
 class sjf_phasor{
 public:

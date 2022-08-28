@@ -7,6 +7,7 @@
 #ifndef sjf_interpolationTypes_h
 #define sjf_interpolationTypes_h
 
+#include <JuceHeader.h>
 #include <vector>
 //==============================================================================
 //==============================================================================

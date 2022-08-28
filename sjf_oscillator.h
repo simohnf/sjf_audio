@@ -8,6 +8,7 @@
 #define sjf_oscillator_h
 
 #include <vector>
+#include <JuceHeader.h>
 
 #define PI 3.14159265
 

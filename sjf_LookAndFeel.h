@@ -7,6 +7,8 @@
 #ifndef sjf_LookAndFeel_h
 #define sjf_LookAndFeel_h
 
+#include <JuceHeader.h>
+
 class sjf_lookAndFeel : public juce::LookAndFeel_V4
 {
 public:

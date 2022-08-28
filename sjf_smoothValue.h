@@ -6,6 +6,7 @@
 
 #ifndef sjf_smoothValue_h
 #define sjf_smoothValue_h
+#include <JuceHeader.h>
 
 class sjf_smoothValue {
     

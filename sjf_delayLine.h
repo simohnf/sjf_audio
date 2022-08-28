@@ -7,6 +7,9 @@
 #ifndef sjf_delayLine_h
 #define sjf_delayLine_h
 
+#include <JuceHeader.h>
+#include "sjf_interpolationTypes.h"
+
 class sjf_delayLine {
     
 public:

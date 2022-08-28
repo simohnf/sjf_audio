@@ -8,6 +8,7 @@
 #define sjf_multislider_h
 
 #include <vector>
+#include <JuceHeader.h>
 
 class sjf_multislider : public juce::Component
 {

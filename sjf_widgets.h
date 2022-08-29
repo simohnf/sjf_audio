@@ -12,5 +12,6 @@
 #include "sjf_multitoggle.h"
 #include "sjf_numBox.h"
 #include "sjf_label.h"
+#include "sjf_graph.h"
 
 #endif /* sjf_widgets_h */

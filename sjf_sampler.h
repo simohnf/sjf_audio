@@ -261,14 +261,6 @@ private:
         //        return outVal; // this would give linear fade
         return sin( PI* (outVal)/2 ); // this gives a smooth sinewave based fade
     };
-//    //==============================================================================
-//    float calculatePosition(int readStep, float pos, float subDivLenSamps){
-//        auto posOut = (readStep * m_sliceLenSamps) + pos;
-//        //            JUST RECHECK POSITION FOR SAFETY
-//        while (posOut < 0 ) { posOut += m_durationSamps; }
-//        while (posOut >= m_durationSamps) { posOut -= m_durationSamps; }
-//        return posOut;
-//    }
     //==============================================================================
     float calculateReverse(int currentStep, float pos, float subDivLenSamps)
     {
@@ -461,7 +453,7 @@ public:
     
     juce::File m_samplePath;
     
-private:
+protected:
     std::vector<float> m_revPat, m_speedPat, m_subDivPat, m_subDivAmpRampPat, m_ampPat, m_stepPat;
     
     int m_nSteps = 16; int m_nSlices = 16;

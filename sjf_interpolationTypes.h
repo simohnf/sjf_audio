@@ -15,7 +15,28 @@
 //==============================================================================
 //==============================================================================
 //==============================================================================
-
+//==============================================================================
+inline
+float linearInterpolate(std::vector<float>& buffer, float read_pos)
+{
+    auto bufferSize = buffer.size();
+    double y1; // this step value
+    double y2; // next step value
+    double mu; // fractional part between step 1 & 2
+    
+    float findex = read_pos;
+    if(findex < 0){ findex+= bufferSize;}
+    else if(findex > bufferSize){ findex-= bufferSize;}
+    
+    int index = findex;
+    mu = findex - index;
+    
+    y1 = buffer[ index % bufferSize ];
+    y2 = buffer[ (index + 1) % bufferSize ];
+    
+    return y1 + mu*(y2-y1) ;
+}
+//==============================================================================
 inline
 float cubicInterpolate(std::vector<float> buffer, float read_pos)
 {

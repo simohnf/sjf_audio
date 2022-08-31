@@ -106,7 +106,7 @@ class sjf_grainEngine : public sjf_sampler
     {
         
     public:
-        sjf_grainEngine() : m_grains(64){ srand((unsigned)time(NULL)); };
+        sjf_grainEngine() : m_grains(256){ srand((unsigned)time(NULL)); };
         ~sjf_grainEngine(){};
         //==============================================================================
         void newGrain(float grainStartFractional, float grainLengthMS, float transpositionInSemitones, float gain, float pan, int envType)
@@ -134,10 +134,9 @@ class sjf_grainEngine : public sjf_sampler
         //==============================================================================
         void playCloud( juce::AudioBuffer<float> &buffer )
         {
-            if (!m_sampleLoadedFlag || !m_canPlayFlag) { return; }
+            if (!m_sampleLoadedFlag || !m_canPlayFlag) { m_canPlayFlag = false; return; }
             auto cloudLengthSamps = m_cloudLengthMS * m_SR * 0.001f;
             auto deltaTimeSamps = m_deltaTimeMS * m_SR * 0.001f;
-//            auto sourceBufferSize = m_AudioSample.getNumSamples();
             
             for ( int index = 0; index < buffer.getNumSamples(); index ++ )
             {
@@ -166,6 +165,59 @@ class sjf_grainEngine : public sjf_sampler
                 }
                 
 
+                m_cloudPos ++;
+                if ( m_cloudPos >= (cloudLengthSamps - deltaTimeSamps) )
+                {
+                    int playingCount = 0;
+                    for ( int g = 0; g < m_grains.size(); g++ )
+                    {
+                        if ( m_grains[g].getPlayingState() ) { playingCount++; } // if any of the grains are still playing let them finish
+                    }
+                    if (playingCount == 0)
+                    {
+                        m_canPlayFlag = false;
+                    }
+                }
+            }
+        }
+        //==============================================================================
+        void playCloudFromVectors( juce::AudioBuffer<float> &buffer )
+        {
+            if (!m_sampleLoadedFlag || !m_canPlayFlag) { m_canPlayFlag = false;  return; }
+            auto cloudLengthSamps = m_cloudLengthMS * m_SR * 0.001f;
+            auto deltaTimeSamps = m_deltaTimeMS * m_SR * 0.001f;
+            
+            for ( int index = 0; index < buffer.getNumSamples(); index ++ )
+            {
+                if (m_cloudPos >= m_nextTrigger && m_cloudPos <= (cloudLengthSamps - deltaTimeSamps))
+                {// only trigger a new grain if we're still within the cloud length
+                    auto phaseThroughCloud = (float)m_cloudPos / (float)cloudLengthSamps;
+                    auto grainStart = linearInterpolate( m_grainPositionVector, m_grainPositionVector.size() * phaseThroughCloud );
+                    auto grainPan = linearInterpolate( m_grainPanVector, m_grainPanVector.size() * phaseThroughCloud );
+                    auto grainTransposition = linearInterpolate( m_grainTranspositionVector, m_grainTranspositionVector.size() * phaseThroughCloud );
+                    grainTransposition *= 24.0f;
+                    grainTransposition -= 12.0f;
+                    auto grainSize = 1.0f + 99.0f * linearInterpolate( m_grainSizeVector, m_grainSizeVector.size() * phaseThroughCloud );
+                    auto grainGain = linearInterpolate( m_grainGainVector, m_grainGainVector.size() * phaseThroughCloud );
+                    newGrain( grainStart,
+                             grainSize,
+                             grainTransposition,
+                             grainGain,
+                             grainPan,
+                             m_envType);
+//                    m_deltaTimeMS = rand01()*90 + 10; // random deltaTime
+                    m_deltaTimeMS = 1.0f + 99.0f * linearInterpolate( m_grainDeltaVector, m_grainDeltaVector.size() * phaseThroughCloud ) ;
+                    m_nextTrigger = m_cloudPos + (m_deltaTimeMS * m_SR * 0.001f);
+                    //                    newGrain(float grainStartFractional, float grainLengthMS, float transpositionInSemitones, float gain, float pan, int envType)
+                }
+                
+                
+                for ( int g = 0; g < m_grains.size(); g++ )
+                {
+                    m_grains[g].playGrain(buffer, m_AudioSample, index, g);
+                }
+                
+                
                 m_cloudPos ++;
                 if ( m_cloudPos >= (cloudLengthSamps - deltaTimeSamps) )
                 {
@@ -225,9 +277,50 @@ class sjf_grainEngine : public sjf_sampler
             if (pan > 1) { pan = 1; }
             m_pan = pan;
         }
+        //==============================================================================
+        void setGrainPositionVector(const std::vector<float> &grainPositionVector )
+        {
+            m_grainPositionVector = grainPositionVector;
+        }
+        //==============================================================================
+        void setGrainPanVector(const std::vector<float> &grainPanVector )
+        {
+            m_grainPanVector = grainPanVector;
+        }
+        //==============================================================================
+        void setGrainTranspositionVector(const std::vector<float> &grainTranspositionVector )
+        {
+            m_grainTranspositionVector = grainTranspositionVector;
+        }
+        //==============================================================================
+        void setGrainSizeVector(const std::vector<float> &grainSizeVector )
+        {
+            m_grainSizeVector = grainSizeVector;
+        }
+        //==============================================================================
+        void setGrainGainVector(const std::vector<float> &grainGainVector )
+        {
+            m_grainGainVector = grainGainVector;
+        }
+        //==============================================================================
+        void setGrainDeltaVector(const std::vector<float> &grainDeltaVector )
+        {
+            m_grainDeltaVector = grainDeltaVector;
+        }
+        //==============================================================================
+        void setCloudLength(float cloudLengthMS )
+        {
+            m_cloudLengthMS = cloudLengthMS;
+        }
+        //==============================================================================
+        float getCloudLengthMS( )
+        {
+            return m_cloudLengthMS;
+        }
+        //==============================================================================
     private:
         std::vector<sjf_grainVoice> m_grains;
-        
+        std::vector<float> m_grainPositionVector, m_grainPanVector, m_grainTranspositionVector, m_grainSizeVector, m_grainGainVector, m_grainDeltaVector;
         int m_voiceNumber = 0;
         float m_cloudLengthMS = 2000.0f, m_desnity = 1.0f, m_deltaTimeMS = 50.0f, m_cloudPos = 0.0f, m_nextTrigger = 0.0f;
         bool m_canPlayFlag = false;

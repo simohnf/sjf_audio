@@ -134,7 +134,7 @@ public:
     {
         setSize (600, 400);
     }
-    ~sjf_graph(){ };
+    ~sjf_graph(){ setLookAndFeel(nullptr); };
 
     void paint (juce::Graphics& g) override
     {
@@ -148,14 +148,18 @@ public:
         g.setColour ( findColour(pointColourID) );
         auto lineStart = 0;
         auto nVals = m_values.size();
-        auto sliderWidth = ((float)getWidth()) / (float)nVals;
+        auto sliderWidth =  (float)getWidth()  / (float)nVals;
         auto height = getHeight();
         for(int i = 0; i < nVals; i++)
         {
             auto val = m_values[i] * height;
-            g.drawLine( round(lineStart), val, round(lineStart + sliderWidth), val );
+            g.drawLine( lineStart, val, lineStart + sliderWidth, val );
+//            g.drawHorizontalLine(val, lineStart, lineStart + sliderWidth);
             lineStart += sliderWidth;
         }
+        
+        g.setColour(findColour(outlineColourId));
+        g.drawFittedText (m_name, getLocalBounds(), juce::Justification::centred, 1);
     }
     
     //==============================================================================
@@ -239,9 +243,21 @@ public:
         pointColourID              = 0x1001310,
     };
     //==============================================================================
+    std::vector<float> getGraphAsVector()
+    {
+        return m_values;
+    }
+    //==============================================================================
+    
+    void setGraphText( std::string newText)
+    {
+        m_name = newText;
+        repaint();
+    }
     
 protected:
     std::vector<float> m_values;
+    std::string m_name = "sjf_grapher";
 };
 
 
@@ -274,14 +290,17 @@ public:
         addAndMakeVisible(&rangeBox);
         rangeBox.setRange(0.0f, 1.0f);
         rangeBox.onValueChange = [this]{m_range = rangeBox.getValue(); drawGraph(m_lastGraphChoice);};
+        rangeBox.setValue( m_range );
         
         addAndMakeVisible(&offsetBox);
         offsetBox.setRange(-1.0f, 1.0f);
         offsetBox.onValueChange = [this]{m_offset = offsetBox.getValue(); drawGraph(m_lastGraphChoice);};
+        offsetBox.setValue( m_offset );
         
         addAndMakeVisible(&jitterBox);
         jitterBox.setRange(0.0f, 1.0f);
         jitterBox.onValueChange = [this]{m_jitter = jitterBox.getValue(); drawGraph(m_lastGraphChoice);};
+        jitterBox.setValue( m_jitter );
         
         addAndMakeVisible(&randomBox);
         randomBox.setButtonText("random");
@@ -291,12 +310,19 @@ public:
     };
     ~sjf_grapher(){ };
     
-    void randomGraph()
+    std::vector<float>  randomGraph()
     {
-        rangeBox.setValue( rand01() );
-        offsetBox.setValue( (pow(rand01(), 0.5) ) - 0.5f );
-        jitterBox.setValue( pow(rand01(), 4) );
-        graphChoiceBox.setSelectedId( 1+ rand01() * (float)graphChoiceBox.getNumItems() );
+        
+        m_range = rand01();
+        rangeBox.setValue( m_range, juce::dontSendNotification );
+        m_offset = (pow(rand01(), 0.5) ) - 0.5f;
+        offsetBox.setValue( m_offset, juce::dontSendNotification );
+        m_jitter = pow(rand01(), 4);
+        jitterBox.setValue( m_jitter, juce::dontSendNotification );
+        m_lastGraphChoice = 1+ rand01() * (float)graphChoiceBox.getNumItems();
+        graphChoiceBox.setSelectedId( m_lastGraphChoice , juce::dontSendNotification);
+        drawGraph(m_lastGraphChoice);
+        return getGraphAsVector();
     }
     
     void drawGraph( int graphType )
@@ -343,9 +369,6 @@ public:
                 case 12:
                     val = downUp01( (float)i / (float)nVals );
                     break;
-//                case 13:
-//                    val = rand01();
-//                    break;
             }
             val *= m_range;
             val += m_offset;
@@ -367,6 +390,8 @@ public:
         g.setColour ( findColour(outlineColourId) );
         g.drawRect(0, 0, getWidth(), getHeight());
         m_graph.setColour(m_graph.pointColourID, juce::Colours::white);
+        
+        
     }
     //==============================================================================
     enum ColourIds
@@ -390,11 +415,26 @@ public:
         jitterBox.setBounds(0, 60, indent, 20);
         randomBox.setBounds(0, 80, indent, 20);
     }
-    
-
+    //==============================================================================
+    std::vector<float> getGraphAsVector()
+    {
+        std::vector<float> temp = m_graph.getGraphAsVector();
+        for (int i = 0; i < temp.size(); i++)
+        {
+            temp[i] = 1.0f - temp[i];
+        }
+        return temp;
+    }
+    //==============================================================================
+    void setGraphText( std::string newText)
+    {
+        m_graph.setGraphText( newText );
+    }
+    //==============================================================================
 private:
     int m_lastGraphChoice;
     sjf_graph m_graph;
+    
 public:
     juce::ComboBox graphChoiceBox;
     float m_offset = 0, m_range = 1, m_jitter = 0;

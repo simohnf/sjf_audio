@@ -17,7 +17,8 @@
 class sjf_grainVoice
 {
 public:
-    sjf_grainVoice(){};
+    sjf_grainVoice()
+    {};
     ~sjf_grainVoice(){};
     //==============================================================================
     void setPlaying(bool shouldBePlaying, float grainStartSamps, float grainLengthSamps, float playBackSpeed, float gain, float pan, int envType )
@@ -29,6 +30,20 @@ public:
         m_gain = gain;
         m_pan = pan;
         m_envType = envType;
+        m_samplesPlayedCount = 0.0f;
+        return;
+    }
+    //==============================================================================
+    void setPlaying(bool shouldBePlaying, float grainStartSamps, float grainLengthSamps, float playBackSpeed, float gain, float pan, int envType, float reverbAmount )
+    {
+        m_isPlayingFlag = shouldBePlaying;
+        m_readPos = grainStartSamps;
+        m_grainLength = grainLengthSamps;
+        m_playBackSpeed = playBackSpeed;
+        m_gain = gain;
+        m_pan = pan;
+        m_envType = envType;
+        m_reverbAmount = reverbAmount;
         m_samplesPlayedCount = 0.0f;
         return;
     }
@@ -90,13 +105,40 @@ public:
         }
     }
     //==============================================================================
+    void playGrain(juce::AudioBuffer<float> &buffer, juce::AudioBuffer<float> &sourceBuffer, juce::AudioBuffer<float> &reverbBuffer, int index )
+    {
+        if (!m_isPlayingFlag){ return; }
+        //        auto outBufferSize = buffer.getNumSamples();
+        auto sourceBufferSize = sourceBuffer.getNumSamples();
+        auto numChannels = buffer.getNumChannels();
+        auto envVal = grainEnv( m_samplesPlayedCount/m_grainLength, m_envType );
+        for (int channel = 0; channel < numChannels; channel ++)
+        {
+            auto val = linearInterpolate(sourceBuffer, channel % sourceBuffer.getNumChannels(), m_readPos);
+            val *= m_gain;
+            val *= envVal;
+            val *= pan2( m_pan, channel);
+            buffer.addSample( channel, index, (1.0f-m_reverbAmount) * val );
+            reverbBuffer.addSample( channel, index, (m_reverbAmount) * val );
+        }
+        m_readPos += m_playBackSpeed;
+        while (m_readPos >= sourceBufferSize) { m_readPos -= sourceBufferSize; }
+        
+        m_samplesPlayedCount++;
+        if (m_samplesPlayedCount >= m_grainLength)
+        {
+            m_isPlayingFlag = false;
+            return;
+        }
+    }
+    //==============================================================================
     bool getPlayingState()
     {
         return m_isPlayingFlag;
     }
 private:
     bool m_isPlayingFlag = false;
-    float m_readPos = 0.0f, m_grainLength = 4410.0f, m_playBackSpeed = 1.0f, m_gain = 1.0f, m_pan = 0.5f, m_samplesPlayedCount = 0.0f;
+    float m_readPos = 0.0f, m_grainLength = 4410.0f, m_playBackSpeed = 1.0f, m_gain = 1.0f, m_pan = 0.5f, m_samplesPlayedCount = 0.0f, m_reverbAmount = 0.0f;
     int m_envType;
     
 };
@@ -106,8 +148,22 @@ class sjf_grainEngine : public sjf_sampler
     {
         
     public:
-        sjf_grainEngine() : m_grains(256){ srand((unsigned)time(NULL)); };
+        sjf_grainEngine() : m_grains(128)
+        {
+            srand((unsigned)time(NULL));
+            juce::Reverb::Parameters revParams;
+            revParams.roomSize = 0.7f;
+            revParams.wetLevel = 1.0f;
+            revParams.dryLevel = 0.0f;
+            m_reverb.setParameters( revParams );
+        };
         ~sjf_grainEngine(){};
+        //==============================================================================
+        void initialiseGranSynth(int sampleRate, int samplesPerBlock)
+        {
+            m_SR  = sampleRate; srand((unsigned)time(NULL));
+            prepareReverb( m_SR, samplesPerBlock );
+        };
         //==============================================================================
         void newGrain(float grainStartFractional, float grainLengthMS, float transpositionInSemitones, float gain, float pan, int envType)
         {
@@ -115,6 +171,17 @@ class sjf_grainEngine : public sjf_sampler
             auto grainStartSamps = m_AudioSample.getNumSamples() * grainStartFractional;
             auto playBackSpeed = pow(2.0f, transpositionInSemitones/12.0f);
             m_grains[m_voiceNumber].setPlaying( true, grainStartSamps, grainLengthMS * m_SR/1000.0f, playBackSpeed, gain, pan, envType );
+            m_voiceNumber++;
+            m_voiceNumber %= m_grains.size();
+            return;
+        }
+        //==============================================================================
+        void newGrain(float grainStartFractional, float grainLengthMS, float transpositionInSemitones, float gain, float pan, int envType, float reverbAmount)
+        {
+            if (!m_sampleLoadedFlag) { return; }
+            auto grainStartSamps = m_AudioSample.getNumSamples() * grainStartFractional;
+            auto playBackSpeed = pow(2.0f, transpositionInSemitones/12.0f);
+            m_grains[m_voiceNumber].setPlaying( true, grainStartSamps, grainLengthMS * m_SR/1000.0f, playBackSpeed, gain, pan, envType, reverbAmount );
             m_voiceNumber++;
             m_voiceNumber %= m_grains.size();
             return;
@@ -134,7 +201,8 @@ class sjf_grainEngine : public sjf_sampler
         //==============================================================================
         void playCloud( juce::AudioBuffer<float> &buffer )
         {
-            if (!m_sampleLoadedFlag || !m_canPlayFlag) { m_canPlayFlag = false; return; }
+            if (!m_sampleLoadedFlag || !m_canPlayFlag)
+            { m_canPlayFlag = false;  return; }
             auto cloudLengthSamps = m_cloudLengthMS * m_SR * 0.001f;
             auto deltaTimeSamps = m_deltaTimeMS * m_SR * 0.001f;
             
@@ -183,7 +251,16 @@ class sjf_grainEngine : public sjf_sampler
         //==============================================================================
         void playCloudFromVectors( juce::AudioBuffer<float> &buffer )
         {
-            if (!m_sampleLoadedFlag || !m_canPlayFlag) { m_canPlayFlag = false;  return; }
+            buffer.clear();
+            if (!m_sampleLoadedFlag || !m_canPlayFlag)
+            {
+                m_canPlayFlag = false;
+                auto block = juce::dsp::AudioBlock<float> ( buffer );
+                auto contextIn = juce::dsp::ProcessContextReplacing<float> (block);
+                m_reverb.process( contextIn );
+                return;
+            }
+            m_reverbBuffer.makeCopyOf( buffer );
             auto cloudLengthSamps = m_cloudLengthMS * m_SR * 0.001f;
             auto deltaTimeSamps = m_deltaTimeMS * m_SR * 0.001f;
             
@@ -199,13 +276,14 @@ class sjf_grainEngine : public sjf_sampler
                     grainTransposition -= 12.0f;
                     auto grainSize = 1.0f + 99.0f * linearInterpolate( m_grainSizeVector, m_grainSizeVector.size() * phaseThroughCloud );
                     auto grainGain = linearInterpolate( m_grainGainVector, m_grainGainVector.size() * phaseThroughCloud );
+                    auto grainReverb = linearInterpolate( m_grainReverbVector, m_grainReverbVector.size() * phaseThroughCloud );
                     newGrain( grainStart,
                              grainSize,
                              grainTransposition,
                              grainGain,
                              grainPan,
-                             m_envType);
-//                    m_deltaTimeMS = rand01()*90 + 10; // random deltaTime
+                             m_envType,
+                             grainReverb);
                     m_deltaTimeMS = 1.0f + 99.0f * linearInterpolate( m_grainDeltaVector, m_grainDeltaVector.size() * phaseThroughCloud ) ;
                     m_nextTrigger = m_cloudPos + (m_deltaTimeMS * m_SR * 0.001f);
                     //                    newGrain(float grainStartFractional, float grainLengthMS, float transpositionInSemitones, float gain, float pan, int envType)
@@ -214,7 +292,7 @@ class sjf_grainEngine : public sjf_sampler
                 
                 for ( int g = 0; g < m_grains.size(); g++ )
                 {
-                    m_grains[g].playGrain(buffer, m_AudioSample, index, g);
+                    m_grains[g].playGrain(buffer, m_AudioSample, m_reverbBuffer, index);
                 }
                 
                 
@@ -231,6 +309,14 @@ class sjf_grainEngine : public sjf_sampler
                         m_canPlayFlag = false;
                     }
                 }
+            }
+            auto block = juce::dsp::AudioBlock<float> (m_reverbBuffer);
+            auto contextIn = juce::dsp::ProcessContextReplacing<float> (block);
+            m_reverb.process( contextIn );
+            
+            for (int channel = 0; channel < buffer.getNumChannels(); channel ++)
+            {
+                buffer.addFrom( channel, 0, m_reverbBuffer, channel, 0, buffer.getNumSamples() );
             }
         }
         //==============================================================================
@@ -308,6 +394,11 @@ class sjf_grainEngine : public sjf_sampler
             m_grainDeltaVector = grainDeltaVector;
         }
         //==============================================================================
+        void setGrainReverbVector(const std::vector<float> &grainReverbVector )
+        {
+            m_grainReverbVector = grainReverbVector;
+        }
+        //==============================================================================
         void setCloudLength(float cloudLengthMS )
         {
             m_cloudLengthMS = cloudLengthMS;
@@ -318,14 +409,27 @@ class sjf_grainEngine : public sjf_sampler
             return m_cloudLengthMS;
         }
         //==============================================================================
+        void prepareReverb( double sampleRate, int samplesPerBlock )
+        {
+            juce::dsp::ProcessSpec spec;
+            spec.maximumBlockSize = samplesPerBlock;
+            spec.numChannels = 2; // only stereo
+            spec.sampleRate = sampleRate;
+            
+            m_reverb.prepare( spec );
+        }
+        //==============================================================================
     private:
         std::vector<sjf_grainVoice> m_grains;
-        std::vector<float> m_grainPositionVector, m_grainPanVector, m_grainTranspositionVector, m_grainSizeVector, m_grainGainVector, m_grainDeltaVector;
+        std::vector<float> m_grainPositionVector, m_grainPanVector, m_grainTranspositionVector, m_grainSizeVector, m_grainGainVector, m_grainDeltaVector, m_grainReverbVector;
         int m_voiceNumber = 0;
         float m_cloudLengthMS = 2000.0f, m_desnity = 1.0f, m_deltaTimeMS = 50.0f, m_cloudPos = 0.0f, m_nextTrigger = 0.0f;
         bool m_canPlayFlag = false;
         
         int m_envType = 0;
         float m_grainStartFractional = 0, m_grainSizeMS = 100, m_transposeSemiTones = 0, m_pan = 0.5, m_grainGain = 0.8f;
+        
+        juce::dsp::Reverb m_reverb;
+        juce::AudioBuffer<float> m_reverbBuffer;
     };
 #endif /* sjf_granular_h */

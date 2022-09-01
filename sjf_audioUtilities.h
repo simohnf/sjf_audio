@@ -77,6 +77,8 @@ float grainEnv( float phase, int type)
         case 4: // reversed exponential decay
             return pow (phase, 2);
     }
+    if (phase <= 0.5) { return phase*2.0f; }
+    else { return 1 - ( (phase - 0.5)*2.0f) ; }
 }
 
 //==============================================================================

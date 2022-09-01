@@ -63,6 +63,8 @@ public:
             g.drawLine (w, h, w - len, h, thick);
         }
     };
+
+    
 };
 
 #endif /* sjf_numBox_h */

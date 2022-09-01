@@ -328,6 +328,7 @@ private:
                 return cubicInterpolateHermite(buffer, channel, pos);
                 break;
         }
+        return linearInterpolate(buffer, channel, pos);
     };
     //==============================================================================
     float calculateHostCompensation(float bpm){

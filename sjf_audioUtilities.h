@@ -46,42 +46,6 @@ float pan2( float pan, int channel){
 }
 
 //==============================================================================
-inline
-float grainEnv( float phase, int type)
-{
-    if (type < 0) { type = 0 ; }
-    if (type > 4) { type = 4 ; }
-    if (phase < 0 || phase >= 1) {phase = 0; }
-    switch(type)
-    {
-        case 0: // hann window
-        {
-            phase *= 2.0f; // convert to full cycle of sine wave
-            phase -= 0.5f; // offset to lowest point in wave
-            auto output = sin( PI * phase );
-            output += 1; // add constatnt to bring minimum to 0
-            output *= 0.5; // halve values to normalise between 0 --> 1
-            return output; 
-        }
-        case 1: // triangle window
-            if (phase <= 0.5) { return phase*2.0f; }
-            else { return 1 - ( (phase - 0.5)*2.0f) ; }
-        case 2: // sinc function
-            phase -= 0.5f;
-            phase *= 9.0f;
-            if ( phase == 0 ) { return 1; }
-            return sin( PI * phase ) / phase;
-        case 3: // exponential decay
-            phase = 1 - phase;
-            return pow (phase, 2);
-        case 4: // reversed exponential decay
-            return pow (phase, 2);
-    }
-    if (phase <= 0.5) { return phase*2.0f; }
-    else { return 1 - ( (phase - 0.5)*2.0f) ; }
-}
-
-//==============================================================================
 
 inline
 float rand01()

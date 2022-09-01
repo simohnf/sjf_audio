@@ -127,6 +127,11 @@ float downUp01(float phase)
     return 1.0f - val;
 }
 //==============================================================================
+//==============================================================================
+//==============================================================================
+//==============================================================================
+//==============================================================================
+//==============================================================================
 class sjf_graph : public juce::Component
 {
 public:
@@ -159,6 +164,7 @@ public:
         }
         
         g.setColour(findColour(outlineColourId));
+        g.drawVerticalLine( m_positionPhase * getWidth(), 1, getHeight() - 1 );
         g.drawFittedText (m_name, getLocalBounds(), juce::Justification::centred, 1);
     }
     
@@ -255,10 +261,16 @@ public:
         repaint();
     }
     
+    float m_positionPhase = 0.0f;
 protected:
     std::vector<float> m_values;
     std::string m_name = "sjf_grapher";
 };
+//==============================================================================
+//==============================================================================
+//==============================================================================
+//==============================================================================
+//==============================================================================
 
 
 
@@ -307,6 +319,7 @@ public:
         randomBox.onClick = [this]{ randomGraph(); };
         
         setSize (600, 400);
+        
     };
     ~sjf_grapher(){ };
     
@@ -391,7 +404,6 @@ public:
         g.drawRect(0, 0, getWidth(), getHeight());
         m_graph.setColour(m_graph.pointColourID, juce::Colours::white);
         
-        
     }
     //==============================================================================
     enum ColourIds
@@ -404,16 +416,16 @@ public:
     //==============================================================================
     void resized() override
     {
-        auto indent = getWidth() * 0.2;
-        m_graph.setBounds(indent, 0, getWidth()-indent, getHeight());
-        m_graph.setNumPoints(getWidth()-indent);
+        m_indent = getWidth() * 0.15f;
+        m_boxHeight = getHeight() * 0.2f;
+        m_graph.setBounds(m_indent, 0, getWidth()-m_indent, getHeight());
+        m_graph.setNumPoints(getWidth()-m_indent);
         
-        
-        graphChoiceBox.setBounds(0, 0, indent, 20);
-        rangeBox.setBounds(0, 20, indent, 20);
-        offsetBox.setBounds(0, 40, indent, 20);
-        jitterBox.setBounds(0, 60, indent, 20);
-        randomBox.setBounds(0, 80, indent, 20);
+        graphChoiceBox.setBounds(0, 0, m_indent, m_boxHeight);
+        rangeBox.setBounds(0, m_boxHeight, m_indent, m_boxHeight);
+        offsetBox.setBounds(0, m_boxHeight * 2, m_indent, m_boxHeight);
+        jitterBox.setBounds(0, m_boxHeight * 3, m_indent, m_boxHeight);
+        randomBox.setBounds(0, m_boxHeight * 4, m_indent, m_boxHeight);
     }
     //==============================================================================
     std::vector<float> getGraphAsVector()
@@ -431,9 +443,20 @@ public:
         m_graph.setGraphText( newText );
     }
     //==============================================================================
+    juce::Rectangle<int> getGraphBounds()
+    {
+        return m_graph.getBounds();
+    }
+    //==============================================================================
+    void setGraphPosition( float positionPhase )
+    {
+        m_graph.m_positionPhase = positionPhase;
+        m_graph.repaint();
+    }
 private:
     int m_lastGraphChoice;
     sjf_graph m_graph;
+    float m_indent, m_boxHeight;
     
 public:
     juce::ComboBox graphChoiceBox;

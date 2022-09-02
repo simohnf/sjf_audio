@@ -207,7 +207,7 @@ public:
     void setNumPoints(int nPoints)
     {
         if ( nPoints < 1 ) { nPoints = 1; }
-        auto oldSize = m_values.size();
+        auto oldSize = (int)m_values.size();
         m_values.resize(nPoints);
         if ( nPoints > oldSize )
         {
@@ -222,7 +222,7 @@ public:
     float outputValue(int indexToOutput)
     {
         if ( indexToOutput < 0 ){ indexToOutput = 0; }
-        if ( indexToOutput > m_values.size()-1 ) { indexToOutput = m_values.size()-1; }
+        if ( indexToOutput > (int)m_values.size()-1 ) { indexToOutput = (int)m_values.size()-1; }
         
         return 1.0f - m_values[indexToOutput];
     }
@@ -230,7 +230,7 @@ public:
     void setPoint(int indexOfPointToSet, float newValue)
     {
         if ( indexOfPointToSet < 0 ) { indexOfPointToSet = 0;}
-        if ( indexOfPointToSet > m_values.size() ) { indexOfPointToSet = m_values.size(); }
+        if ( indexOfPointToSet > (int)m_values.size() ) { indexOfPointToSet = (int)m_values.size(); }
         if ( newValue < 0 ) { newValue = 0; }
         if ( newValue > 1 ) { newValue = 1; }
         m_values[indexOfPointToSet] = 1.0f - newValue;
@@ -239,7 +239,7 @@ public:
     //==============================================================================
     int getNumPoints()
     {
-        return m_values.size();
+        return (int)m_values.size();
     }
     //==============================================================================
     enum ColourIds
@@ -297,22 +297,26 @@ public:
 //        graphChoiceBox.addItem("rand", 13);
         graphChoiceBox.onChange = [this]{ drawGraph( graphChoiceBox.getSelectedId() );};
         graphChoiceBox.setSelectedId(1);
+//        graphChoiceBox.setTooltip("This allows you to choose from different preset graphs");
         
         
         addAndMakeVisible(&rangeBox);
         rangeBox.setRange(0.0f, 1.0f);
         rangeBox.onValueChange = [this]{m_range = rangeBox.getValue(); drawGraph(m_lastGraphChoice);};
         rangeBox.setValue( m_range );
+//        rangeBox.setTooltip("This sets the maximum range of the preset graphs --> 1 is the full range, 0 is no range ==> a straight line");
         
         addAndMakeVisible(&offsetBox);
         offsetBox.setRange(-1.0f, 1.0f);
         offsetBox.onValueChange = [this]{m_offset = offsetBox.getValue(); drawGraph(m_lastGraphChoice);};
         offsetBox.setValue( m_offset );
+//        offsetBox.setTooltip("This sets the offset of the preset graphs --> 0 is no offset, negative numbers moves the graph down, positive numbers will shift it upwards");
         
         addAndMakeVisible(&jitterBox);
         jitterBox.setRange(0.0f, 1.0f);
         jitterBox.onValueChange = [this]{m_jitter = jitterBox.getValue(); drawGraph(m_lastGraphChoice);};
         jitterBox.setValue( m_jitter );
+//        jitterBox.setTooltip("This adds jitter (randomness) to the graph");
         
         addAndMakeVisible(&randomBox);
         randomBox.setButtonText("random");

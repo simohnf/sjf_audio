@@ -314,12 +314,17 @@ class sjf_grainEngine : public sjf_sampler
                 if (m_cloudPos >= m_nextTrigger && m_cloudPos <= (cloudLengthSamps - deltaTimeSamps))
                 {// only trigger a new grain if we're still within the cloud length
                     auto phaseThroughCloud = (float)m_cloudPos / (float)cloudLengthSamps;
+                    m_deltaTimeMS = 1.0f + 99.0f * linearInterpolate( m_grainDeltaVector, m_grainDeltaVector.size() * phaseThroughCloud );
+                    m_nextTrigger = m_cloudPos + (m_deltaTimeMS * m_SR * 0.001f);
                     auto grainStart = linearInterpolate( m_grainPositionVector, m_grainPositionVector.size() * phaseThroughCloud );
                     auto grainPan = linearInterpolate( m_grainPanVector, m_grainPanVector.size() * phaseThroughCloud );
                     auto grainTransposition = linearInterpolate( m_grainTranspositionVector, m_grainTranspositionVector.size() * phaseThroughCloud );
                     grainTransposition *= 24.0f;
                     grainTransposition -= 12.0f;
-                    auto grainSize = 1.0f + 99.0f * linearInterpolate( m_grainSizeVector, m_grainSizeVector.size() * phaseThroughCloud );
+                    auto grainSize = linearInterpolate( m_grainSizeVector, m_grainSizeVector.size() * phaseThroughCloud );
+                    // if linked grain size is a maximum of 10 times delta time
+                    if (m_linkSizeAndDeltaFlag) { grainSize = 1.0f + fmin( grainSize * m_deltaTimeMS * 10.0f , grainSize * 99.0f ); }
+                    else { grainSize = 1.0f + (grainSize * 99.0f); }
                     auto grainGain = linearInterpolate( m_grainGainVector, m_grainGainVector.size() * phaseThroughCloud );
                     auto grainReverb = linearInterpolate( m_grainReverbVector, m_grainReverbVector.size() * phaseThroughCloud );
                     newGrain( grainStart,
@@ -329,10 +334,7 @@ class sjf_grainEngine : public sjf_sampler
                              grainPan,
                              m_envType,
                              grainReverb);
-                    if (deltaTimeIsLinkedToGrainSize) { m_deltaTimeMS = grainSize * linearInterpolate( m_grainDeltaVector, m_grainDeltaVector.size() * phaseThroughCloud ) ; }
-                    else { m_deltaTimeMS = 1.0f + 99.0f * linearInterpolate( m_grainDeltaVector, m_grainDeltaVector.size() * phaseThroughCloud ) ;} 
-                    m_nextTrigger = m_cloudPos + (m_deltaTimeMS * m_SR * 0.001f);
-                    //                    newGrain(float grainStartFractional, float grainLengthMS, float transpositionInSemitones, float gain, float pan, int envType)
+                    // newGrain(float grainStartFractional, float grainLengthMS, float transpositionInSemitones, float gain, float pan, int envType, float reverbAmount)
                 }
                 
                 
@@ -499,7 +501,7 @@ class sjf_grainEngine : public sjf_sampler
         std::vector<float> m_grainPositionVector, m_grainPanVector, m_grainTranspositionVector, m_grainSizeVector, m_grainGainVector, m_grainDeltaVector, m_grainReverbVector;
         int m_voiceNumber = 0, m_envType = 0, m_samplesPerBlock = 128;
         float m_cloudLengthMS = 2000.0f, m_desnity = 1.0f, m_deltaTimeMS = 50.0f, m_cloudPos = 0.0f, m_nextTrigger = 0.0f;
-        bool m_canPlayFlag = false, m_linkSizeAndDeltaFlag;
+        bool m_canPlayFlag = false, m_linkSizeAndDeltaFlag = false;
         
         float m_grainStartFractional = 0, m_grainSizeMS = 100, m_transposeSemiTones = 0, m_pan = 0.5, m_grainGain = 0.8f;
         

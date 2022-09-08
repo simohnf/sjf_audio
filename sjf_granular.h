@@ -384,6 +384,11 @@ class sjf_grainEngine : public sjf_sampler
             m_envType = envType;
         }
         //==============================================================================
+        int getEnvType( )
+        {
+            return 1 + m_envType;
+        }
+        //==============================================================================
         void setGrainLength( float grainLengthInMS )
         {
             if( grainLengthInMS <= 0 )
@@ -418,9 +423,19 @@ class sjf_grainEngine : public sjf_sampler
             m_grainPositionVector = grainPositionVector;
         }
         //==============================================================================
+        std::vector<float> getGrainPositionVector( )
+        {
+            return m_grainPositionVector;
+        }
+        //==============================================================================
         void setGrainPanVector(const std::vector<float> &grainPanVector )
         {
             m_grainPanVector = grainPanVector;
+        }
+        //==============================================================================
+        std::vector<float> getGrainPanVector( )
+        {
+            return m_grainPanVector;
         }
         //==============================================================================
         void setGrainTranspositionVector(const std::vector<float> &grainTranspositionVector )
@@ -428,9 +443,19 @@ class sjf_grainEngine : public sjf_sampler
             m_grainTranspositionVector = grainTranspositionVector;
         }
         //==============================================================================
+        std::vector<float> getGrainTranspositionVector( )
+        {
+            return m_grainTranspositionVector;
+        }
+        //==============================================================================
         void setGrainSizeVector(const std::vector<float> &grainSizeVector )
         {
             m_grainSizeVector = grainSizeVector;
+        }
+        //==============================================================================
+        std::vector<float> getGrainSizeVector( )
+        {
+            return m_grainSizeVector;
         }
         //==============================================================================
         void setGrainGainVector(const std::vector<float> &grainGainVector )
@@ -438,14 +463,29 @@ class sjf_grainEngine : public sjf_sampler
             m_grainGainVector = grainGainVector;
         }
         //==============================================================================
+        std::vector<float> getGrainGainVector( )
+        {
+            return m_grainGainVector;
+        }
+        //==============================================================================
         void setGrainDeltaVector(const std::vector<float> &grainDeltaVector )
         {
             m_grainDeltaVector = grainDeltaVector;
         }
         //==============================================================================
+        std::vector<float> getGrainDeltaVector( )
+        {
+            return m_grainDeltaVector;
+        }
+        //==============================================================================
         void setGrainReverbVector(const std::vector<float> &grainReverbVector )
         {
             m_grainReverbVector = grainReverbVector;
+        }
+        //==============================================================================
+        std::vector<float> getGrainReverbVector( )
+        {
+            return m_grainReverbVector;
         }
         //==============================================================================
         void setCloudLength(float cloudLengthMS )
@@ -485,11 +525,21 @@ class sjf_grainEngine : public sjf_sampler
             m_reverb.setParameters( m_revParams );
         }
         //==============================================================================
+        float getReverbSize( )
+        {
+            return m_reverbRoomSize;
+        }
+        //==============================================================================
         void setReverbDamping( float damping0to1 )
         {
             m_reverbDamping = damping0to1;
             m_revParams.damping = m_reverbDamping;
             m_reverb.setParameters( m_revParams );
+        }
+        //==============================================================================
+        float getReverbDamping(  )
+        {
+            return m_reverbDamping; 
         }
         //==============================================================================
         void linkSizeAndDeltaTime( bool deltaTimeIsLinkedToGrainSize )

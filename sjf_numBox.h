@@ -16,7 +16,7 @@ public:
     sjf_numBox()
     {
         setSliderStyle (juce::Slider::LinearBarVertical);
-        setColour (juce::Slider::trackColourId, juce::Colours::transparentWhite);
+//        setColour (juce::Slider::trackColourId, juce::Colours::transparentWhite);
         setTextBoxIsEditable (true);
         setVelocityBasedMode (true);
         setVelocityModeParameters (0.5, 1, 0.09, false);
@@ -63,8 +63,6 @@ public:
             g.drawLine (w, h, w - len, h, thick);
         }
     };
-
-    
 };
 
 #endif /* sjf_numBox_h */

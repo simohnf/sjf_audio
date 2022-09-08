@@ -296,26 +296,26 @@ public:
         graphChoiceBox.addItem("downup",12);
 //        graphChoiceBox.addItem("rand", 13);
         graphChoiceBox.onChange = [this]{ drawGraph( graphChoiceBox.getSelectedId() );};
-        graphChoiceBox.setSelectedId(1);
+//        graphChoiceBox.setSelectedId(1);
 //        graphChoiceBox.setTooltip("This allows you to choose from different preset graphs");
         
         
         addAndMakeVisible(&rangeBox);
         rangeBox.setRange(0.0f, 1.0f);
         rangeBox.onValueChange = [this]{m_range = rangeBox.getValue(); drawGraph(m_lastGraphChoice);};
-        rangeBox.setValue( m_range );
+//        rangeBox.setValue( m_range );
 //        rangeBox.setTooltip("This sets the maximum range of the preset graphs --> 1 is the full range, 0 is no range ==> a straight line");
         
         addAndMakeVisible(&offsetBox);
         offsetBox.setRange(-1.0f, 1.0f);
         offsetBox.onValueChange = [this]{m_offset = offsetBox.getValue(); drawGraph(m_lastGraphChoice);};
-        offsetBox.setValue( m_offset );
+//        offsetBox.setValue( m_offset );
 //        offsetBox.setTooltip("This sets the offset of the preset graphs --> 0 is no offset, negative numbers moves the graph down, positive numbers will shift it upwards");
         
         addAndMakeVisible(&jitterBox);
         jitterBox.setRange(0.0f, 1.0f);
         jitterBox.onValueChange = [this]{m_jitter = jitterBox.getValue(); drawGraph(m_lastGraphChoice);};
-        jitterBox.setValue( m_jitter );
+//        jitterBox.setValue( m_jitter );
 //        jitterBox.setTooltip("This adds jitter (randomness) to the graph");
         
         addAndMakeVisible(&randomBox);
@@ -390,7 +390,7 @@ public:
             val *= m_range;
             val += m_offset;
             auto jit = rand01() * m_jitter;
-            jit -= m_jitter*0.5;
+            jit -= m_jitter * 0.5;
             val += jit;
             
             if (val < 0){ val = 0; }
@@ -442,6 +442,19 @@ public:
         return temp;
     }
     //==============================================================================
+    void setGraph( std::vector<float> newGraph )
+    {
+        auto maxSize = m_graph.getNumPoints();
+        auto nVals = newGraph.size();
+        for (int i = 0; i < nVals; i++)
+        {
+            if (i < maxSize)
+            {
+                m_graph.setPoint(i, newGraph[i]);
+            }
+        }
+    }
+    //==============================================================================
     void setGraphText( std::string newText)
     {
         m_graph.setGraphText( newText );
@@ -461,12 +474,14 @@ private:
     int m_lastGraphChoice;
     sjf_graph m_graph;
     float m_indent, m_boxHeight;
+//    juce::TooltipWindow tooltipWindow {this, 700};
     
 public:
     juce::ComboBox graphChoiceBox;
     float m_offset = 0, m_range = 1, m_jitter = 0;
     sjf_numBox offsetBox, rangeBox, jitterBox;
     juce::TextButton randomBox;
+    
 };
 
 #endif /* sjf_graph_h */

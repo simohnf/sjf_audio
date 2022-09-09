@@ -19,7 +19,7 @@ public:
 //        setColour (juce::Slider::trackColourId, juce::Colours::transparentWhite);
         setTextBoxIsEditable (true);
         setVelocityBasedMode (true);
-        setVelocityModeParameters (0.5, 1, 0.09, false);
+        setVelocityModeParameters (0.5, 1, 0.01, true);
         setDoubleClickReturnValue (true, 50.0);
         setWantsKeyboardFocus (true);
         onValueChange = [&]()
@@ -63,6 +63,11 @@ public:
             g.drawLine (w, h, w - len, h, thick);
         }
     };
+    
+//    void mouseEnter(const juce::MouseEvent &e) override
+//    {
+//        DBG("mouse is over this");
+//    }
 };
 
 #endif /* sjf_numBox_h */

@@ -29,11 +29,12 @@ public:
     //==============================================================================
     float getDuration() { return m_durationSamps; };
     //==============================================================================
+    float getDurationMS() { return (float)m_durationSamps * 0.001 * (float)m_SR; };
+    //==============================================================================
     void loadSample()
     {
-        m_chooser = std::make_unique<juce::FileChooser> ("Select a Wave file to play...",
-                                                       juce::File{},
-                                                       "*.wav");
+        m_chooser = std::make_unique<juce::FileChooser> ("Select a Wave/Aiff file to play..." ,
+                                                         juce::File{}, "*.aif, *.wav");
         auto chooserFlags = juce::FileBrowserComponent::openMode
         | juce::FileBrowserComponent::canSelectFiles;
         

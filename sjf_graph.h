@@ -132,7 +132,7 @@ float downUp01(float phase)
 //==============================================================================
 //==============================================================================
 //==============================================================================
-class sjf_graph : public juce::Component
+class sjf_graph : public juce::Component, public juce::SettableTooltipClient
 {
 public:
     sjf_graph() : m_values(100, 1.0f)
@@ -155,6 +155,7 @@ public:
         auto nVals = m_values.size();
         auto sliderWidth =  (float)getWidth()  / (float)nVals;
         auto height = getHeight();
+        auto width = getWidth();
         for(int i = 0; i < nVals; i++)
         {
             auto val = m_values[i] * height;
@@ -166,6 +167,9 @@ public:
         g.setColour(findColour(outlineColourId));
         g.drawVerticalLine( m_positionPhase * getWidth(), 1, getHeight() - 1 );
         g.drawFittedText (m_name, getLocalBounds(), juce::Justification::centred, 1);
+        
+        g.drawFittedText(m_topLabel, 5, 0, width, 20, juce::Justification::left, 1);
+        g.drawFittedText(m_bottomLabel, 5, height - 20, width, 20, juce::Justification::left, 1);
     }
     
     //==============================================================================
@@ -260,11 +264,23 @@ public:
         m_name = newText;
         repaint();
     }
+    //==============================================================================
+    void setTopLabel( std::string topLabel)
+    {
+        m_topLabel = topLabel;
+        repaint();
+    }
+    //==============================================================================
+    void setBottomLabel( std::string bottomLabel)
+    {
+        m_bottomLabel = bottomLabel;
+        repaint();
+    }
     
     float m_positionPhase = 0.0f;
 protected:
     std::vector<float> m_values;
-    std::string m_name = "sjf_grapher";
+    std::string m_name = "sjf_grapher", m_bottomLabel, m_topLabel;
 };
 //==============================================================================
 //==============================================================================
@@ -274,11 +290,12 @@ protected:
 
 
 
-class sjf_grapher : public juce::Component
+class sjf_grapher : public juce::Component, public juce::SettableTooltipClient
 {
 public:
     sjf_grapher()
     {
+
         srand((unsigned)time(NULL));
         addAndMakeVisible(&m_graph);
         addAndMakeVisible(&graphChoiceBox);
@@ -297,30 +314,34 @@ public:
 //        graphChoiceBox.addItem("rand", 13);
         graphChoiceBox.onChange = [this]{ drawGraph( graphChoiceBox.getSelectedId() );};
 //        graphChoiceBox.setSelectedId(1);
-//        graphChoiceBox.setTooltip("This allows you to choose from different preset graphs");
+        graphChoiceBox.setTooltip("This allows you to choose from different preset graphs");
         
         
         addAndMakeVisible(&rangeBox);
         rangeBox.setRange(0.0f, 1.0f);
         rangeBox.onValueChange = [this]{m_range = rangeBox.getValue(); drawGraph(m_lastGraphChoice);};
 //        rangeBox.setValue( m_range );
-//        rangeBox.setTooltip("This sets the maximum range of the preset graphs --> 1 is the full range, 0 is no range ==> a straight line");
+        rangeBox.setTooltip("This sets the maximum range of the preset graphs --> 1 is the full range, 0 is no range ==> a straight line");
+        rangeBox.sendLookAndFeelChange();
         
         addAndMakeVisible(&offsetBox);
         offsetBox.setRange(-1.0f, 1.0f);
         offsetBox.onValueChange = [this]{m_offset = offsetBox.getValue(); drawGraph(m_lastGraphChoice);};
 //        offsetBox.setValue( m_offset );
-//        offsetBox.setTooltip("This sets the offset of the preset graphs --> 0 is no offset, negative numbers moves the graph down, positive numbers will shift it upwards");
+        offsetBox.setTooltip("This sets the offset of the preset graphs --> 0 is no offset, negative numbers moves the graph down, positive numbers will shift it upwards");
+        offsetBox.sendLookAndFeelChange();
         
         addAndMakeVisible(&jitterBox);
         jitterBox.setRange(0.0f, 1.0f);
         jitterBox.onValueChange = [this]{m_jitter = jitterBox.getValue(); drawGraph(m_lastGraphChoice);};
 //        jitterBox.setValue( m_jitter );
-//        jitterBox.setTooltip("This adds jitter (randomness) to the graph");
+        jitterBox.setTooltip("This adds jitter (randomness) to the graph");
+        jitterBox.sendLookAndFeelChange();
         
         addAndMakeVisible(&randomBox);
         randomBox.setButtonText("random");
         randomBox.onClick = [this]{ randomGraph(); };
+        randomBox.setTooltip("This will generate a random graph");
         
         setSize (600, 400);
         
@@ -430,6 +451,8 @@ public:
         offsetBox.setBounds(0, m_boxHeight * 2, m_indent, m_boxHeight);
         jitterBox.setBounds(0, m_boxHeight * 3, m_indent, m_boxHeight);
         randomBox.setBounds(0, m_boxHeight * 4, m_indent, m_boxHeight);
+        
+        m_graph.setTooltip(getTooltip());
     }
     //==============================================================================
     std::vector<float> getGraphAsVector()
@@ -469,6 +492,16 @@ public:
     {
         m_graph.m_positionPhase = positionPhase;
         m_graph.repaint();
+    }
+    //==============================================================================
+    void setTopLabel( std::string topLabel)
+    {
+        m_graph.setTopLabel( topLabel );
+    }
+    //==============================================================================
+    void setBottomLabel( std::string bottomLabel)
+    {
+        m_graph.setBottomLabel( bottomLabel );
     }
 private:
     int m_lastGraphChoice;

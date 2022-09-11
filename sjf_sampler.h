@@ -29,7 +29,7 @@ public:
     //==============================================================================
     float getDuration() { return m_durationSamps; };
     //==============================================================================
-    float getDurationMS() { return (float)m_durationSamps * 0.001 * (float)m_SR; };
+    float getDurationMS() { return (float)m_durationSamps * 1000.0f / (float)m_SR; };
     //==============================================================================
     void loadSample()
     {

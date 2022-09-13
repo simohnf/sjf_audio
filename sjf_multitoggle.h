@@ -18,6 +18,9 @@ class sjf_multitoggle : public juce::Component
     //==============================================================================
     class sjf_multitoggle_LookAndFeel : public juce::LookAndFeel_V4
     {
+    public:
+        sjf_multitoggle_LookAndFeel(){ LookAndFeel_V4(); };
+    private:
         void drawToggleButton (juce::Graphics& g, juce::ToggleButton& button,
                                bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override
         {
@@ -69,8 +72,8 @@ public:
     //==============================================================================
     sjf_multitoggle()
     {
+        setLookAndFeel(&m_landf);
         setColour(tickDisabledColourId, juce::Colours::transparentBlack);
-        setLookAndFeel(&m_thisLookAndFeel);
         setInterceptsMouseClicks(true, false);
         createButtonArray(2, 2);
         setSize (600, 400);
@@ -191,6 +194,17 @@ public:
         resized();
     }
     //==============================================================================
+    int getNumRows()
+    {
+        return m_nRows;
+    }
+    //==============================================================================
+    int getNumColumns()
+    {
+        return m_nColumns;
+    }
+    //==============================================================================
+
     std::vector<bool> getRow ( int rowToGet )
     {
         std::vector<bool> temp;
@@ -327,7 +341,7 @@ private:
 
     //==============================================================================
 private:
-    sjf_multitoggle_LookAndFeel m_thisLookAndFeel;
+    sjf_multitoggle_LookAndFeel m_landf;
     
     juce::Array<juce::ToggleButton*> m_buttons;
     int m_nRows, m_nColumns;

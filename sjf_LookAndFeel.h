@@ -256,7 +256,7 @@ public:
             g.drawRoundedRectangle (bounds, cornerSize, 1.0f);
         }
     }
-    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_lookAndFeel)
 };
 
 #endif /* sjf_lookAndFeel_h */

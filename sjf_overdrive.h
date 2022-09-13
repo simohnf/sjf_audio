@@ -11,6 +11,7 @@
 class sjf_overdrive {
     
 public:
+    sjf_overdrive(){};
     ~sjf_overdrive(){};
     void drive(juce::AudioBuffer<float>& buffer, float gain)
     {

@@ -281,6 +281,8 @@ public:
 protected:
     std::vector<float> m_values;
     std::string m_name = "sjf_grapher", m_bottomLabel, m_topLabel;
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_graph)
 };
 //==============================================================================
 //==============================================================================
@@ -514,7 +516,8 @@ public:
     float m_offset = 0, m_range = 1, m_jitter = 0;
     sjf_numBox offsetBox, rangeBox, jitterBox;
     juce::TextButton randomBox;
-    
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_grapher)
 };
 
 #endif /* sjf_graph_h */

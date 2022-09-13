@@ -40,6 +40,7 @@ private:
             setBounds (component.getX(), component.getY() - height, component.getWidth(), height);
         }
     }
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_label)
 };
 
 #endif /* sjf_Label_h */

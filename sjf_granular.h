@@ -177,6 +177,7 @@ private:
     float m_readPos = 0.0f, m_grainLength = 4410.0f, m_playBackSpeed = 1.0f, m_gain = 1.0f, m_pan = 0.5f, m_samplesPlayedCount = 0.0f, m_reverbAmount = 0.0f;
     int m_envType;
     
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_grainVoice)
 };
 //==============================================================================
 //==============================================================================
@@ -306,8 +307,8 @@ class sjf_grainEngine : public sjf_sampler
                 return;
             }
             m_reverbBuffer.makeCopyOf( buffer );
-            auto cloudLengthSamps = m_cloudLengthMS * m_SR * 0.001f;
-            auto deltaTimeSamps = m_deltaTimeMS * m_SR * 0.001f;
+            auto cloudLengthSamps = m_cloudLengthMS * (float)m_SR * 0.001f;
+            auto deltaTimeSamps = m_deltaTimeMS * (float)m_SR * 0.001f;
             
             for ( int index = 0; index < buffer.getNumSamples(); index ++ )
             {
@@ -510,7 +511,7 @@ class sjf_grainEngine : public sjf_sampler
         //==============================================================================
         float getCurrentCloudPhase()
         {
-            return m_cloudPos / ( m_cloudLengthMS  * 0.001f * m_SR );
+            return m_cloudPos / ( m_cloudLengthMS  * 0.001f * (float)m_SR );
         }
         //==============================================================================
         float getCloudLength()
@@ -550,7 +551,7 @@ class sjf_grainEngine : public sjf_sampler
         std::vector<sjf_grainVoice> m_grains;
         std::vector<float> m_grainPositionVector, m_grainPanVector, m_grainTranspositionVector, m_grainSizeVector, m_grainGainVector, m_grainDeltaVector, m_grainReverbVector;
         int m_voiceNumber = 0, m_envType = 0, m_samplesPerBlock = 128;
-        float m_cloudLengthMS = 2000.0f, m_desnity = 1.0f, m_deltaTimeMS = 50.0f, m_cloudPos = 0.0f, m_nextTrigger = 0.0f;
+        double m_cloudLengthMS = 2000.0f, m_desnity = 1.0f, m_deltaTimeMS = 50.0f, m_cloudPos = 0.0f, m_nextTrigger = 0.0f;
         bool m_canPlayFlag = false, m_linkSizeAndDeltaFlag = false;
         
         float m_grainStartFractional = 0, m_grainSizeMS = 100, m_transposeSemiTones = 0, m_pan = 0.5, m_grainGain = 0.8f;
@@ -559,5 +560,6 @@ class sjf_grainEngine : public sjf_sampler
         juce::Reverb::Parameters m_revParams;
         juce::AudioBuffer<float> m_reverbBuffer;
         float m_reverbRoomSize = 0.5f, m_reverbDamping = 0.5f;
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_grainEngine)
     };
 #endif /* sjf_granular_h */

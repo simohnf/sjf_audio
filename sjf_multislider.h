@@ -259,5 +259,7 @@ private:
 private:
     juce::Array<juce::Slider*> m_sliders;
     bool m_isHorizontalFlag = false;
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_multislider)
 };
 #endif /* sjf_multislider_h */

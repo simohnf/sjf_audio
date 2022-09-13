@@ -64,10 +64,8 @@ public:
         }
     };
     
-//    void mouseEnter(const juce::MouseEvent &e) override
-//    {
-//        DBG("mouse is over this");
-//    }
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_numBox)
 };
 
 #endif /* sjf_numBox_h */

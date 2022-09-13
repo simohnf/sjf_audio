@@ -133,6 +133,8 @@ protected:
     int m_SR = 44100;
     int m_writePos = 0; // this is the index to write to in the "m_delayBuffer"
     const int m_delBufferLength = 3; // Maximum delay time equals 2 seconds plus 1 second for safety with stereo spread increase
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_delayLine)
 };
 
 #endif /* sjf_delayLine_h */

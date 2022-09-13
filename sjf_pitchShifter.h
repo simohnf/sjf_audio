@@ -110,6 +110,7 @@ private:
     float m_lastTranspositionL, m_lastTranspositionR;
     
 
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_pitchShifter)
 };
 
 #endif /* sjf_pitchShifter_h */

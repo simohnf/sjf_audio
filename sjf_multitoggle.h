@@ -59,6 +59,8 @@ class sjf_multitoggle : public juce::Component
                 g.fillRect(w*0.1f, h*0.1f, w*0.8f, h*0.8f);
             }
         };
+        
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_multitoggle_LookAndFeel)
     };
     //==============================================================================
     //==============================================================================
@@ -330,5 +332,7 @@ private:
     juce::Array<juce::ToggleButton*> m_buttons;
     int m_nRows, m_nColumns;
     bool m_lastMouseDownToggleState;
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_multitoggle)
 };
 #endif /* sjf_multitoggle_h */

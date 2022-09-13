@@ -30,6 +30,8 @@ public:
 private:
     float m_preOutput, m_preInput;
     float m_alpha = 0.0001;
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_smoothValue)
 };
 
 #endif /* sjf_smoothValue_h */

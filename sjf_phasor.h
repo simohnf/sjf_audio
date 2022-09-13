@@ -82,6 +82,8 @@ private:
     float m_increment;
     float m_position = 0;
     bool m_negFreqFlag = false;
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_phasor)
 };
 
 #endif /* sjf_phasor_h */

@@ -88,6 +88,8 @@ private:
     float m_frequency = 440;
     float m_readIncrement = ( m_frequency * m_SR ) / m_waveTableSize;
     std::vector<float> m_waveTable, m_outBuff;
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_oscillator)
 };
 
 #endif /* sjf_oscillator_h */

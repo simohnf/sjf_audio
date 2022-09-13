@@ -90,8 +90,8 @@ public:
         
         for (int b = 0; b < m_buttons.size(); b ++)
         {
-            m_buttons[b]->setColour(juce::ToggleButton::tickColourId, findColour( tickColourId ));
-            m_buttons[b]->setColour(juce::ToggleButton::tickDisabledColourId, findColour( tickDisabledColourId ));
+            m_buttons[b]->setColour(juce::ToggleButton::tickColourId, m_buttons[b]->findColour( tickColourId ));
+            m_buttons[b]->setColour(juce::ToggleButton::tickDisabledColourId, m_buttons[b]->findColour( tickDisabledColourId ));
         }
     }
     //==============================================================================
@@ -236,6 +236,19 @@ public:
         tickColourId = 0x1006502,
         tickDisabledColourId = 0x1006503
     };
+    
+    //==============================================================================
+    void setColumnColour(int columnNumber, juce::Colour newColour)
+    {
+        DBG(m_nRows);
+            for (int r = 0; r < m_nRows; r++)
+            {
+                auto tognum = columnNumber + m_nColumns*r;
+                m_buttons[(tognum)]->setColour(tickDisabledColourId, newColour);
+                m_buttons[(tognum)]->setColour(tickColourId, newColour);
+            }
+    }
+    
 private:
     //==============================================================================
     int calulateMousePosToToggleNumber(const juce::MouseEvent& e)
@@ -309,6 +322,7 @@ private:
             m_buttons.add(button);
         }
     }
+
     //==============================================================================
 private:
     sjf_multitoggle_LookAndFeel m_thisLookAndFeel;

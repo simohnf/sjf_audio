@@ -132,13 +132,6 @@ public:
             g.setColour (fill);
             g.strokePath (valueArc, juce::PathStrokeType (lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         }
-        
-        //        auto thumbWidth = lineW * 1.0f;
-        //        juce::Point<float> thumbPoint (bounds.getCentreX() + arcRadius * std::cos (toAngle - juce::MathConstants<float>::halfPi),
-        //                                 bounds.getCentreY() + arcRadius * std::sin (toAngle - juce::MathConstants<float>::halfPi));
-        //
-        ////        g.setColour (slider.findColour (juce::Slider::thumbColourId));
-        ////        g.fillEllipse (juce::Rectangle<float> (thumbWidth, thumbWidth).withCentre (thumbPoint));
     }
     
     juce::Slider::SliderLayout getSliderLayout (juce::Slider& slider) override

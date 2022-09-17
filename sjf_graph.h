@@ -12,6 +12,7 @@
 #include "sjf_audioUtilities.h"
 #define PI 3.14159265
 //==============================================================================
+//  Functions for drawing graphs
 inline
 float cos01(float phase)
 {
@@ -132,6 +133,7 @@ float downUp01(float phase)
 //==============================================================================
 //==============================================================================
 //==============================================================================
+//  Class for the actual graph part of the widget
 class sjf_graph : public juce::Component, public juce::SettableTooltipClient
 {
 public:
@@ -145,7 +147,6 @@ public:
     {
         g.setColour( findColour(backgroundColourId) );
         g.fillAll();
-//        g.setFont (juce::Font (16.0f));
         g.setColour ( findColour(outlineColourId) );
         g.drawRect(0, 0, getWidth(), getHeight());
         
@@ -160,7 +161,6 @@ public:
         {
             auto val = m_values[i] * height;
             g.drawLine( lineStart, val, lineStart + sliderWidth, val );
-//            g.drawHorizontalLine(val, lineStart, lineStart + sliderWidth);
             lineStart += sliderWidth;
         }
         
@@ -297,8 +297,8 @@ class sjf_grapher : public juce::Component, public juce::SettableTooltipClient
 public:
     sjf_grapher()
     {
-
         srand((unsigned)time(NULL));
+     
         addAndMakeVisible(&m_graph);
         addAndMakeVisible(&graphChoiceBox);
         graphChoiceBox.addItem("sin", 1);
@@ -313,30 +313,25 @@ public:
         graphChoiceBox.addItem("invhalfcos",10);
         graphChoiceBox.addItem("updown",11);
         graphChoiceBox.addItem("downup",12);
-//        graphChoiceBox.addItem("rand", 13);
         graphChoiceBox.onChange = [this]{ drawGraph( graphChoiceBox.getSelectedId() );};
-//        graphChoiceBox.setSelectedId(1);
         graphChoiceBox.setTooltip("This allows you to choose from different preset graphs");
         
         
         addAndMakeVisible(&rangeBox);
         rangeBox.setRange(0.0f, 1.0f);
         rangeBox.onValueChange = [this]{m_range = rangeBox.getValue(); drawGraph(m_lastGraphChoice);};
-//        rangeBox.setValue( m_range );
         rangeBox.setTooltip("This sets the maximum range of the preset graphs --> 1 is the full range, 0 is no range ==> a straight line");
         rangeBox.sendLookAndFeelChange();
         
         addAndMakeVisible(&offsetBox);
         offsetBox.setRange(-1.0f, 1.0f);
         offsetBox.onValueChange = [this]{m_offset = offsetBox.getValue(); drawGraph(m_lastGraphChoice);};
-//        offsetBox.setValue( m_offset );
         offsetBox.setTooltip("This sets the offset of the preset graphs --> 0 is no offset, negative numbers moves the graph down, positive numbers will shift it upwards");
         offsetBox.sendLookAndFeelChange();
         
         addAndMakeVisible(&jitterBox);
         jitterBox.setRange(0.0f, 1.0f);
         jitterBox.onValueChange = [this]{m_jitter = jitterBox.getValue(); drawGraph(m_lastGraphChoice);};
-//        jitterBox.setValue( m_jitter );
         jitterBox.setTooltip("This adds jitter (randomness) to the graph");
         jitterBox.sendLookAndFeelChange();
         
@@ -352,7 +347,6 @@ public:
     
     std::vector<float>  randomGraph()
     {
-        
         m_range = rand01();
         rangeBox.setValue( m_range, juce::dontSendNotification );
         m_offset = (pow(rand01(), 0.5) ) - 0.5f;
@@ -364,60 +358,58 @@ public:
         drawGraph(m_lastGraphChoice);
         return getGraphAsVector();
     }
-    
+    //==============================================================================
+    float calculateValueUsingSetGraphTypes( float phase, int graphType )
+    {
+        auto val = 0.0f;
+        switch (graphType)
+        {
+            case 1:
+                val = sin01( phase ); break;
+            case 2:
+                val = cos01( phase ); break;
+            case 3:
+                val = hann01( phase ); break;
+            case 4:
+                val = lineUp01( phase ); break;
+            case 5:
+                val = lineDown01( phase ); break;
+            case 6:
+                val = expodec01( phase ); break;
+            case 7:
+                val = rexpodec01( phase ); break;
+            case 8:
+                val = invSin01( phase ); break;
+            case 9:
+                val = halfCos01( phase ); break;
+            case 10:
+                val = invHalfCos01( phase ); break;
+            case 11:
+                val = upDown01( phase ); break;
+            case 12:
+                val = downUp01( phase ); break;
+        }
+        return val;
+    }
+    //==============================================================================
     void drawGraph( int graphType )
     {
         auto nVals = m_graph.getNumPoints();
         for (int i = 0 ; i < nVals ; i++ )
         {
-            auto val = 0.0f;
-            switch (graphType)
-            {
-                case 1:
-                    val = sin01( (float)i / (float)nVals );
-                    break;
-                case 2:
-                    val = cos01( (float)i / (float)nVals );
-                    break;
-                case 3:
-                    val = hann01( (float)i / (float)nVals );
-                    break;
-                case 4:
-                    val = lineUp01( (float)i / (float)nVals );
-                    break;
-                case 5:
-                    val = lineDown01( (float)i / (float)nVals );
-                    break;
-                case 6:
-                    val = expodec01( (float)i / (float)nVals );
-                    break;
-                case 7:
-                    val = rexpodec01( (float)i / (float)nVals );
-                    break;
-                case 8:
-                    val = invSin01( (float)i / (float)nVals );
-                    break;
-                case 9:
-                    val = halfCos01( (float)i / (float)nVals );
-                    break;
-                case 10:
-                    val = invHalfCos01( (float)i / (float)nVals );
-                    break;
-                case 11:
-                    val = upDown01( (float)i / (float)nVals );
-                    break;
-                case 12:
-                    val = downUp01( (float)i / (float)nVals );
-                    break;
-            }
-            val *= m_range;
-            val += m_offset;
+            auto phase = (float)i / (float)nVals;
+            auto val = calculateValueUsingSetGraphTypes( phase, graphType );;
+            val *= m_range; // constrain value
+            val += m_offset; // offset value
+            // calculate random jitter
             auto jit = rand01() * m_jitter;
             jit -= m_jitter * 0.5;
+            //add jitter to value
             val += jit;
-            
+            // constrain values within 0-->1
             if (val < 0){ val = 0; }
             if (val > 1){ val = 1; }
+            //draw to graph
             m_graph.setPoint(i, val);
         }
         m_lastGraphChoice = graphType;
@@ -509,7 +501,6 @@ private:
     int m_lastGraphChoice;
     sjf_graph m_graph;
     float m_indent, m_boxHeight;
-//    juce::TooltipWindow tooltipWindow {this, 700};
     
 public:
     juce::ComboBox graphChoiceBox;
@@ -517,7 +508,7 @@ public:
     sjf_numBox offsetBox, rangeBox, jitterBox;
     juce::TextButton randomBox;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_grapher)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_grapher )
 };
 
 #endif /* sjf_graph_h */

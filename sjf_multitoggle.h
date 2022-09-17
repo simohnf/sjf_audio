@@ -210,7 +210,7 @@ public:
         std::vector<bool> temp;
         for (int c = 0; c < m_nColumns; c++)
         {
-            temp.push_back( m_buttons[ c + rowToGet*m_nRows ]->getToggleState() );
+            temp.push_back( m_buttons[ rowToGet + m_nRows*c ]->getToggleState() );
         }
         return temp;
     }
@@ -220,7 +220,7 @@ public:
         std::vector<bool> temp;
         for (int r = 0; r < m_nRows; r++)
         {
-            temp.push_back( m_buttons[ r + columnToGet*m_nColumns ]->getToggleState() );
+            temp.push_back( m_buttons[ columnToGet + m_nColumns*r ]->getToggleState() );
         }
         return temp;
     }
@@ -254,17 +254,21 @@ public:
     };
     
     //==============================================================================
-    void setColumnColour(int columnNumber, juce::Colour newColour)
+    void setColumnColour( int columnNumber, juce::Colour newColour )
     {
-        DBG(m_nRows);
-            for (int r = 0; r < m_nRows; r++)
-            {
-                auto tognum = columnNumber + m_nColumns*r;
-                m_buttons[(tognum)]->setColour(tickDisabledColourId, newColour);
-                m_buttons[(tognum)]->setColour(tickColourId, newColour);
-            }
+        for ( int r = 0; r < m_nRows; r++ )
+        {
+            auto tognum = columnNumber + m_nColumns*r;
+            m_buttons[ tognum ]->setColour( tickDisabledColourId, newColour );
+            m_buttons[ tognum ]->setColour( tickColourId, newColour );
+        }
     }
-    
+    //==============================================================================
+    void setToggleState( int row, int column, bool state )
+    {
+        auto toggleNumber = column + ( m_nColumns * row ); 
+        m_buttons[ toggleNumber ]->setToggleState( state, juce::dontSendNotification );
+    }
 private:
     //==============================================================================
     int calulateMousePosToToggleNumber(const juce::MouseEvent& e)

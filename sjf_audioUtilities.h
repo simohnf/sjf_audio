@@ -12,6 +12,7 @@
 
 #define PI 3.14159265
 //==============================================================================
+// A simple phase ramp based envelope
 inline
 float phaseEnv( float phase, float period, float envLen){
     auto nSegments = period / envLen;
@@ -29,6 +30,7 @@ float phaseEnv( float phase, float period, float envLen){
 }
 
 //==============================================================================
+// simple stereo panning based on 1/4 of a sine wave cycle
 inline
 float pan2( float pan, int channel){
     if (channel < 0) { channel = 0 ; }
@@ -46,7 +48,7 @@ float pan2( float pan, int channel){
 }
 
 //==============================================================================
-
+// simple output of random numbers between 0 and 1 --> requires initialisation with srand
 inline
 float rand01()
 {
@@ -60,19 +62,150 @@ float rand01()
 //==============================================================================
 //==============================================================================
 //==============================================================================
+// generate patterns of random combinations 1 and 2 beats
+// with a random initial offset (so that patterns do not always start with a true value
+// pattern of bools
+inline std::vector<bool> onesAndTwos( int nBeatsToGenerate )
+{
+    std::vector< bool > output(nBeatsToGenerate, false);
+    int beatsLeft = nBeatsToGenerate;
+    int index =  rand()%3;
+    if ( index != 0 ){ index += 1; }
+    while ( beatsLeft > 0 )
+    {
+        output[index] = true;
+        auto i = 1 + rand()%2;
+        index += i;
+        beatsLeft -= i;
+        index %= nBeatsToGenerate;
+    }
+    return output;
+}
+//==============================================================================
+// generate patterns of random combinations 2 and 3 beats
+// with a random initial offset (so that patterns do not always start with a true value
+// pattern of bools
+inline std::vector<bool> twosAndThrees( int nBeatsToGenerate )
+{
+    std::vector< bool > output(nBeatsToGenerate, false);
+    //    output.resize(nBeatsToGenerate);
+    //
+    int beatsLeft = nBeatsToGenerate;
+    int index =  rand()%3;
+    if ( index != 0 ){ index += 1; }
+    while ( beatsLeft > 0 )
+    {
+        output[index] = true;
+        if (beatsLeft == 4)
+        {
+            index += 2;
+            beatsLeft -= 2;
+        }
+        else if (beatsLeft == 3)
+        {
+            index += 3;
+            beatsLeft -= 3;
+        }
+        else if (beatsLeft == 2)
+        {
+            index += 2;
+            beatsLeft -= 2;
+        }
+        else
+        {
+            auto i = 2 + rand()%2;
+            index += i;
+            beatsLeft -= i;
+        }
+        index %= nBeatsToGenerate;
+    }
+    return output;
+}
+//==============================================================================
+// generate patterns of random combinations 3 and 4 beats
+// with a random initial offset (so that patterns do not always start with a true value
+// pattern of bools
+// not as robust as creation of 2s and 3s
+inline std::vector<bool> threesAndFours( int nBeatsToGenerate )
+{
+    std::vector< bool > output(nBeatsToGenerate, false);
+    int beatsLeft = nBeatsToGenerate;
+    int index =  rand()%3;
+    if ( index != 0 ){ index += 2; }
+    while ( beatsLeft > 0 )
+    {
+        output[index] = true;
+        if (beatsLeft == 8)
+        {
+            index += 4;
+            beatsLeft -= 4;
+        }
+        else if (beatsLeft == 6)
+        {
+            index += 3;
+            beatsLeft -= 3;
+        }
+        else if (beatsLeft == 4)
+        {
+            index += 4;
+            beatsLeft -= 4;
+        }
+        else if (beatsLeft == 3)
+        {
+            index += 3;
+            beatsLeft -= 3;
+        }
+        else
+        {
+            auto i = 3 + rand()%2;
+            index += i;
+            beatsLeft -= i;
+        }
+        index %= nBeatsToGenerate;
+    }
+    return output;
+}
 
-//inline
-//void addBuffers(juce::AudioBuffer<float>& bufferToAddTo, juce::AudioBuffer<float>& bufferToAddFrom, float gainOfBuffer1, float gainOfBuffer2){
-//    float s1, s2;
-//    for (int channel = 0; channel < bufferToAddTo.getNumChannels() ; ++channel)
-//    {
-//        for (int index = 0; index < bufferToAddTo.getNumSamples(); index++){
-//            s1 = bufferToAddTo.getSample(channel, index) * gainOfBuffer1;
-//            s2 = bufferToAddFrom.getSample(channel, index) * gainOfBuffer2;
-//            
-//            bufferToAddTo.setSample(channel, index, (s1 + s2) );
-//        }
-//    }
-//}
+//==============================================================================
+// generate patterns of random combinations 2, 3 and 4 beats
+// with a random initial offset (so that patterns do not always start with a true value
+// pattern of bools
+// not as robust as creation of 2s and 3s (or 3 and 4s)
+inline std::vector<bool> twosThreesAndFours( int nBeatsToGenerate )
+{
+    std::vector< bool > output(nBeatsToGenerate, false);
+    //    output.resize(nBeatsToGenerate);
+    //
+    int beatsLeft = nBeatsToGenerate;
+    int index =  rand()%4;
+    if ( index != 0 ){ index += 1; }
+    while ( beatsLeft > 0 )
+    {
+        output[index] = true;
+        if (beatsLeft == 4)
+        {
+            index += 4;
+            beatsLeft -= 4;
+        }
+        else if (beatsLeft == 3)
+        {
+            index += 3;
+            beatsLeft -= 3;
+        }
+        else if (beatsLeft == 2)
+        {
+            index += 2;
+            beatsLeft -= 2;
+        }
+        else
+        {
+            auto i = 2 + rand()%3;
+            index += i;
+            beatsLeft -= i;
+        }
+        index %= nBeatsToGenerate;
+    }
+    return output;
+}
 
 #endif /* sjf_audioUtilities_h */

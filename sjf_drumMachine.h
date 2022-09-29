@@ -94,6 +94,6 @@ private:
     juce::OwnedArray< sjf_oneshot > samples;
     juce::AudioBuffer< float > tempBuffer;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_drumMachine)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_drumMachine )
 };
 #endif /* sjf_drumMachine_h */

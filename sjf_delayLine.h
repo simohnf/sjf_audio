@@ -25,6 +25,19 @@ public:
         m_delR.setCurrentAndTargetValue( 500.0f ) ;
     };
     //==============================================================================
+    sjf_delayLine( float maxDelLength )
+    {
+        if (m_delBufferLength > 0) { m_delBufferLength = maxDelLength; }
+        m_delayBuffer.setSize(2, m_SR * m_delBufferLength );
+        m_delayBuffer.clear();
+        
+        m_delL.reset( m_SR, 0.02f ) ;
+        m_delR.reset( m_SR, 0.02f ) ;
+        
+        m_delL.setCurrentAndTargetValue( 500.0f ) ;
+        m_delR.setCurrentAndTargetValue( 500.0f ) ;
+    };
+    //==============================================================================
     virtual ~sjf_delayLine() {};
     //==============================================================================
     virtual void intialise( int sampleRate , int totalNumInputChannels, int totalNumOutputChannels, int samplesPerBlock)
@@ -132,7 +145,7 @@ protected:
     
     int m_SR = 44100;
     int m_writePos = 0; // this is the index to write to in the "m_delayBuffer"
-    const int m_delBufferLength = 3; // Maximum delay time equals 2 seconds plus 1 second for safety with stereo spread increase
+    float m_delBufferLength = 3; // Maximum delay time equals 2 seconds plus 1 second for safety with stereo spread increase
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_delayLine)
 };

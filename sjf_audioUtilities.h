@@ -208,4 +208,30 @@ inline std::vector<bool> twosThreesAndFours( int nBeatsToGenerate )
     return output;
 }
 
+////==============================================================================
+//
+//void hadamard( std::vector< std::vector<float> > &hadamard, int size )
+//{
+//    // note size must be a power of 2!!!
+//    hadamard.resize(size);
+//    for ( int i = 0; i < size; i++ )
+//    {
+//        hadamard[i].resize(size);
+//    }
+//    hadamard[0][0] = 1.0f / sqrt( size ); // most simple matrix of size 1 is [1], whole matrix is multiplied by 1 / sqrt(size)
+//    for ( int k = 1; k < size; k += k ) {
+//        
+//        // Loop to copy elements to
+//        // other quarters of the matrix
+//        for (int i = 0; i < k; i++) {
+//            for (int j = 0; j < k; j++) {
+//                hadamard[i + k][j] = hadamard[i][j];
+//                hadamard[i][j + k] = hadamard[i][j];
+//                hadamard[i + k][j + k] = -hadamard[i][j];
+//            }
+//        }
+//    }
+//}
+//==============================================================================
+
 #endif /* sjf_audioUtilities_h */

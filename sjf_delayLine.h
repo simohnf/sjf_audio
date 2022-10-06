@@ -68,7 +68,7 @@ public:
                 else { return; }
                 while ( channelReadPos < 0 ) { channelReadPos += delayBufferSize; }
                 while (channelReadPos >= delayBufferSize) { channelReadPos -= delayBufferSize; }
-                auto val = cubicInterpolate(m_delayBuffer, channel, channelReadPos) * gain;
+                auto val = cubicInterpolate(m_delayBuffer, channel % m_delayBuffer.getNumChannels(), channelReadPos) * gain;
                 destinationBuffer.addSample(channel, index, val );
             }
             delTimeL = m_delL.getNextValue() * m_SR / 1000.0f;

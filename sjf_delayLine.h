@@ -25,19 +25,6 @@ public:
         m_delR.setCurrentAndTargetValue( 500.0f ) ;
     };
     //==============================================================================
-    sjf_delayLine( float maxDelLength )
-    {
-        if (m_delBufferLength > 0) { m_delBufferLength = maxDelLength; }
-        m_delayBuffer.setSize(2, m_SR * m_delBufferLength );
-        m_delayBuffer.clear();
-        
-        m_delL.reset( m_SR, 0.02f ) ;
-        m_delR.reset( m_SR, 0.02f ) ;
-        
-        m_delL.setCurrentAndTargetValue( 500.0f ) ;
-        m_delR.setCurrentAndTargetValue( 500.0f ) ;
-    };
-    //==============================================================================
     virtual ~sjf_delayLine() {};
     //==============================================================================
     virtual void intialise( int sampleRate , int totalNumInputChannels, int totalNumOutputChannels, int samplesPerBlock)
@@ -136,6 +123,7 @@ public:
     float getDelTimeL( ) { return m_delL.getTargetValue( ); }
     float getDelTimeR( ) { return m_delR.getTargetValue( ); }
     void clearBuffer() { m_delayBuffer.clear(); }
+    void setMaxDelayLength ( float maxDelayInSecs ) { m_delBufferLength = maxDelayInSecs; }
     //==============================================================================
     
     

@@ -24,7 +24,11 @@ public:
     
     ~sjf_sampler(){};
     
-    void initialise(int sampleRate){ m_SR  = sampleRate; srand((unsigned)time(NULL)); };
+    void initialise(int sampleRate)
+    {
+        m_SR  = sampleRate;
+        srand((unsigned)time(NULL));
+    }
     
     //==============================================================================
     float getDuration() { return m_durationSamps; };

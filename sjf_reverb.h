@@ -8,7 +8,6 @@
 #ifndef sjf_reverb_h
 #define sjf_reverb_h
 #include <JuceHeader.h>
-#include "sjf_delayLine.h"
 #include "sjf_audioUtilities.h"
 #include <algorithm>    // std::random_erShuffle
 #include <random>       // std::default_random_engine
@@ -39,51 +38,110 @@ public:
         m_delayLine.clear();
     }
     
-    void writeToBuffer( juce::AudioBuffer<float>& sourceBuffer, float gain )
+    void writeToBuffer( juce::AudioBuffer<float>& sourceBuffer )
     {
         auto bufferSize = sourceBuffer.getNumSamples();
         auto delayBufferSize = m_delayLine.getNumSamples();
-        for (int index = 0; index < bufferSize; index++)
+//        for (int index = 0; index < bufferSize; index++)
+//        {
+//            auto wp = (m_writePos + index) % delayBufferSize;
+//            m_delayLine.setSample(0, wp, sourceBuffer.getSample(0, index) * gain);
+//        }
+        // when buffer fits within length of del buffer just copy it in
+        if ( m_writePos + bufferSize < delayBufferSize )
         {
-            auto wp = (m_writePos + index) % delayBufferSize;
-            m_delayLine.setSample(0, wp, sourceBuffer.getSample(0, index) * gain);
+            m_delayLine.copyFrom ( 0, m_writePos, sourceBuffer, 0, 0, bufferSize );
+        }
+        else // other wise write part of input to end and rest to beginning
+        {
+            auto sampsToEnd = delayBufferSize - m_writePos;
+            auto sampsAtStart = bufferSize - sampsToEnd ;
+            m_delayLine.copyFrom ( 0, m_writePos, sourceBuffer, 0, 0, sampsToEnd );
+            m_delayLine.copyFrom ( 0, 0, sourceBuffer, 0, sampsToEnd - 1, sampsAtStart );
         }
     }
+
+    void addToBuffer( juce::AudioBuffer<float>& sourceBuffer, float gain )
+    {
+        auto bufferSize = sourceBuffer.getNumSamples();
+        auto delayBufferSize = m_delayLine.getNumSamples();
+        //        for (int index = 0; index < bufferSize; index++)
+        //        {
+        //            auto wp = (m_writePos + index) % delayBufferSize;
+        //            m_delayLine.setSample(0, wp, sourceBuffer.getSample(0, index) * gain);
+        //        }
+        // when buffer fits within length of del buffer just copy it in
+        if ( m_writePos + bufferSize < delayBufferSize )
+        {
+            m_delayLine.addFrom ( 0, m_writePos, sourceBuffer, 0, 0, bufferSize );
+        }
+        else // other wise write part of input to end and rest to beginning
+        {
+            auto sampsToEnd = delayBufferSize - m_writePos;
+            auto sampsAtStart = bufferSize - sampsToEnd ;
+            m_delayLine.addFrom ( 0, m_writePos, sourceBuffer, 0, 0, sampsToEnd, gain );
+            m_delayLine.addFrom ( 0, 0, sourceBuffer, 0, sampsToEnd - 1, sampsAtStart, gain );
+        }
+    }
+
     
     void addFromBuffer(juce::AudioBuffer<float>& destinationBuffer, float gain)
     {
         auto bufferSize = destinationBuffer.getNumSamples();
         auto delayBufferSize = m_delayLine.getNumSamples();
-        auto numChannels = destinationBuffer.getNumChannels();
+        
         for (int index = 0; index < bufferSize; index++)
         {
-            for (int channel = 0; channel < numChannels; channel++)
-            {
-                float channelReadPos = m_writePos - m_delayTimeInSamps + index;
-                while ( channelReadPos < 0 ) { channelReadPos += delayBufferSize; }
-                while (channelReadPos >= delayBufferSize) { channelReadPos -= delayBufferSize; }
-                auto val = cubicInterpolate(m_delayLine, channel % m_delayLine.getNumChannels(), channelReadPos) * gain;
-                destinationBuffer.addSample(channel, index, val );
-            }
+            auto readPos = (int)(delayBufferSize + m_writePos - m_delayTimeInSamps + index) % delayBufferSize;
+            destinationBuffer.addSample( 0, index, m_delayLine.getSample( 0, readPos ) * gain );
         }
+//        int readPos = delayBufferSize + m_writePos - m_delayTimeInSamps;
+//        readPos %= delayBufferSize;
+//        if ( readPos + bufferSize < delayBufferSize )
+//        {
+//            destinationBuffer.addFrom( 0, 0, m_delayLine, 0, readPos, bufferSize, gain );
+//        }
+//        else
+//        {
+//            auto sampsToEnd = delayBufferSize - readPos;
+//            auto sampsAtStart = bufferSize - sampsToEnd ;
+//            // (int destChannel, int destStartSample, const AudioBuffer &source, int sourceChannel, int sourceStartSample, int numSamples, Type gainToApplyToSource=Type(1))
+//            destinationBuffer.addFrom( 0, 0, m_delayLine, 0, readPos, sampsToEnd, gain );
+//            destinationBuffer.addFrom( 0, sampsToEnd - 1, m_delayLine, 0, 0, sampsAtStart, gain );
+//        }
     };
     
     
-    void copyFromBuffer( juce::AudioBuffer<float>& destinationBuffer, float gain )
+    void copyFromBuffer( juce::AudioBuffer<float>& destinationBuffer )
     {
         auto bufferSize = destinationBuffer.getNumSamples();
         auto delayBufferSize = m_delayLine.getNumSamples();
-        for (int index = 0; index < bufferSize; index++)
+//        for (int index = 0; index < bufferSize; index++)
+//        {
+//            int readPos = m_writePos - m_delayTimeInSamps + index;
+//            while ( readPos < 0 ) { readPos += delayBufferSize; }
+//            while (readPos >= delayBufferSize) { readPos -= delayBufferSize; }
+//            auto val = m_delayLine.getSample( 0, readPos ) * gain;
+//            destinationBuffer.setSample( 0, index, val );
+//        }
+        int readPos = delayBufferSize + m_writePos - m_delayTimeInSamps;
+        readPos %= delayBufferSize;
+        if ( readPos + bufferSize < delayBufferSize )
         {
-            int readPos = m_writePos - m_delayTimeInSamps + index;
-            while ( readPos < 0 ) { readPos += delayBufferSize; }
-            while (readPos >= delayBufferSize) { readPos -= delayBufferSize; }
-            auto val = m_delayLine.getSample( 0, readPos ) * gain;
-            destinationBuffer.setSample( 0, index, val );
+            destinationBuffer.copyFrom( 0, 0, m_delayLine, 0, readPos, bufferSize );
         }
-    }
+        else
+        {
+            auto sampsToEnd = delayBufferSize - readPos;
+            auto sampsAtStart = bufferSize - sampsToEnd ;
+            // (int destChannel, int destStartSample, const AudioBuffer &source, int sourceChannel, int sourceStartSample, int numSamples, Type gainToApplyToSource=Type(1))
+            destinationBuffer.copyFrom( 0, 0, m_delayLine, 0, readPos, sampsToEnd );
+            destinationBuffer.copyFrom( 0, sampsToEnd - 1, m_delayLine, 0, 0, sampsAtStart );
+        }
+
+    };
     
-    void updateBufferPositions(int bufferSize)
+    int updateBufferPositions(int bufferSize)
     {
         auto delayBufferSize = m_delayLine.getNumSamples();
         //    Update write position ensuring it stays within size of delay buffer
@@ -92,6 +150,7 @@ public:
         {
             m_writePos -= delayBufferSize;
         }
+        return m_writePos;
     };
     
 private:
@@ -130,6 +189,7 @@ public:
             lr[c].initialise( m_SR , m_lrTotalLength );
         }
         
+
         revTemp.setSize(1, m_blockSize);
         
         flipAndShuffle();
@@ -144,8 +204,9 @@ public:
         m_SR = sampleRate;
         m_blockSize = samplesPerBlock;
         
-        
         revTemp.setSize(1, m_blockSize);
+        
+
         
         for ( int s = 0; s < m_erStages; s++ )
         {
@@ -192,26 +253,36 @@ public:
         }
     }
     //==============================================================================
+    
     void processAudio( juce::AudioBuffer<float> &buffer )
     {
         auto nInChannels = buffer.getNumChannels();
         auto bufferSize = buffer.getNumSamples();
         auto equalPowerGain = sqrt( 1.0f / nInChannels );
-        
-//         copy input to temp buffer
+
+
         revTemp.clear();
+        //         copy input to temp buffer
         for ( int i = 0; i < nInChannels; i++ )
         {
             revTemp.addFrom( 0, 0, buffer, i, 0, bufferSize, equalPowerGain );
         }
-        
+        // count through early reflection stages
         for ( int s = 0; s < m_erStages; s ++ )
         {
+            // write temporary buffer to channel
+            // clear temporary buffer
+            // write output of channel to temp buffer
+            // flip phase of temp buffer
+            //
+
+
+            // for first stage just copy input to delay network
             if ( s == 0 )
             {
                 for ( int c = 0; c < m_erChannels; c ++)
                 {
-                    er[s][c].writeToBuffer( revTemp, m_erFlip[s][c] );
+                    er[s][c].writeToBuffer( revTemp );
                 }
             }
             else
@@ -223,14 +294,15 @@ public:
                     {
                         auto preStage = s-1;
                         auto shuffledChannel = m_erShuffle[preStage][cp];
-                        auto mult = m_hadamard[ preStage ][ shuffledChannel ];
+                        auto mult =  m_erFlip[ preStage ][ shuffledChannel ] * m_hadamard[ preStage ][ shuffledChannel ];
                         er[ preStage ][ shuffledChannel ].addFromBuffer( revTemp, mult );
                     }
-                    er[s][c].writeToBuffer( revTemp, m_erFlip[s][c] );
+                    er[s][c].writeToBuffer( revTemp );
                 }
             }
         }
         // late reflections
+        auto householderWeight = -2.0f / m_erChannels;
         for ( int c = 0; c < m_erChannels; c ++)
         {
             revTemp.clear(); // first Clear temp buffer
@@ -238,30 +310,38 @@ public:
             {
                 auto preStage = m_erStages - 1;
                 auto shuffledChannel = m_erShuffle[preStage][cp];
-                auto mult = m_hadamard[ preStage ][ shuffledChannel ];
+                auto mult = m_erFlip[ preStage ][ shuffledChannel ] * m_hadamard[ preStage ][ shuffledChannel ];
                 er[ preStage ][ shuffledChannel ].addFromBuffer( revTemp, mult );
+                //             householder mix of lr channels
+                lr[cp].addFromBuffer( revTemp, ( m_lrFB *  householderWeight ) );
             }
-            lr[c].writeToBuffer( revTemp, 1.0f );
+            lr[c].addFromBuffer( revTemp, m_lrFB );
+            lr[c].writeToBuffer( revTemp );
         }
-        
-        buffer.clear();
+
+
 
 
         for ( int c = 0; c < nInChannels; c ++ )
         {
             revTemp.clear(); // clear temporary buffer
-            er[m_erStages-1][ m_erShuffle[m_erStages-1][c%m_erChannels] ].copyFromBuffer(revTemp, 1.0f);
+            er[m_erStages-1][ m_erShuffle[m_erStages-1][c%m_erChannels] ].copyFromBuffer( revTemp );
+            lr[c].addFromBuffer( revTemp, 1.0f );
             buffer.addFrom( c, 0, revTemp, 0, 0, bufferSize );
         }
-        
+
         for ( int s = 0; s < m_erStages; s ++ )
         {
             for ( int c = 0; c < m_erChannels; c ++)
             {
                 er[s][c].updateBufferPositions( bufferSize );
+
             }
         }
-            
+        for ( int c = 0; c < m_erChannels; c++ )
+        {
+            lr[c].updateBufferPositions( bufferSize );
+        }
     }
     //==============================================================================
 private:
@@ -327,7 +407,7 @@ private:
     sjf_monoDelay er[ m_erStages ][ m_erChannels ]; // early reflections
     sjf_monoDelay lr[ m_erChannels ]; // late reflections
     int m_SR = 44100, m_blockSize = 64;
-    float m_erTotalLength = 300, m_lrTotalLength = 200;
+    float m_erTotalLength = 300, m_lrTotalLength = 200, m_lrFB = 0.85;
     float m_wet = 0.2;
     std::vector< std::vector<float> > m_hadamard, m_erFlip;
     std::vector< std::vector<int> > m_erShuffle;

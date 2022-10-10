@@ -14,10 +14,44 @@
 #include <vector>
 #include <time.h>
 
+
+class sjf_lpf
+{
+public:
+    sjf_lpf(){};
+    ~sjf_lpf(){};
+    
+    float filterInput( float value )
+    {
+        m_buf0 += m_cutoff * (value - m_buf0);
+        m_buf1 += m_cutoff * (m_buf0 - m_buf1);
+        return m_buf1;
+    }
+    
+    void setCutoff( float newCutoff )
+    {
+        if (newCutoff >= 1)
+        {
+            m_cutoff = 0.99999f;
+        }
+        else if( newCutoff < 0 )
+        {
+            m_cutoff = 0.0f;
+        }
+        else
+        {
+            m_cutoff = newCutoff;
+        }
+    }
+private:
+    float m_buf0 = 0.0f, m_buf1 = 0.0f, m_cutoff = 0.5;
+    
+};
+
 class sjf_monoDelay
 {
 public:
-    sjf_monoDelay(){}
+    sjf_monoDelay(){};
     ~sjf_monoDelay(){};
     
     void initialise( int sampleRate , int sizeMS )
@@ -92,7 +126,7 @@ public:
     {
         float readPos = m_delayBufferSize + m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer;
         while (readPos >= m_delayBufferSize) { readPos -= m_delayBufferSize; }
-        return m_delayLine [ readPos ];
+        return lpf.filterInput( m_delayLine [ readPos ] );
     }
     
     void setSample( int indexThroughCurrentBuffer, float value )
@@ -113,7 +147,12 @@ public:
         return m_writePos;
     };
     
+    void setFilterCutoff( float newCutoff)
+    {
+        lpf.setCutoff( newCutoff );
+    }
 private:
+    sjf_lpf lpf;
     float m_delayTimeInSamps, m_SR = 44100;
     int m_writePos = 0, m_delayBufferSize;
     std::vector<float> m_delayLine;
@@ -187,6 +226,7 @@ public:
                 auto dt = rand01() *  dtC;
                 dt += ( dtC * c );
                 er[s][c].setDelayTime( dt );
+                er[s][c].setFilterCutoff( sqrt( rand01() ) );
             }
         }
         
@@ -198,6 +238,7 @@ public:
             auto dt = rand01() * dtC;
             dt += (dtC * c) + minLRtime;
             lr[c].setDelayTime(dt);
+            lr[c].setFilterCutoff( sqrt( rand01() ) );
         }
     }
     

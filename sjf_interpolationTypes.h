@@ -38,7 +38,7 @@ float linearInterpolate(std::vector<float>& buffer, float read_pos)
 }
 //==============================================================================
 inline
-float cubicInterpolate(std::vector<float> buffer, float read_pos)
+float cubicInterpolate(std::vector<float> & buffer, float read_pos)
 {
     auto bufferSize = buffer.size();
     double y0; // previous step value

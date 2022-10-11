@@ -9,155 +9,120 @@
 #define sjf_reverb2_h
 #include <JuceHeader.h>
 #include "sjf_audioUtilities.h"
+#include "sjf_monoDelay.h"
+#include "sjf_lpf.h"
 #include <algorithm>    // std::random_erShuffle
 #include <random>       // std::default_random_engine
 #include <vector>
 #include <time.h>
 
 
-class sjf_lpf
+#define PI 3.14159265
+
+//==============================================================================
+//==============================================================================
+//==============================================================================
+//==============================================================================
+class sjf_osc
 {
 public:
-    sjf_lpf(){};
-    ~sjf_lpf(){};
-    
-    float filterInput( float value )
+    sjf_osc()
     {
-        m_buf0 += m_cutoff * (value - m_buf0);
-        m_buf1 += m_cutoff * (m_buf0 - m_buf1);
-        return m_buf1;
+        setSine();
+    }
+    ~sjf_osc(){}
+    
+    void initialise( int sampleRate )
+    {
+        m_SR = sampleRate;
+        setFrequency( m_frequency );
     }
     
-    void setCutoff( float newCutoff )
+    void initialise( int sampleRate, float frequency )
     {
-        if (newCutoff >= 1)
+        m_SR = sampleRate;
+        setFrequency( frequency );
+    }
+    
+    void setFrequency( float frequency )
+    {
+        m_frequency = frequency;
+        m_increment = m_frequency * m_wavetableSize / m_SR;
+    }
+    
+    float getSample( int indexThroughBuffer )
+    {
+        auto readPos = m_readPos + indexThroughBuffer;
+        while ( readPos >= m_wavetableSize )
+        { readPos -= m_wavetableSize; }
+        return cubicInterpolate( readPos );
+    }
+    
+    void updateReadPosition( int blockSize )
+    {
+        m_readPos += blockSize;
+    }
+    
+private:
+    
+    void setSine()
+    {
+        for (int index = 0; index< m_wavetableSize; index++)
         {
-            m_cutoff = 0.99999f;
+            m_table[index] = sin( index * 2 * PI / m_wavetableSize ) ;
         }
-        else if( newCutoff < 0 )
+    }
+    
+    float cubicInterpolate(float readPos)
+    {
+//        double y0; // previous step value
+//        double y1; // this step value
+//        double y2; // next step value
+//        double y3; // next next step value
+//        double mu; // fractional part between step 1 & 2
+        findex = readPos;
+        if(findex < 0){ findex+= m_wavetableSize;}
+        else if(findex > m_wavetableSize){ findex-= m_wavetableSize;}
+        
+        index = findex;
+        mu = findex - index;
+        
+        if (index == 0)
         {
-            m_cutoff = 0.0f;
+            y0 = m_table[ m_wavetableSize - 1 ];
         }
         else
         {
-            m_cutoff = newCutoff;
+            y0 = m_table[ index - 1 ];
         }
+        y1 = m_table[ index % m_wavetableSize ];
+        y2 = m_table[ (index + 1) % m_wavetableSize ];
+        y3 = m_table[ (index + 2) % m_wavetableSize ];
+        
+        
+        mu2 = mu*mu;
+        a0 = y3 - y2 - y0 + y1;
+        a1 = y0 - y1 - a0;
+        a2 = y2 - y0;
+        a3 = y1;
+        
+        return (a0*mu*mu2 + a1*mu2 + a2*mu + a3);
     }
-private:
-    float m_buf0 = 0.0f, m_buf1 = 0.0f, m_cutoff = 0.5;
     
+    const static int m_wavetableSize = 512;
+    float m_SR = 44100.0f, m_frequency = 1.0f, m_increment;
+    int m_readPos = 0;
+    std::array< float, m_wavetableSize > m_table;
+    
+    // variables for cubic interpolation (to save allocation time)
+    double a0, a1, a2, a3, mu, mu2;
+    double y0, y1, y2, y3; // fractional part between step 1 & 2
+    float findex;
+    int index;
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_osc )
 };
 
-class sjf_monoDelay
-{
-public:
-    sjf_monoDelay(){};
-    ~sjf_monoDelay(){};
-    
-    void initialise( int sampleRate , int sizeMS )
-    {
-        m_SR = sampleRate;
-        int size = round(m_SR * 0.001 * sizeMS);
-        m_delayBufferSize = size;
-        m_delayLine.resize( size, 0 );
-    }
-    
-    void setDelayTime( float delayInMS )
-    {
-        m_delayTimeInSamps = round(delayInMS * m_SR * 0.001);
-    }
-    
-    void writeToBuffer( std::vector<float> &sourceBuffer )
-    {
-        auto bufferSize = sourceBuffer.size();
-        for (int index = 0; index < bufferSize; index++)
-        {
-            auto wp = (m_writePos + index) % m_delayBufferSize;
-            m_delayLine[wp] = sourceBuffer[ index ];
-        }
-    }
-    
-    void writeToBuffer( std::vector<float> &sourceBuffer, float gain )
-    {
-        auto bufferSize = sourceBuffer.size();
-        for (int index = 0; index < bufferSize; index++)
-        {
-            auto wp = (m_writePos + index) % m_delayBufferSize;
-            m_delayLine[wp] = sourceBuffer[ index ] * gain;
-        }
-    }
-    
-    void addToBuffer( std::vector<float> &sourceBuffer, float gain )
-    {
-        auto bufferSize = sourceBuffer.size();
-        for (int index = 0; index < bufferSize; index++)
-        {
-            auto wp = (m_writePos + index) % m_delayBufferSize;
-            m_delayLine[ wp ]  += sourceBuffer[ index ] * gain;
-        }
-    }
-    
-    
-    void addFromBuffer( std::vector<float> &destinationBuffer, float gain)
-    {
-        auto bufferSize = destinationBuffer.size();
-        for (int index = 0; index < bufferSize; index++)
-        {
-            auto readPos = (int)(m_delayBufferSize + m_writePos - m_delayTimeInSamps + index) % m_delayBufferSize;
-            destinationBuffer[ index ] += m_delayLine [ readPos ] * gain;
-        }
-    };
-    
-    
-    void copyFromBuffer( std::vector<float> &destinationBuffer )
-    {
-        auto bufferSize = destinationBuffer.size();
-        for (int index = 0; index < bufferSize; index++)
-        {
-            int readPos = m_writePos - m_delayTimeInSamps + index;
-            while ( readPos < 0 ) { readPos += m_delayBufferSize; }
-            while (readPos >= m_delayBufferSize) { readPos -= m_delayBufferSize; }
-            auto val = m_delayLine [ readPos ];
-            destinationBuffer[ index ] =  val;
-        }
-    };
-    
-    float getSample( int indexThroughCurrentBuffer )
-    {
-        float readPos = m_delayBufferSize + m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer;
-        while (readPos >= m_delayBufferSize) { readPos -= m_delayBufferSize; }
-        return lpf.filterInput( m_delayLine [ readPos ] );
-    }
-    
-    void setSample( int indexThroughCurrentBuffer, float value )
-    {
-        auto wp = m_writePos + indexThroughCurrentBuffer + m_delayBufferSize;
-        wp %= m_delayBufferSize;
-        m_delayLine[ wp ]  = value;
-    }
-    
-    int updateBufferPositions(int bufferSize)
-    {
-        //    Update write position ensuring it stays within size of delay buffer
-        m_writePos += bufferSize;
-        while ( m_writePos >= m_delayBufferSize )
-        {
-            m_writePos -= m_delayBufferSize;
-        }
-        return m_writePos;
-    };
-    
-    void setFilterCutoff( float newCutoff)
-    {
-        lpf.setCutoff( newCutoff );
-    }
-private:
-    sjf_lpf lpf;
-    float m_delayTimeInSamps, m_SR = 44100;
-    int m_writePos = 0, m_delayBufferSize;
-    std::vector<float> m_delayLine;
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_monoDelay )
-};
 
 //==============================================================================
 //==============================================================================
@@ -225,8 +190,13 @@ public:
                 // space each channel so that the are randomly spaced but with roughly even distribution
                 auto dt = rand01() *  dtC;
                 dt += ( dtC * c );
+                erDT[s][c] = dt;
                 er[s][c].setDelayTime( dt );
-                er[s][c].setFilterCutoff( sqrt( rand01() ) );
+                erLPF[s][c].setCutoff( sqrt( rand01() ) );
+                auto rModF = pow( rand01(), 2 ) * 20;
+                auto rModD = pow( rand01(), 2 ) * 0.5;
+                erMod[s][c].setFrequency( rModF );
+                erModD[s][c] = rModD;
             }
         }
         
@@ -237,8 +207,9 @@ public:
         {
             auto dt = rand01() * dtC;
             dt += (dtC * c) + minLRtime;
+            lrDT[c] = dt;
             lr[c].setDelayTime(dt);
-            lr[c].setFilterCutoff( sqrt( rand01() ) );
+            lrLPF[c].setCutoff( sqrt( rand01() ) );
         }
     }
     
@@ -274,9 +245,11 @@ public:
         {
             for ( int s = 0; s < m_erStages; s ++ )
             {
-               er[s][c].updateBufferPositions( bufferSize );
+                er[s][c].updateBufferPositions( bufferSize );
+                erMod[s][c].updateReadPosition( bufferSize );
             }
             lr[c].updateBufferPositions( bufferSize );
+            lrMod[c].updateReadPosition( bufferSize );
         }
     }
     //==============================================================================
@@ -290,13 +263,19 @@ private:
         // then count through stage of er
         for ( int s = 0; s < m_erStages; s++ )
         {
-            for ( int c = 0; c < m_erChannels; c ++ )
+//            for ( int c = 0; c < m_erChannels; c++ )
+//            {
+//                er[s][c].setDelayTime( erDT[s][c] + ( erDT[s][c] * erMod[s][c].getSample( indexThroughCurrentBuffer ) * erModD[s][c] ) );
+//            }
+            for ( int c = 0; c < m_erChannels; c++ )
             {
                 // for each channel
                 // write previous to er vector
                 er[s][c].setSample( indexThroughCurrentBuffer, v1[c] );
                 // copy delayed sample from shuffled channel to temporary
+                
                 v1[ c ] =  er[ s ][ m_erShuffle[ s ][ c ] ].getSample( indexThroughCurrentBuffer );
+                v1[ c ] = erLPF[s][c].filterInput( v1[ c ] );
                 // flip some polarities
                 if ( m_erFlip[s][c] ){ v1[ c ] *= -1.0f; }
             }
@@ -322,8 +301,9 @@ private:
         m_sum = 0.0f;
         for ( int c = 0; c < m_erChannels; c++ )
         {
-            v2[c] = lr[c].getSample( indexThroughCurrentBuffer );
-            m_sum += v2[c];
+            v2[ c ] = lr[ c ].getSample( indexThroughCurrentBuffer );
+            v2[ c ] = lrLPF[ c ].filterInput( v2[ c ] );
+            m_sum += v2[ c ];
         }
         m_sum *= m_householderWeight;
         
@@ -386,8 +366,21 @@ private:
     const static int m_erChannels = 8; // must be a power of 2 because of hadamard matrix!!!!
     const static int m_erStages = 4;
     
-    sjf_monoDelay er[ m_erStages ][ m_erChannels ]; // early reflections
-    sjf_monoDelay lr[ m_erChannels ]; // late reflections
+    // early reflections
+    std::array< std::array< sjf_monoDelay, m_erChannels >, m_erStages >  er;
+    std::array< std::array< float, m_erChannels >,  m_erStages > erDT;
+    std::array< std::array< sjf_lpf, m_erChannels >, m_erStages > erLPF;
+    std::array< std::array< sjf_osc, m_erChannels >,  m_erStages > erMod;
+    std::array< std::array< float, m_erChannels >,  m_erStages > erModD;
+    
+    // late reflections
+    std::array< sjf_monoDelay, m_erChannels > lr;
+    std::array< float,  m_erChannels > lrDT;
+    std::array< sjf_lpf,  m_erChannels > lrLPF;
+    std::array< sjf_osc,  m_erChannels > lrMod;
+    std::array< float,  m_erChannels > lrModD;
+    
+    
     int m_SR = 44100, m_blockSize = 64;
     float m_erTotalLength = 300, m_lrTotalLength = 200, m_lrFB = 0.85;
     float m_dry = 1.0f, m_wet = 0.5f;
@@ -395,12 +388,12 @@ private:
     float m_householderWeight = -2.0f / m_erChannels;
     
     // implemented as arrays rather than vectors for cpu
-    float m_hadamard[ m_erChannels ][ m_erChannels ];
-    float v1[ m_erChannels ], v2[ m_erChannels ]; // these will hold one sample for each channel
-    int m_erShuffle[ m_erStages ][ m_erChannels ];
-    bool m_erFlip[ m_erStages ][ m_erChannels ];
+    std::array< std::array<float, m_erChannels> , m_erChannels > m_hadamard;
+    std::array< float,  m_erChannels > v1 , v2; // these will hold one sample for each channel
+    std::array< std::array< int,  m_erChannels >, m_erStages > m_erShuffle;
+    std::array< std::array< bool,  m_erChannels >, m_erStages > m_erFlip;
     
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_reverb)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_reverb )
 };
 
 

@@ -15,7 +15,8 @@
 class sjf_oscillator {
     
 public:
-    sjf_oscillator(){
+    sjf_oscillator()
+    {
         m_waveTable.resize(m_waveTableSize);
         setSine();
     };
@@ -33,7 +34,8 @@ public:
         m_readIncrement = m_frequency * m_waveTableSize / m_SR ;
     };
     
-    void setSine(){
+    void setSine()
+    {
         for (int index = 0; index< m_waveTableSize; index++)
         {
             m_waveTable[index] = sin( index * 2 * PI / m_waveTableSize ) ;
@@ -87,7 +89,7 @@ private:
     float m_readPos = 0;
     float m_frequency = 440;
     float m_readIncrement = ( m_frequency * m_SR ) / m_waveTableSize;
-    std::vector<float> m_waveTable, m_outBuff;
+    std::vector<float> m_outBuff;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_oscillator)
 };

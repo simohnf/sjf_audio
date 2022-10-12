@@ -91,7 +91,10 @@ public:
     {
         float readPos = m_delayBufferSize + m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer;
         while (readPos >= m_delayBufferSize) { readPos -= m_delayBufferSize; }
-        return cubicInterpolate( m_delayLine, readPos );
+//        return m_delayLine[ readPos ];
+        return cubicInterpolateGodot( m_delayLine, readPos );
+//        return fourPointFourthOrderOptimal( m_delayLine, readPos );
+//        return fourPointInterpolatePD( m_delayLine, readPos );
     }
     
     void setSample( int indexThroughCurrentBuffer, float value )

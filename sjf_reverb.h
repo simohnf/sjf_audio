@@ -50,10 +50,10 @@ public:
         m_increment = m_frequency * m_wavetableSize / m_SR;
     }
     
-    float getSample( int indexThroughBuffer )
+    float getSample( )
     {
 //        auto readPos =
-        m_readPos += (indexThroughBuffer * m_increment);
+        m_readPos +=  m_increment;
         while ( m_readPos >= m_wavetableSize )
         { m_readPos -= m_wavetableSize; }
         return cubicInterpolate( m_readPos );
@@ -193,15 +193,17 @@ public:
                 dt += ( dtC * c );
                 erDT[s][c] = dt;
                 er[s][c].setDelayTime( dt );
-                erLPF[s][c].setCutoff( sqrt( rand01() ) );
+                auto lpfF = sqrt( rand01() );
+                erLPF[s][c].setCutoff( lpfF );
                 auto rModF = pow( rand01(), 2 ) * 2;
                 auto rModD = pow( rand01(), 2 ) * 0.5;
                 erMod[s][c].setFrequency( rModF );
                 erModD[s][c] = rModD;
+                DBG( s << " " << c << " " << dt << " " << lpfF << " " << rModF << " " << rModD );
             }
         }
         
-        auto minLRtime = m_lrTotalLength * 0.25;
+        auto minLRtime = m_lrTotalLength * 0.5;
         auto dtC = ( m_lrTotalLength - minLRtime ) / m_erChannels;
         
         for (int c = 0; c < m_erChannels; c ++)
@@ -210,11 +212,13 @@ public:
             dt += (dtC * c) + minLRtime;
             lrDT[c] = dt;
             lr[c].setDelayTime(dt);
-            lrLPF[c].setCutoff( sqrt( rand01() ) );
+            auto lpfF = sqrt( rand01() );
+            lrLPF[c].setCutoff( lpfF );
             auto rModF = pow( rand01(), 2 ) * 2;
             auto rModD = pow( rand01(), 2 ) * 0.5;
             lrMod[c].setFrequency( rModF );
             lrModD[c] = rModD;
+            DBG( c << " " << dt << " " << lpfF << " " << rModF << " " << rModD );
         }
     }
     
@@ -227,7 +231,6 @@ public:
         
         for ( int samp = 0; samp < bufferSize; samp++ )
         {
-//            float sum = 0.0f;
             m_sum = 0.0f;
             // sum left and right and apply equal power gain
             for ( int inC = 0; inC < nInChannels; inC++ ) { m_sum += buffer.getSample( inC, samp ) * equalPowerGain; }
@@ -242,7 +245,17 @@ public:
             
             for ( int c = 0; c < nInChannels; c ++ )
             {
-                buffer.setSample( c, samp, ( v1[c] + v2[c] ) );
+//                buffer.setSample( c, samp, v1[ 0 ] );
+//                buffer.setSample( c, samp, v2[c] );
+                float rSum = 0.0f;
+                for (int rc = 0; rc < m_erChannels; rc++ )
+                {
+                    if ( rc % nInChannels == c )
+                    {
+                        rSum += v1[ rc ] + v2[ rc ];
+                    }
+                }
+                buffer.setSample( c, samp, (   rSum ) );
             }
         }
         
@@ -251,10 +264,8 @@ public:
             for ( int s = 0; s < m_erStages; s ++ )
             {
                 er[s][c].updateBufferPositions( bufferSize );
-//                erMod[s][c].updateReadPosition( bufferSize );
             }
             lr[c].updateBufferPositions( bufferSize );
-//            lrMod[c].updateReadPosition( bufferSize );
         }
     }
     //==============================================================================
@@ -270,19 +281,17 @@ private:
         {
             for ( int c = 0; c < m_erChannels; c++ )
             {
-                er[s][c].setDelayTime( erDT[s][c] + ( erDT[s][c] * erMod[s][c].getSample( indexThroughCurrentBuffer ) * erModD[s][c] ) );
+                er[s][c].setDelayTime( erDT[s][c] + ( erDT[s][c] * erMod[s][c].getSample( ) * erModD[s][c] ) );
             }
             for ( int c = 0; c < m_erChannels; c++ )
             {
                 // for each channel
-                // write previous to er vector
-                er[s][c].setSample( indexThroughCurrentBuffer, v1[c] );
+                // write previous to er vector (& flip smoe polarities
+                if ( m_erFlip[s][c] ) { er[s][c].setSample( indexThroughCurrentBuffer, v1[c] * -1.0f ); }
+                else { er[s][c].setSample( indexThroughCurrentBuffer, v1[c] ); }
                 // copy delayed sample from shuffled channel to temporary
-                
                 v1[ c ] =  er[ s ][ m_erShuffle[ s ][ c ] ].getSample( indexThroughCurrentBuffer );
                 v1[ c ] = erLPF[s][c].filterInput( v1[ c ] );
-                // flip some polarities
-                if ( m_erFlip[s][c] ){ v1[ c ] *= -1.0f; }
             }
             for (int c = 0; c < m_erChannels; c ++ )
             {
@@ -306,7 +315,7 @@ private:
         m_sum = 0.0f;
         for ( int c = 0; c < m_erChannels; c++ )
         {
-            lr[c]. setDelayTime( lrDT[c] + ( lrDT[c] * lrMod[c].getSample( indexThroughCurrentBuffer ) * lrModD[c] ) );
+            lr[c]. setDelayTime( lrDT[c] + ( lrDT[c] * lrMod[c].getSample( ) * lrModD[c] ) );
             
             v2[ c ] = lr[ c ].getSample( indexThroughCurrentBuffer );
             v2[ c ] = lrLPF[ c ].filterInput( v2[ c ] );
@@ -314,14 +323,15 @@ private:
         }
         m_sum *= m_householderWeight;
         
-        for ( int c = 0; c < m_erChannels; c++ ) { v2[c] += m_sum; }
+        for ( int c = 0; c < m_erChannels; c++ )
+        { v2[ c ] += m_sum; }
         
-        // mixed delayed outputs are in temp3
+        // mixed delayed outputs are in v2
         for ( int c = 0; c < m_erChannels; c++ )
         {
             auto val = ( m_lrFB * v2[c] ) + v1[c];
             // copy last er sample to respective buffer
-            lr[c].setSample( indexThroughCurrentBuffer, val );
+            lr[ c ].setSample( indexThroughCurrentBuffer, val );
         }
     }
     //==============================================================================
@@ -354,7 +364,7 @@ private:
     
     void genHadamard( )
     {
-        m_hadamard[0][0] = 1.0f / sqrt( m_erChannels ); // most simple matrix of size 1 is [1], whole matrix is multiplied by 1 / sqrt(size)
+        m_hadamard[0][0] = 1.0f / sqrt( (float)m_erChannels ); // most simple matrix of size 1 is [1], whole matrix is multiplied by 1 / sqrt(size)
         for ( int k = 1; k < m_erChannels; k += k ) {
             // Loop to copy elements to
             // other quarters of the matrix
@@ -371,7 +381,7 @@ private:
     }
     //==============================================================================
     const static int m_erChannels = 8; // must be a power of 2 because of hadamard matrix!!!!
-    const static int m_erStages = 4;
+    const static int m_erStages = 5;
     
     // early reflections
     std::array< std::array< sjf_monoDelay, m_erChannels >, m_erStages >  er;
@@ -389,10 +399,10 @@ private:
     
     
     int m_SR = 44100, m_blockSize = 64;
-    float m_erTotalLength = 300, m_lrTotalLength = 200, m_lrFB = 0.99;
+    float m_erTotalLength = 300, m_lrTotalLength = 200, m_lrFB = 0.85;
     float m_dry = 1.0f, m_wet = 0.5f;
     float m_sum; // every little helps with cpu, I reuse this at multiple stages just to add and mix sample values
-    float m_householderWeight = -2.0f / m_erChannels;
+    float m_householderWeight = ( -2.0f / (float)m_erChannels );
     
     // implemented as arrays rather than vectors for cpu
     std::array< std::array<float, m_erChannels> , m_erChannels > m_hadamard;

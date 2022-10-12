@@ -29,6 +29,7 @@ public:
     sjf_osc()
     {
         setSine();
+        m_increment = m_frequency * m_wavetableSize / m_SR;
     }
     ~sjf_osc(){}
     
@@ -52,17 +53,12 @@ public:
     
     float getSample( )
     {
-//        auto readPos =
         m_readPos +=  m_increment;
         while ( m_readPos >= m_wavetableSize )
         { m_readPos -= m_wavetableSize; }
         return cubicInterpolate( m_readPos );
     }
-    
-//    void updateReadPosition( int blockSize )
-//    {
-//        m_readPos += ( blockSize * m_increment );
-//    }
+
     
 private:
     
@@ -111,8 +107,7 @@ private:
     }
     
     const static int m_wavetableSize = 512;
-    float m_SR = 44100.0f, m_frequency = 1.0f, m_increment;
-    int m_readPos = 0;
+    float m_SR = 44100.0f, m_frequency = 1.0f, m_readPos = 0, m_increment;
     std::array< float, m_wavetableSize > m_table;
     
     // variables for cubic interpolation (to save allocation time)
@@ -166,11 +161,13 @@ public:
             for (int c = 0; c < m_erChannels; c ++)
             {
                 er[s][c].initialise( m_SR , m_erTotalLength );
+                erMod[s][c].initialise( m_SR );
             }
         }
         for (int c = 0; c < m_erChannels; c ++)
         {
             lr[c].initialise( m_SR , m_lrTotalLength );
+            lrMod[c].initialise( m_SR );
         }
     }
     //==============================================================================
@@ -195,11 +192,10 @@ public:
                 er[s][c].setDelayTime( dt );
                 auto lpfF = sqrt( rand01() );
                 erLPF[s][c].setCutoff( lpfF );
-                auto rModF = pow( rand01(), 2 ) * 2;
-                auto rModD = pow( rand01(), 2 ) * 0.5;
+                auto rModF = pow( rand01(), 4.0f ) * 1.0f;
+                auto rModD = pow( rand01(), 4.0f ) * 0.01f;
                 erMod[s][c].setFrequency( rModF );
                 erModD[s][c] = rModD;
-                DBG( s << " " << c << " " << dt << " " << lpfF << " " << rModF << " " << rModD );
             }
         }
         
@@ -214,11 +210,10 @@ public:
             lr[c].setDelayTime(dt);
             auto lpfF = sqrt( rand01() );
             lrLPF[c].setCutoff( lpfF );
-            auto rModF = pow( rand01(), 2 ) * 2;
-            auto rModD = pow( rand01(), 2 ) * 0.5;
+            auto rModF = pow( rand01(), 4.0f ) * 1.0f;
+            auto rModD = pow( rand01(), 4.0f ) * 0.01f;
             lrMod[c].setFrequency( rModF );
             lrModD[c] = rModD;
-            DBG( c << " " << dt << " " << lpfF << " " << rModF << " " << rModD );
         }
     }
     
@@ -228,6 +223,7 @@ public:
         auto nInChannels = buffer.getNumChannels();
         auto bufferSize = buffer.getNumSamples();
         auto equalPowerGain = sqrt( 1.0f / nInChannels );
+        
         
         for ( int samp = 0; samp < bufferSize; samp++ )
         {
@@ -243,20 +239,8 @@ public:
             processLateReflections( samp );
             // mixed sum of lr is in v2
             
-            for ( int c = 0; c < nInChannels; c ++ )
-            {
-//                buffer.setSample( c, samp, v1[ 0 ] );
-//                buffer.setSample( c, samp, v2[c] );
-                float rSum = 0.0f;
-                for (int rc = 0; rc < m_erChannels; rc++ )
-                {
-                    if ( rc % nInChannels == c )
-                    {
-                        rSum += v1[ rc ] + v2[ rc ];
-                    }
-                }
-                buffer.setSample( c, samp, (   rSum ) );
-            }
+            processOutput( buffer, samp, nInChannels );
+
         }
         
         for ( int c = 0; c < m_erChannels; c++ )
@@ -271,6 +255,27 @@ public:
     //==============================================================================
     
 private:
+    //==============================================================================
+    void processOutput( juce::AudioBuffer<float> &buffer, int samp, int nInChannels )
+    {
+        for ( int c = 0; c < nInChannels; c ++ )
+        {
+            //                buffer.setSample( c, samp, v1[ 0 ] );
+            //                buffer.setSample( c, samp, v2[c] );
+            m_sum = 0.0f;
+            for (int rc = 0; rc < m_erChannels; rc++ )
+            {
+                if ( rc % nInChannels == c )
+                {
+                    // mix alternating channels from early and late reflections
+                    m_sum += v1[ rc ] + v2[ rc ];
+                }
+            }
+            m_sum *= m_wet;
+            m_sum += buffer.getSample( c, samp ) * m_dry;
+            buffer.setSample( c, samp, (   m_sum ) );
+        }
+    }
     //==============================================================================
     void processEarlyReflections( int indexThroughCurrentBuffer )
     {
@@ -381,7 +386,7 @@ private:
     }
     //==============================================================================
     const static int m_erChannels = 8; // must be a power of 2 because of hadamard matrix!!!!
-    const static int m_erStages = 5;
+    const static int m_erStages = 4;
     
     // early reflections
     std::array< std::array< sjf_monoDelay, m_erChannels >, m_erStages >  er;
@@ -399,7 +404,7 @@ private:
     
     
     int m_SR = 44100, m_blockSize = 64;
-    float m_erTotalLength = 300, m_lrTotalLength = 200, m_lrFB = 0.85;
+    float m_erTotalLength = 500, m_lrTotalLength = 300, m_lrFB = 0.85;
     float m_dry = 1.0f, m_wet = 0.5f;
     float m_sum; // every little helps with cpu, I reuse this at multiple stages just to add and mix sample values
     float m_householderWeight = ( -2.0f / (float)m_erChannels );

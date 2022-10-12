@@ -52,16 +52,17 @@ public:
     
     float getSample( int indexThroughBuffer )
     {
-        auto readPos = m_readPos + indexThroughBuffer;
-        while ( readPos >= m_wavetableSize )
-        { readPos -= m_wavetableSize; }
-        return cubicInterpolate( readPos );
+//        auto readPos =
+        m_readPos += (indexThroughBuffer * m_increment);
+        while ( m_readPos >= m_wavetableSize )
+        { m_readPos -= m_wavetableSize; }
+        return cubicInterpolate( m_readPos );
     }
     
-    void updateReadPosition( int blockSize )
-    {
-        m_readPos += blockSize;
-    }
+//    void updateReadPosition( int blockSize )
+//    {
+//        m_readPos += ( blockSize * m_increment );
+//    }
     
 private:
     
@@ -193,7 +194,7 @@ public:
                 erDT[s][c] = dt;
                 er[s][c].setDelayTime( dt );
                 erLPF[s][c].setCutoff( sqrt( rand01() ) );
-                auto rModF = pow( rand01(), 2 ) * 20;
+                auto rModF = pow( rand01(), 2 ) * 2;
                 auto rModD = pow( rand01(), 2 ) * 0.5;
                 erMod[s][c].setFrequency( rModF );
                 erModD[s][c] = rModD;
@@ -210,6 +211,10 @@ public:
             lrDT[c] = dt;
             lr[c].setDelayTime(dt);
             lrLPF[c].setCutoff( sqrt( rand01() ) );
+            auto rModF = pow( rand01(), 2 ) * 2;
+            auto rModD = pow( rand01(), 2 ) * 0.5;
+            lrMod[c].setFrequency( rModF );
+            lrModD[c] = rModD;
         }
     }
     
@@ -246,10 +251,10 @@ public:
             for ( int s = 0; s < m_erStages; s ++ )
             {
                 er[s][c].updateBufferPositions( bufferSize );
-                erMod[s][c].updateReadPosition( bufferSize );
+//                erMod[s][c].updateReadPosition( bufferSize );
             }
             lr[c].updateBufferPositions( bufferSize );
-            lrMod[c].updateReadPosition( bufferSize );
+//            lrMod[c].updateReadPosition( bufferSize );
         }
     }
     //==============================================================================
@@ -263,10 +268,10 @@ private:
         // then count through stage of er
         for ( int s = 0; s < m_erStages; s++ )
         {
-//            for ( int c = 0; c < m_erChannels; c++ )
-//            {
-//                er[s][c].setDelayTime( erDT[s][c] + ( erDT[s][c] * erMod[s][c].getSample( indexThroughCurrentBuffer ) * erModD[s][c] ) );
-//            }
+            for ( int c = 0; c < m_erChannels; c++ )
+            {
+                er[s][c].setDelayTime( erDT[s][c] + ( erDT[s][c] * erMod[s][c].getSample( indexThroughCurrentBuffer ) * erModD[s][c] ) );
+            }
             for ( int c = 0; c < m_erChannels; c++ )
             {
                 // for each channel
@@ -301,6 +306,8 @@ private:
         m_sum = 0.0f;
         for ( int c = 0; c < m_erChannels; c++ )
         {
+            lr[c]. setDelayTime( lrDT[c] + ( lrDT[c] * lrMod[c].getSample( indexThroughCurrentBuffer ) * lrModD[c] ) );
+            
             v2[ c ] = lr[ c ].getSample( indexThroughCurrentBuffer );
             v2[ c ] = lrLPF[ c ].filterInput( v2[ c ] );
             m_sum += v2[ c ];
@@ -382,7 +389,7 @@ private:
     
     
     int m_SR = 44100, m_blockSize = 64;
-    float m_erTotalLength = 300, m_lrTotalLength = 200, m_lrFB = 0.85;
+    float m_erTotalLength = 300, m_lrTotalLength = 200, m_lrFB = 0.99;
     float m_dry = 1.0f, m_wet = 0.5f;
     float m_sum; // every little helps with cpu, I reuse this at multiple stages just to add and mix sample values
     float m_householderWeight = -2.0f / m_erChannels;

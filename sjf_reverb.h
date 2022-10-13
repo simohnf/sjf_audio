@@ -161,7 +161,7 @@ public:
             for (int c = 0; c < m_erChannels; c ++)
             {
                 er[s][c].initialise( m_SR , m_erTotalLength );
-                erMod[s][c].initialise( m_SR );
+//                erMod[s][c].initialise( m_SR );
             }
         }
         for (int c = 0; c < m_erChannels; c ++)
@@ -169,6 +169,8 @@ public:
             lr[c].initialise( m_SR , m_lrTotalLength );
             lrMod[c].initialise( m_SR );
         }
+        
+        DBG( "tap level " << erTapLevel );
     }
     //==============================================================================
     void randomiseAll()
@@ -188,14 +190,15 @@ public:
                 // space each channel so that the are randomly spaced but with roughly even distribution
                 auto dt = rand01() *  dtC;
                 dt += ( dtC * c );
-                erDT[s][c] = dt;
-                er[s][c].setDelayTime( dt );
+                auto shufCh = m_erShuffle[ s ][ c ];
+                erDT[s][ shufCh ] = dt;
+                er[s][ shufCh ].setDelayTime( dt );
                 auto lpfF = sqrt( rand01() );
-                erLPF[s][c].setCutoff( lpfF );
-                auto rModF = pow( rand01(), 4.0f ) * 1.0f;
-                auto rModD = pow( rand01(), 4.0f ) * 0.01f;
-                erMod[s][c].setFrequency( rModF );
-                erModD[s][c] = rModD;
+                erLPF[s][ shufCh ].setCutoff( lpfF );
+//                auto rModF = pow( rand01(), 4.0f ) * 1.0f;
+//                auto rModD = pow( rand01(), 4.0f ) * 0.01f;
+//                erMod[s][c].setFrequency( rModF );
+//                erModD[s][c] = rModD;
             }
         }
         
@@ -211,7 +214,7 @@ public:
             auto lpfF = sqrt( rand01() );
             lrLPF[c].setCutoff( lpfF );
             auto rModF = pow( rand01(), 4.0f ) * 1.0f;
-            auto rModD = pow( rand01(), 4.0f ) * 0.01f;
+            auto rModD = pow( rand01(), 2.0f ) * 0.2f;
             lrMod[c].setFrequency( rModF );
             lrModD[c] = rModD;
         }
@@ -223,7 +226,6 @@ public:
         auto nInChannels = buffer.getNumChannels();
         auto bufferSize = buffer.getNumSamples();
         auto equalPowerGain = sqrt( 1.0f / nInChannels );
-        
         
         for ( int samp = 0; samp < bufferSize; samp++ )
         {
@@ -268,12 +270,13 @@ private:
                 if ( rc % nInChannels == c )
                 {
                     // mix alternating channels from early and late reflections
-                    m_sum += v1[ rc ] + v2[ rc ];
+//                    m_sum += ( erTaps[ rc ] * erTapLevel ) /* + v2[ rc ] */;
+                    m_sum += v1[ c ] + v2[ rc ];
                 }
             }
             m_sum *= m_wet;
-            m_sum += buffer.getSample( c, samp ) * m_dry;
-            buffer.setSample( c, samp, (   m_sum ) );
+//            m_sum += buffer.getSample( c, samp ) * m_dry;
+            buffer.setSample( c, samp, ( m_sum ) );
         }
     }
     //==============================================================================
@@ -284,19 +287,21 @@ private:
         // then count through stage of er
         for ( int s = 0; s < m_erStages; s++ )
         {
-            for ( int c = 0; c < m_erChannels; c++ )
-            {
-                er[s][c].setDelayTime( erDT[s][c] + ( erDT[s][c] * erMod[s][c].getSample( ) * erModD[s][c] ) );
-            }
+//            for ( int c = 0; c < m_erChannels; c++ )
+//            {
+//                er[ s ][ c ].setDelayTime( erDT[ s ][ c ] + ( erDT[ s ][ c ] * erMod[ s ][ c ].getSample( ) * erModD[ s ][ c ] ) );
+//            }
             for ( int c = 0; c < m_erChannels; c++ )
             {
                 // for each channel
                 // write previous to er vector (& flip smoe polarities
-                if ( m_erFlip[s][c] ) { er[s][c].setSample( indexThroughCurrentBuffer, v1[c] * -1.0f ); }
-                else { er[s][c].setSample( indexThroughCurrentBuffer, v1[c] ); }
+                if ( m_erFlip[ s ][ c ] ) { er[ s ][ c ].setSample( indexThroughCurrentBuffer, v1[ c ] * -1.0f ); }
+                else { er[ s ][ c ].setSample( indexThroughCurrentBuffer, v1[ c ] ); }
                 // copy delayed sample from shuffled channel to temporary
-                v1[ c ] =  er[ s ][ m_erShuffle[ s ][ c ] ].getSample( indexThroughCurrentBuffer );
-                v1[ c ] = erLPF[s][c].filterInput( v1[ c ] );
+//                v1[ c ] =  er[ s ][ m_erShuffle[ s ][ c ] ].getSample( indexThroughCurrentBuffer );
+                v1[ c ] =  er[ s ][ c ].getSampleRoundedIndex( indexThroughCurrentBuffer );
+                v1[ c ] = erLPF[ s ][ c ].filterInput( v1[ c ] );
+                
             }
             for (int c = 0; c < m_erChannels; c ++ )
             {
@@ -306,10 +311,12 @@ private:
                 {
                     m_sum += ( v1[ ch ] * m_hadamard[ c ][ ch ] );
                 }
-                v2[c] = m_sum;
+                v2[ c ] = m_sum;
             }
             for ( int c = 0; c < m_erChannels; c++ )
-            { v1[c] = v2[c]; }
+            {
+                v1[ c ] = v2[ c ];
+            }
         }
     }
     //==============================================================================
@@ -392,8 +399,8 @@ private:
     std::array< std::array< sjf_monoDelay, m_erChannels >, m_erStages >  er;
     std::array< std::array< float, m_erChannels >,  m_erStages > erDT;
     std::array< std::array< sjf_lpf, m_erChannels >, m_erStages > erLPF;
-    std::array< std::array< sjf_osc, m_erChannels >,  m_erStages > erMod;
-    std::array< std::array< float, m_erChannels >,  m_erStages > erModD;
+//    std::array< std::array< sjf_osc, m_erChannels >,  m_erStages > erMod;
+//    std::array< std::array< float, m_erChannels >,  m_erStages > erModD;
     
     // late reflections
     std::array< sjf_monoDelay, m_erChannels > lr;
@@ -402,9 +409,9 @@ private:
     std::array< sjf_osc,  m_erChannels > lrMod;
     std::array< float,  m_erChannels > lrModD;
     
-    
     int m_SR = 44100, m_blockSize = 64;
-    float m_erTotalLength = 500, m_lrTotalLength = 300, m_lrFB = 0.85;
+    float m_erTotalLength = 800, m_lrTotalLength = 600, m_lrFB = 0.85;
+    float erTapLevel = 1.0f / ( m_erStages * m_erChannels );
     float m_dry = 1.0f, m_wet = 0.5f;
     float m_sum; // every little helps with cpu, I reuse this at multiple stages just to add and mix sample values
     float m_householderWeight = ( -2.0f / (float)m_erChannels );

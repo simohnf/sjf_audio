@@ -44,6 +44,13 @@ public:
 //        return fourPointInterpolatePD( m_delayLine, readPos );
     }
     
+    float getSampleRoundedIndex( int indexThroughCurrentBuffer )
+    {
+        float readPos = round(m_delayBufferSize + m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer);
+        while (readPos >= m_delayBufferSize) { readPos -= m_delayBufferSize; }
+        return m_delayLine[ readPos ];
+    }
+    
     void setSample( int indexThroughCurrentBuffer, float value )
     {
         auto wp = m_writePos + indexThroughCurrentBuffer + m_delayBufferSize;

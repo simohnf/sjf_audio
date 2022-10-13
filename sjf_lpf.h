@@ -27,6 +27,11 @@ public:
         else if( newCutoff < 0 ) { m_cutoff = 0.0f; }
         else { m_cutoff = newCutoff; }
     }
+    
+    float getCutoff()
+    {
+        return m_cutoff;
+    }
 private:
     float m_buf0 = 0.0f, m_buf1 = 0.0f, m_cutoff = 0.5;
 

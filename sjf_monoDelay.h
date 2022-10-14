@@ -19,13 +19,14 @@ public:
         m_SR = sampleRate;
         int size = round(m_SR * 0.001 * sizeMS);
         m_delayBufferSize = size;
-        m_delayLine.resize( m_delayBufferSize
-                           , 0 );
+        m_delayLine.resize( m_delayBufferSize, 0 );
+        setDelayTime( m_delayTimeMS );
     }
     
     void setDelayTime( float delayInMS )
     {
-        m_delayTimeInSamps = delayInMS * m_SR * 0.001;
+        m_delayTimeMS = delayInMS;
+        m_delayTimeInSamps = m_delayTimeMS * m_SR * 0.001;
     }
     
     float getDelayTimeMS()
@@ -70,7 +71,7 @@ public:
     };
 
 private:
-    float m_delayTimeInSamps, m_SR = 44100;
+    float m_delayTimeInSamps, m_SR = 44100, m_delayTimeMS;
     int m_writePos = 0, m_delayBufferSize;
     std::vector<float> m_delayLine;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_monoDelay )

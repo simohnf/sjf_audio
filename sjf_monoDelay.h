@@ -14,10 +14,21 @@ public:
     sjf_monoDelay(){};
     ~sjf_monoDelay(){};
     
-    void initialise( int sampleRate , int sizeMS )
+    void initialise( int sampleRate )
     {
         m_SR = sampleRate;
-        int size = round(m_SR * 0.001 * sizeMS);
+        int size = round(m_SR * 0.001 * m_maxSizeMS);
+        m_delayBufferSize = size;
+        m_delayLine.resize( m_delayBufferSize, 0 );
+        setDelayTime( m_delayTimeMS );
+    }
+    
+    
+    void initialise( int sampleRate , float sizeMS )
+    {
+        m_maxSizeMS = sizeMS;
+        m_SR = sampleRate;
+        int size = round(m_SR * 0.001 * m_maxSizeMS);
         m_delayBufferSize = size;
         m_delayLine.resize( m_delayBufferSize, 0 );
         setDelayTime( m_delayTimeMS );
@@ -71,7 +82,7 @@ public:
     };
 
 private:
-    float m_delayTimeInSamps, m_SR = 44100, m_delayTimeMS;
+    float m_delayTimeInSamps, m_SR = 44100, m_delayTimeMS, m_maxSizeMS;
     int m_writePos = 0, m_delayBufferSize;
     std::vector<float> m_delayLine;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_monoDelay )

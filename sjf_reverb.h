@@ -306,6 +306,7 @@ public:
         auto nInChannels = buffer.getNumChannels();
         auto bufferSize = buffer.getNumSamples();
         auto equalPowerGain = sqrt( 1.0f / nInChannels );
+        auto gainFactor = 1.0f / ( (float)m_erChannels / (float)nInChannels );
         
         float erSizeFactor, lrSizeFactor, size, fbFactor, modFactor;
         for ( int samp = 0; samp < bufferSize; samp++ )
@@ -327,19 +328,11 @@ public:
             processLateReflections( samp, lrSizeFactor, fbFactor, modFactor );
             // mixed sum of lr is in v2
             
-            processOutput( buffer, samp, nInChannels );
+            processOutput( buffer, samp, nInChannels, gainFactor );
 
 //            DBG("");
         }
-        
-        for ( int c = 0; c < m_erChannels; c++ )
-        {
-            for ( int s = 0; s < m_erStages; s ++ )
-            {
-                er[s][c].updateBufferPositions( bufferSize );
-            }
-            lr[c].updateBufferPositions( bufferSize );
-        }
+        updateBuffers( bufferSize );
 //        DBG("");
     }
     //==============================================================================
@@ -376,8 +369,22 @@ public:
     
 private:
     //==============================================================================
-    void processOutput( juce::AudioBuffer<float> &buffer, int samp, int nInChannels )
+    
+    void updateBuffers( int bufferSize )
     {
+        for ( int c = 0; c < m_erChannels; c++ )
+        {
+            for ( int s = 0; s < m_erStages; s ++ )
+            {
+                er[s][c].updateBufferPositions( bufferSize );
+            }
+            lr[c].updateBufferPositions( bufferSize );
+        }
+    }
+    //==============================================================================
+    void processOutput( juce::AudioBuffer<float> &buffer, int samp, int nInChannels, float gainFactor )
+    {
+        
         for ( int c = 0; c < nInChannels; c ++ )
         {
             m_sum = 0.0f;
@@ -389,7 +396,8 @@ private:
                     m_sum += v1[ c ] + v2[ rc ];
                 }
             }
-            m_sum *= m_wetSmooth.filterInput( m_wet );
+            m_sum *= m_wetSmooth.filterInput( m_wet ) * gainFactor;
+            m_sum = tanh( m_sum ); // limit reverb output
             m_sum += buffer.getSample( c, samp ) * m_drySmooth.filterInput( m_dry );
             buffer.setSample( c, samp, ( m_sum ) );
         }
@@ -406,7 +414,7 @@ private:
                 auto dt = pow( erDT[ s ][ c ], erSizeFactor );
                 er[ s ][ c ].setDelayTime( dt + ( dt * erMod[ s ][ c ].getSample( ) * erModD[ s ][ c ] * modFactor ) );
 //                DBG( s << " " << c << " " << er[ s ][ c ]. getDelayTimeMS() );
-                // flip smoe polarities
+                // flip some polarities
                 if ( m_erFlip[ s ][ c ] ) { v1[ c ] *= -1.0f ; }
                 // write previous to er vector
                 er[ s ][ c ].setSample( indexThroughCurrentBuffer, v1[ c ] );
@@ -435,7 +443,7 @@ private:
     void processLateReflections( int indexThroughCurrentBuffer, float lrSizeFactor, float fbFactor, float modFactor )
     {
         // copy delayed samples into v2
-        m_sum = 0.0f;
+        m_sum = 0.0f; // use this to mix all samples with householder matrix
         for ( int c = 0; c < m_erChannels; c++ )
         {
             auto dt = pow( lrDT[ c ], lrSizeFactor );
@@ -447,8 +455,7 @@ private:
         }
         m_sum *= m_householderWeight;
         
-        for ( int c = 0; c < m_erChannels; c++ )
-        { v2[ c ] += m_sum; }
+        for ( int c = 0; c < m_erChannels; c++ ) { v2[ c ] += m_sum; }
         
         // mixed delayed outputs are in v2
         for ( int c = 0; c < m_erChannels; c++ )

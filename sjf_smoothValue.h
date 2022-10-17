@@ -11,8 +11,10 @@
 class sjf_smoothValue {
     
 public:
+    sjf_smoothValue(){}
     
     ~sjf_smoothValue(){};
+    
     float smooth (float input)
     {
         float out = ( (1 - m_alpha ) * m_preOutput ) + ( m_alpha * ( input +  m_preInput)/2 ) ;

@@ -24,6 +24,67 @@
 //==============================================================================
 //==============================================================================
 //==============================================================================
+class sjf_noiseOsc
+{
+    // random noise generator with frequency determining how fast oscillator moves to a new value
+    // outputs values between -1 and 1
+public:
+    sjf_noiseOsc()
+    {
+        randomTargetValue();
+    }
+    ~sjf_noiseOsc(){}
+    
+    void initialise( int sampleRate )
+    {
+        if ( sampleRate > 0 ) { m_SR = sampleRate; }
+        setFrequency( m_frequency );
+    }
+    
+    void initialise( int sampleRate, float frequency )
+    {
+        if ( sampleRate > 0 ) { m_SR = sampleRate; }
+        setFrequency( frequency );
+    }
+    
+
+    
+    void setFrequency( float frequency )
+    {
+        m_frequency = frequency;
+        m_sampsPerCycle = m_SR / m_frequency;
+        determineIncrement();
+    }
+    
+    float getSample( )
+    {
+        m_lastOutput +=  m_increment;
+        if ( m_lastOutput == m_target )
+        {
+            randomTargetValue();
+            determineIncrement();
+        }
+        return m_lastOutput * 0.00001f;
+    }
+private:
+    void randomTargetValue()
+    {
+        m_target = ( rand01() * 20000.0f ) - 10000.0f; // random values between -1 and 1
+        
+    }
+    
+    void determineIncrement()
+    {
+        auto dif = m_target - m_lastOutput; // difference between last output and targetValue
+        m_increment = dif / m_sampsPerCycle;
+    }
+    float m_SR = 44100.0f, m_frequency = 1.0f, m_increment = 0.0f, m_target = 0.0f, m_lastOutput = 0.0f, m_sampsPerCycle = 44100.0f;
+    
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_noiseOsc )
+    
+};
+//==============================================================================
 class sjf_osc
 {
 public:
@@ -36,13 +97,13 @@ public:
     
     void initialise( int sampleRate )
     {
-        m_SR = sampleRate;
+        if ( sampleRate > 0 ) { m_SR = sampleRate; }
         setFrequency( m_frequency );
     }
     
     void initialise( int sampleRate, float frequency )
     {
-        m_SR = sampleRate;
+        if ( sampleRate > 0 ) { m_SR = sampleRate; }
         setFrequency( frequency );
     }
     
@@ -57,7 +118,7 @@ public:
         m_readPos +=  m_increment;
         while ( m_readPos >= m_wavetableSize )
         { m_readPos -= m_wavetableSize; }
-        return cubicInterpolate( m_readPos );
+        return linearInterpolate( m_readPos );
     }
 
     
@@ -105,6 +166,26 @@ private:
         a3 = y1;
         
         return (a0*mu*mu2 + a1*mu2 + a2*mu + a3);
+    }
+    
+    float linearInterpolate( float read_pos )
+    {
+//        auto bufferSize = buffer.size();
+//        double y1; // this step value
+//        double y2; // next step value
+//        double mu; // fractional part between step 1 & 2
+        
+        findex = read_pos;
+        if(findex < 0){ findex+= m_wavetableSize;}
+        else if(findex > m_wavetableSize){ findex-= m_wavetableSize;}
+        
+        index = findex;
+        mu = findex - index;
+        
+        y1 = m_table[ index % m_wavetableSize ];
+        y2 = m_table[ (index + 1) % m_wavetableSize ];
+        
+        return y1 + mu*(y2-y1) ;
     }
     
     const static int m_wavetableSize = 512;
@@ -162,8 +243,8 @@ public:
     //==============================================================================
     void intialise( int sampleRate , int totalNumInputChannels, int totalNumOutputChannels, int samplesPerBlock)
     {
-        m_SR = sampleRate;
-        m_blockSize = samplesPerBlock;
+        if ( sampleRate > 0 ) { m_SR = sampleRate; }
+        if ( samplesPerBlock > 0 ) { m_blockSize = samplesPerBlock; }
         
         for ( int s = 0; s < m_erStages; s++ )
         {
@@ -257,8 +338,6 @@ public:
         }
 //        DBG("sum!!!! " << sum);
         auto avg = sum / (float) m_erChannels;
-        
-//        auto scale = (m_maxTime / longest);
         auto scale = (m_maxTime / avg );
         for ( int s = 0; s < m_erStages; s++ )
         {
@@ -312,7 +391,7 @@ public:
         for ( int samp = 0; samp < bufferSize; samp++ )
         {
             modFactor = m_modSmooth.filterInput( m_modulationTarget );
-            fbFactor = m_fbSmooth.filterInput( m_lrFB );
+            fbFactor = m_fbSmooth.filterInput( m_lrFBTarget );
             size = m_sizeSmooth.filterInput( m_sizeTarget );
             erSizeFactor = 0.6f + (size * 0.4f);
             lrSizeFactor = 0.4f + (size * 0.6f);
@@ -344,7 +423,7 @@ public:
     void setDecay ( float newDecay )
     {
 //        DBG( "newDecay " << newDecay );
-        m_lrFB = newDecay * 0.01f;
+        m_lrFBTarget = newDecay * 0.01f;
     }
     //==============================================================================
     void setModulation ( float newModulation )
@@ -357,13 +436,8 @@ public:
     void setMix ( float newMix )
     {
         newMix *= 0.01f;
-        //        DBG( "newModulation " << newModulation );
-//        m_wet = ( sin( ( 0.5 * newMix ) * PI )  );
-//        DBG("wet " << m_wet);
-//        m_dry = ( sin( (0.5 + (0.5 * newMix) ) * PI ) );
-//        DBG("dry " << m_dry);
-        m_wet = sqrt( newMix );
-        m_dry = sqrt( 1.0f - ( newMix ) );
+        m_wetTarget = sqrt( newMix );
+        m_dryTarget = sqrt( 1.0f - ( newMix ) );
     }
     //==============================================================================
     
@@ -396,9 +470,9 @@ private:
                     m_sum += v1[ c ] + v2[ rc ];
                 }
             }
-            m_sum *= m_wetSmooth.filterInput( m_wet ) * gainFactor;
+            m_sum *= m_wetSmooth.filterInput( m_wetTarget ) * gainFactor;
             m_sum = tanh( m_sum ); // limit reverb output
-            m_sum += buffer.getSample( c, samp ) * m_drySmooth.filterInput( m_dry );
+            m_sum += buffer.getSample( c, samp ) * m_drySmooth.filterInput( m_dryTarget );
             buffer.setSample( c, samp, ( m_sum ) );
         }
     }
@@ -527,8 +601,7 @@ private:
 //    float m_erTotalLength = fmin( 150, m_maxTime * 1.0f/3.0f );
 //    float m_lrTotalLength = m_maxTime - m_erTotalLength;;
 
-    float m_lrFB = 0.85;
-    float m_dry = 1.0f, m_wet = 0.707f, m_modulationTarget, m_sizeTarget;
+    float m_modulationTarget, m_sizeTarget, m_dryTarget = 0.89443f, m_wetTarget = 0.44721f, m_lrFBTarget = 0.85;;
     sjf_lpf m_sizeSmooth, m_fbSmooth, m_modSmooth, m_wetSmooth, m_drySmooth;
     float m_sum; // every little helps with cpu, I reuse this at multiple stages just to add and mix sample values
     float m_householderWeight = ( -2.0f / (float)m_erChannels );

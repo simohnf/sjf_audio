@@ -327,7 +327,7 @@ float cubicInterpolateGodot(juce::AudioBuffer<float>& buffer, int channel, float
     a2 = y2 - y0;
     a3 = 2 * y1;
     
-    return (a0 * mu * mu2 + a1 * mu2 + a2 * mu + a3) / 2;
+    return (a0 * mu * mu2 + a1 * mu2 + a2 * mu + a3) * 0.5f;
 }
 //==============================================================================
 inline
@@ -367,7 +367,7 @@ float cubicInterpolateGodot(std::vector<float>& buffer, float read_pos)
     a2 = y2 - y0;
     a3 = 2 * y1;
     
-    return (a0 * mu * mu2 + a1 * mu2 + a2 * mu + a3) / 2;
+    return (a0 * mu * mu2 + a1 * mu2 + a2 * mu + a3) * 0.5f;
 }
 //==============================================================================
 inline

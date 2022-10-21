@@ -12,6 +12,7 @@
 #include "sjf_monoDelay.h"
 #include "sjf_lpf.h"
 #include "sjf_osc.h"
+#include "sjf_monoPitchShift.h"
 #include <algorithm>    // std::random_erShuffle
 #include <random>       // std::default_random_engine
 #include <vector>
@@ -149,10 +150,9 @@ public:
             // first copy input sample to temp buffer
             for ( int c = 0; c < m_erChannels; c ++ ){ v1[c] = m_sum; }
             // early reflections
-            processEarlyReflections( samp, erSizeFactor, modFactor );
-            // last stage of er is in v1
+            processEarlyReflections( samp, erSizeFactor, modFactor ); // last stage of er is in v1
             // late reflections
-            
+//            addShimmerPreLR( samp );
             filterEarlyReflections( erCutOff );
             processLateReflections( samp, lrSizeFactor, fbFactor, modFactor, lrCutOff );
             // mixed sum of lr is in v2
@@ -201,6 +201,26 @@ public:
     
 private:
     //==============================================================================
+    void addShimmerPreLR( int indexThroughCurrentBuffer )
+    {
+        // shimmer
+        m_sum = 0.0f;
+        for ( int c = 0; c < m_erChannels; c++ ) { m_sum += v1[ c ]; }
+        shimmer.setSample( indexThroughCurrentBuffer, m_sum * 1.0f/(float)m_erChannels );
+        auto shimOut = shimmer.pitchShiftOutput( indexThroughCurrentBuffer, 4.0f );
+        for ( int c = 0; c < m_erChannels; c++ ) { v1[ c ] += shimOut; }
+    }
+    //==============================================================================
+    void addShimmerInLR( int indexThroughCurrentBuffer )
+    {
+        // shimmer
+        m_sum = 0.0f;
+        for ( int c = 0; c < m_erChannels; c++ ) { m_sum += v2[ c ]; }
+        shimmer.setSample( indexThroughCurrentBuffer, m_sum * 1.0f/(float)m_erChannels );
+        auto shimOut = 0.5f * shimmer.pitchShiftOutput( indexThroughCurrentBuffer, 2.0f );
+        for ( int c = 0; c < m_erChannels; c++ ) { v2[ c ] += shimOut; }
+    }
+    //==============================================================================
     void randomiseDelayTimes()
     {
         // set each stage to be twice the length of the last
@@ -225,24 +245,17 @@ private:
         for (int c = 0; c < m_erChannels; c ++)
         {
             float sum = 0.0f;
-            for ( int s = 0; s < m_erStages; s++ )
-            { sum += erDT[ s ][ c ]; }
-            //            DBG("er sum " << c << " " << sum );
-            if ( sum >  maxLenForERChannel )
-            { maxLenForERChannel = sum; }
+            for ( int s = 0; s < m_erStages; s++ ) { sum += erDT[ s ][ c ]; }
+            if ( sum >  maxLenForERChannel ) { maxLenForERChannel = sum; }
         }
-        
-        //        DBG( " m_lrTotalLength " << m_lrTotalLength << " maxLenForERChannel " << maxLenForERChannel );
         auto minLRtime = fmin( m_lrTotalLength * 0.5, maxLenForERChannel * 0.66);
         auto dtC = ( m_lrTotalLength - minLRtime ) / (float)m_erChannels;
-        //        DBG( "minLRtime " << minLRtime << " dtC " << dtC );
         
         for (int c = 0; c < m_erChannels; c ++)
         {
             auto dt = rand01() * dtC;
             dt += (dtC * c) + minLRtime;
             lrDT[ c ] = dt;
-            //            DBG( lrDT[ c ] );
         }
         std::random_shuffle ( std::begin( lrDT ), std::end( lrDT ) );
         
@@ -253,16 +266,11 @@ private:
         {
             for ( int c = 0; c < m_erChannels; c++ ) { delayLineLengths[ c ] += erDT[ s ][ c ]; }
         }
-        for ( int c = 0; c < m_erChannels; c++ )
-        {
-            delayLineLengths[ c ] += lrDT[ c ];
-            //            DBG( c << " " << delayLineLengths[ c ] );
-        }
+        for ( int c = 0; c < m_erChannels; c++ ) { delayLineLengths[ c ] += lrDT[ c ]; }
         float longest = 0;
         for ( int c = 0; c < m_erChannels; c++ )
         {
             if ( delayLineLengths[ c ] > longest ) { longest = delayLineLengths[ c ]; }
-            //            DBG( c << " " << delayLineLengths[ c ] );
         }
         
         float sum = 0;
@@ -329,6 +337,7 @@ private:
             }
             lr[c].updateBufferPositions( bufferSize );
         }
+        shimmer.updateBufferPositions( bufferSize );
     }
     //==============================================================================
     void processOutput( juce::AudioBuffer<float> &buffer, int samp, int nInChannels, float gainFactor )
@@ -363,15 +372,11 @@ private:
                 auto dt = pow( erDT[ s ][ c ], erSizeFactor );
                 dt += ( dt * erMod[ s ][ c ].getSample( ) * erModD[ s ][ c ] * modFactor );
                 er[ s ][ c ].setDelayTime( dt );
-//                DBG( s << " " << c << " " << er[ s ][ c ]. getDelayTimeMS() );
-                // flip some polarities
-                if ( m_erFlip[ s ][ c ] ) { v1[ c ] *= -1.0f ; }
+                if ( m_erFlip[ s ][ c ] ) { v1[ c ] *= -1.0f ; } // flip some polarities
                 // write previous to er vector
                 er[ s ][ c ].setSample( indexThroughCurrentBuffer, v1[ c ] );
                 // copy delayed sample from channel to temporary
                 v1[ c ] =  er[ s ][ c ].getSample( indexThroughCurrentBuffer );
-//                v1[ c ] = erLPF[ s ][ c ].filterInput( v1[ c ] );
-                
             }
             for (int c = 0; c < m_erChannels; c ++ )
             {
@@ -388,23 +393,26 @@ private:
     void processLateReflections( int indexThroughCurrentBuffer, float lrSizeFactor, float fbFactor, float modFactor, float lrCutOff )
     {
         // copy delayed samples into v2
-        m_sum = 0.0f; // use this to mix all samples with householder matrix
+        
         for ( int c = 0; c < m_erChannels; c++ )
         {
             auto dt = pow( lrDT[ c ], lrSizeFactor );
             dt += ( dt * lrMod[c].getSample( ) * lrModD[c] * modFactor );
             lr[c]. setDelayTime( dt );
-//            DBG( c << " " << lr[ c ]. getDelayTimeMS() );
             v2[ c ] = lr[ c ].getSample( indexThroughCurrentBuffer );
             lrLPF[ c ].setCutoff( lrCutOff );
             v2[ c ] = lrLPF[ c ].filterInput( v2[ c ] );
+        }
+        
+        
+        m_sum = 0.0f; // use this to mix all samples with householder matrix
+        for( int c = 0; c < m_erChannels; c++ )
+        {
             m_sum += v2[ c ];
         }
         m_sum *= m_householderWeight;
-        
-        for ( int c = 0; c < m_erChannels; c++ ) { v2[ c ] += m_sum; }
-        
-        // mixed delayed outputs are in v2
+        for ( int c = 0; c < m_erChannels; c++ ) { v2[ c ] += m_sum; } // mixed delayed outputs are in v2
+        addShimmerInLR( indexThroughCurrentBuffer );
         for ( int c = 0; c < m_erChannels; c++ )
         {
             auto val = ( fbFactor * v2[c] ) + v1[c];
@@ -456,6 +464,8 @@ private:
             }
             lr[ c ].initialise( m_SR , m_lrTotalLength );
         }
+        shimmer.initialise( m_SR, 100.0f );
+        shimmer.setDelayTimeSamps( 2 );
     }
     //==============================================================================
     void initialiseModulators()
@@ -491,6 +501,9 @@ private:
     std::array< sjf_lpf,  m_erChannels > lrLPF;
     std::array< sjf_osc,  m_erChannels > lrMod;
     std::array< float,  m_erChannels > lrModD;
+    
+    // shimmer
+    sjf_monoPitchShift shimmer;
     
     int m_SR = 44100, m_blockSize = 64;
     float m_lrTotalLength = m_maxTime * 2.0f/3.0f;

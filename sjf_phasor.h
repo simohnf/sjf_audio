@@ -19,13 +19,14 @@ public:
     {
         m_SR = sample_rate;
         setFrequency( f );
-    };
+    }
     
     void setSampleRate( float sample_rate)
     {
         m_SR = sample_rate;
         calculateIncrement();
     }
+    
     void setFrequency(float f)
     {
         m_frequency = f;
@@ -38,11 +39,11 @@ public:
         else
         {
             m_negFreqFlag = true;
-            m_increment = -1*m_frequency / m_SR ;
+            m_increment = -1.0f * m_frequency / m_SR ;
         }
-    };
+    }
     
-    float getFrequency(){ return m_frequency ;};
+    float getFrequency(){ return m_frequency ;}
     
     float output()
     {
@@ -50,24 +51,25 @@ public:
         {
             float p = m_position;
             m_position += m_increment;
-            if (m_position >= 1){ m_position -= 1; }
+            if (m_position >= 1.0f){ m_position -= 1.0f; }
             return p;
         }
         else
         {
             float p = m_position;
             m_position += m_increment;
-            while (m_position >= 1){ m_position -= 1; }
+            while (m_position >= 1.0f){ m_position -= 1.0f; }
             return 1 - p;
         }
-    };
+    }
     
     void setPhase(float p)
     {
-        if (p < 0) {p = 0;}
-        else if (p > 1){ p = 1 ;}
+        if (p < 0.0f) {p = 0.0f;}
+        else if (p > 1.0f){ p = 1.0f;}
         m_position = p;
-    };
+    }
+    
     float getPhase(){
         return m_position;
     }
@@ -77,7 +79,7 @@ private:
     float m_frequency = 440;
     float m_SR = 44100;
     float m_increment;
-    float m_position = 0;
+    float m_position = 0.0f;
     bool m_negFreqFlag = false;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_phasor)

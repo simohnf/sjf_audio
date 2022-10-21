@@ -40,9 +40,16 @@ public:
         m_delayTimeInSamps = m_delayTimeMS * m_SR * 0.001;
     }
     
+    void setDelayTimeSamps( float delayInSamps )
+    {
+        m_delayTimeInSamps = delayInSamps;
+        m_delayTimeMS = m_delayTimeInSamps / ( m_SR * 0.001 );
+        DBG( m_delayTimeInSamps << " " << m_delayTimeMS );
+    }
+    
     float getDelayTimeMS()
     {
-        return m_delayTimeInSamps / ( m_SR * 0.001 );
+        return m_delayTimeMS;
     }
 
     
@@ -70,7 +77,7 @@ public:
         m_delayLine[ wp ]  = value;
     }
     
-    int updateBufferPositions(int bufferSize)
+    int updateBufferPositions( int bufferSize )
     {
         //    Update write position ensuring it stays within size of delay buffer
         m_writePos += bufferSize;
@@ -79,10 +86,10 @@ public:
             m_writePos -= m_delayBufferSize;
         }
         return m_writePos;
-    };
+    }
 
 protected:
-    float m_delayTimeInSamps, m_SR = 44100, m_delayTimeMS, m_maxSizeMS;
+    float m_delayTimeInSamps = 0.0f, m_SR = 44100, m_delayTimeMS = 0.0f, m_maxSizeMS;
     int m_writePos = 0, m_delayBufferSize;
     std::vector<float> m_delayLine;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_monoDelay )

@@ -10,6 +10,7 @@
 #include <JuceHeader.h>
 #include "sjf_monoDelay.h"
 #include "sjf_phasor.h"
+#include "sjf_lpf.h"
 
 
 #define PI 3.14159265
@@ -17,26 +18,75 @@
 class sjf_monoPitchShift : public sjf_monoDelay
 {
 public:
-    sjf_monoPitchShift( ) { }
+    sjf_monoPitchShift( )
+    {
+        transpositionSmooth.setCutoff( 0.1f );
+        lpf.setCutoff ( 0.999999f );
+        m_transpositionCalculationFactor = -1.0f  / ( m_windowSize * 0.001f ); // f = (t-1)* R/s
+        m_pitchPhasor.initialise( m_SR, 1.0f );
+    }
     ~sjf_monoPitchShift( ) { }
     
-    float pitchShiftOutput( int indexThroughCurrentBuffer )
+    
+//    void initialise( int sampleRate ) override
+//    {
+//        m_SR = sampleRate;
+//        int size = round(m_SR * 0.001 * m_maxSizeMS);
+//        m_delayBufferSize = size;
+//        m_delayLine.resize( m_delayBufferSize, 0 );
+//        setDelayTime( m_delayTimeMS );
+//        m_pitchPhasor.initialise( m_SR, 1.0f );
+//    }
+//
+//
+//    void initialise( int sampleRate , float sizeMS ) override
+//    {
+//        m_maxSizeMS = sizeMS;
+//        m_SR = sampleRate;
+//        int size = round(m_SR * 0.001 * m_maxSizeMS);
+//        m_delayBufferSize = size;
+//        m_delayLine.resize( m_delayBufferSize, 0 );
+//        setDelayTime( m_delayTimeMS );
+//        m_pitchPhasor.initialise( m_SR, 1.0f );
+//    }
+    
+    
+    // transposition should be calculated as multiple (i.e. 2 would be an octave up, 0.5 an octave down)
+    float pitchShiftOutput( int indexThroughCurrentBuffer, float transposition )
     {
+        transposition = transpositionSmooth.filterInput( transposition ) - 1.0f;
+        // f = (t-1)* R/s
+        transposition *= m_transpositionCalculationFactor;
         
+        m_pitchPhasor.setFrequency( transposition );
+        // first voice
+        auto phase = m_pitchPhasor.output();
+        auto pitchShiftTimeDiff = phase * m_windowSize;
+        setDelayTime( pitchShiftTimeDiff );
+        auto amp = sin( PI * phase );
+        auto val = amp * getSample( indexThroughCurrentBuffer );
+        // second voice
+        phase += 0.5f;
+        if ( phase >= 1.0f ) { phase -= 1.0f; }
+        pitchShiftTimeDiff = phase * m_windowSize;
+        setDelayTime( pitchShiftTimeDiff );
+        amp = sin( PI * phase );
+        val += amp * getSample( indexThroughCurrentBuffer );
+        return lpf.filterInput( val );
     }
     
-    
-    float pitchShiftOutputCalculations( int index, float delTime, float phase, float pitchShiftWindowSamples, float delayBufferSize, float gain )
+    float getWindowSize( )
     {
-
+        return m_windowSize;
     }
 private:
+    
     sjf_phasor m_pitchPhasor;
+    sjf_lpf transpositionSmooth, lpf;
+    float m_windowSize = 100, m_transpositionCalculationFactor;
     
-    float m_lastTransposition;
     
-    
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_monoPitchShift_h )
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_monoPitchShift )
 };
 
 #endif /* sjf_monoPitchShift_h */

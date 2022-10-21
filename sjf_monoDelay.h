@@ -81,7 +81,7 @@ public:
         return m_writePos;
     };
 
-private:
+protected:
     float m_delayTimeInSamps, m_SR = 44100, m_delayTimeMS, m_maxSizeMS;
     int m_writePos = 0, m_delayBufferSize;
     std::vector<float> m_delayLine;

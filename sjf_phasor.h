@@ -40,9 +40,6 @@ public:
             m_negFreqFlag = true;
             m_increment = -1*m_frequency / m_SR ;
         }
-        
-        
-        
     };
     
     float getFrequency(){ return m_frequency ;};

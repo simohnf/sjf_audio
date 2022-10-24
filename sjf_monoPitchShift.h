@@ -20,7 +20,8 @@ class sjf_monoPitchShift : public sjf_monoDelay
 public:
     sjf_monoPitchShift( )
     {
-        lpf.setCutoff ( 0.999999f );
+        lpf.setCutoff ( 0.9999f );
+        hpf.setCutoff ( 0.0001f );
         m_transpositionCalculationFactor = -1.0f  / ( m_windowSize * 0.001f ); // f = (t-1)* R/s
         m_pitchPhasor.initialise( m_SR, 1.0f );
     }
@@ -49,7 +50,7 @@ public:
         setDelayTime( pitchShiftTimeDiff );
         amp = sin( PI * phase );
         val += amp * getSample( indexThroughCurrentBuffer );
-        return lpf.filterInput( val );
+        return ( lpf.filterInput( val ) - hpf.filterInput( val ) );
     }
     
     float getWindowSize( )
@@ -59,7 +60,7 @@ public:
 private:
     
     sjf_phasor m_pitchPhasor;
-    sjf_lpf lpf;
+    sjf_lpf lpf, hpf;
     float m_windowSize = 100, m_transpositionCalculationFactor;
     
     

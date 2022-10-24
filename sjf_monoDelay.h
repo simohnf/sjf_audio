@@ -44,7 +44,7 @@ public:
     {
         m_delayTimeInSamps = delayInSamps;
         m_delayTimeMS = m_delayTimeInSamps / ( m_SR * 0.001 );
-        DBG( m_delayTimeInSamps << " " << m_delayTimeMS );
+//        DBG( m_delayTimeInSamps << " " << m_delayTimeMS );
     }
     
     float getDelayTimeMS()
@@ -57,16 +57,29 @@ public:
     {
         float readPos = m_delayBufferSize + m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer;
         while (readPos >= m_delayBufferSize) { readPos -= m_delayBufferSize; }
-//        return m_delayLine[ readPos ];
-        return cubicInterpolateGodot( m_delayLine, readPos );
-//        return fourPointFourthOrderOptimal( m_delayLine, readPos );
-//        return fourPointInterpolatePD( m_delayLine, readPos );
+        switch ( m_interpolationType )
+        {
+            case 1:
+                return linearInterpolate( m_delayLine, readPos );
+            case 2:
+                return cubicInterpolate( m_delayLine, readPos );
+            case 3:
+                return fourPointInterpolatePD( m_delayLine, readPos );
+            case 4:
+                return fourPointFourthOrderOptimal( m_delayLine, readPos );
+            case 5:
+                return cubicInterpolateGodot( m_delayLine, readPos );
+            case 6:
+                return cubicInterpolateHermite( m_delayLine, readPos );
+            default:
+                return linearInterpolate( m_delayLine, readPos );
+        }
     }
     
     float getSampleRoundedIndex( int indexThroughCurrentBuffer )
     {
-        float readPos = round(m_delayBufferSize + m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer);
-        while (readPos >= m_delayBufferSize) { readPos -= m_delayBufferSize; }
+        int readPos = round(m_delayBufferSize + m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer);
+        readPos %= m_delayBufferSize;
         return m_delayLine[ readPos ];
     }
     
@@ -81,17 +94,20 @@ public:
     {
         //    Update write position ensuring it stays within size of delay buffer
         m_writePos += bufferSize;
-        while ( m_writePos >= m_delayBufferSize )
-        {
-            m_writePos -= m_delayBufferSize;
-        }
+        while ( m_writePos >= m_delayBufferSize ) { m_writePos -= m_delayBufferSize; }
         return m_writePos;
+    }
+    
+    void setInterpolationType( int interpolationType )
+    {
+        m_interpolationType = interpolationType;
     }
 
 protected:
     float m_delayTimeInSamps = 0.0f, m_SR = 44100, m_delayTimeMS = 0.0f, m_maxSizeMS;
-    int m_writePos = 0, m_delayBufferSize;
+    int m_writePos = 0, m_delayBufferSize, m_interpolationType = 1;
     std::vector<float> m_delayLine;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_monoDelay )
 };
 

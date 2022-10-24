@@ -190,7 +190,6 @@ public:
         m_modulationTarget = newModulation * 0.01f;
     }
     //==============================================================================
-    
     void setMix ( float newMix )
     {
         newMix *= 0.01f;
@@ -198,18 +197,15 @@ public:
         m_dryTarget = sqrt( 1.0f - ( newMix ) );
     }
     //==============================================================================
+    void setShimmer ( float newShimmerLevel, float newShimmerTransposition )
+    {
+        newShimmerLevel *= 0.01f;
+        m_shimmerLevelTarget = pow( newShimmerLevel, 2.0f );
+        m_shimmerTransposeTarget = pow( 2.0f, ( newShimmerTransposition / 12.0f ) );
+    }
+    //==============================================================================
     
 private:
-    //==============================================================================
-    void addShimmerPreLR( int indexThroughCurrentBuffer )
-    {
-        // shimmer
-        m_sum = 0.0f;
-        for ( int c = 0; c < m_erChannels; c++ ) { m_sum += v1[ c ]; }
-        shimmer.setSample( indexThroughCurrentBuffer, m_sum * 1.0f/(float)m_erChannels );
-        auto shimOut = shimmer.pitchShiftOutput( indexThroughCurrentBuffer, 4.0f );
-        for ( int c = 0; c < m_erChannels; c++ ) { v1[ c ] += shimOut; }
-    }
     //==============================================================================
     void addShimmerInLR( int indexThroughCurrentBuffer )
     {
@@ -217,8 +213,12 @@ private:
         m_sum = 0.0f;
         for ( int c = 0; c < m_erChannels; c++ ) { m_sum += v2[ c ]; }
         shimmer.setSample( indexThroughCurrentBuffer, m_sum * 1.0f/(float)m_erChannels );
-        auto shimOut = 0.5f * shimmer.pitchShiftOutput( indexThroughCurrentBuffer, 2.0f );
-        for ( int c = 0; c < m_erChannels; c++ ) { v2[ c ] += shimOut; }
+        auto shim = shimmer.pitchShiftOutput( indexThroughCurrentBuffer, m_shimmerTransposeSmooth.filterInput( m_shimmerTransposeTarget ) );
+        shim *= m_shimmerLevelSmooth.filterInput( m_shimmerLevelTarget );
+        for ( int c = 0; c < m_erChannels; c++ )
+        {
+            v2[ c ] += shim;
+        }
     }
     //==============================================================================
     void randomiseDelayTimes()
@@ -511,8 +511,8 @@ private:
 //    float m_erTotalLength = fmin( 150, m_maxTime * 1.0f/3.0f );
 //    float m_lrTotalLength = m_maxTime - m_erTotalLength;;
 
-    float m_modulationTarget, m_sizeTarget, m_dryTarget = 0.89443f, m_wetTarget = 0.44721f, m_lrFBTarget = 0.85, m_lrCutOffTarget = 0.8, m_erCutOffTarget = 0.8;
-    sjf_lpf m_sizeSmooth, m_fbSmooth, m_modSmooth, m_wetSmooth, m_drySmooth, m_lrCutOffSmooth, m_erCutOffSmooth;
+    float m_modulationTarget, m_sizeTarget, m_dryTarget = 0.89443f, m_wetTarget = 0.44721f, m_lrFBTarget = 0.85f, m_lrCutOffTarget = 0.8f, m_erCutOffTarget = 0.8f, m_shimmerTransposeTarget = 2.0f, m_shimmerLevelTarget = 0.4f;
+    sjf_lpf m_sizeSmooth, m_fbSmooth, m_modSmooth, m_wetSmooth, m_drySmooth, m_lrCutOffSmooth, m_erCutOffSmooth, m_shimmerTransposeSmooth, m_shimmerLevelSmooth;
     float m_sum; // every little helps with cpu, I reuse this at multiple stages just to add and mix sample values
     float m_householderWeight = ( -2.0f / (float)m_erChannels );
     

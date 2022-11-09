@@ -14,26 +14,27 @@ public:
     sjf_lpf(){};
     ~sjf_lpf(){};
     
-    float filterInput( float value )
+    float filterInput( float x )
     {
-        m_buf0 += m_cutoff * (value - m_buf0);
-        m_buf1 += m_cutoff * (m_buf0 - m_buf1);
-        return m_buf1;
+        // out = in + preIn
+        m_y0 += m_b * (x - m_y0);
+        m_y1 += m_b * (m_y0 - m_y1);
+        return m_y1;
     }
     
     void setCutoff( float newCutoff )
     {
-        if (newCutoff >= 1) { m_cutoff = 0.99999f; }
-        else if( newCutoff < 0 ) { m_cutoff = 0.0f; }
-        else { m_cutoff = newCutoff; }
+        if (newCutoff >= 1) { m_b = 0.99999f; }
+        else if( newCutoff < 0 ) { m_b = 0.0f; }
+        else { m_b = newCutoff; }
     }
     
     float getCutoff()
     {
-        return m_cutoff;
+        return m_b;
     }
 private:
-    float m_buf0 = 0.0f, m_buf1 = 0.0f, m_cutoff = 0.5;
+    float m_y0 = 0.0f, m_y1 = 0.0f, m_b = 0.5;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_lpf )
 };

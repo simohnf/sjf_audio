@@ -25,10 +25,14 @@ public:
             float x3 = x2 * x;
             float x4 = x3 * x;
             float x5 = x4 * x;
+            float x6 = x5 * x;
+            float x7 = x6 * x;
             m_chebys[ 0 ][ i ] = ( 2.0f * x2 ) - 1.0f;
             m_chebys[ 1 ][ i ] = ( 4.0f * x3 ) - ( 3.0f * x );
             m_chebys[ 2 ][ i ] = ( 8.0f * x4 ) - ( 8.0f * x2 ) + 1.0f;
             m_chebys[ 3 ][ i ] = ( 16.0f * x5 ) - ( 20.0f * x3 ) + ( 5.0f * x );
+            m_chebys[ 4 ][ i ] = ( 32.0f * x6 ) - ( 48.0f * x4 ) + ( 18.0f * x2 ) - 1.0f;
+            m_chebys[ 5 ][ i ] = ( 64.0f * x7 ) - ( 112.0f * x5 ) + ( 56.0f  * x3 ) - ( 7.0f * x );
         }
     }
     ~sjf_chebyshev(){}
@@ -45,10 +49,12 @@ public:
         return m_chebys[ order ][ value ];
     }
     
-//    const static int m_SR1 = 44100;
-//    const static int m_SR2 = 48000;
+    int getNumOrders() { return m_nOrders; }
+    
+private:
+    
     const static int m_halfArraySize = 2116800;
-    const static int m_nOrders = 4;
+    const static int m_nOrders = 6;
     const static int m_arraySize = 4233600;
     
                                       

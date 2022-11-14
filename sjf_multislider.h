@@ -10,7 +10,7 @@
 #include <vector>
 #include <JuceHeader.h>
 
-class sjf_multislider : public juce::Component
+class sjf_multislider : public juce::Component, public juce::SettableTooltipClient
 {
 public:
     //==============================================================================

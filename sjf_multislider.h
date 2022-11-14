@@ -119,7 +119,23 @@ public:
         sliderColourID              = 0x1001310,
     };
     //==============================================================================
+    void setSliderValue( int sliderNumber, float val )
+    {
+        if ( sliderNumber < getNumSliders() )
+        {
+            val = fmin( val, 1.0f );
+            val = fmax( val, 0.0f );
+            m_sliders[ sliderNumber ]->setValue( val );
+        }
+    }
+    //==============================================================================
+    juce::Array<juce::Slider*> getSliderArray()
+    {
+        return m_sliders;
+    }
+    //==============================================================================
 private:
+    //==============================================================================
     void calulateMousePosToSliderVal( const juce::MouseEvent& e )
     {
         auto theTouchedSlider = findTouchedSlider( e );

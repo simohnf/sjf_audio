@@ -54,6 +54,11 @@ public:
     {
         m_firstOrderFlag = yesIfFirstOrder;
     }
+    
+    bool getIsFirstOrder()
+    {
+        return m_firstOrderFlag;
+    }
 private:
     float m_y0 = 0.0f, m_y1 = 0.0f, m_b = 0.5;
     bool m_firstOrderFlag = false;

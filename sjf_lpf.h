@@ -16,9 +16,16 @@ public:
     
     float filterInput( float x )
     {
-        // out = in + preIn
+        
         m_y0 += m_b * (x - m_y0);
-        m_y1 += m_b * (m_y0 - m_y1);
+        if ( m_firstOrderFlag )
+        {
+            m_y1 = m_y0;
+        }
+        else
+        {
+            m_y1 += m_b * (m_y0 - m_y1);
+        }
         return m_y1;
     }
     
@@ -33,9 +40,23 @@ public:
     {
         return m_b;
     }
+    
+    float getY0()
+    {
+        return m_y0;
+    }
+    float getY1()
+    {
+        return m_y1;
+    }
+    
+    void isFirstOrder( bool yesIfFirstOrder )
+    {
+        m_firstOrderFlag = yesIfFirstOrder;
+    }
 private:
     float m_y0 = 0.0f, m_y1 = 0.0f, m_b = 0.5;
-
+    bool m_firstOrderFlag = false;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_lpf )
 };
 #endif /* sjf_lpf_h */

@@ -23,6 +23,8 @@ public:
     
     float filterInput( float x )
     {
+        x *= ( 1.0f + (m_bassBoost * m_K) );
+        
         m_preY = 0.0f;
         for ( int o = 0; o < m_nOrders; o++ )
         {
@@ -63,6 +65,26 @@ public:
         f = fmin( fmax( f, 20.0f ), 5000.0f );
         setCoefficent( sin( f * 2 * 3.141593 / m_SR ) );
     }
+    
+    void setBassBoost ( float boost )
+    {
+        // must be between 0 and 1 !!!!
+        m_bassBoost = fmin( fmax( boost, 0.0f ), 1.0f );
+    }
+    
+    void setResonanceQuick( float r )
+    {
+        // must be 0 --> 4 for stability
+        m_K = r;
+        calculateAlpha();
+    }
+    
+    void setBassBoostQuick ( float boost )
+    {
+        // must be between 0 and 1 !!!!
+        m_bassBoost = boost;
+    }
+    
 private:
     void calculateAlpha()
     {
@@ -75,10 +97,11 @@ private:
         gamma[ 2 ] = m_a0;
         gamma[ 3 ] = 1.0f;
     }
+    
     const static int m_nOrders = 4;
     std::array < float, m_nOrders >  m_gamma;
     std::array < sjf_lpfFirst, m_nOrders > m_lpf;
-    float m_a0 = 0.2f, m_K = 0.0f, m_alpha0, m_preY, m_SR = 44100.0f;
+    float m_bassBoost = 0.0f; m_a0 = 0.2f, m_K = 0.0f, m_alpha0, m_preY, m_SR = 44100.0f;
                            
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_moogLadder )

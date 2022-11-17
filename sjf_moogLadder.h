@@ -21,22 +21,23 @@ public:
     };
     ~sjf_moogLadder(){};
     
-    float filterInput( float x )
+    float filterInput( float val )
     {
-        x *= ( 1.0f + (m_bassBoost * m_K) );
+        val *= ( 1.0f + (m_bassBoost * m_K) );
         
         m_preY = 0.0f;
         for ( int o = 0; o < m_nOrders; o++ )
         {
             m_preY += m_lpf[ o ].getY() * m_gamma[ o ];
         }
-        m_preY *= m_K * -1.0f;
-        x += m_preY;
-        x = tanh( x ) * m_alpha;
+        m_preY *= m_K;
+        val -= m_preY;
+        val = tanh( val ) * m_alpha0;
         for ( int o = 0; o < m_nOrders; o++ )
         {
-            x = m_lpf[ o ].filterInput( x )
+            val = m_lpf[ o ].filterInput( val );
         }
+        return val;
     }
     
     void setSampleRate( float sr )
@@ -92,16 +93,16 @@ private:
     }
     void calculateGammas()
     {
-        gamma[ 0 ] = m_a0*m_a0*m_a0;
-        gamma[ 1 ] = m_a0*m_a0;
-        gamma[ 2 ] = m_a0;
-        gamma[ 3 ] = 1.0f;
+        m_gamma[ 0 ] = m_a0*m_a0*m_a0;
+        m_gamma[ 1 ] = m_a0*m_a0;
+        m_gamma[ 2 ] = m_a0;
+        m_gamma[ 3 ] = 1.0f;
     }
     
     const static int m_nOrders = 4;
     std::array < float, m_nOrders >  m_gamma;
     std::array < sjf_lpfFirst, m_nOrders > m_lpf;
-    float m_bassBoost = 0.0f; m_a0 = 0.2f, m_K = 0.0f, m_alpha0, m_preY, m_SR = 44100.0f;
+    float m_bassBoost = 0.0f, m_a0 = 0.2f, m_K = 0.0f, m_alpha0, m_preY, m_SR = 44100.0f;
                            
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_moogLadder )

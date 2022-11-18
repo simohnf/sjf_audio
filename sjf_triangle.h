@@ -8,7 +8,8 @@
 #define sjf_triangle_h
 
 // convert phase ramp 0->1 to triangle wave with variable duty cycle
-
+// not band limited!!!
+// suitable for lfo
 class sjf_triangle
 {
 public:
@@ -22,7 +23,7 @@ public:
         
         if ( x > m_duty )
         {
-            x = ( 1.0f - x ) / ( 1.0f - m_duty );
+            x = ( 1.0f - x ) * m_inverseOneMinusDuty;
         }
         else
         {
@@ -37,11 +38,11 @@ public:
     void setDuty( float d )
     {
         m_duty = d;
-        m_inverseDuty = 1.0f / m_duty;
+        m_inverseOneMinusDuty = 1.0f / ( 1.0f - m_duty );
     }
     
 private:
-    float m_duty = 0.5f, m_inverseDuty = 2.0f;
+    float m_duty = 0.5f, m_inverseOneMinusDuty = 2.0f;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_triangle )
 };

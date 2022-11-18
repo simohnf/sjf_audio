@@ -11,6 +11,12 @@
 #define sjf_moogLadder_h
 
 #include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_lpfFirst.h"
+inline
+float calculateOnePoleFilterCoefficient( float f, float sampleRate)
+{
+    return ( sin( f * 2 * 3.141593 / sampleRate ) );
+}
+
 class sjf_moogLadder
 {
 public:
@@ -32,7 +38,7 @@ public:
         }
         m_preY *= m_K;
         val -= m_preY;
-        val = tanh( val ) * m_alpha0;
+        val = tanh( val ) * m_alpha;
         for ( int o = 0; o < m_nOrders; o++ )
         {
             val = m_lpf[ o ].filterInput( val );
@@ -44,12 +50,14 @@ public:
     {
         m_SR = sr;
     }
+    
     void setCoefficent( float c )
     {
-        m_a0 = c;
+        // c must be 0 --> 1 !!!
+        m_a = c;
         for ( int o = 0; o < m_nOrders; o++ )
         {
-            m_lpf[ o ].setCutoff( m_a0 );
+            m_lpf[ o ].setCutoff( m_a );
         }
         calculateAlpha();
         calculateGammas();
@@ -89,20 +97,20 @@ public:
 private:
     void calculateAlpha()
     {
-        m_alpha0 = 1.0f / ( 1.0f + (m_a0*m_a0*m_a0*m_a0 * m_K) );
+        m_alpha = 1.0f / ( 1.0f + (m_a * m_a * m_a * m_a * m_K) );
     }
     void calculateGammas()
     {
-        m_gamma[ 0 ] = m_a0*m_a0*m_a0;
-        m_gamma[ 1 ] = m_a0*m_a0;
-        m_gamma[ 2 ] = m_a0;
+        m_gamma[ 0 ] = m_a * m_a * m_a;
+        m_gamma[ 1 ] = m_a * m_a;
+        m_gamma[ 2 ] = m_a;
         m_gamma[ 3 ] = 1.0f;
     }
     
     const static int m_nOrders = 4;
     std::array < float, m_nOrders >  m_gamma;
     std::array < sjf_lpfFirst, m_nOrders > m_lpf;
-    float m_bassBoost = 0.0f, m_a0 = 0.2f, m_K = 0.0f, m_alpha0, m_preY, m_SR = 44100.0f;
+    float m_bassBoost = 0.0f, m_a = 0.2f, m_K = 0.0f, m_alpha, m_preY = 0.0f, m_SR = 44100.0f;
                            
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_moogLadder )

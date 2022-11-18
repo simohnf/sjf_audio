@@ -207,7 +207,6 @@ inline std::vector<bool> twosThreesAndFours( int nBeatsToGenerate )
     }
     return output;
 }
-
 ////==============================================================================
 //
 //void hadamard( std::vector< std::vector<float> > &hadamard, int size )

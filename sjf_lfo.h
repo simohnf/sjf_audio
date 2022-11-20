@@ -12,6 +12,7 @@
 #include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_audioUtilities.h"
 #include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_triangle.h"
 #include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_noiseOSC.h"
+#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_lpfFirst.h"
 
 class sjf_lfo
 {
@@ -22,11 +23,6 @@ public:
     float output()
     {
         m_phase = m_count / m_SR;
-        m_count++;
-        while ( m_count >= m_SR )
-        {
-            m_count -= m_SR;
-        }
         m_phase = m_rateMultiplier.rateChange( m_phase );
         
         switch( m_lfoType )
@@ -52,12 +48,23 @@ public:
         }
         
         m_lastPhase = m_phase;
+        m_count++;
+        while ( m_count >= m_SR )
+        {
+            m_count -= m_SR;
+        }
+        
+        if ( m_lfoType == noise1 )
+        { // smooth out random changes slightly
+            return lpf.filterInput ( m_out );
+        }
         return m_out;
     }
     
     void setSampleRate( float sr )
     {
         m_SR = sr;
+        lpf.setCutoff( sin( 20 * 2 * 3.141593 / m_SR ) );
     }
     
     void setLFOtype( int type )
@@ -77,7 +84,7 @@ public:
     
     enum lfoType
     {
-        sine, triangle, noise1, noise2
+        sine = 1, triangle, noise1, noise2
     };
     
 private:
@@ -86,6 +93,7 @@ private:
     sjf_phaseRateMultiplier m_rateMultiplier;
     sjf_triangle m_triangle;
     sjf_noiseOSC m_noise2;
+    sjf_lpfFirst lpf; // just for safety
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_lfo )
 };
 #endif /* sjf_lfo_h */

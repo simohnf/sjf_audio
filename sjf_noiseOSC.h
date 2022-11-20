@@ -24,11 +24,16 @@ public:
         if ( phase < m_lastPhase )
         {
             m_lastTarget = m_currentTarget;
+//            DBG( "last " << m_lastTarget );
             m_currentTarget = randomTarget();
+//            DBG( "current " << m_currentTarget );
+            m_diff = m_currentTarget - m_lastTarget;
+//            DBG( "diff " << m_diff );
+//            DBG("");
         }
         m_lastPhase = phase;
-        m_out += phase * ( m_currentTarget - m_lastTarget );
-        return m_out;
+//        m_out += phase * m_diff;
+        return m_lastTarget + ( phase * m_diff );
     }
 
 private:
@@ -37,7 +42,7 @@ private:
         return ( rand01() * 2.0f ) - 1.0f;
     }
     
-    float m_lastPhase = 1.0f, m_out = 0.0f, m_currentTarget = 0.0f, m_lastTarget = 0.0f;
+    float m_lastPhase = 1.0f,  m_currentTarget = 0.0f, m_lastTarget = 0.0f, m_diff;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_noiseOSC )
 };

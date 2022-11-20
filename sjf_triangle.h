@@ -18,8 +18,8 @@ public:
     
     float output ( float x )
     {
-        x += 0.25;
-        x = x - (int)x;
+//        x += 0.25;
+//        x = x - (int)x;
         
         if ( x > m_duty )
         {
@@ -27,7 +27,7 @@ public:
         }
         else
         {
-            x *= m_duty;
+            x *= m_inverseDuty;
         }
         x *= 2.0f;
         x -= 1.0f;
@@ -38,11 +38,12 @@ public:
     void setDuty( float d )
     {
         m_duty = d;
+        m_inverseDuty = 1.0f / m_duty;
         m_inverseOneMinusDuty = 1.0f / ( 1.0f - m_duty );
     }
     
 private:
-    float m_duty = 0.5f, m_inverseOneMinusDuty = 2.0f;
+    float m_duty = 0.5f, m_inverseOneMinusDuty = 2.0f, m_inverseDuty = 2.0f;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_triangle )
 };

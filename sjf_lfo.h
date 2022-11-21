@@ -22,6 +22,7 @@ public:
     
     float output()
     {
+        // base frequency is always 1hz for simplicity of calculations
         m_phase = m_count / m_SR;
         m_phase = m_rateMultiplier.rateChange( m_phase );
         
@@ -47,6 +48,8 @@ public:
                 break;
         }
         
+        
+        
         m_lastPhase = m_phase;
         m_count++;
         while ( m_count >= m_SR )
@@ -56,15 +59,15 @@ public:
         
         if ( m_lfoType == noise1 )
         { // smooth out random changes slightly
-            return lpf.filterInput ( m_out );
+            return lpf.filterInput ( m_out ) + m_offset;
         }
-        return m_out;
+        return m_out + m_offset;
     }
     
     void setSampleRate( float sr )
     {
         m_SR = sr;
-        lpf.setCutoff( sin( 20 * 2 * 3.141593 / m_SR ) );
+        lpf.setCutoff( sin( 20.0f * 2.0f * 3.141593f / m_SR ) );
     }
     
     void setLFOtype( int type )
@@ -82,13 +85,20 @@ public:
         m_rateMultiplier.setRate( r );
     }
     
+    void setOffset( float o )
+    {
+        m_offset = o;
+    }
+    
     enum lfoType
     {
         sine = 1, triangle, noise1, noise2
     };
     
+    
+    
 private:
-    float m_SR = 44100.0f, m_phase = 0.0f, m_out = 0.0f, m_lastPhase = 1.0f;
+    float m_SR = 44100.0f, m_phase = 0.0f, m_out = 0.0f, m_lastPhase = 1.0f, m_offset = 0.0f;
     int m_count = 0, m_lfoType = 0;
     sjf_phaseRateMultiplier m_rateMultiplier;
     sjf_triangle m_triangle;

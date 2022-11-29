@@ -7,8 +7,6 @@
 #ifndef sjf_biquad_h
 #define sjf_biquad_h
 
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_biquadCalculator.h"
-
 // implementation of biquad filter
 //
 template <class T>

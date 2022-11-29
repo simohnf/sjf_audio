@@ -175,6 +175,9 @@ private:
     int m_type = 1;
     std::vector < T > m_coeffs;
     
+    
+
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_biquadCalculator )
 };
 

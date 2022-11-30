@@ -14,11 +14,6 @@
 //
 
 
-/*
- 
-            1st order calculation are incorrect!!!! it is currently tanW0 but it shoult be tan(w0/2)    
- 
- */
 template <class T>
 class sjf_biquadCalculator {
 public:
@@ -117,7 +112,9 @@ private:
         m_W0 = m_f0 * m_angFreqFactor;
         DBG( "m_W0 " << m_W0 );
         m_cosW0 = cos( m_W0 );
+        DBG( "m_cosW0 " << m_cosW0 );
         m_sinW0 = sin( m_W0 );
+        DBG( "m_sinW0 " << m_sinW0 );
         m_alpha = m_sinW0 / ( 2 * m_Q );
     }
     
@@ -129,19 +126,19 @@ private:
         m_coeffs [ 0 ] = ( 1 - m_cosW0 ) * 0.5 * inverseA0; // b0
         m_coeffs [ 1 ] = ( 1 - m_cosW0 ) * inverseA0; // b1
         m_coeffs [ 2 ] = m_coeffs [ 0 ]; // b2
-        m_coeffs [ 3 ] = -2 * m_cosW0 * inverseA0; // a1
+        m_coeffs [ 3 ] = -2 * (m_cosW0 * inverseA0); // a1 ---> precision seems to be lost by multiply by 2???
         m_coeffs [ 4 ] = ( 1 - m_alpha ) * inverseA0; // a2
     }
     
     // 1st order lowpass from https://www.proquest.com/openview/57ded8cf431b6f1c50a2c9e10742a5ad/1?pq-origsite=gscholar&cbl=2026666
     void lowpassCoefficients1st()
     {
-        T twoTanW0 = 2 * m_sinW0 / m_cosW0; // 2 * tan W0
+        T twoTanW0 = 2 * m_sinW0 / ( 1 + m_cosW0 ); // 2 * tan (W0 / 2)
         T invTwoTanW0Plus2 = 1 / ( 2 + twoTanW0 ); // 1 / (2 + 2tanW0)
         m_coeffs [ 0 ] = twoTanW0  * invTwoTanW0Plus2; // b0
         m_coeffs [ 1 ] = m_coeffs [ 0 ]; // b1
         m_coeffs [ 2 ] =  0; // b2
-        m_coeffs [ 3 ] = ( twoTanW0 + 2 )* invTwoTanW0Plus2; // a1
+        m_coeffs [ 3 ] = ( twoTanW0 - 2 ) * invTwoTanW0Plus2; // a1
         m_coeffs [ 4 ] = 0; // a2
     }
     
@@ -160,12 +157,12 @@ private:
     // 1st order highpass from https://www.proquest.com/openview/57ded8cf431b6f1c50a2c9e10742a5ad/1?pq-origsite=gscholar&cbl=2026666
     void highpassCoefficients1st()
     {
-        T twoTanW0 = 2 * m_sinW0 / m_cosW0; // 2 * tan W0
+        T twoTanW0 = 2 * m_sinW0 / ( 1 + m_cosW0 ) ; // 2 * tan W0 --> trig identity for tan(2Ø)
         T invTwoTanW0Plus2 = 1 / ( 2 + twoTanW0 ); // 1 / (2 + 2tanW0)
         m_coeffs [ 0 ] = 2 * invTwoTanW0Plus2; // b0
         m_coeffs [ 1 ] = -1 * m_coeffs [ 0 ]; // b1
         m_coeffs [ 2 ] =  0; // b2
-        m_coeffs [ 3 ] = ( twoTanW0 - 2 )* invTwoTanW0Plus2; // a1
+        m_coeffs [ 3 ] = ( twoTanW0 - 2 ) * invTwoTanW0Plus2; // a1
         m_coeffs [ 4 ] = 0; // a2
     }
     

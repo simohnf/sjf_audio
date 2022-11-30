@@ -34,6 +34,7 @@ public:
         m_b2 = coefficients[ 2 ];
         m_a1 = -1 * coefficients[ 3 ];
         m_a2 = -1 * coefficients[ 4 ];
+        DBG("m_b0 " << m_b0 << " m_b1 " << m_b1 << " m_b2 " << m_b2 << " m_a1 " << m_a1 << " m_a2" << m_a2 );
     }
     
     T getD1() { return m_d1; }

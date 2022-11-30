@@ -34,7 +34,7 @@ public:
     {
         m_calculator.setQFactor( q );
         m_biquad.setCoefficients( m_calculator.getCoefficients() );
-//        DBG("q " << q);
+        DBG("q " << q);
     }
     
     void setOrder( bool isFirstOrder )
@@ -43,9 +43,9 @@ public:
         m_biquad.setCoefficients( m_calculator.getCoefficients() );
     }
     
-    void filterType( int type )
+    void setFilterType( int type )
     {
-        m_calculator.filterType( type );
+        m_calculator.setFilterType( type );
         m_biquad.setCoefficients( m_calculator.getCoefficients() );
     }
     

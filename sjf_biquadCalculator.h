@@ -13,6 +13,12 @@
 // info from https://www.w3.org/TR/audio-eq-cookbook/
 //
 
+
+/*
+ 
+            1st order calculation are incorrect!!!! it is currently tanW0 but it shoult be tan(w0/2)    
+ 
+ */
 template <class T>
 class sjf_biquadCalculator {
 public:
@@ -27,9 +33,9 @@ public:
     {
         m_SR = sampleRate;
         m_angFreqFactor = 2 * m_pi / m_SR;
-//        DBG( "m_SR " << m_SR );
-//        DBG( "m_pi " << m_pi );
-//        DBG("m_angFreqFactor " << m_angFreqFactor);
+        DBG( "m_SR " << m_SR );
+        DBG( "m_pi " << m_pi );
+        DBG("m_angFreqFactor " << m_angFreqFactor);
         
     }
     
@@ -91,7 +97,7 @@ public:
         return m_coeffs;
     }
     
-    void filterType( int type )
+    void setFilterType( int type )
     {
         m_type = type;
     }

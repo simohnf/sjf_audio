@@ -24,7 +24,6 @@ public:
         m_lastIn = x;
         x *= m_rate;
         x += ( m_accum * m_rate );
-        
         x -= (int)x;
         return x;
     }
@@ -34,6 +33,10 @@ public:
         m_rate = 1.0f / rate;
     }
     
+    void setInvertedRate( float invertedRate )
+    {
+        m_rate = invertedRate;
+    }
 private:
     float m_lastIn = 0.0f, m_rate = 1.0f, m_accum = 0.0f;
 };

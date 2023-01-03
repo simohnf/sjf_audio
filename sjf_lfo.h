@@ -17,45 +17,42 @@
 class sjf_lfo
 {
 public:
-    sjf_lfo(){};
+    sjf_lfo()
+    {
+        setBpm( 120 );
+    };
     ~sjf_lfo(){};
     
     float output()
     {
-        // base frequency is always 1hz for simplicity of calculations
-        m_phase = m_count / m_SR;
-        m_phase = m_rateMultiplier.rateChange( m_phase );
-        
-        switch( m_lfoType )
+        if ( m_isSyncedToTempo )
         {
-            case sine:
-                m_out = sin( 2*PI*m_phase );
-                break;
-            case triangle:
-                m_out = m_triangle.output( m_phase );
-                break;
-            case noise1:
-                if ( m_phase < m_lastPhase )
-                {
-                    m_out = ( rand01() * 2.0f ) -1.0f;
-                }
-                break;
-            case noise2:
-                m_out = m_noise2.output( m_phase );
-                break;
-            default:
-                m_out = sin( 2*PI*m_phase );
-                break;
+            // work directly with position if synced to tempo
+            m_phase = m_rateMultiplier.rateChange( m_pos );
         }
-        
-        
+        else // if Hz based lfo
+        {
+            // base frequency is always 1hz for simplicity of calculations
+            m_phase = m_rateMultiplier.rateChange( m_count / m_SR );
+        }
+        calculateOutput();
         
         m_lastPhase = m_phase;
-        m_count++;
+        if ( m_isSyncedToTempo ) // work directly with position if synced to tempo
+        {
+            m_pos += m_increment; // increase position per sample
+            if ( m_pos >= 1.0 )
+            {
+                m_pos -= (int)m_pos; // make sure position is always betweeo 0 --> 1
+            }
+        }
+        m_count++; // if Hz based count is just simply increased by one sample
         while ( m_count >= m_SR )
         {
             m_count -= m_SR;
         }
+             
+
         
         if ( m_lfoType == noise1 )
         { // smooth out random changes slightly
@@ -85,22 +82,168 @@ public:
         m_rateMultiplier.setRate( r );
     }
     
+    
+    void setSyncDivision ( int div )
+    {
+        float rate;
+    switch( div )
+        {
+            case eightWholeNotes:
+                rate = 8.0 / 8.0;
+                break;
+            case sevenWholeNotes:
+                rate = 7.0 / 8.0;
+                break;
+            case sixWholeNotes:
+                rate = 6.0 / 8.0;
+                break;
+            case fiveWholeNotes:
+                rate = 5.0 / 8.0;
+                break;
+            case fourWholeNotes:
+                rate = 4.0 / 8.0;
+                break;
+            case threeWholeNotes:
+                rate = 3.0 / 8.0;
+                break;
+            case twoWholeNotes:
+                rate = 2.0 / 8.0;
+                break;
+            case sevenQuarterNotes:
+                rate = 7.0 / ( 8.0 * 4.0 );
+                break;
+            case dottedWholeNote:
+                rate = 6.0 / ( 8.0 * 4.0 );
+                break;
+            case fiveQuarterNotes:
+                rate = 5.0 / ( 8.0 * 4.0 );
+                break;
+            case wholeNote:
+                rate = 1.0 / 8.0;
+                break;
+            case sevenEightNotes:
+                rate = 7.0 / ( 8.0 * 8.0 );
+                break;
+            case dottedHalfNote:
+                rate = 6.0 / ( 8.0 * 8.0 );
+                break;
+            case fiveEightNotes:
+                rate = 5.0 / ( 8.0 * 8.0 );
+                break;
+            case halfNote:
+                rate = 4.0 / ( 8.0 * 8.0 );
+                break;
+            case dottedQuarterNote:
+                rate = 3.0 / ( 8.0 * 8.0 );
+                break;
+            case quarterNote:
+                rate = 2.0 / ( 8.0 * 8.0 );
+                break;
+            case dottedEightNote:
+                rate = 1.5 / ( 8.0 * 8.0 );
+                break;
+            case eightNote:
+                rate = 1.0 / ( 8.0 * 8.0 );
+                break;
+            case wholeNoteTriplet:
+                rate = 2.0 /( 3.0 * 8.0 );
+                break;
+            case halfNoteTriplet:
+                rate = 0.5 * 2.0 / ( 3.0 * 8.0 );
+                break;
+            case quarterNoteTriplet:
+                rate = 0.25 * 2.0 / ( 3.0 * 8.0 );
+                break;
+            default:
+                rate = 0.5;
+                break;
+        }
+        m_rateMultiplier.setRate( rate );
+    }
     void setOffset( float o )
     {
         m_offset = o;
     }
     
+    void setPosition( float pos )
+    {
+        // ensure sync to tempo at start of each block
+        // work directly with phase if synced to tempo
+        // each phase loop is synced to a quarter note
+        if( m_isSyncedToTempo )
+        {
+            pos *= m_syncFactor;  // longest possible length when synced is 32 quarter notes
+            m_pos = pos - (int)pos; // just get fractional part
+        }
+    }
+    
+    
+    void setBpm( float bpm )
+    {
+        if ( m_bpm != bpm )
+        {
+            m_bpm = bpm;
+            float period = 60.0f / ( m_bpm * m_syncFactor ); // period in seconds // max length is 32 beats
+            float sampsperperiod = period * m_SR; // number of samples in one period
+            m_increment = 1.0f / sampsperperiod; // increment per sample when synced to tempo
+        }
+    }
+    
+    void isSyncedToTempo( bool isSyncedToTempo )
+    {
+        m_isSyncedToTempo = isSyncedToTempo;
+    }
+    
     enum lfoType
     {
-        sine = 1, triangle, noise1, noise2
+        sine = 1, triangle, noise1, noise2, sah
+    };
+    
+    enum syncDivisions
+    {
+        eightWholeNotes = 1, sevenWholeNotes, sixWholeNotes, fiveWholeNotes, fourWholeNotes, threeWholeNotes, twoWholeNotes, sevenQuarterNotes, dottedWholeNote, fiveQuarterNotes, wholeNote, sevenEightNotes, dottedHalfNote, wholeNoteTriplet, fiveEightNotes, halfNote, dottedQuarterNote, halfNoteTriplet, quarterNote, dottedEightNote, quarterNoteTriplet, eightNote
     };
     
     
     
 private:
-    float m_SR = 44100.0f, m_phase = 0.0f, m_out = 0.0f, m_lastPhase = 1.0f, m_offset = 0.0f;
-    int m_count = 0, m_lfoType = 0;
-    sjf_phaseRateMultiplier m_rateMultiplier;
+    void setInvertedRate( float invRate )
+    {
+        m_rateMultiplier.setInvertedRate( invRate );
+    }
+    void calculateOutput()
+    {
+        switch( m_lfoType )
+        {
+            case sine:
+                m_out = sin( 2*PI*m_phase );
+                break;
+            case triangle:
+                m_out = m_triangle.output( m_phase );
+                break;
+            case noise1:
+                if ( m_phase < m_lastPhase ) { m_out = ( rand01() * 2.0f ) -1.0f; }
+                break;
+            case noise2:
+                m_out = m_noise2.output( m_phase );
+                break;
+            case sah:
+                // put sah logic in here
+                break;
+            default:
+                m_out = sin( 2*PI*m_phase );
+                break;
+        }
+    }
+    
+    
+    
+    float m_count = 0, m_SR = 44100.0f, m_phase = 0.0f, m_out = 0.0f, m_lastPhase = 1.0f, m_offset = 0.0f, m_bpm = 0, m_pos, m_increment;
+    const float maxSyncBeats = 32.0f;
+    const float m_syncFactor = 1.0f/maxSyncBeats;
+    bool m_isSyncedToTempo = false;
+    int  m_lfoType = 0;
+    sjf_phaseRateMultiplier m_rateMultiplier, m_sahRateMultiplier;
     sjf_triangle m_triangle;
     sjf_noiseOSC m_noise2;
     sjf_lpfFirst lpf; // just for safety

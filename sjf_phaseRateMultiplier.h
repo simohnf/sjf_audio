@@ -17,9 +17,11 @@ public:
     
     float rateChange( float x )
     {
-        if ( x < m_lastIn )
+        if ( x < m_lastIn * 0.5 ) // multiply by 0.5 to compensate for slight inaccuracies with sync increment
         {
+            DBG(x << " " << m_lastIn);
             m_accum += 1.0f;
+            DBG( "one more ");
         }
         m_lastIn = x;
         x *= m_rate;
@@ -38,7 +40,7 @@ public:
         m_rate = invertedRate;
     }
 private:
-    float m_lastIn = 0.0f, m_rate = 1.0f, m_accum = 0.0f;
+    float m_lastIn = 1.0f, m_rate = 1.0f, m_accum = 0.0f;
 };
 #endif /* sjf_phaseRateMultiplier_h */
 

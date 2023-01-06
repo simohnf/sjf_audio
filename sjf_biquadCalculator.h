@@ -13,6 +13,10 @@
 // info from https://www.w3.org/TR/audio-eq-cookbook/
 //
 
+// changed to
+/* all coefficient calculations from
+ "Zölzer, U., Amatriain, X., Arfib, D., Bonada, J., De Poli, G., Dutilleux, P., Evangelista, G., Keiler, F., Loscos, A., Rocchesso, D. and Sandler, M., 2002. DAFX-Digital audio effects. John Wiley & Sons."
+ */
 
 template <class T>
 class sjf_biquadCalculator {
@@ -27,29 +31,27 @@ public:
     void initialise( T sampleRate )
     {
         m_SR = sampleRate;
-        m_angFreqFactor = 2 * m_pi / m_SR;
-        DBG( "m_SR " << m_SR );
-        DBG( "m_pi " << m_pi );
-        DBG("m_angFreqFactor " << m_angFreqFactor);
-        
+        m_angFreqFactor = m_pi / m_SR;
     }
     
     void setFrequency( T fr )
     {
         m_f0 = fr;
-        calculateIntermediateValues();
+        m_K = tan( fr * m_angFreqFactor );
+//        calculateIntermediateValues();
     }
     
     void setQFactor( T Q )
     {
         m_Q = Q;
-        calculateIntermediateValues();
+//        calculateIntermediateValues();
     }
     
     void setdBGain( T gain )
     {
         m_dBGain = gain;
-        calculateIntermediateValues();
+        m_V0 = pow(10, (gain/20) );
+//        calculateIntermediateValues();
     }
     
     std::vector< T > getCoefficients()
@@ -57,36 +59,28 @@ public:
         switch (m_type)
         {
             case lowpass:
-                if ( m_isFirstOrder )
-                {
-                    lowpassCoefficients1st();
-                }
-                else
-                {
-                    lowpassCoefficients();
-                }
+                lowpassCoefficients();
                 break;
             case highpass:
-                if ( m_isFirstOrder )
-                {
-                    highpassCoefficients1st();
-                }
-                else
-                {
-                    highpassCoefficients();
-                }
+                highpassCoefficients();
+                break;
+            case allpass:
+                allpassCoefficients();
                 break;
             case lowshelf:
-                
+                lowshelfCoefficients();
                 break;
             case highshelf:
-                
+                highshelfCoefficients();
                 break;
             case bandpass:
-                
+                bandpassCoefficients();
                 break;
-            case bandnotch:
-                
+            case bandcut:
+                bandcutCoefficients();
+                break;
+            case peak:
+                peakCoefficients();
                 break;
         }
         return m_coeffs;
@@ -101,78 +95,255 @@ public:
     {
         m_isFirstOrder = isFirstOrder;
     }
+    
    enum filterType
     {
-        lowpass = 1, highpass, lowshelf, highshelf, bandpass, bandnotch
+        lowpass = 1, highpass, allpass, lowshelf, highshelf, bandpass, bandcut, peak
     };
     
 private:
-    void calculateIntermediateValues()
-    {
-        m_W0 = m_f0 * m_angFreqFactor;
-        DBG( "m_W0 " << m_W0 );
-        m_cosW0 = cos( m_W0 );
-        DBG( "m_cosW0 " << m_cosW0 );
-        m_sinW0 = sin( m_W0 );
-        DBG( "m_sinW0 " << m_sinW0 );
-        m_alpha = m_sinW0 / ( 2 * m_Q );
-    }
     
-    // 2nd order lowpass
+    /* all coefficient calculations from
+    "Zölzer, U., Amatriain, X., Arfib, D., Bonada, J., De Poli, G., Dutilleux, P., Evangelista, G., Keiler, F., Loscos, A., Rocchesso, D. and Sandler, M., 2002. DAFX-Digital audio effects. John Wiley & Sons."
+     */
+    
+    // lowpass
     void lowpassCoefficients()
     {
-        T inverseA0 = 1 / ( 1 + m_alpha ); // normalise to get only 5 variables
-        
-        m_coeffs [ 0 ] = ( 1 - m_cosW0 ) * 0.5 * inverseA0; // b0
-        m_coeffs [ 1 ] = ( 1 - m_cosW0 ) * inverseA0; // b1
-        m_coeffs [ 2 ] = m_coeffs [ 0 ]; // b2
-        m_coeffs [ 3 ] = -2 * (m_cosW0 * inverseA0); // a1 ---> precision seems to be lost by multiply by 2???
-        m_coeffs [ 4 ] = ( 1 - m_alpha ) * inverseA0; // a2
+        if ( m_isFirstOrder )
+        {
+            T denominatorReciprocal = 1.0 / ( m_K + 1.0 );
+            m_coeffs [ 0 ] = m_K * denominatorReciprocal; // b0
+            m_coeffs [ 1 ] = m_coeffs [ 0 ]; // b1
+            m_coeffs [ 2 ] =  0; // b2
+            m_coeffs [ 3 ] = ( m_K - 1 ) * denominatorReciprocal; // a1
+            m_coeffs [ 4 ] = 0; // a2
+        }
+        else
+        {
+            T K2 = m_K * m_K;
+            T K2Q = K2 * m_Q;
+            T denominatorReciprocal = 1.0 / ( K2Q + m_K + m_Q );
+            
+            m_coeffs [ 0 ] = K2Q * denominatorReciprocal; // b0
+            m_coeffs [ 1 ] = 2.0 * K2Q * denominatorReciprocal; // b1
+            m_coeffs [ 2 ] = m_coeffs [ 0 ]; // b2
+            m_coeffs [ 3 ] = 2.0 * m_Q * ( K2 - 1.0 ) * denominatorReciprocal; // a1
+            m_coeffs [ 4 ] = ( K2Q - m_K + m_Q ) * denominatorReciprocal; // a2
+        }
     }
     
-    // 1st order lowpass from https://www.proquest.com/openview/57ded8cf431b6f1c50a2c9e10742a5ad/1?pq-origsite=gscholar&cbl=2026666
-    void lowpassCoefficients1st()
-    {
-        T twoTanW0 = 2 * m_sinW0 / ( 1 + m_cosW0 ); // 2 * tan (W0 / 2)
-        T invTwoTanW0Plus2 = 1 / ( 2 + twoTanW0 ); // 1 / (2 + 2tanW0)
-        m_coeffs [ 0 ] = twoTanW0  * invTwoTanW0Plus2; // b0
-        m_coeffs [ 1 ] = m_coeffs [ 0 ]; // b1
-        m_coeffs [ 2 ] =  0; // b2
-        m_coeffs [ 3 ] = ( twoTanW0 - 2 ) * invTwoTanW0Plus2; // a1
-        m_coeffs [ 4 ] = 0; // a2
-    }
-    
-    // 2nd order highpass
     void highpassCoefficients()
     {
-        T inverseA0 = 1 / ( 1 + m_alpha );
-        
-        m_coeffs [ 0 ] = ( 1 + m_cosW0 ) * 0.5 * inverseA0; // b0
-        m_coeffs [ 1 ] = -1 * ( 1 + m_cosW0 ) * inverseA0; // b1
-        m_coeffs [ 2 ] = m_coeffs [ 0 ]; // b2
-        m_coeffs [ 3 ] = -2 * m_cosW0 * inverseA0; // a1
-        m_coeffs [ 4 ] = ( 1 - m_alpha ) * inverseA0; // a2
+        if ( m_isFirstOrder )
+        {
+            T denominatorReciprocal = 1.0 / ( m_K + 1.0 );
+            m_coeffs [ 0 ] = denominatorReciprocal; // b0
+            m_coeffs [ 1 ] = -1 * denominatorReciprocal; // b1
+            m_coeffs [ 2 ] =  0; // b2
+            m_coeffs [ 3 ] = ( m_K - 1 ) * denominatorReciprocal; // a1
+            m_coeffs [ 4 ] = 0; // a2
+        }
+        else
+        {
+            T K2 = m_K * m_K;
+            T K2Q = K2 * m_Q;
+            T denominatorReciprocal = 1.0 / ( K2Q + m_K + m_Q );
+            
+            m_coeffs [ 0 ] = m_Q * denominatorReciprocal; // b0
+            m_coeffs [ 1 ] = -2.0 * m_Q * denominatorReciprocal; // b1
+            m_coeffs [ 2 ] = m_coeffs [ 0 ]; // b2
+            m_coeffs [ 3 ] = 2.0 * m_Q * ( K2 - 1.0 ) * denominatorReciprocal; // a1
+            m_coeffs [ 4 ] = ( K2Q - m_K + m_Q ) * denominatorReciprocal; // a2
+        }
     }
     
-    // 1st order highpass from https://www.proquest.com/openview/57ded8cf431b6f1c50a2c9e10742a5ad/1?pq-origsite=gscholar&cbl=2026666
-    void highpassCoefficients1st()
+    void allpassCoefficients()
     {
-        T twoTanW0 = 2 * m_sinW0 / ( 1 + m_cosW0 ) ; // 2 * tan W0 --> trig identity for tan(2Ø)
-        T invTwoTanW0Plus2 = 1 / ( 2 + twoTanW0 ); // 1 / (2 + 2tanW0)
-        m_coeffs [ 0 ] = 2 * invTwoTanW0Plus2; // b0
-        m_coeffs [ 1 ] = -1 * m_coeffs [ 0 ]; // b1
-        m_coeffs [ 2 ] =  0; // b2
-        m_coeffs [ 3 ] = ( twoTanW0 - 2 ) * invTwoTanW0Plus2; // a1
-        m_coeffs [ 4 ] = 0; // a2
+        if ( m_isFirstOrder )
+        {
+            T denominatorReciprocal = 1.0 / ( m_K + 1.0 );
+            m_coeffs [ 0 ] = ( m_K - 1.0 ) * denominatorReciprocal; // b0
+            m_coeffs [ 1 ] = 1.0; // b1
+            m_coeffs [ 2 ] =  0; // b2
+            m_coeffs [ 3 ] = m_coeffs [ 0 ]; // a1
+            m_coeffs [ 4 ] = 0; // a2
+        }
+        else
+        {
+            T K2 = m_K * m_K;
+            T K2Q = K2 * m_Q;
+            T denominatorReciprocal = 1.0 / ( K2Q + m_K + m_Q );
+            
+            m_coeffs [ 0 ] = (K2Q - m_K + m_Q) * denominatorReciprocal; // b0
+            m_coeffs [ 1 ] = 2.0 * m_Q * (K2 - 1.0 ) * denominatorReciprocal; // b1
+            m_coeffs [ 2 ] = 1; // b2
+            m_coeffs [ 3 ] = m_coeffs [ 1 ]; // a1
+            m_coeffs [ 4 ] = m_coeffs [ 0 ]; // a2
+        }
     }
     
+    
+    void lowshelfCoefficients()
+    {
+        if ( m_isFirstOrder ) // 1st order modified from DAFX p. 62 --> 63
+        {
+            T halfH0 = ( m_V0 - 1.0 ) * 0.5;
+            T C;
+            if ( m_V0 < 1 ) // C for cut
+            {
+                C = ( m_K - m_V0 ) / ( m_K + m_V0 );
+            }
+            else // c for boost
+            {
+                C = ( m_K - 1.0 ) / ( m_K + 1.0 );
+            }
+            T halfH0C = halfH0 * C;
+            m_coeffs [ 0 ] = 1.0 + halfH0 + halfH0C; // b0
+            m_coeffs [ 1 ] = C + halfH0 + halfH0C; // b1
+            m_coeffs [ 2 ] =  0; // b2
+            m_coeffs [ 3 ] = C; // a1
+            m_coeffs [ 4 ] = 0; // a2
+        }
+        else
+        {
+            T K2 = m_K * m_K;
+            T root2 = 1/m_Q; // square root of 2 is replaced by Q --> 1/0.7071 == sqrt(2)
+            T rootV0 = sqrt( m_V0 );
+            T root2K = root2 * m_K;
+            T root2rootV0K = root2K * rootV0;
+            T V0K2 = m_V0 * K2;
+            if ( m_V0 < 1 ) // cut
+            {
+                T root2V0K = root2K * m_V0;
+                T denominatorReciprocal = 1.0 / ( m_V0 + root2rootV0K + K2 );
+                m_coeffs [ 0 ] = ( m_V0 + root2V0K + V0K2 ) * denominatorReciprocal; // b0
+                m_coeffs [ 1 ] = ( 2.0 * V0K2 - 2.0 ) * denominatorReciprocal; // b1
+                m_coeffs [ 2 ] = ( m_V0 - root2V0K + V0K2 ) * denominatorReciprocal; // b2
+                m_coeffs [ 3 ] = 2.0 * (K2 - m_V0 ) * denominatorReciprocal; // a1
+                m_coeffs [ 4 ] = ( m_V0 - root2rootV0K + K2 ) * denominatorReciprocal; // a2
+            }
+            else // boost
+            {
+                T denominatorReciprocal = 1.0 / ( 1.0 + root2K + K2 );
+                m_coeffs [ 0 ] = ( 1.0 + root2rootV0K + V0K2 ) * denominatorReciprocal; // b0
+                m_coeffs [ 1 ] = ( 2.0 * V0K2 - 2.0 ) * denominatorReciprocal; // b1
+                m_coeffs [ 2 ] = ( 1.0 - root2rootV0K + V0K2 ) * denominatorReciprocal; // b2
+                m_coeffs [ 3 ] = ( 2.0 * K2 - 2.0 ) * denominatorReciprocal; // a1
+                m_coeffs [ 4 ] = ( 1.0 - root2K + K2 ) * denominatorReciprocal; // a2
+            }
+        }
+    }
+    
+    void highshelfCoefficients()
+    {
+        if ( m_isFirstOrder ) // 1st order modified from DAFX p. 62 --> 63
+        {
+            T halfH0 = ( m_V0 - 1.0 ) * 0.5;
+            T C;
+            if ( m_V0 < 1 ) // C for cut
+            {
+                C = ( m_V0 * m_K - 1.0 ) / ( m_V0 * m_K + 1 );
+            }
+            else // c for boost
+            {
+                C = ( m_K - 1.0 ) / ( m_K + 1.0 );
+            }
+            T halfH0C = halfH0 * C;
+            m_coeffs [ 0 ] = 1.0 + halfH0 - halfH0C; // b0
+            m_coeffs [ 1 ] = C - halfH0 + halfH0C; // b1
+            m_coeffs [ 2 ] =  0; // b2
+            m_coeffs [ 3 ] = C; // a1
+            m_coeffs [ 4 ] = 0; // a2
+        }
+        else
+        {
+            T K2 = m_K * m_K;
+            T root2 = 1/m_Q; // square root of 2 is replaced by Q --> 1/0.7071 == sqrt(2)
+            T rootV0 = sqrt( m_V0 );
+            T root2K = root2 * m_K;
+            T root2rootV0K = root2K * rootV0;
+            T V0K2 = m_V0 * K2;
+            if ( m_V0 < 1 ) // cut
+            {
+                T root2V0K = root2K * m_V0;
+                T denominatorReciprocal = 1.0 / ( m_V0 + root2rootV0K + K2 );
+                m_coeffs [ 0 ] = ( m_V0 + root2V0K + V0K2 ) * denominatorReciprocal; // b0
+                m_coeffs [ 1 ] = 2.0 * (V0K2 - m_V0 ) * denominatorReciprocal; // b1
+                m_coeffs [ 2 ] = ( m_V0 - root2V0K + V0K2  ) * denominatorReciprocal; // b2
+                m_coeffs [ 3 ] = (2.0 * V0K2 - 2.0 ) * denominatorReciprocal; // a1
+                m_coeffs [ 4 ] = ( 1 - root2rootV0K + V0K2 ) * denominatorReciprocal; // a2
+            }
+            else // boost
+            {
+                T denominatorReciprocal = 1.0 / ( 1.0 + root2K + K2 );
+                m_coeffs [ 0 ] = ( m_V0 + root2rootV0K + K2 ) * denominatorReciprocal; // b0
+                m_coeffs [ 1 ] = 2.0 * (K2 - m_V0 ) * denominatorReciprocal; // b1
+                m_coeffs [ 2 ] = ( m_V0 - root2rootV0K + K2 ) * denominatorReciprocal; // b2
+                m_coeffs [ 3 ] = ( 2.0 * K2 - 2.0 ) * denominatorReciprocal; // a1
+                m_coeffs [ 4 ] = ( 1.0 - root2K + K2 ) * denominatorReciprocal; // a2
+            }
+        }
+    }
+    
+    void bandpassCoefficients() // second order only
+    {
+        T K2 = m_K * m_K;
+        T K2Q = K2 * m_Q;
+        T denominatorReciprocal = 1.0 / ( K2Q + m_K + m_Q );
+        m_coeffs [ 0 ] = m_K * denominatorReciprocal; // b0
+        m_coeffs [ 1 ] = 0; // b1
+        m_coeffs [ 2 ] = -1.0 * m_coeffs [ 0 ]; // b2
+        m_coeffs [ 3 ] = 2.0 * m_Q * ( K2 - 1 ) * denominatorReciprocal; // a1
+        m_coeffs [ 4 ] = ( K2Q - m_K + m_Q ) * denominatorReciprocal; // a2
+    }
+    
+    
+    void bandcutCoefficients() // second order only
+    {
+        T K2 = m_K * m_K;
+        T K2Q = K2 * m_Q;
+        T denominatorReciprocal = 1.0 / ( K2Q + m_K + m_Q );
+        m_coeffs [ 0 ] = ( m_Q + K2Q ) * denominatorReciprocal; // b0
+        m_coeffs [ 1 ] = 2.0 * ( K2Q - m_Q ) * denominatorReciprocal; // b0 // b1
+        m_coeffs [ 2 ] = m_coeffs [ 0 ]; // b2
+        m_coeffs [ 3 ] = m_coeffs [ 1 ]; // a1
+        m_coeffs [ 4 ] = ( K2Q - m_K + m_Q ) * denominatorReciprocal; // a2
+    }
+    
+    void peakCoefficients() // second order only
+    {
+        T K2 = m_K * m_K;
+        T KoverQ = m_K / m_Q;
+        
+        if ( m_V0 < 1 ) // cut
+        {
+            T KoverV0Q = ( KoverQ / m_V0 );
+            T denominatorReciprocal = 1.0 / ( 1.0 + KoverV0Q + K2 );
+            m_coeffs [ 0 ] = ( 1.0 + KoverQ  + K2 ) * denominatorReciprocal; // b0
+            m_coeffs [ 1 ] = 2.0 * ( K2 - 1.0 ) * denominatorReciprocal; // b0 // b1
+            m_coeffs [ 2 ] = ( 1.0 - KoverQ  + K2 ) * denominatorReciprocal; // b2
+            m_coeffs [ 3 ] = m_coeffs [ 1 ]; // a1
+            m_coeffs [ 4 ] = ( 1.0 - KoverV0Q + K2 ) * denominatorReciprocal; // a2
+        }
+        else // boost
+        {
+            T denominatorReciprocal = 1.0 / ( 1.0 + KoverQ + K2 );
+            T V0KoverQ = m_V0 * KoverQ;
+            m_coeffs [ 0 ] = ( 1.0 + V0KoverQ  + K2 ) * denominatorReciprocal; // b0
+            m_coeffs [ 1 ] = 2.0 * ( K2 - 1.0 ) * denominatorReciprocal; // b0 // b1
+            m_coeffs [ 2 ] = ( 1.0 - V0KoverQ  + K2 ) * denominatorReciprocal; // b2
+            m_coeffs [ 3 ] = m_coeffs [ 1 ]; // a1
+            m_coeffs [ 4 ] = ( 1.0 - KoverQ + K2 ) * denominatorReciprocal; // a2
+        }
+    }
     
     
     // parameters
     T m_pi = atan(1)*4; // pi
     
     T m_f0 = 1000, m_Q = 1, m_SR = 44100, m_dBGain; // user variables
-    T m_A, m_W0, m_cosW0, m_sinW0, m_alpha; // intermediate variables
+    T m_K, m_V0;
     T m_angFreqFactor; // other calculation Variables
     bool m_isFirstOrder = false;
     int m_type = 1;

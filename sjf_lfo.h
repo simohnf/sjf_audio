@@ -85,6 +85,11 @@ public:
     
     void setSyncDivision ( int div )
     {
+        if (div == m_syncVal)
+        {
+            return;
+        }
+        m_syncVal = div;
         float rate;
     switch( div )
         {
@@ -158,6 +163,7 @@ public:
                 rate = 0.5;
                 break;
         }
+        DBG("RATE " << rate );
         m_rateMultiplier.setRate( rate );
     }
     void setOffset( float o )
@@ -174,6 +180,7 @@ public:
         {
             pos *= m_syncFactor;  // longest possible length when synced is 32 quarter notes
             m_pos = pos - (int)pos; // just get fractional part
+            DBG( "m_pos " << m_pos );
         }
     }
     
@@ -183,7 +190,7 @@ public:
         if ( m_bpm != bpm )
         {
             m_bpm = bpm;
-            float period = 60.0f / ( m_bpm * m_syncFactor ); // period in seconds // max length is 32 beats
+            float period = m_maxSyncBeats * 60.0f / m_bpm; // period in seconds // max length is 32 beats
             float sampsperperiod = period * m_SR; // number of samples in one period
             m_increment = 1.0f / sampsperperiod; // increment per sample when synced to tempo
         }
@@ -222,7 +229,7 @@ private:
                 m_out = m_triangle.output( m_phase );
                 break;
             case noise1:
-                if ( m_phase < m_lastPhase ) { m_out = ( rand01() * 2.0f ) -1.0f; }
+                if ( m_phase < m_lastPhase * 0.5 ) { m_out = ( rand01() * 2.0f ) -1.0f; }
                 break;
             case noise2:
                 m_out = m_noise2.output( m_phase );
@@ -239,10 +246,10 @@ private:
     
     
     float m_count = 0, m_SR = 44100.0f, m_phase = 0.0f, m_out = 0.0f, m_lastPhase = 1.0f, m_offset = 0.0f, m_bpm = 0, m_pos, m_increment;
-    const float maxSyncBeats = 32.0f;
-    const float m_syncFactor = 1.0f/maxSyncBeats;
+    const float m_maxSyncBeats = 32.0f;
+    const float m_syncFactor = 1.0f/m_maxSyncBeats;
     bool m_isSyncedToTempo = false;
-    int  m_lfoType = 0;
+    int  m_lfoType = 0, m_syncVal = -1;
     sjf_phaseRateMultiplier m_rateMultiplier, m_sahRateMultiplier;
     sjf_triangle m_triangle;
     sjf_noiseOSC m_noise2;

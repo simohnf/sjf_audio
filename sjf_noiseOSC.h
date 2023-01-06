@@ -21,7 +21,7 @@ public:
     
     float output( float phase )
     {
-        if ( phase < m_lastPhase )
+        if ( phase < m_lastPhase * 0.5 )
         {
             m_lastTarget = m_currentTarget;
 //            DBG( "last " << m_lastTarget );

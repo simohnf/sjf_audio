@@ -22,7 +22,7 @@ public:
     {
         lpf.setCutoff ( 0.9999f );
         hpf.setCutoff ( 0.0001f );
-        m_transpositionCalculationFactor = -1.0f  / ( m_windowSize * 0.001f ); // f = (t-1)* R/s
+        setTransopositionFactor( m_windowSize );
         m_pitchPhasor.initialise( m_SR, 1.0f );
     }
     ~sjf_monoPitchShift( ) { }
@@ -34,8 +34,9 @@ public:
     float pitchShiftOutput( int indexThroughCurrentBuffer, float transposition )
     {
         // f = (t-1)* R/s
+        transposition -= 1.0f;
         transposition *= m_transpositionCalculationFactor;
-        
+//        DBG( "transposition " << transposition );
         m_pitchPhasor.setFrequency( transposition );
         // first voice
         auto phase = m_pitchPhasor.output();
@@ -57,7 +58,18 @@ public:
     {
         return m_windowSize;
     }
+    
+    void setWindowSize( float windowSizeMilliseconds )
+    {
+        m_windowSize = windowSizeMilliseconds;
+        setTransopositionFactor( m_windowSize );
+    }
 private:
+    
+    void setTransopositionFactor( float windowSize )
+    {
+        m_transpositionCalculationFactor = -1.0f  / ( windowSize * 0.001f ); // f = (t-1)* R/s
+    }
     
     sjf_phasor m_pitchPhasor;
     sjf_lpf lpf, hpf;

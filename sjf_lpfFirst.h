@@ -7,6 +7,12 @@
 #ifndef sjf_lpfFirst_h
 #define sjf_lpfFirst_h
 
+inline
+float calculateOnePoleFilterCoefficient( float f, float sampleRate)
+{
+    return ( sin( f * 2 * 3.141593 / sampleRate ) );
+}
+
 class sjf_lpfFirst
 {
 public:

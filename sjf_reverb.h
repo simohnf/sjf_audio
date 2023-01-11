@@ -26,66 +26,66 @@
 //==============================================================================
 //==============================================================================
 //==============================================================================
-class sjf_noiseOsc
-{
-    // random noise generator with frequency determining how fast oscillator moves to a new value
-    // outputs values between -1 and 1
-public:
-    sjf_noiseOsc()
-    {
-        randomTargetValue();
-    }
-    ~sjf_noiseOsc(){}
-    
-    void initialise( int sampleRate )
-    {
-        if ( sampleRate > 0 ) { m_SR = sampleRate; }
-        setFrequency( m_frequency );
-    }
-    
-    void initialise( int sampleRate, float frequency )
-    {
-        if ( sampleRate > 0 ) { m_SR = sampleRate; }
-        setFrequency( frequency );
-    }
-    
-
-    
-    void setFrequency( float frequency )
-    {
-        m_frequency = frequency;
-        m_sampsPerCycle = m_SR / m_frequency;
-        determineIncrement();
-    }
-    
-    float getSample( )
-    {
-        m_lastOutput +=  m_increment;
-        if ( m_lastOutput == m_target )
-        {
-            randomTargetValue();
-            determineIncrement();
-        }
-        return m_lastOutput * 0.00001f;
-    }
-private:
-    void randomTargetValue()
-    {
-        m_target = ( rand01() * 20000.0f ) - 10000.0f; // random values between -1 and 1
-        
-    }
-    
-    void determineIncrement()
-    {
-        auto dif = m_target - m_lastOutput; // difference between last output and targetValue
-        m_increment = dif / m_sampsPerCycle;
-    }
-    float m_SR = 44100.0f, m_frequency = 1.0f, m_increment = 0.0f, m_target = 0.0f, m_lastOutput = 0.0f, m_sampsPerCycle = 44100.0f;
-    
-    
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_noiseOsc )
-    
-};
+//class sjf_noiseOsc
+//{
+//    // random noise generator with frequency determining how fast oscillator moves to a new value
+//    // outputs values between -1 and 1
+//public:
+//    sjf_noiseOsc()
+//    {
+//        randomTargetValue();
+//    }
+//    ~sjf_noiseOsc(){}
+//
+//    void initialise( int sampleRate )
+//    {
+//        if ( sampleRate > 0 ) { m_SR = sampleRate; }
+//        setFrequency( m_frequency );
+//    }
+//
+//    void initialise( int sampleRate, float frequency )
+//    {
+//        if ( sampleRate > 0 ) { m_SR = sampleRate; }
+//        setFrequency( frequency );
+//    }
+//
+//
+//
+//    void setFrequency( float frequency )
+//    {
+//        m_frequency = frequency;
+//        m_sampsPerCycle = m_SR / m_frequency;
+//        determineIncrement();
+//    }
+//
+//    float getSample( )
+//    {
+//        m_lastOutput +=  m_increment;
+//        if ( m_lastOutput == m_target )
+//        {
+//            randomTargetValue();
+//            determineIncrement();
+//        }
+//        return m_lastOutput * 0.00001f;
+//    }
+//private:
+//    void randomTargetValue()
+//    {
+//        m_target = ( rand01() * 20000.0f ) - 10000.0f; // random values between -1 and 1
+//
+//    }
+//
+//    void determineIncrement()
+//    {
+//        auto dif = m_target - m_lastOutput; // difference between last output and targetValue
+//        m_increment = dif / m_sampsPerCycle;
+//    }
+//    float m_SR = 44100.0f, m_frequency = 1.0f, m_increment = 0.0f, m_target = 0.0f, m_lastOutput = 0.0f, m_sampsPerCycle = 44100.0f;
+//
+//
+//    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_noiseOsc )
+//
+//};
 
 //==============================================================================
 //==============================================================================
@@ -112,9 +112,15 @@ public:
         genHadamard( );
         randomiseModulators( );
         randomiseLPF( );
+        setFiltersToFirstOrder( );
         initialiseDelayLines( );
         initialiseModulators( );
         setOutputMixer( );
+        // reset shimmer output values
+        for ( int i = 0; i < m_shimVoices; i++ )
+        {
+            m_shimmerOutput[ i ] = 0;
+        }
     }
     //==============================================================================
     ~sjf_reverb() {}
@@ -125,6 +131,11 @@ public:
         if ( samplesPerBlock > 0 ) { m_blockSize = samplesPerBlock; }
         initialiseDelayLines( );
         initialiseModulators( );
+        // reset shimmer output values
+        for ( int i = 0; i < m_shimVoices; i++ )
+        {
+            m_shimmerOutput[ i ] = 0;
+        }
     }
     //==============================================================================
     void processAudio( juce::AudioBuffer<float> &buffer )
@@ -143,18 +154,24 @@ public:
             lrSizeFactor = 0.4f + (size * 0.6f);
             lrCutOff = m_lrCutOffSmooth.filterInput( m_lrCutOffTarget );
             erCutOff = m_erCutOffSmooth.filterInput( m_erCutOffTarget );
-            m_sum = 0.0f;
+            m_sum = 0.0f; // reset sum
             // sum left and right and apply equal power gain
-            for ( int inC = 0; inC < nInChannels; inC++ ) { m_sum += buffer.getSample( inC, samp ) * equalPowerGain; }
-            // first copy input sample to temp buffer
-            for ( int c = 0; c < m_erChannels; c ++ ){ v1[c] = m_sum; }
+            for ( int inC = 0; inC < nInChannels; inC++ )
+            {
+                m_sum += buffer.getSample( inC, samp ) * equalPowerGain;
+            }
+            // first copy input sample to temp buffer & add previous shimmer output
+            for ( int c = 0; c < m_erChannels; c ++ )
+            {
+                v1[c] = m_sum + m_shimmerOutput[ c % m_shimVoices ];
+            }
             // early reflections
             processEarlyReflections( samp, erSizeFactor, modFactor ); // last stage of er is in v1
             // late reflections
             filterEarlyReflections( erCutOff );
             processLateReflections( samp, lrSizeFactor, fbFactor, modFactor, lrCutOff );
             // mixed sum of lr is in v2
-            processOutput( buffer, samp, nInChannels, gainFactor );
+            processOutputAndShimmer( buffer, samp, nInChannels, gainFactor );
         }
         updateBuffers( bufferSize );
     }
@@ -229,33 +246,38 @@ private:
             float val = (float)( c + 1 ) / (float)( m_erChannels + 1 );
             outputMixer[ c ][ 0 ] = sqrt( val );
             outputMixer[ c ][ 1 ] = sqrt( 1.0f - val );
-//            DBG( c << " " << outputMixer[ c ][ 0 ] << " " << outputMixer[ c ][ 1 ] );
         }
     }
     //==============================================================================
     void addShimmerInLR( int indexThroughCurrentBuffer )
     {
         // shimmer
-        auto shimInLevel = (float)m_shimVoices/(float)m_erChannels;
-        auto shimTranspose  = m_shimmerTransposeSmooth.filterInput( m_shimmerTransposeTarget );
-        auto shimOutLevel = m_shimmerLevelSmooth.filterInput( m_shimmerLevelTarget );
-        for ( int shimV = 0; shimV < m_shimVoices; shimV++ )
+        auto shimInLevel = (float)m_shimVoices/(float)m_erChannels; // set shimmer input level as factor of number of voices
+        auto shimTranspose  = m_shimmerTransposeSmooth.filterInput( m_shimmerTransposeTarget ); // set shimmer transposition
+        auto shimOutLevel = m_shimmerLevelSmooth.filterInput( m_shimmerLevelTarget ); // set output level using interface
+        for ( int shimV = 0; shimV < m_shimVoices; shimV++ ) // count through the 2 shimmer voices
         {
-            m_sum = 0.0f;
-            for ( int c = 0; c < m_erChannels; c++ )
+            m_sum = 0.0f; // reset sum
+            for ( int c = 0; c < m_erChannels; c++ ) // count through reverb voices
             {
-                if ( c % 2 == shimV ) { m_sum += v2[ c ]; }
+                if ( c % m_shimVoices == shimV ) { m_sum += v2[ c ]; } // add values for relevant voices to sum
             }
-            shimmer[ shimV ].setSample( indexThroughCurrentBuffer, m_sum * shimInLevel );
+            shimmer[ shimV ].setSample( indexThroughCurrentBuffer, m_sum * shimInLevel ); // set buffer in shimmer
+            // calculate shimmer output
             auto shimOutput = shimmer[ shimV ].pitchShiftOutput( indexThroughCurrentBuffer, shimTranspose ) * shimOutLevel;
             for ( int c = 0; c < m_erChannels; c++ )
             {
-                if ( c % 2 == shimV ) { v2[ c ] += shimOutput; }
+                if ( c % 2 == shimV ) { v2[ c ] += shimOutput; } // add shimmer output to sum of late reflections
             }
         }
-        
-        
     }
+    //==============================================================================
+    float processShimmer( int indexThroughCurrentBuffer, int shimVoiceNumber, float shimTranspose, float inVal, float shimInLevel, float shimOutLevel )
+    {
+        shimmer[ shimVoiceNumber ].setSample( indexThroughCurrentBuffer, inVal * shimInLevel );
+        return shimmer[ shimVoiceNumber ].pitchShiftOutput( indexThroughCurrentBuffer, shimTranspose ) * shimOutLevel;
+    }
+    
     //==============================================================================
     void randomiseDelayTimes()
     {
@@ -376,29 +398,27 @@ private:
         {
             shimmer[ shimV ].updateBufferPositions( bufferSize );
         }
-        
     }
     //==============================================================================
-    void processOutput( juce::AudioBuffer<float> &buffer, int samp, int nInChannels, float gainFactor )
+    void processOutputAndShimmer( juce::AudioBuffer<float> &buffer, int indexThroughCurrentBuffer, int nInChannels, float gainFactor )
     {
-//        DBG("why is this not working " );
-        for ( int inc = 0; inc < nInChannels; inc ++ )
+        auto shimLevFactor = 1.0f / (float)m_erChannels;
+        // shimmer
+        auto shimInLevel = (float)m_shimVoices * shimLevFactor; // set shimmer input level as factor of number of voices
+        auto shimTranspose  = m_shimmerTransposeSmooth.filterInput( m_shimmerTransposeTarget ); // set shimmer transposition
+        auto shimOutLevel = m_shimmerLevelSmooth.filterInput( m_shimmerLevelTarget ) / nInChannels;// * shimLevFactor; // set output level using interface
+        for ( int inC = 0; inC < nInChannels; inC ++ )
         {
             m_sum = 0.0f;
             for (int c = 0; c < m_erChannels; c++ )
             {
-//                if ( c % nInChannels == inc )
-//                {
-//                    // mix alternating channels from early and late reflections
-//                    m_sum += v1[ c ] + v2[ c ];
-//                }
-//                DBG( c << " " << inc << " " << outputMixer[ c ][ inc ] );
-                m_sum += ( v1[ c ] + v2[ c ] ) * outputMixer[ c ][ inc ];
+                m_sum += ( v1[ c ] + v2[ c ] ) * outputMixer[ c ][ inC ];
             }
+            m_shimmerOutput[ inC ] = processShimmer( indexThroughCurrentBuffer, inC, shimTranspose, m_sum, shimInLevel, shimOutLevel );
             m_sum *= m_wetSmooth.filterInput( m_wetTarget ) * gainFactor;
             m_sum = tanh( m_sum ); // limit reverb output
-            m_sum += buffer.getSample( inc, samp ) * m_drySmooth.filterInput( m_dryTarget );
-            buffer.setSample( inc, samp, ( m_sum ) );
+            m_sum += buffer.getSample( inC, indexThroughCurrentBuffer ) * m_drySmooth.filterInput( m_dryTarget );
+            buffer.setSample( inC, indexThroughCurrentBuffer, ( m_sum ) );
         }
     }
     //==============================================================================
@@ -434,7 +454,6 @@ private:
     void processLateReflections( int indexThroughCurrentBuffer, float lrSizeFactor, float fbFactor, float modFactor, float lrCutOff )
     {
         // copy delayed samples into v2
-        
         for ( int c = 0; c < m_erChannels; c++ )
         {
             auto dt = pow( lrDT[ c ], lrSizeFactor );
@@ -453,7 +472,7 @@ private:
         }
         m_sum *= m_householderWeight;
         for ( int c = 0; c < m_erChannels; c++ ) { v2[ c ] += m_sum; } // mixed delayed outputs are in v2
-        addShimmerInLR( indexThroughCurrentBuffer );
+//        addShimmerInLR( indexThroughCurrentBuffer );
         for ( int c = 0; c < m_erChannels; c++ )
         {
             auto val = ( fbFactor * v2[c] ) + v1[c];
@@ -525,6 +544,15 @@ private:
         }
     }
     //==============================================================================
+    void setFiltersToFirstOrder()
+    {
+        for ( int i = 0; i < m_erChannels; i++ )
+        {
+            erLPF[ i ].isFirstOrder( true );
+            lrLPF[ i ].isFirstOrder( true );
+        }
+    }
+    //==============================================================================
     const static int m_erChannels = 8; // must be a power of 2 because of hadamard matrix!!!!
     const static int m_erStages = 4;
     static constexpr float m_maxSize = 300;
@@ -549,6 +577,7 @@ private:
     
     // shimmer
     std::array< sjf_monoPitchShift, m_shimVoices > shimmer;
+    std::array< float, m_shimVoices > m_shimmerOutput;
     
     int m_SR = 44100, m_blockSize = 64;
     float m_lrTotalLength = m_maxTime * 2.0f/3.0f;
@@ -567,6 +596,7 @@ private:
     std::array< std::array<float, m_erChannels> , m_erChannels > m_hadamard;
     std::array< float,  m_erChannels > v1 , v2; // these will hold one sample for each channel
     std::array< std::array< bool,  m_erChannels >, m_erStages > m_erFlip;
+    
     
     std::array< std::array< float, 2 >,  m_erChannels > outputMixer; // stereo distribution
     

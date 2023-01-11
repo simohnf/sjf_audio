@@ -11,11 +11,6 @@
 #define sjf_moogLadder_h
 
 #include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_lpfFirst.h"
-inline
-float calculateOnePoleFilterCoefficient( float f, float sampleRate)
-{
-    return ( sin( f * 2 * 3.141593 / sampleRate ) );
-}
 
 class sjf_moogLadder
 {

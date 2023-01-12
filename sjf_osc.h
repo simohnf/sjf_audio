@@ -7,6 +7,8 @@
 #ifndef sjf_osc_h
 #define sjf_osc_h
 
+#include "sjf_audioUtilities.h"
+
 class sjf_osc
 {
 public:
@@ -84,9 +86,9 @@ private:
         {
             y0 = m_table[ index - 1 ];
         }
-        y1 = m_table[ index % m_wavetableSize ];
-        y2 = m_table[ (index + 1) % m_wavetableSize ];
-        y3 = m_table[ (index + 2) % m_wavetableSize ];
+        y1 = m_table[ fastMod2( index, m_wavetableSize ) ];
+        y2 = m_table[ fastMod2( ( index + 1), m_wavetableSize ) ];
+        y3 = m_table[ fastMod2( ( index + 2), m_wavetableSize ) ];
         
         
         mu2 = mu*mu;
@@ -100,11 +102,6 @@ private:
     
     float linearInterpolate( float read_pos )
     {
-        //        auto bufferSize = buffer.size();
-        //        double y1; // this step value
-        //        double y2; // next step value
-        //        double mu; // fractional part between step 1 & 2
-        
         findex = read_pos;
         if(findex < 0){ findex+= m_wavetableSize;}
         else if(findex > m_wavetableSize){ findex-= m_wavetableSize;}
@@ -112,8 +109,8 @@ private:
         index = findex;
         mu = findex - index;
         
-        y1 = m_table[ index % m_wavetableSize ];
-        y2 = m_table[ (index + 1) % m_wavetableSize ];
+        y1 = m_table[ fastMod2( index, m_wavetableSize ) ];
+        y2 = m_table[ fastMod2( ( index + 1), m_wavetableSize ) ];
         
         return y1 + mu*(y2-y1) ;
     }

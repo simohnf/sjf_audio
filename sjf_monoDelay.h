@@ -55,24 +55,25 @@ public:
     
     float getSample( int indexThroughCurrentBuffer )
     {
-        float readPos = m_delayBufferSize + m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer;
-        while (readPos >= m_delayBufferSize) { readPos -= m_delayBufferSize; }
+        float readPos = m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer;
+        while ( readPos < 0 ) { readPos += m_delayBufferSize; }
+        while ( readPos >= m_delayBufferSize ) { readPos -= m_delayBufferSize; }
         switch ( m_interpolationType )
         {
             case 1:
-                return linearInterpolate( m_delayLine, readPos );
+                return linearInterpolate( m_delayLine, readPos, m_delayBufferSize );
             case 2:
-                return cubicInterpolate( m_delayLine, readPos );
+                return cubicInterpolate( m_delayLine, readPos, m_delayBufferSize );
             case 3:
-                return fourPointInterpolatePD( m_delayLine, readPos );
+                return fourPointInterpolatePD( m_delayLine, readPos, m_delayBufferSize );
             case 4:
-                return fourPointFourthOrderOptimal( m_delayLine, readPos );
+                return fourPointFourthOrderOptimal( m_delayLine, readPos, m_delayBufferSize );
             case 5:
-                return cubicInterpolateGodot( m_delayLine, readPos );
+                return cubicInterpolateGodot( m_delayLine, readPos, m_delayBufferSize );
             case 6:
-                return cubicInterpolateHermite( m_delayLine, readPos );
+                return cubicInterpolateHermite( m_delayLine, readPos, m_delayBufferSize );
             default:
-                return linearInterpolate( m_delayLine, readPos );
+                return linearInterpolate( m_delayLine, readPos, m_delayBufferSize );
         }
     }
     
@@ -86,7 +87,8 @@ public:
     void setSample( int indexThroughCurrentBuffer, float value )
     {
         auto wp = m_writePos + indexThroughCurrentBuffer + m_delayBufferSize;
-        wp %= m_delayBufferSize;
+        if ( wp < 0 ) { wp += m_delayBufferSize; }
+        else { wp = fastMod2 ( wp, m_delayBufferSize ); }
         m_delayLine[ wp ]  = value;
     }
     

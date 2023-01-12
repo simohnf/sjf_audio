@@ -154,16 +154,16 @@ public:
             lrSizeFactor = 0.4f + (size * 0.6f);
             lrCutOff = m_lrCutOffSmooth.filterInput( m_lrCutOffTarget );
             erCutOff = m_erCutOffSmooth.filterInput( m_erCutOffTarget );
-            m_sum = 0.0f; // reset sum
+            float sum = 0.0f; // reset sum
             // sum left and right and apply equal power gain
             for ( int inC = 0; inC < nInChannels; inC++ )
             {
-                m_sum += buffer.getSample( inC, samp ) * equalPowerGain;
+                sum += buffer.getSample( inC, samp ) * equalPowerGain;
             }
             // first copy input sample to temp buffer & add previous shimmer output
             for ( int c = 0; c < m_erChannels; c ++ )
             {
-                v1[c] = m_sum + m_shimmerOutput[ c % m_shimVoices ];
+                v1[c] = sum + m_shimmerOutput[ c % m_shimVoices ];
             }
             // early reflections
             processEarlyReflections( samp, erSizeFactor, modFactor ); // last stage of er is in v1
@@ -257,12 +257,12 @@ private:
         auto shimOutLevel = m_shimmerLevelSmooth.filterInput( m_shimmerLevelTarget ); // set output level using interface
         for ( int shimV = 0; shimV < m_shimVoices; shimV++ ) // count through the 2 shimmer voices
         {
-            m_sum = 0.0f; // reset sum
+            float sum = 0.0f; // reset sum
             for ( int c = 0; c < m_erChannels; c++ ) // count through reverb voices
             {
-                if ( c % m_shimVoices == shimV ) { m_sum += v2[ c ]; } // add values for relevant voices to sum
+                if ( c % m_shimVoices == shimV ) { sum += v2[ c ]; } // add values for relevant voices to sum
             }
-            shimmer[ shimV ].setSample( indexThroughCurrentBuffer, m_sum * shimInLevel ); // set buffer in shimmer
+            shimmer[ shimV ].setSample( indexThroughCurrentBuffer, sum * shimInLevel ); // set buffer in shimmer
             // calculate shimmer output
             auto shimOutput = shimmer[ shimV ].pitchShiftOutput( indexThroughCurrentBuffer, shimTranspose ) * shimOutLevel;
             for ( int c = 0; c < m_erChannels; c++ )
@@ -331,7 +331,7 @@ private:
             if ( delayLineLengths[ c ] > longest ) { longest = delayLineLengths[ c ]; }
         }
         
-        float sum = 0;
+        float sum = 0.0f;
         for ( int c = 0; c < m_erChannels; c++ )
         {
             sum += delayLineLengths[ c ];
@@ -409,16 +409,16 @@ private:
         auto shimOutLevel = m_shimmerLevelSmooth.filterInput( m_shimmerLevelTarget ) / nInChannels;// * shimLevFactor; // set output level using interface
         for ( int inC = 0; inC < nInChannels; inC ++ )
         {
-            m_sum = 0.0f;
+            float sum = 0.0f;
             for (int c = 0; c < m_erChannels; c++ )
             {
-                m_sum += ( v1[ c ] + v2[ c ] ) * outputMixer[ c ][ inC ];
+                sum += ( v1[ c ] + v2[ c ] ) * outputMixer[ c ][ inC ];
             }
-            m_shimmerOutput[ inC ] = processShimmer( indexThroughCurrentBuffer, inC, shimTranspose, m_sum, shimInLevel, shimOutLevel );
-            m_sum *= m_wetSmooth.filterInput( m_wetTarget ) * gainFactor;
-            m_sum = tanh( m_sum ); // limit reverb output
-            m_sum += buffer.getSample( inC, indexThroughCurrentBuffer ) * m_drySmooth.filterInput( m_dryTarget );
-            buffer.setSample( inC, indexThroughCurrentBuffer, ( m_sum ) );
+            m_shimmerOutput[ inC ] = processShimmer( indexThroughCurrentBuffer, inC, shimTranspose, sum, shimInLevel, shimOutLevel );
+            sum *= m_wetSmooth.filterInput( m_wetTarget ) * gainFactor;
+            sum = tanh( sum ); // limit reverb output
+            sum += buffer.getSample( inC, indexThroughCurrentBuffer ) * m_drySmooth.filterInput( m_dryTarget );
+            buffer.setSample( inC, indexThroughCurrentBuffer, ( sum ) );
         }
     }
     //==============================================================================
@@ -442,9 +442,9 @@ private:
             for (int c = 0; c < m_erChannels; c ++ )
             {
                 // mix using hadamard
-                m_sum = 0.0f;
-                for ( int ch = 0; ch < m_erChannels; ch++ ) { m_sum += ( v1[ ch ] * m_hadamard[ c ][ ch ] ); }
-                v2[ c ] = m_sum;
+                float sum = 0.0f;
+                for ( int ch = 0; ch < m_erChannels; ch++ ) { sum += ( v1[ ch ] * m_hadamard[ c ][ ch ] ); }
+                v2[ c ] = sum;
             }
             // copy v2 into v1 for next phase
             for ( int c = 0; c < m_erChannels; c++ ) { v1[ c ] = v2[ c ]; }
@@ -465,13 +465,13 @@ private:
         }
         
         
-        m_sum = 0.0f; // use this to mix all samples with householder matrix
+        float sum = 0.0f; // use this to mix all samples with householder matrix
         for( int c = 0; c < m_erChannels; c++ )
         {
-            m_sum += v2[ c ];
+            sum += v2[ c ];
         }
-        m_sum *= m_householderWeight;
-        for ( int c = 0; c < m_erChannels; c++ ) { v2[ c ] += m_sum; } // mixed delayed outputs are in v2
+        sum *= m_householderWeight;
+        for ( int c = 0; c < m_erChannels; c++ ) { v2[ c ] += sum; } // mixed delayed outputs are in v2
 //        addShimmerInLR( indexThroughCurrentBuffer );
         for ( int c = 0; c < m_erChannels; c++ )
         {
@@ -587,7 +587,7 @@ private:
 
     float m_modulationTarget, m_sizeTarget, m_dryTarget = 0.89443f, m_wetTarget = 0.44721f, m_lrFBTarget = 0.85f, m_lrCutOffTarget = 0.8f, m_erCutOffTarget = 0.8f, m_shimmerTransposeTarget = 2.0f, m_shimmerLevelTarget = 0.4f;
     sjf_lpf m_sizeSmooth, m_fbSmooth, m_modSmooth, m_wetSmooth, m_drySmooth, m_lrCutOffSmooth, m_erCutOffSmooth, m_shimmerTransposeSmooth, m_shimmerLevelSmooth;
-    float m_sum; // every little helps with cpu, I reuse this at multiple stages just to add and mix sample values
+//    float sum; // every little helps with cpu, I reuse this at multiple stages just to add and mix sample values
     float m_householderWeight = ( -2.0f / (float)m_erChannels );
     
     bool m_feedbackControlFlag = false;

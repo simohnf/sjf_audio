@@ -207,6 +207,28 @@ inline std::vector<bool> twosThreesAndFours( int nBeatsToGenerate )
     }
     return output;
 }
+
+////==============================================================================
+// faster modulo from www.youtube.com/watch?v=nXaxk27zwlk&t=3394s
+// Chandler Carruth
+inline
+unsigned long fastMod ( const unsigned long input, const unsigned long ceil )
+{
+    // apply the modulo operator only when needed
+    // (i.e. when the input is greater than the ceiling)
+    return input < ceil ? input : input % ceil;
+    // NB: the assumption here is that the numbers are positive
+}
+////==============================================================================
+inline
+unsigned long fastMod2 ( unsigned long input, const unsigned long ceil )
+{
+//    while ( input < 0 ) { input += ceil; }
+    while ( input >= ceil ) { input -= ceil; }
+    return input;
+    // assume values are positive
+}
+
 ////==============================================================================
 //
 //void hadamard( std::vector< std::vector<float> > &hadamard, int size )

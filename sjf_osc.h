@@ -16,6 +16,7 @@ public:
     {
         setSine();
         m_increment = m_frequency * m_wavetableSize / m_SR;
+        m_incrementT2 = m_frequency / m_SR;
     }
     ~sjf_osc(){}
     
@@ -35,6 +36,14 @@ public:
     {
         m_frequency = frequency;
         m_increment = m_frequency * m_wavetableSize / m_SR;
+        m_incrementT2 = m_frequency / m_SR;
+    }
+    
+    float getSampleCalculated()
+    {
+        m_readPos += m_incrementT2;
+        m_readPos -= (int)m_readPos; // round readPosition
+        return sin(2.0 * m_PI * m_incrementT2);
     }
     
     float getSample( )
@@ -117,8 +126,9 @@ private:
     
     const static int m_wavetableSize = 512;
     double m_PI = 3.14159265;
-    float m_SR = 44100.0f, m_frequency = 1.0f, m_readPos = 0, m_increment;
+    float m_SR = 44100.0f, m_frequency = 1.0f, m_readPos = 0, m_increment, m_incrementT2;
     std::array< float, m_wavetableSize > m_table;
+    
     
     // variables for cubic interpolation (to save allocation time)
     double a0, a1, a2, a3, mu, mu2;

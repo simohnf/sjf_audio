@@ -223,13 +223,20 @@ unsigned long fastMod ( const unsigned long input, const unsigned long ceil )
 inline
 unsigned long fastMod2 ( unsigned long input, const unsigned long ceil )
 {
-//    while ( input < 0 ) { input += ceil; }
+    //    while ( input < 0 ) { input += ceil; }
     while ( input >= ceil ) { input -= ceil; }
     return input;
     // assume values are positive
 }
 
 ////==============================================================================
+template < class intType >
+void fastMod3( intType &input, const intType &ceil )
+{
+    while ( input < 0 ) { input += ceil; }
+    while ( input >= ceil ) { input -= ceil; }
+}
+//==============================================================================
 //
 //void hadamard( std::vector< std::vector<float> > &hadamard, int size )
 //{

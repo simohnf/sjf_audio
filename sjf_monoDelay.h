@@ -8,11 +8,12 @@
 #define sjf_monoDelay_h
 #include "sjf_interpolationTypes.h"
 
+
 class sjf_monoDelay
 {
 public:
-    sjf_monoDelay(){};
-    ~sjf_monoDelay(){};
+    sjf_monoDelay( ) { };
+    ~sjf_monoDelay( ) { };
     
     void initialise( int sampleRate )
     {
@@ -20,6 +21,8 @@ public:
         int size = round(m_SR * 0.001 * m_maxSizeMS);
         m_delayBufferSize = size;
         m_delayLine.resize( m_delayBufferSize, 0 );
+        m_delayLine.shrink_to_fit();
+        
         setDelayTime( m_delayTimeMS );
     }
     
@@ -31,29 +34,33 @@ public:
         int size = round(m_SR * 0.001 * m_maxSizeMS);
         m_delayBufferSize = size;
         m_delayLine.resize( m_delayBufferSize, 0 );
+        m_delayLine.shrink_to_fit();
         setDelayTime( m_delayTimeMS );
+        
     }
     
     void setDelayTime( float delayInMS )
     {
+        if ( m_delayTimeMS == delayInMS ) { return; }
         m_delayTimeMS = delayInMS;
-        m_delayTimeInSamps = m_delayTimeMS * m_SR * 0.001;
+        m_delayTimeInSamps = m_delayTimeMS * m_SR * 0.001f;
     }
     
     void setDelayTimeSamps( float delayInSamps )
     {
         m_delayTimeInSamps = delayInSamps;
-        m_delayTimeMS = m_delayTimeInSamps / ( m_SR * 0.001 );
+//        m_delayTimeMS = m_delayTimeInSamps / ( m_SR * 0.001f );
 //        DBG( m_delayTimeInSamps << " " << m_delayTimeMS );
     }
     
     float getDelayTimeMS()
     {
+        m_delayTimeMS = m_delayTimeInSamps / ( m_SR * 0.001f );
         return m_delayTimeMS;
     }
 
     
-    float getSample( int indexThroughCurrentBuffer )
+    float getSample( const int &indexThroughCurrentBuffer )
     {
         float readPos = m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer;
         while ( readPos < 0 ) { readPos += m_delayBufferSize; }
@@ -77,18 +84,23 @@ public:
         }
     }
     
-    float getSampleRoundedIndex( int indexThroughCurrentBuffer )
+    float getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
     {
-        int readPos = round(m_delayBufferSize + m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer);
-        readPos %= m_delayBufferSize;
+        int readPos = round( m_writePos - m_delayTimeInSamps + indexThroughCurrentBuffer);
+        fastMod3< int > ( readPos, m_delayBufferSize );
+//        while ( readPos < 0 ) { readPos += m_delayBufferSize; }
+//        readPos = fastMod2( readPos, m_delayBufferSize );
         return m_delayLine[ readPos ];
     }
     
-    void setSample( int indexThroughCurrentBuffer, float value )
+    
+    
+    void setSample( const int &indexThroughCurrentBuffer, const float &value )
     {
-        auto wp = m_writePos + indexThroughCurrentBuffer + m_delayBufferSize;
-        if ( wp < 0 ) { wp += m_delayBufferSize; }
-        else { wp = fastMod2 ( wp, m_delayBufferSize ); }
+        auto wp = m_writePos + indexThroughCurrentBuffer;
+        fastMod3< int >( wp, m_delayBufferSize );
+//        if ( wp < 0 ) { wp += m_delayBufferSize; }
+//        else { wp = fastMod2 ( wp, m_delayBufferSize ); }
         m_delayLine[ wp ]  = value;
     }
     

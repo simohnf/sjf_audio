@@ -230,8 +230,8 @@ unsigned long fastMod2 ( unsigned long input, const unsigned long ceil )
 }
 
 ////==============================================================================
-template < class intType >
-void fastMod3( intType &input, const intType &ceil )
+template < class type >
+void fastMod3( type &input, const type &ceil )
 {
     while ( input < 0 ) { input += ceil; }
     while ( input >= ceil ) { input -= ceil; }

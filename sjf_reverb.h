@@ -10,7 +10,7 @@
 #include <JuceHeader.h>
 #include "sjf_audioUtilities.h"
 #include "sjf_monoDelay.h"
-#include "sjf_multiDelay.h"
+#include "sjf_delayLine.h"
 #include "sjf_lpf.h"
 #include "sjf_osc.h"
 #include "sjf_monoPitchShift.h"

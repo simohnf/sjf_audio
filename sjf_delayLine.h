@@ -1,141 +1,190 @@
 //
 //  sjf_delayLine.h
 //
-//  Created by Simon Fay on 24/08/2022.
+//  Created by Simon Fay on 23/01/2023.
 //
 
 #ifndef sjf_delayLine_h
 #define sjf_delayLine_h
-
-#include <JuceHeader.h>
+#include "sjf_audioUtilities.h"
 #include "sjf_interpolationTypes.h"
 
-class sjf_delayLine {
-    
+
+#include <vector>
+
+template< class floatType >
+class sjf_delayLine
+{
+protected:
+    std::vector< floatType > m_delayLine;
+    floatType m_delayTimeInSamps = 0.0f;
+    int m_writePos = 0, m_interpolationType = 1, m_delayLineSize;
 public:
-    sjf_delayLine()
+    sjf_delayLine() { };
+    ~sjf_delayLine() {};
+    
+    void initialise( const int &MaxDelayInSamps )
     {
-        m_delayBuffer.setSize(2, m_SR * m_delBufferLength );
-        m_delayBuffer.clear();
-        
-        m_delL.reset( m_SR, 0.02f ) ;
-        m_delR.reset( m_SR, 0.02f ) ;
-        
-        m_delL.setCurrentAndTargetValue( 500.0f ) ;
-        m_delR.setCurrentAndTargetValue( 500.0f ) ;
-    };
-    //==============================================================================
-    virtual ~sjf_delayLine() {};
-    //==============================================================================
-    virtual void intialise( int sampleRate , int totalNumInputChannels, int totalNumOutputChannels, int samplesPerBlock)
+        m_delayLineSize = MaxDelayInSamps;
+        m_delayLine.resize( m_delayLineSize );
+        m_delayLine.shrink_to_fit();
+    }
+    
+    void setDelayTimeSamps( const floatType &delayInSamps )
     {
-        if (sampleRate > 0 ) { m_SR = sampleRate; }
-        m_delayBuffer.setSize( totalNumOutputChannels, m_SR * m_delBufferLength );
-        m_delayBuffer.clear();
-        
-        m_delL.reset( m_SR, 0.02f ) ;
-        m_delR.reset( m_SR, 0.02f ) ;
-    };
-    //==============================================================================
-    void writeToDelayBuffer(juce::AudioBuffer<float>& sourceBuffer, float gain)
+        m_delayTimeInSamps = delayInSamps;
+    }
+    
+    
+    inline floatType getSample( const int &indexThroughCurrentBuffer )
     {
-        auto bufferSize = sourceBuffer.getNumSamples();
-        auto delayBufferSize = m_delayBuffer.getNumSamples();
-        for (int index = 0; index < bufferSize; index++)
+        floatType readPos = m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps;
+        fastMod3< floatType >( readPos, m_delayLineSize );
+        switch ( m_interpolationType )
         {
-            auto wp = (m_writePos + index) % delayBufferSize;
-            for (int channel = 0; channel < sourceBuffer.getNumChannels(); channel++)
-            {
-                m_delayBuffer.setSample(channel % m_delayBuffer.getNumChannels(), wp, (sourceBuffer.getSample(channel, index) * gain) );
-            }
+            case 1:
+                return linearInterpolate( m_delayLine, readPos, m_delayLineSize );
+            case 2:
+                return cubicInterpolate( m_delayLine, readPos, m_delayLineSize );
+            case 3:
+                return fourPointInterpolatePD( m_delayLine, readPos, m_delayLineSize );
+            case 4:
+                return fourPointFourthOrderOptimal( m_delayLine, readPos, m_delayLineSize );
+            case 5:
+                return cubicInterpolateGodot( m_delayLine, readPos, m_delayLineSize );
+            case 6:
+                return cubicInterpolateHermite( m_delayLine, readPos, m_delayLineSize );
+            default:
+                return linearInterpolate( m_delayLine, readPos, m_delayLineSize );
         }
-    };
-    //==============================================================================
-    void copyFromDelayBuffer(juce::AudioBuffer<float>& destinationBuffer, float gain)
+    }
+    
+    inline floatType getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
     {
-        auto bufferSize = destinationBuffer.getNumSamples();
-        auto delayBufferSize = m_delayBuffer.getNumSamples();
-        auto numChannels = destinationBuffer.getNumChannels();
-        auto delTimeL = m_delL.getCurrentValue() * m_SR / 1000.0f;
-        auto delTimeR = m_delR.getCurrentValue() * m_SR / 1000.0f;
-        for (int index = 0; index < bufferSize; index++)
-        {
-            for (int channel = 0; channel < numChannels; channel++)
-            {
-                float channelReadPos;
-                if( channel == 0 ) { channelReadPos = m_writePos - delTimeL + index; }
-                else if(channel == 1) { channelReadPos =  m_writePos - delTimeR + index; }
-                else { return; }
-                while ( channelReadPos < 0 ) { channelReadPos += delayBufferSize; }
-                while (channelReadPos >= delayBufferSize) { channelReadPos -= delayBufferSize; }
-                auto val = cubicInterpolate(m_delayBuffer, channel % m_delayBuffer.getNumChannels(), channelReadPos) * gain;
-                destinationBuffer.addSample(channel, index, val );
-            }
-            delTimeL = m_delL.getNextValue() * m_SR / 1000.0f;
-            delTimeR = m_delR.getNextValue() * m_SR / 1000.0f;
-        }
-    };
-    //==============================================================================
-    void addToDelayBuffer (juce::AudioBuffer<float>& sourceBuffer, float gain)
+        auto readPos = round( m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps );
+        fastMod3< floatType >( readPos, m_delayLineSize );
+        return m_delayLine[ readPos ];
+    }
+    
+    inline void setSample( const int &indexThroughCurrentBuffer, const floatType &value )
     {
-        auto bufferSize = sourceBuffer.getNumSamples();
-        auto delayBufferSize = m_delayBuffer.getNumSamples();
-        
-        for (int channel = 0; channel < sourceBuffer.getNumChannels(); ++channel)
-        {
-            for (int index = 0; index < bufferSize; index ++)
-            {
-                float value = sourceBuffer.getSample(channel, index) * gain;
-                m_delayBuffer.addSample(channel, ( (m_writePos + index) % delayBufferSize ) , value );
-            }
-        }
-    };
-    //==============================================================================
-    void addToDelayBuffer (juce::AudioBuffer<float>& sourceBuffer, float gain1, float gain2)
+        auto wp = m_writePos + indexThroughCurrentBuffer;
+        fastMod3< int >( wp, m_delayLineSize );
+        m_delayLine[ wp ]  = value;
+    }
+    
+    int updateBufferPositions( const int &bufferSize )
     {
-        auto bufferSize = sourceBuffer.getNumSamples();
-        auto delayBufferSize = m_delayBuffer.getNumSamples();
-        
-        for (int channel = 0; channel < sourceBuffer.getNumChannels(); ++channel)
-        {
-            float gain;
-            if (channel == 0){ gain = gain1; }
-            else{ gain = gain2; }
-            for (int index = 0; index < bufferSize; index ++)
-            {
-                float value = sourceBuffer.getSample(channel, index) * gain;
-                m_delayBuffer.addSample(channel, ( (m_writePos + index) % delayBufferSize ) , value );
-            }
-        }
-    };
-    //==============================================================================
-    void updateBufferPositions(int bufferSize)
-    {
-        auto delayBufferSize = m_delayBuffer.getNumSamples();
         //    Update write position ensuring it stays within size of delay buffer
         m_writePos += bufferSize;
-        m_writePos %= delayBufferSize;
-    };
-    //==============================================================================
-    // set and retrieve parameters
-    void setDelTimeL( float delLMS) { m_delL.setTargetValue( delLMS ); }
-    void setDelTimeR( float delRMS) { m_delR.setTargetValue( delRMS ); }
-    float getDelTimeL( ) { return m_delL.getTargetValue( ); }
-    float getDelTimeR( ) { return m_delR.getTargetValue( ); }
-    void clearBuffer() { m_delayBuffer.clear(); }
-    void setMaxDelayLength ( float maxDelayInSecs ) { m_delBufferLength = maxDelayInSecs; }
-    //==============================================================================
+        while ( m_writePos >= m_delayLineSize ) { m_writePos -= m_delayLineSize; }
+        return m_writePos;
+    }
     
+    void setInterpolationType( int interpolationType ) { m_interpolationType = interpolationType; }
     
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_delayLine )
+};
+
+//------------------------------------------------------------------------
+//------------------------------------------------------------------------
+//------------------------------------------------------------------------
+//------------------------------------------------------------------------
+
+template <class floatType, int NUM_CHANNELS>
+class sjf_multiDelay
+{
 protected:
-    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> m_delL, m_delR;
-    juce::AudioBuffer<float> m_delayBuffer; // This is the circular buffer for the delay
+//    floatType m_SR = 44100, m_maxSizeMS;
+//    std::array< floatType, NUM_CHANNELS > m_delayTimeInSamps, m_delayTimeMS;
+    int m_writePos = 0;
+    std::array< sjf_delayLine< floatType >, NUM_CHANNELS > m_delayLines;
     
-    int m_SR = 44100;
-    int m_writePos = 0; // this is the index to write to in the "m_delayBuffer"
-    float m_delBufferLength = 3; // Maximum delay time equals 2 seconds plus 1 second for safety with stereo spread increase
     
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_delayLine)
+    
+public:
+    sjf_multiDelay( ) { };
+    ~sjf_multiDelay( ) { };
+    
+    
+    void initialise( const int &sampleRate , const floatType &sizeMS )
+    {
+        auto size = round(sampleRate * 0.001 * sizeMS) + 1;
+        for ( int i = 0; i < NUM_CHANNELS; i++ ) { m_delayLines[ i ].initialise( size ); }
+    }
+    
+    
+    void setDelayTimeSamps( const int &channel, const floatType &delayInSamps )
+    {
+        m_delayLines[ channel ].setDelayTimeSamps( delayInSamps );
+    }
+
+    
+    inline floatType getSample( const int &channel, const int &indexThroughCurrentBuffer )
+    {
+        return m_delayLines[ channel ].getSample( indexThroughCurrentBuffer );
+    }
+    
+    inline void popSamplesOutOfDelayLine( const int &indexThroughCurrentBuffer, floatType* whereToPopTo )
+    {
+
+        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+        {
+            whereToPopTo[ channel ] = m_delayLines[ channel ].getSample( indexThroughCurrentBuffer );
+        }
+    }
+    
+    inline void processAudioInPlaceRoundedIndex( const int &indexThroughCurrentBuffer, floatType* data )
+    {
+        pushSamplesIntoDelayLine( indexThroughCurrentBuffer, data );
+        popSamplesOutOfDelayLineRoundedIndex( indexThroughCurrentBuffer, data );
+    }
+    
+    inline void popSamplesOutOfDelayLineRoundedIndex( const int &indexThroughCurrentBuffer, floatType* whereToPopTo )
+    {
+        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+        {
+
+            whereToPopTo[ channel ] = m_delayLines[ channel ].getSampleRoundedIndex( indexThroughCurrentBuffer );
+        }
+    }
+    inline floatType getSampleRoundedIndex( const int &channel, const int &indexThroughCurrentBuffer )
+    {
+        return m_delayLines[ channel ].getSampleRoundedIndex( indexThroughCurrentBuffer );
+    }
+    
+    
+    inline void pushSamplesIntoDelayLine( const int &indexThroughCurrentBuffer, const floatType* valuesToPush )
+    {
+        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+        {
+            m_delayLines[ channel ].setSample( indexThroughCurrentBuffer,  valuesToPush[ channel ] );
+        }
+    }
+    
+    inline void setSample( const int &channel, const int &indexThroughCurrentBuffer, const floatType &value )
+    {
+        m_delayLines[ channel ].setSample( indexThroughCurrentBuffer,  value );
+    }
+    
+    inline void updateBufferPositions( const int &bufferSize )
+    {
+        //    Update write position ensuring it stays within size of delay buffer
+        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+        {
+            m_delayLines[ channel ].updateBufferPositions( bufferSize );
+        }
+    }
+    
+    void setInterpolationType( const int &interpolationType )
+    {
+        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+        {
+            m_delayLines[ channel ].setInterpolationType( interpolationType );
+        }
+    }
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_multiDelay )
 };
 
 #endif /* sjf_delayLine_h */

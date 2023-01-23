@@ -92,7 +92,7 @@ public:
 protected:
     floatType m_delayTimeInSamps = 0.0f, m_SR = 44100, m_delayTimeMS = 0.0f;
     int m_writePos = 0, m_interpolationType = 1;
-    floatType m_delayLine[ MAXIMUM_SIZE ] = { static_cast< floatType > (0) };;
+    floatType m_delayLine[ MAXIMUM_SIZE ] = { static_cast< floatType > (0) };
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_monoDelayTemplate )
 };

@@ -19,6 +19,7 @@ protected:
     std::vector< floatType > m_delayLine;
     floatType m_delayTimeInSamps = 0.0f;
     int m_writePos = 0, m_interpolationType = 1, m_delayLineSize;
+    
 public:
     sjf_delayLine() { };
     ~sjf_delayLine() {};
@@ -61,8 +62,8 @@ public:
     
     inline floatType getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
     {
-        auto readPos = round( m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps );
-        fastMod3< floatType >( readPos, m_delayLineSize );
+        int readPos =  m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps ;
+        fastMod3< int >( readPos, m_delayLineSize );
         return m_delayLine[ readPos ];
     }
     
@@ -142,10 +143,11 @@ public:
     
     inline void popSamplesOutOfDelayLineRoundedIndex( const int &indexThroughCurrentBuffer, floatType* whereToPopTo )
     {
-        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+        for ( auto &channel : m_delayLines )
         {
-
-            whereToPopTo[ channel ] = m_delayLines[ channel ].getSampleRoundedIndex( indexThroughCurrentBuffer );
+            *whereToPopTo = channel.getSampleRoundedIndex( indexThroughCurrentBuffer );
+            ++whereToPopTo;
+//            whereToPopTo[ channel ] = m_delayLines[ channel ].getSampleRoundedIndex( indexThroughCurrentBuffer );
         }
     }
     inline floatType getSampleRoundedIndex( const int &channel, const int &indexThroughCurrentBuffer )
@@ -156,9 +158,12 @@ public:
     
     inline void pushSamplesIntoDelayLine( const int &indexThroughCurrentBuffer, const floatType* valuesToPush )
     {
-        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+//        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+        for ( auto &channel : m_delayLines )
         {
-            m_delayLines[ channel ].setSample( indexThroughCurrentBuffer,  valuesToPush[ channel ] );
+            channel.setSample( indexThroughCurrentBuffer,  *valuesToPush );
+            ++valuesToPush;
+//            m_delayLines[ channel ].setSample( indexThroughCurrentBuffer,  valuesToPush[ channel ] );
         }
     }
     

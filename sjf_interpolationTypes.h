@@ -751,8 +751,8 @@ float cubicInterpolateHermite( juce::AudioBuffer<float> &buffer, const int chann
     double mu; // fractional part between step 1 & 2
     
     float findex = readPos;
-    if(findex < 0){ findex+= bufferSize;}
-    else if(findex > bufferSize){ findex-= bufferSize;}
+    while(findex < 0){ findex+= bufferSize;}
+    while(findex > bufferSize){ findex-= bufferSize;}
     
     int index = findex;
     mu = findex - index;
@@ -790,8 +790,8 @@ float cubicInterpolateGodot( juce::AudioBuffer<float> &buffer, const int channel
     double mu; // fractional part between step 1 & 2
     
     float findex = readPos;
-    if(findex < 0){ findex+= bufferSize;}
-    else if(findex > bufferSize){ findex-= bufferSize;}
+    while(findex < 0){ findex+= bufferSize;}
+    while(findex > bufferSize){ findex-= bufferSize;}
     
     int index = findex;
     mu = findex - index;
@@ -830,8 +830,8 @@ float fourPointFourthOrderOptimal( juce::AudioBuffer<float> &buffer, const int c
     double mu; // fractional part between step 1 & 2
     
     float findex = readPos;
-    if(findex < 0){ findex+= bufferSize;}
-    else if(findex > bufferSize){ findex-= bufferSize;}
+    while(findex < 0){ findex+= bufferSize;}
+    while(findex > bufferSize){ findex-= bufferSize;}
     
     int index = findex;
     mu = findex - index;
@@ -871,8 +871,8 @@ float linearInterpolate(juce::AudioBuffer<float> &buffer, const int channel, con
     double mu; // fractional part between step 1 & 2
     
     float findex = readPos;
-    if(findex < 0){ findex+= bufferSize;}
-    else if(findex > bufferSize){ findex-= bufferSize;}
+    while(findex < 0){ findex+= bufferSize;}
+    while(findex > bufferSize){ findex-= bufferSize;}
     
     int index = findex;
     mu = findex - index;
@@ -894,8 +894,8 @@ float fourPointInterpolatePD( juce::AudioBuffer<float> &buffer, const int channe
     double mu; // fractional part between step 1 & 2
     
     float findex = readPos;
-    if(findex < 0){ findex+= bufferSize;}
-    else if(findex > bufferSize){ findex-= bufferSize;}
+    while(findex < 0){ findex+= bufferSize;}
+    while(findex > bufferSize){ findex-= bufferSize;}
     
     int index = findex;
     mu = findex - index;
@@ -927,8 +927,8 @@ float cubicInterpolate(juce::AudioBuffer<float> &buffer, const int channel, cons
     double mu; // fractional part between step 1 & 2
     
     float findex = readPos;
-    if(findex < 0){ findex+= bufferSize;}
-    else if(findex > bufferSize){ findex-= bufferSize;}
+    while(findex < 0){ findex+= bufferSize;}
+    while(findex > bufferSize){ findex-= bufferSize;}
     
     int index = findex;
     mu = findex - index;

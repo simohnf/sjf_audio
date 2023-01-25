@@ -8,9 +8,83 @@
 #define sjf_delayLine_h
 #include "sjf_audioUtilities.h"
 #include "sjf_interpolationTypes.h"
-
+#include <JuceHeader.h>
 
 #include <vector>
+
+//template< class floatType >
+//class sjf_delayLineJuce
+//{
+//protected:
+//    juce::AudioBuffer< floatType > m_delayLine;
+//    floatType m_delayTimeInSamps = 0.0f;
+//    int m_writePos = 0, m_interpolationType = 1, m_delayLineSize;
+//
+//public:
+//    sjf_delayLineJuce() { };
+//    ~sjf_delayLineJuce() {};
+//
+//    void initialise( const int &MaxDelayInSamps )
+//    {
+//        m_delayLineSize = MaxDelayInSamps;
+//        m_delayLine.setSize( 1, m_delayLineSize );
+//    }
+//
+//    void setDelayTimeSamps( const floatType &delayInSamps )
+//    {
+//        m_delayTimeInSamps = delayInSamps;
+//    }
+//
+//
+//    floatType getSample( const int &indexThroughCurrentBuffer )
+//    {
+//        floatType readPos = m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps;
+//        switch ( m_interpolationType )
+//        {
+//            case 1:
+//                return linearInterpolate( m_delayLine, 0, readPos );
+//            case 2:
+//                return cubicInterpolate( m_delayLine, 0, readPos );
+//            case 3:
+//                return fourPointInterpolatePD( m_delayLine, 0, readPos );
+//            case 4:
+//                return fourPointFourthOrderOptimal( m_delayLine, 0, readPos );
+//            case 5:
+//                return cubicInterpolateGodot( m_delayLine, 0, readPos );
+//            case 6:
+//                return cubicInterpolateHermite( m_delayLine, 0, readPos );
+//            default:
+//                return linearInterpolate( m_delayLine, 0, readPos );
+//        }
+//    }
+//
+//    floatType getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
+//    {
+//        int readPos =  m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps ;
+//        fastMod3< int >( readPos, m_delayLineSize );
+//        return m_delayLine.getSample( 0, readPos );
+//    }
+//
+//    void setSample( const int &indexThroughCurrentBuffer, const floatType &value )
+//    {
+//        auto wp = m_writePos + indexThroughCurrentBuffer;
+//        fastMod3< int >( wp, m_delayLineSize );
+//        m_delayLine.setSample( 0, wp, value );
+//    }
+//
+//    int updateBufferPositions( const int &bufferSize )
+//    {
+//        //    Update write position ensuring it stays within size of delay buffer
+//        m_writePos += bufferSize;
+//        while ( m_writePos >= m_delayLineSize ) { m_writePos -= m_delayLineSize; }
+//        return m_writePos;
+//    }
+//
+//    void setInterpolationType( int interpolationType ) { m_interpolationType = interpolationType; }
+//
+//    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_delayLineJuce )
+//};
+
 
 template< class floatType >
 class sjf_delayLine
@@ -37,7 +111,7 @@ public:
     }
     
     
-    inline floatType getSample( const int &indexThroughCurrentBuffer )
+    floatType getSample( const int &indexThroughCurrentBuffer )
     {
         floatType readPos = m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps;
         fastMod3< floatType >( readPos, m_delayLineSize );
@@ -60,14 +134,14 @@ public:
         }
     }
     
-    inline floatType getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
+    floatType getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
     {
         int readPos =  m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps ;
         fastMod3< int >( readPos, m_delayLineSize );
         return m_delayLine[ readPos ];
     }
     
-    inline void setSample( const int &indexThroughCurrentBuffer, const floatType &value )
+    void setSample( const int &indexThroughCurrentBuffer, const floatType &value )
     {
         auto wp = m_writePos + indexThroughCurrentBuffer;
         fastMod3< int >( wp, m_delayLineSize );
@@ -96,8 +170,7 @@ template <class floatType, int NUM_CHANNELS>
 class sjf_multiDelay
 {
 protected:
-//    floatType m_SR = 44100, m_maxSizeMS;
-//    std::array< floatType, NUM_CHANNELS > m_delayTimeInSamps, m_delayTimeMS;
+    
     int m_writePos = 0;
     std::array< sjf_delayLine< floatType >, NUM_CHANNELS > m_delayLines;
     
@@ -111,7 +184,10 @@ public:
     void initialise( const int &sampleRate , const floatType &sizeMS )
     {
         auto size = round(sampleRate * 0.001 * sizeMS) + 1;
-        for ( int i = 0; i < NUM_CHANNELS; i++ ) { m_delayLines[ i ].initialise( size ); }
+        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+        {
+            m_delayLines[ channel ].initialise( size );
+        }
     }
     
     
@@ -121,12 +197,12 @@ public:
     }
 
     
-    inline floatType getSample( const int &channel, const int &indexThroughCurrentBuffer )
+    floatType getSample( const int &channel, const int &indexThroughCurrentBuffer )
     {
         return m_delayLines[ channel ].getSample( indexThroughCurrentBuffer );
     }
     
-    inline void popSamplesOutOfDelayLine( const int &indexThroughCurrentBuffer, floatType* whereToPopTo )
+    void popSamplesOutOfDelayLine( const int &indexThroughCurrentBuffer, const std::array< float, NUM_CHANNELS > &whereToPopTo )
     {
 
         for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
@@ -135,44 +211,44 @@ public:
         }
     }
     
-    inline void processAudioInPlaceRoundedIndex( const int &indexThroughCurrentBuffer, floatType* data )
+    void processAudioInPlaceRoundedIndex( const int &indexThroughCurrentBuffer, std::array< float, NUM_CHANNELS > &data )
     {
-        pushSamplesIntoDelayLine( indexThroughCurrentBuffer, data );
-        popSamplesOutOfDelayLineRoundedIndex( indexThroughCurrentBuffer, data );
-    }
-    
-    inline void popSamplesOutOfDelayLineRoundedIndex( const int &indexThroughCurrentBuffer, floatType* whereToPopTo )
-    {
-        for ( auto &channel : m_delayLines )
+        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
         {
-            *whereToPopTo = channel.getSampleRoundedIndex( indexThroughCurrentBuffer );
-            ++whereToPopTo;
-//            whereToPopTo[ channel ] = m_delayLines[ channel ].getSampleRoundedIndex( indexThroughCurrentBuffer );
+            m_delayLines[ channel ].setSample( indexThroughCurrentBuffer,  data[ channel ] );
+            data[ channel ] = m_delayLines[ channel ].getSampleRoundedIndex( indexThroughCurrentBuffer );
         }
     }
-    inline floatType getSampleRoundedIndex( const int &channel, const int &indexThroughCurrentBuffer )
+    
+    void popSamplesOutOfDelayLineRoundedIndex( const int &indexThroughCurrentBuffer, std::array< float, NUM_CHANNELS > &whereToPopTo )
+    {
+        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+        {
+            whereToPopTo[ channel ] = m_delayLines[ channel ].getSampleRoundedIndex( indexThroughCurrentBuffer );
+        }
+    }
+    
+    
+    floatType getSampleRoundedIndex( const int &channel, const int &indexThroughCurrentBuffer )
     {
         return m_delayLines[ channel ].getSampleRoundedIndex( indexThroughCurrentBuffer );
     }
     
     
-    inline void pushSamplesIntoDelayLine( const int &indexThroughCurrentBuffer, const floatType* valuesToPush )
+    void pushSamplesIntoDelayLine( const int &indexThroughCurrentBuffer, const std::array< float, NUM_CHANNELS > &valuesToPush )
     {
-//        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
-        for ( auto &channel : m_delayLines )
+        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
         {
-            channel.setSample( indexThroughCurrentBuffer,  *valuesToPush );
-            ++valuesToPush;
-//            m_delayLines[ channel ].setSample( indexThroughCurrentBuffer,  valuesToPush[ channel ] );
+            m_delayLines[ channel ].setSample( indexThroughCurrentBuffer,  valuesToPush[ channel ] );
         }
     }
     
-    inline void setSample( const int &channel, const int &indexThroughCurrentBuffer, const floatType &value )
+    void setSample( const int &channel, const int &indexThroughCurrentBuffer, const floatType &value )
     {
         m_delayLines[ channel ].setSample( indexThroughCurrentBuffer,  value );
     }
     
-    inline void updateBufferPositions( const int &bufferSize )
+    void updateBufferPositions( const int &bufferSize )
     {
         //    Update write position ensuring it stays within size of delay buffer
         for ( int channel = 0; channel < NUM_CHANNELS; channel++ )

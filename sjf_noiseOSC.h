@@ -24,15 +24,10 @@ public:
         if ( phase < m_lastPhase * 0.5 )
         {
             m_lastTarget = m_currentTarget;
-//            DBG( "last " << m_lastTarget );
             m_currentTarget = randomTarget();
-//            DBG( "current " << m_currentTarget );
             m_diff = m_currentTarget - m_lastTarget;
-//            DBG( "diff " << m_diff );
-//            DBG("");
         }
         m_lastPhase = phase;
-//        m_out += phase * m_diff;
         return m_lastTarget + ( phase * m_diff );
     }
 

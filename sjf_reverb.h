@@ -12,8 +12,9 @@
 //#include "sjf_monoDelay.h"
 #include "sjf_delayLine.h"
 #include "sjf_lpf.h"
-#include "sjf_osc.h"
-#include "sjf_monoPitchShift.h"
+#include "sjf_randOSC.h"
+//#include "sjf_monoPitchShift.h"
+#include "sjf_pitchShift.h"
 #include <algorithm>    // std::random_erShuffle
 #include <random>       // std::default_random_engine
 #include <vector>
@@ -106,7 +107,7 @@ private:
     std::array< sjf_multiDelay< float, m_revChannels >, m_erStages > er;
     std::array< std::array< float, m_revChannels >, m_erStages >  erDT;
     std::array< sjf_lpf, m_revChannels > erLPF;
-    std::array< std::array<  sjf_osc,  m_revChannels >, m_erStages > erMod;
+    std::array< std::array<  sjf_randOSC< float >,  m_revChannels >, m_erStages > erMod;
     std::array< std::array<  float,  m_revChannels >, m_erStages > erModD;
     
     
@@ -114,11 +115,12 @@ private:
     sjf_multiDelay< float, m_revChannels > lr;
     std::array< float,  m_revChannels > lrDT;
     std::array< sjf_lpf,  m_revChannels > lrLPF;
-    std::array< sjf_osc,  m_revChannels > lrMod;
+    std::array< sjf_randOSC< float >,  m_revChannels > lrMod;
     std::array< float,  m_revChannels > lrModD;
     
     // shimmer
-    sjf_monoPitchShift shimmer;
+//    sjf_monoPitchShift shimmer;
+    sjf_pitchShift< float > shimmer;
     float m_lastSummedOutput = 0;
     
     int m_SR = 44100, m_blockSize = 64;
@@ -131,8 +133,8 @@ private:
     bool m_feedbackControlFlag = false;
     
     // implemented as arrays rather than vectors for cpu
-    std::array< std::array<float, m_revChannels> , m_revChannels > m_hadamard;
-    std::array< std::array< bool,  m_revChannels >, m_erStages > m_erFlip;
+//    std::array< std::array<float, m_revChannels> , m_revChannels > m_hadamard;
+    std::array< std::array< float,  m_revChannels >, m_erStages > m_erFlip;
     
     
     std::array< std::array< float, 2 >,  m_revChannels > outputMixer; // stereo distribution
@@ -287,8 +289,6 @@ private:
     float processShimmer( const int &indexThroughCurrentBuffer, const float &inVal )
     {
         // shimmer
-//        auto shimTranspose  = m_shimmerTransposeSmooth.filterInput( m_shimmerTransposeTarget ); // set shimmer transposition
-//        auto shimOutLevel = m_shimmerLevelSmooth.filterInput( m_shimmerLevelTarget );// * shimLevFactor; // set output level using interface
         shimmer.setSample( indexThroughCurrentBuffer, inVal );
         return shimmer.pitchShiftOutput( indexThroughCurrentBuffer, m_shimmerTransposeSmooth.filterInput( m_shimmerTransposeTarget ) ) * m_shimmerLevelSmooth.filterInput( m_shimmerLevelTarget );
     }
@@ -330,9 +330,7 @@ private:
             auto dt = rand01() * dtC;
             dt += (dtC * c) + minLRtime;
             lrDT[ c ] = dt;
-//            DBG("lrDT["<<c<<"] "<<lrDT[c]);
         }
-//        DBG("m_lrTotalLength " << m_lrTotalLength);
         std::random_shuffle ( std::begin( lrDT ), std::end( lrDT ) );
         
         std::array< float, m_revChannels > delayLineLengths;
@@ -402,14 +400,13 @@ private:
             for (int c = 0; c < m_revChannels; c ++)
             {
                 erMod[ s ][ c ].setFrequency( rand01() * 0.5f );
-                erModD[ s ][ c ] = 0.25f + rand01() * 0.4f;
+//                erModD[ s ][ c ] = 0.25f + rand01() * 0.4f;
             }
         }
         for (int c = 0; c < m_revChannels; c ++)
         {
             lrMod[ c ].setFrequency( rand01() * 0.001f );
-//            lrModD[ c ] = 0.25f + rand01() * 0.5f;
-            lrModD[ c ] = rand01();
+//            lrModD[ c ] = rand01();
         }
     }
     //==============================================================================
@@ -430,7 +427,7 @@ private:
         }
     }
     //==============================================================================
-    void updateBuffers( int bufferSize )
+    void updateBuffers( const int &bufferSize )
     {
         lr.updateBufferPositions( bufferSize );
 
@@ -452,8 +449,6 @@ private:
             {
                 sum += ( erData[ c ] + lrData[ c ] ) * outputMixer[ c ][ inC ];
             }
-//            sum = tanh( sum ); // limit reverb output
-//            m_lastSummedOutput[ inC ] = processShimmer( indexThroughCurrentBuffer, inC, shimTranspose, sum, shimInLevel, shimOutLevel );
             m_lastSummedOutput += sum;
             sum *= m_wetSmooth.filterInput( m_wetTarget ) * gainFactor;
             
@@ -465,7 +460,6 @@ private:
     void processEarlyReflections( const int &indexThroughCurrentBuffer, const float &erSizeFactor, const float &modFactor, std::array< float, m_revChannels >& erData, std::array< float, m_revChannels >& lrData )
     {
         float dt;
-//        float dtScale = ( m_SR * 0.001f );
         std::array< float, m_revChannels > temp;
         temp.fill( 0 );
         static constexpr float erScale = 1.0f / m_erStages;
@@ -477,16 +471,19 @@ private:
             {
                 // for each channel
                 dt = erDT[ s ][ c ] * erSizeFactor;
-//                dt *= dtScale;
                 if ( c == 0 || c == 1 ) // only modulate 2 rev channels
                 {
-                    dt += ( dt * erMod[ s ][ c ].getSampleCalculated( ) * erModD[ s ][ c ] * modFactor );
+//                    dt += ( dt * erMod[ s ][ c ].getSampleCalculated( ) * erModD[ s ][ c ] * modFactor );
+//                    dt += ( dt * erMod[ s ][ c ].output( ) * erModD[ s ][ c ] * modFactor );
+                    dt += ( dt * erMod[ s ][ c ].output( ) * modFactor );
                 }
                 er[ s ].setDelayTimeSamps( c, dt );
             }
             // flip some polarities
             for ( int c = 0; c < m_revChannels; c++ )
-            { if ( m_erFlip[ s ][ c ] ) { erData[ c ] *= -1.0f ; } }
+            {
+                erData[ c ] *= m_erFlip[ s ][ c ];
+            }
             // write old samples to delay line and get delayed samples
             er[ s ].processAudioInPlaceRoundedIndex( indexThroughCurrentBuffer, erData );
             Hadamard<float, m_revChannels>::inPlace( erData.data() );
@@ -515,7 +512,9 @@ private:
 //            dt *= dtScale;
             if ( c == 0 || c == 1 )
             {
-                dt += ( dt * lrMod[c].getSample( ) * lrModD[c] * modFactor );
+//                dt += ( dt * lrMod[c].getSample( ) * lrModD[c] * modFactor );
+//                dt += ( dt * lrMod[c].output( ) * lrModD[c] * modFactor );
+                dt += ( dt * lrMod[c].output( ) * modFactor );
             }
             lr.setDelayTimeSamps( c, dt );
         }
@@ -577,8 +576,8 @@ private:
             {
                 // randomise some polarities
                 auto rn = rand01();
-                if ( rn >= 0.5 ) { m_erFlip[s][c] = true; }
-                else { m_erFlip[s][c] = false; }
+                if ( rn >= 0.5 ) { m_erFlip[s][c] = -1.0f; }
+                else { m_erFlip[s][c] = 1.0f; }
             }
         }
     }

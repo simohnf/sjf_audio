@@ -12,79 +12,6 @@
 
 #include <vector>
 
-//template< class floatType >
-//class sjf_delayLineJuce
-//{
-//protected:
-//    juce::AudioBuffer< floatType > m_delayLine;
-//    floatType m_delayTimeInSamps = 0.0f;
-//    int m_writePos = 0, m_interpolationType = 1, m_delayLineSize;
-//
-//public:
-//    sjf_delayLineJuce() { };
-//    ~sjf_delayLineJuce() {};
-//
-//    void initialise( const int &MaxDelayInSamps )
-//    {
-//        m_delayLineSize = MaxDelayInSamps;
-//        m_delayLine.setSize( 1, m_delayLineSize );
-//    }
-//
-//    void setDelayTimeSamps( const floatType &delayInSamps )
-//    {
-//        m_delayTimeInSamps = delayInSamps;
-//    }
-//
-//
-//    floatType getSample( const int &indexThroughCurrentBuffer )
-//    {
-//        floatType readPos = m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps;
-//        switch ( m_interpolationType )
-//        {
-//            case 1:
-//                return linearInterpolate( m_delayLine, 0, readPos );
-//            case 2:
-//                return cubicInterpolate( m_delayLine, 0, readPos );
-//            case 3:
-//                return fourPointInterpolatePD( m_delayLine, 0, readPos );
-//            case 4:
-//                return fourPointFourthOrderOptimal( m_delayLine, 0, readPos );
-//            case 5:
-//                return cubicInterpolateGodot( m_delayLine, 0, readPos );
-//            case 6:
-//                return cubicInterpolateHermite( m_delayLine, 0, readPos );
-//            default:
-//                return linearInterpolate( m_delayLine, 0, readPos );
-//        }
-//    }
-//
-//    floatType getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
-//    {
-//        int readPos =  m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps ;
-//        fastMod3< int >( readPos, m_delayLineSize );
-//        return m_delayLine.getSample( 0, readPos );
-//    }
-//
-//    void setSample( const int &indexThroughCurrentBuffer, const floatType &value )
-//    {
-//        auto wp = m_writePos + indexThroughCurrentBuffer;
-//        fastMod3< int >( wp, m_delayLineSize );
-//        m_delayLine.setSample( 0, wp, value );
-//    }
-//
-//    int updateBufferPositions( const int &bufferSize )
-//    {
-//        //    Update write position ensuring it stays within size of delay buffer
-//        m_writePos += bufferSize;
-//        while ( m_writePos >= m_delayLineSize ) { m_writePos -= m_delayLineSize; }
-//        return m_writePos;
-//    }
-//
-//    void setInterpolationType( int interpolationType ) { m_interpolationType = interpolationType; }
-//
-//    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_delayLineJuce )
-//};
-
 
 template< class floatType >
 class sjf_delayLine
@@ -268,4 +195,8 @@ public:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_multiDelay )
 };
 
+//------------------------------------------------------------------------
+//------------------------------------------------------------------------
+//------------------------------------------------------------------------
+//------------------------------------------------------------------------
 #endif /* sjf_delayLine_h */

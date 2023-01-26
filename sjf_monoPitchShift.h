@@ -17,6 +17,10 @@
 
 class sjf_monoPitchShift : public sjf_monoDelay
 {
+    sjf_phasor m_pitchPhasor;
+    sjf_lpf lpf, hpf;
+    float m_windowSize = 100, m_transpositionCalculationFactor;
+    
 public:
     sjf_monoPitchShift( )
     {
@@ -71,9 +75,7 @@ private:
         m_transpositionCalculationFactor = -1.0f  / ( windowSize * 0.001f ); // f = (t-1)* R/s
     }
     
-    sjf_phasor m_pitchPhasor;
-    sjf_lpf lpf, hpf;
-    float m_windowSize = 100, m_transpositionCalculationFactor;
+
     
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_monoPitchShift )

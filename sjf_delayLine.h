@@ -202,7 +202,7 @@ public:
         return m_delayLines[ channel ].getSample( indexThroughCurrentBuffer );
     }
     
-    void popSamplesOutOfDelayLine( const int &indexThroughCurrentBuffer, const std::array< float, NUM_CHANNELS > &whereToPopTo )
+    void popSamplesOutOfDelayLine( const int &indexThroughCurrentBuffer, std::array< float, NUM_CHANNELS > &whereToPopTo )
     {
 
         for ( int channel = 0; channel < NUM_CHANNELS; channel++ )

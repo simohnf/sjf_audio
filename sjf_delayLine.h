@@ -13,12 +13,12 @@
 #include <vector>
 
 
-template< class floatType >
+template< class T >
 class sjf_delayLine
 {
 protected:
-    std::vector< floatType > m_delayLine;
-    floatType m_delayTimeInSamps = 0.0f;
+    std::vector< T > m_delayLine;
+    T m_delayTimeInSamps = 0.0f;
     int m_writePos = 0, m_interpolationType = 1, m_delayLineSize;
     
 public:
@@ -32,16 +32,16 @@ public:
         m_delayLine.shrink_to_fit();
     }
     
-    void setDelayTimeSamps( const floatType &delayInSamps )
+    void setDelayTimeSamps( const T &delayInSamps )
     {
         m_delayTimeInSamps = delayInSamps;
     }
     
     
-    floatType getSample( const int &indexThroughCurrentBuffer )
+    T getSample( const int &indexThroughCurrentBuffer )
     {
-        floatType readPos = m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps;
-        fastMod3< floatType >( readPos, m_delayLineSize );
+        T readPos = m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps;
+        fastMod3< T >( readPos, m_delayLineSize );
         switch ( m_interpolationType )
         {
             case 1:
@@ -61,14 +61,14 @@ public:
         }
     }
     
-    floatType getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
+    T getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
     {
         int readPos =  m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps ;
         fastMod3< int >( readPos, m_delayLineSize );
         return m_delayLine[ readPos ];
     }
     
-    void setSample( const int &indexThroughCurrentBuffer, const floatType &value )
+    void setSample( const int &indexThroughCurrentBuffer, const T &value )
     {
         auto wp = m_writePos + indexThroughCurrentBuffer;
         fastMod3< int >( wp, m_delayLineSize );
@@ -93,13 +93,13 @@ public:
 //------------------------------------------------------------------------
 //------------------------------------------------------------------------
 
-template <class floatType, int NUM_CHANNELS>
+template <class T, int NUM_CHANNELS>
 class sjf_multiDelay
 {
 protected:
     
     int m_writePos = 0;
-    std::array< sjf_delayLine< floatType >, NUM_CHANNELS > m_delayLines;
+    std::array< sjf_delayLine< T >, NUM_CHANNELS > m_delayLines;
     
     
     
@@ -108,7 +108,7 @@ public:
     ~sjf_multiDelay( ) { };
     
     
-    void initialise( const int &sampleRate , const floatType &sizeMS )
+    void initialise( const int &sampleRate , const T &sizeMS )
     {
         auto size = round(sampleRate * 0.001 * sizeMS) + 1;
         for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
@@ -118,13 +118,13 @@ public:
     }
     
     
-    void setDelayTimeSamps( const int &channel, const floatType &delayInSamps )
+    void setDelayTimeSamps( const int &channel, const T &delayInSamps )
     {
         m_delayLines[ channel ].setDelayTimeSamps( delayInSamps );
     }
 
     
-    floatType getSample( const int &channel, const int &indexThroughCurrentBuffer )
+    T getSample( const int &channel, const int &indexThroughCurrentBuffer )
     {
         return m_delayLines[ channel ].getSample( indexThroughCurrentBuffer );
     }
@@ -156,7 +156,7 @@ public:
     }
     
     
-    floatType getSampleRoundedIndex( const int &channel, const int &indexThroughCurrentBuffer )
+    T getSampleRoundedIndex( const int &channel, const int &indexThroughCurrentBuffer )
     {
         return m_delayLines[ channel ].getSampleRoundedIndex( indexThroughCurrentBuffer );
     }
@@ -170,7 +170,7 @@ public:
         }
     }
     
-    void setSample( const int &channel, const int &indexThroughCurrentBuffer, const floatType &value )
+    void setSample( const int &channel, const int &indexThroughCurrentBuffer, const T &value )
     {
         m_delayLines[ channel ].setSample( indexThroughCurrentBuffer,  value );
     }

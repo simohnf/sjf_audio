@@ -230,8 +230,8 @@ float cubicInterpolateHermite( const std::vector<float> &buffer, const float rea
     y1 = buffer[ fastMod( index, bufferSize ) ];
     y2 = buffer[ fastMod( (index + 1), bufferSize ) ];
     y3 = buffer[ fastMod( (index + 2), bufferSize ) ];
-    double a0,a1,a2,a3,mu2;
-    mu2 = mu*mu;
+    double a0,a1,a2,a3; //,mu2;
+//    mu2 = mu*mu;
     
     a0 = y1;
     a1 = 0.5f * (y2 - y0);
@@ -720,8 +720,8 @@ float cubicInterpolateGodot( const float &mu, const float &y0, const float &y1, 
 inline
 float cubicInterpolateHermite( const float &mu, const float &y0, const float &y1, const float &y2, const float &y3 )
 {
-    double a0,a1,a2,a3,mu2;
-    mu2 = mu*mu;
+    double a0,a1,a2,a3; //,mu2;
+//    mu2 = mu*mu;
     
     a0 = y1;
     a1 = 0.5f * (y2 - y0);
@@ -768,8 +768,8 @@ float cubicInterpolateHermite( juce::AudioBuffer<float> &buffer, const int chann
     y1 = buffer.getSample(channel, fastMod( index, bufferSize ) );
     y2 = buffer.getSample(channel, fastMod( (index + 1), bufferSize ) );
     y3 = buffer.getSample(channel, fastMod( (index + 2), bufferSize ) );
-    double a0,a1,a2,a3,mu2;
-    mu2 = mu*mu;
+    double a0,a1,a2,a3; //,mu2;
+//    mu2 = mu*mu; 
     
     a0 = y1;
     a1 = 0.5f * (y2 - y0);

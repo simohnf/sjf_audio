@@ -52,16 +52,25 @@ public:
             data[c] *= scalingFactor;
         }
     }
+    
+    static inline void inPlace(Sample * data, const Sample &scalingFactor) {
+        recursiveUnscaled(data);
+        
+//        Sample scalingFactor = std::sqrt(1.0/size);
+        for (int c = 0; c < size; ++c) {
+            data[c] *= scalingFactor;
+        }
+    }
 };
 
-template< class floatType, int size >
+template< typename T, int size >
 class Householder
 {
-    static constexpr floatType m_householderWeight = ( -2.0f / (float)size );
+    static constexpr T m_householderWeight = ( -2.0f / (T)size );
 public:
-    static inline void mixInPlace( std::array< floatType, size >& data )
+    static inline void mixInPlace( std::array< T, size >& data )
     {
-        floatType sum = 0.0f; // use this to mix all samples with householder matrix
+        T sum = 0.0f; // use this to mix all samples with householder matrix
         for( int c = 0; c < size; c++ )
         {
             sum += data[ c ];
@@ -73,71 +82,94 @@ public:
         }
     }
 };
-//inline void mixWithHouseholderInPlace( std::array< float, m_revChannels >& data )
+
+//template < typename T, int IN_SIZE, int OUT_SIZE >
+//class outputMixer
 //{
-//    float sum = 0.0f; // use this to mix all samples with householder matrix
-//    for( int c = 0; c < m_revChannels; c++ )
+//    int m_inSize = IN_SIZE, m_outSize = OUT_SIZE;
+//    std::vector < std::vector < T > > m_mixer; // floatType[ input channel ] [ output channel ]
+//public:
+//    outputMixer ( )
 //    {
-//        sum += data[ c ];
+//        initialise( IN_SIZE, OUT_SIZE );
 //    }
-//    sum *= m_householderWeight;
-//    for ( int c = 0; c < m_revChannels; c++ )
+//    ~outputMixer ( ) { }
+//
+//    void initialise( const int &inputSize, const int &outputSize )
 //    {
-//        data[ c ] += sum;
-//    } // mixed delayed outputs are in v2
-//}
+//        m_inSize = inputSize;
+//        m_outSize = outputSize;
+//        m_mixer.resize( m_inSize );
+//        for ( int inChan = 0; inChan < m_inSize; inChan ++ )
+//        {
+//            m_mixer[ inChan ].resize( m_outSize );
+//            for ( int outChan = 0; outChan < m_outSize; outChan ++ )
+//            {
+//                // fill in mixer logic here
+//                    float val = (float)( c ) / (float)( NUM_REV_CHANNELS + 1 );
+//                    m_mixer[ inChan ][ outChan ] = sqrt( val );
+//                    m_mixer[ inChan ][ outChan ] = sqrt( 1.0f - val );
+//            }
+//            std::random_shuffle( std::begin( m_mixer ), std::end( m_mixer ) );
+//        }
+//    }
+//
+//    T mixForOutput( const std::array< T, inSize > data, const int outChannel  )
+//    {
+//        // this should output the value for each channel post mixing
+//    }
+//};
 //==============================================================================
 //==============================================================================
 //==============================================================================
 //==============================================================================
 
+template < typename T, size_t NUM_REV_CHANNELS, size_t NUM_ER_STAGES >
 class sjf_reverb
 {
 private:
-    const static int m_revChannels = 8; // must be a power of 2 because of hadamard matrix!!!!
-    const static int m_erStages = 4;
-    static constexpr float m_maxSize = 150;
-    static constexpr float m_c = 344; // speed of sound
-    static constexpr float m_maxTime = 1000.0f * m_maxSize / m_c;
-    float m_lrTotalLength = m_maxTime * 1.0f/3.0f;
-    float m_erTotalLength = m_maxTime - m_lrTotalLength;
+//    const static int NUM_REV_CHANNELS = 8; // must be a power of 2 because of hadamard matrix!!!!
+//    const static int NUM_ER_STAGES = 4;
+    static constexpr T m_maxSize = 150;
+    static constexpr T m_c = 344; // speed of sound
+    static constexpr T m_maxTime = 1000.0f * m_maxSize / m_c;
+    T m_lrTotalLength = m_maxTime * 1.0f/3.0f;
+    T m_erTotalLength = m_maxTime - m_lrTotalLength;
     
     
     // early reflections
-    std::array< sjf_multiDelay< float, m_revChannels >, m_erStages > er;
-    std::array< std::array< float, m_revChannels >, m_erStages >  erDT;
-    std::array< sjf_lpf, m_revChannels > erLPF;
-    std::array< std::array<  sjf_randOSC< float >,  m_revChannels >, m_erStages > erMod;
-    std::array< std::array<  float,  m_revChannels >, m_erStages > erModD;
+    std::array< sjf_multiDelay< T, NUM_REV_CHANNELS >, NUM_ER_STAGES > er;
+    std::array< std::array< T, NUM_REV_CHANNELS >, NUM_ER_STAGES >  erDT;
+    std::array< sjf_lpf< T >, NUM_REV_CHANNELS > erLPF;
+    std::array< std::array<  sjf_randOSC< T >,  NUM_REV_CHANNELS >, NUM_ER_STAGES > erMod;
+    std::array< std::array<  T,  NUM_REV_CHANNELS >, NUM_ER_STAGES > erModD;
     
     
     // late reflections
-    sjf_multiDelay< float, m_revChannels > lr;
-    std::array< float,  m_revChannels > lrDT;
-    std::array< sjf_lpf,  m_revChannels > lrLPF;
-    std::array< sjf_randOSC< float >,  m_revChannels > lrMod;
-    std::array< float,  m_revChannels > lrModD;
+    sjf_multiDelay< T, NUM_REV_CHANNELS > lr;
+    std::array< T,  NUM_REV_CHANNELS > lrDT;
+    std::array< sjf_lpf< T >,  NUM_REV_CHANNELS > lrLPF;
+    std::array< sjf_randOSC< T >,  NUM_REV_CHANNELS > lrMod;
+    std::array< T,  NUM_REV_CHANNELS > lrModD;
     
     // shimmer
-//    sjf_monoPitchShift shimmer;
-    sjf_pitchShift< float > shimmer;
-    float m_lastSummedOutput = 0;
+    sjf_pitchShift< T > shimmer;
+    T m_lastSummedOutput = 0;
     
     int m_SR = 44100, m_blockSize = 64;
 
     
-    float m_modulationTarget, m_sizeTarget, m_dryTarget = 0.89443f, m_wetTarget = 0.44721f, m_lrFBTarget = 0.85f, m_lrCutOffTarget = 0.8f, m_erCutOffTarget = 0.8f, m_shimmerTransposeTarget = 2.0f, m_shimmerLevelTarget = 0.4f;
-    sjf_lpf m_sizeSmooth, m_fbSmooth, m_modSmooth, m_wetSmooth, m_drySmooth, m_lrCutOffSmooth, m_erCutOffSmooth, m_shimmerTransposeSmooth, m_shimmerLevelSmooth;
+    T m_modulationTarget, m_sizeTarget, m_dryTarget = 0.89443f, m_wetTarget = 0.44721f, m_lrFBTarget = 0.85f, m_lrCutOffTarget = 0.8f, m_erCutOffTarget = 0.8f, m_shimmerTransposeTarget = 2.0f, m_shimmerLevelTarget = 0.4f;
+    sjf_lpf< T > m_sizeSmooth, m_fbSmooth, m_modSmooth, m_wetSmooth, m_drySmooth, m_lrCutOffSmooth, m_erCutOffSmooth, m_shimmerTransposeSmooth, m_shimmerLevelSmooth;
     
     
     bool m_feedbackControlFlag = false;
     
     // implemented as arrays rather than vectors for cpu
-//    std::array< std::array<float, m_revChannels> , m_revChannels > m_hadamard;
-    std::array< std::array< float,  m_revChannels >, m_erStages > m_erFlip;
+    std::array< std::array< T,  NUM_REV_CHANNELS >, NUM_ER_STAGES > m_erFlip;
     
     
-    std::array< std::array< float, 2 >,  m_revChannels > outputMixer; // stereo distribution
+    std::array< std::array< T, 2 >,  NUM_REV_CHANNELS > outputMixer; // stereo distribution
     
 public:
     //==============================================================================
@@ -145,7 +177,7 @@ public:
     {
         srand((unsigned)time(NULL));
         
-        m_sizeSmooth.setCutoff( 0.0001f );
+        m_sizeSmooth.setCutoff( 0.001f );
         m_fbSmooth.setCutoff( 0.001f );
         m_modSmooth.setCutoff( 0.001f );
         m_wetSmooth.setCutoff( 0.001f );
@@ -156,7 +188,6 @@ public:
         randomPolarityFlips( );
         randomiseModulators( );
         randomiseLPF( );
-        setFiltersToFirstOrder( );
         initialiseDelayLines( );
         initialiseModulators( );
         setOutputMixer( );
@@ -174,22 +205,25 @@ public:
         m_lastSummedOutput = 0;
     }
     //==============================================================================
-    void processAudio( juce::AudioBuffer<float> &buffer )
+    void processAudio( juce::AudioBuffer<T> &buffer )
     {
         auto nInChannels = buffer.getNumChannels();
         auto bufferSize = buffer.getNumSamples();
         auto equalPowerGain = sqrt( 1.0f / nInChannels );
-        auto gainFactor = 1.0f / ( (float)m_revChannels / (float)nInChannels );
-        float erSizeFactor, lrSizeFactor, size, fbFactor, modFactor, lrCutOff, erCutOff;
-        std::array< float, m_revChannels > erData, lrData;
+//        auto gainFactor = 1.0f / ( (T)NUM_REV_CHANNELS / (T)nInChannels );
+        T erSizeFactor, lrSizeFactor, size, fbFactor, modFactor, lrCutOff, erCutOff;
+        std::array< T, NUM_REV_CHANNELS > erData, lrData, outMix;
         erData.fill ( 0 );
         lrData.fill( 0 );
-        static constexpr auto shimLevelFactor = 1.0f / (float)m_revChannels;
-        
-        float dtScale = ( m_SR * 0.001f );
+        outMix.fill( 0 );
+        static constexpr auto shimLevelFactor = 1.0f / (T)NUM_REV_CHANNELS;
+        const T hadmardScale = std::sqrt( 1.0f / (T)NUM_REV_CHANNELS );
+        T dtScale = ( m_SR * 0.001f );
         
         for ( int indexThroughCurrentBuffer = 0; indexThroughCurrentBuffer < bufferSize; ++indexThroughCurrentBuffer )
         {
+            // first set up control variables
+
             modFactor = m_modSmooth.filterInput( m_modulationTarget );
             fbFactor = m_fbSmooth.filterInput( m_lrFBTarget );
             size = m_sizeSmooth.filterInput( m_sizeTarget );
@@ -197,7 +231,9 @@ public:
             lrSizeFactor = ( 0.1f + (size * 0.9f) ) * dtScale;
             lrCutOff = m_lrCutOffSmooth.filterInput( m_lrCutOffTarget );
             erCutOff = m_erCutOffSmooth.filterInput( m_erCutOffTarget );
-            float sum = 0.0f; // reset sum
+            
+            T sum = 0.0f; // reset sum
+
             // sum left and right and apply equal power gain
             for ( int inC = 0; inC < nInChannels; inC++ )
             {
@@ -206,50 +242,67 @@ public:
             sum *= equalPowerGain;
             sum += processShimmer( indexThroughCurrentBuffer, m_lastSummedOutput * shimLevelFactor );
             erData.fill( sum );
+
             // early reflections
-            processEarlyReflections( indexThroughCurrentBuffer, erSizeFactor, modFactor, erData, lrData ); // last stage of er is in erData
+            processEarlyReflections( indexThroughCurrentBuffer, erSizeFactor, modFactor, hadmardScale, erData, lrData ); // last stage of er is in erData
             filterEarlyReflections( erCutOff, erData ); // filter early reflection taps
             processLateReflections( indexThroughCurrentBuffer, lrSizeFactor, fbFactor, modFactor, lrCutOff, erData, lrData );
-            processOutputAndShimmer( buffer, indexThroughCurrentBuffer, nInChannels, gainFactor, erData, lrData );
+            
+            m_lastSummedOutput = 0;
+            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+            {
+                outMix[ c ]  = erData[ c ] + lrData[ c ];
+                m_lastSummedOutput += erData[ c ] + lrData[ c ]; // ER in shimmer ????
+            }
+            
+//            processOutputAndShimmer( buffer, indexThroughCurrentBuffer, nInChannels, gainFactor, erData, lrData );
+            Hadamard< T, NUM_REV_CHANNELS >::inPlace( outMix.data(), hadmardScale ); // one last Mix of everything to get output
+            
+            for ( int c = 0; c < nInChannels; c ++ )
+            {
+                sum = outMix[ c ] * m_wetSmooth.filterInput( m_wetTarget ); // WET
+                sum += buffer.getSample( c, indexThroughCurrentBuffer ) * m_drySmooth.filterInput( m_dryTarget ); // DRY
+                buffer.setSample( c, indexThroughCurrentBuffer, ( sum ) );
+            }
         }
 //        DBG( "erSizeFactor " << erSizeFactor );
         updateBuffers( bufferSize );
     }
     //==============================================================================
-    void setSize ( float newSize )
+    void setSize ( T newSize )
     {
         m_sizeTarget = pow(newSize * 0.01f, 2.0f);
 //        DBG( "m_sizeTarget " << m_sizeTarget );
     }
     //==============================================================================
-    void setLrCutOff ( float newCutOff )
+    void setLrCutOff ( T newCutOff )
     {
         m_lrCutOffTarget = newCutOff;
     }
     //==============================================================================
-    void setErCutOff ( float newCutOff )
+    void setErCutOff ( T newCutOff )
     {
         m_erCutOffTarget = newCutOff;
     }
     //==============================================================================
-    void setDecay ( float newDecay )
+    void setDecay ( T newDecay )
     {
         m_lrFBTarget = newDecay * 0.01f;
     }
     //==============================================================================
-    void setModulation ( float newModulation )
+    void setModulation ( T newModulation )
     {
         m_modulationTarget = newModulation * 0.01f;
     }
     //==============================================================================
-    void setMix ( float newMix )
+    void setMix ( T newMix )
     {
         newMix *= 0.01f;
         m_wetTarget = sqrt( newMix );
         m_dryTarget = sqrt( 1.0f - ( newMix ) );
     }
     //==============================================================================
-    void setShimmer ( float newShimmerLevel, float newShimmerTransposition )
+    void setShimmer ( T newShimmerLevel, T newShimmerTransposition )
     {
         newShimmerLevel *= 0.01f;
         m_shimmerLevelTarget = pow( newShimmerLevel, 2.0f );
@@ -260,7 +313,7 @@ public:
     {
 //        DBG("interpolation changed");
         lr.setInterpolationType( interpolationType );
-        for ( int s = 0; s < m_erStages; s++ )
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
             er[ s ].setInterpolationType( interpolationType );
         }
@@ -277,16 +330,16 @@ public:
 private:
     void setOutputMixer( )
     {
-        for ( int c = 0; c < m_revChannels; c++ )
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
-            float val = (float)( c + 1 ) / (float)( m_revChannels + 1 );
+            T val = (T)( c + 1 ) / (T)( NUM_REV_CHANNELS + 1 );
             outputMixer[ c ][ 0 ] = sqrt( val );
             outputMixer[ c ][ 1 ] = sqrt( 1.0f - val );
         }
         std::random_shuffle( std::begin( outputMixer ), std::end( outputMixer ) );
     }
     //==============================================================================
-    float processShimmer( const int &indexThroughCurrentBuffer, const float &inVal )
+    T processShimmer( const int &indexThroughCurrentBuffer, const T &inVal )
     {
         // shimmer
         shimmer.setSample( indexThroughCurrentBuffer, inVal );
@@ -297,15 +350,15 @@ private:
     void randomiseDelayTimes()
     {
         // set each stage to be twice the length of the last
-        float c = 0;
-        for ( int s = 0; s < m_erStages; s++ ) { c += pow(2, s); }
-        float frac = 1.0f / c; // fraction of total length for first stage
-        for ( int s = 0; s < m_erStages; s++ )
+        T c = 0;
+        for ( int s = 0; s < NUM_ER_STAGES; s++ ) { c += pow(2, s); }
+        T frac = 1.0f / c; // fraction of total length for first stage
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
-            auto dtC = m_erTotalLength * frac * pow(2, s) / (float)m_revChannels;
-            for (int c = 0; c < m_revChannels; c ++)
+            auto dtC = m_erTotalLength * frac * pow(2, s) / (T)NUM_REV_CHANNELS;
+            for (int c = 0; c < NUM_REV_CHANNELS; c ++)
             {
-                float minER = 1.0f + rand01();
+                T minER = 1.0f + rand01();
                 // space each channel so that the are randomly spaced but with roughly even distribution
                 auto dt = fmax( rand01() *  dtC, minER );
                 dt += ( dtC * c );
@@ -313,19 +366,19 @@ private:
             }
         }
         // shuffle er channels
-        for ( int s = 0; s < m_erStages; s++ )
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
         { std::random_shuffle ( std::begin( erDT[ s ] ), std::end( erDT[ s ] ) ); }
-        float maxLenForERChannel = 0.0f;
-        for (int c = 0; c < m_revChannels; c ++)
+        T maxLenForERChannel = 0.0f;
+        for (int c = 0; c < NUM_REV_CHANNELS; c ++)
         {
-            float sum = 0.0f;
-            for ( int s = 0; s < m_erStages; s++ ) { sum += erDT[ s ][ c ]; }
+            T sum = 0.0f;
+            for ( int s = 0; s < NUM_ER_STAGES; s++ ) { sum += erDT[ s ][ c ]; }
             if ( sum >  maxLenForERChannel ) { maxLenForERChannel = sum; }
         }
         auto minLRtime = fmin( m_lrTotalLength * 0.5, maxLenForERChannel * 0.66);
-        auto dtC = ( m_lrTotalLength - minLRtime ) / (float)m_revChannels;
+        auto dtC = ( m_lrTotalLength - minLRtime ) / (T)NUM_REV_CHANNELS;
         
-        for (int c = 0; c < m_revChannels; c ++)
+        for (int c = 0; c < NUM_REV_CHANNELS; c ++)
         {
             auto dt = rand01() * dtC;
             dt += (dtC * c) + minLRtime;
@@ -333,25 +386,25 @@ private:
         }
         std::random_shuffle ( std::begin( lrDT ), std::end( lrDT ) );
         
-        std::array< float, m_revChannels > delayLineLengths;
+        std::array< T, NUM_REV_CHANNELS > delayLineLengths;
         // initialise array...
-        for ( int c = 0; c < m_revChannels; c++ )
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             delayLineLengths[ c ] = 0.0f;
         }
-        for ( int s = 0; s < m_erStages; s++ )
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
-            for ( int c = 0; c < m_revChannels; c++ )
+            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
                 delayLineLengths[ c ] += erDT[ s ][ c ];
             }
         }
-        for ( int c = 0; c < m_revChannels; c++ )
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             delayLineLengths[ c ] += lrDT[ c ];
         }
-        float longest = 0;
-        for ( int c = 0; c < m_revChannels; c++ )
+        T longest = 0;
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             if ( delayLineLengths[ c ] > longest )
             {
@@ -359,34 +412,34 @@ private:
             }
         }
         
-        float sum = 0.0f;
-        for ( int c = 0; c < m_revChannels; c++ )
+        T sum = 0.0f;
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             sum += delayLineLengths[ c ];
             delayLineLengths[ c ] = 0;
         }
-        auto avg = sum / (float) m_revChannels;
+        auto avg = sum / (T) NUM_REV_CHANNELS;
         auto scale = ( m_maxTime / avg );
-        for ( int s = 0; s < m_erStages; s++ )
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
-            for ( int c = 0; c < m_revChannels; c++ )
+            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
                 erDT[ s ][ c ] *= scale;
             }
         }
-        for ( int c = 0; c < m_revChannels; c++ )
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             lrDT[ c ] *= scale;
         }
         
-        for ( int s = 0; s < m_erStages; s++ )
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
-            for ( int c = 0; c < m_revChannels; c++ )
+            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
                 DBG( "early reflection " << s << " " << c << " - " << erDT[ s ][ c ] );
             }
         }
-        for ( int c = 0; c < m_revChannels; c++ )
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             DBG( "late reflection " << c << " - " << lrDT[ c ] );
         }
@@ -395,32 +448,30 @@ private:
     //==============================================================================
     void randomiseModulators()
     {
-        for ( int s = 0; s < m_erStages; s++ )
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
-            for (int c = 0; c < m_revChannels; c ++)
+            for (int c = 0; c < NUM_REV_CHANNELS; c ++)
             {
                 erMod[ s ][ c ].setFrequency( rand01() * 0.5f );
-//                erModD[ s ][ c ] = 0.25f + rand01() * 0.4f;
             }
         }
-        for (int c = 0; c < m_revChannels; c ++)
+        for (int c = 0; c < NUM_REV_CHANNELS; c ++)
         {
-            lrMod[ c ].setFrequency( rand01() * 0.001f );
-//            lrModD[ c ] = rand01();
+            lrMod[ c ].setFrequency( rand01() * 0.1f );
         }
     }
     //==============================================================================
     void randomiseLPF()
     {
-        for (int c = 0; c < m_revChannels; c ++)
+        for (int c = 0; c < NUM_REV_CHANNELS; c ++)
         {
             lrLPF[c].setCutoff( sqrt( rand01() ) );
         }
     }
     //==============================================================================
-    void filterEarlyReflections( const float& erCutOff, std::array< float, m_revChannels >& erData )
+    void filterEarlyReflections( const T& erCutOff, std::array< T, NUM_REV_CHANNELS >& erData )
     {
-        for ( int c = 0; c < m_revChannels; c++ )
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             erLPF[ c ].setCutoff( erCutOff );
             erData[ c ] = erLPF[ c ].filterInput( erData[ c ] );
@@ -431,7 +482,7 @@ private:
     {
         lr.updateBufferPositions( bufferSize );
 
-        for ( int s = 0; s < m_erStages; s ++ )
+        for ( int s = 0; s < NUM_ER_STAGES; s ++ )
         {
             er[s].updateBufferPositions( bufferSize );
         }
@@ -439,77 +490,73 @@ private:
         shimmer.updateBufferPositions( bufferSize );
     }
     //==============================================================================
-    void processOutputAndShimmer( juce::AudioBuffer<float> &buffer, const int &indexThroughCurrentBuffer, const int &nInChannels, const float &gainFactor, std::array< float, m_revChannels >& erData, std::array< float, m_revChannels > lrData )
-    {
-        m_lastSummedOutput = 0.0f;
-        for ( int inC = 0; inC < nInChannels; inC ++ )
-        {
-            float sum = 0.0f;
-            for (int c = 0; c < m_revChannels; c++ )
-            {
-                sum += ( erData[ c ] + lrData[ c ] ) * outputMixer[ c ][ inC ];
-            }
-            m_lastSummedOutput += sum;
-            sum *= m_wetSmooth.filterInput( m_wetTarget ) * gainFactor;
-            
-            sum += buffer.getSample( inC, indexThroughCurrentBuffer ) * m_drySmooth.filterInput( m_dryTarget );
-            buffer.setSample( inC, indexThroughCurrentBuffer, ( sum ) );
-        }
-    }
+//    void processOutputAndShimmer( juce::AudioBuffer<T> &buffer, const int &indexThroughCurrentBuffer, const int &nInChannels, const T &gainFactor, std::array< T, NUM_REV_CHANNELS >& erData, std::array< T, NUM_REV_CHANNELS > lrData )
+//    {
+//        m_lastSummedOutput = 0.0f;
+//        for ( int inC = 0; inC < nInChannels; inC ++ )
+//        {
+//            T sum = 0.0f;
+//            for (int c = 0; c < NUM_REV_CHANNELS; c++ )
+//            {
+//                sum += ( erData[ c ] + lrData[ c ] ) * outputMixer[ c ][ inC ];
+//            }
+//            m_lastSummedOutput += sum;
+//            sum *= m_wetSmooth.filterInput( m_wetTarget ) * gainFactor;
+//
+//            sum += buffer.getSample( inC, indexThroughCurrentBuffer ) * m_drySmooth.filterInput( m_dryTarget );
+//            buffer.setSample( inC, indexThroughCurrentBuffer, ( sum ) );
+//        }
+//    }
+    
     //==============================================================================
-    void processEarlyReflections( const int &indexThroughCurrentBuffer, const float &erSizeFactor, const float &modFactor, std::array< float, m_revChannels >& erData, std::array< float, m_revChannels >& lrData )
+    void processEarlyReflections( const int &indexThroughCurrentBuffer, const T &erSizeFactor, const T &modFactor, const T &hadmardScale, std::array< T, NUM_REV_CHANNELS > &erData, std::array< T, NUM_REV_CHANNELS > &lrData )
     {
-        float dt;
-        std::array< float, m_revChannels > temp;
+        T dt;
+        std::array< T, NUM_REV_CHANNELS > temp;
         temp.fill( 0 );
-        static constexpr float erScale = 1.0f / m_erStages;
+        static constexpr T erScale = 1.0f / NUM_ER_STAGES;
         // count through stage of er
-        for ( int s = 0; s < m_erStages; s++ )
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
             // set delayTimes
-            for ( int c = 0; c < m_revChannels; c++ )
+            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
                 // for each channel
                 dt = erDT[ s ][ c ] * erSizeFactor;
                 if ( c == 0 || c == 1 ) // only modulate 2 rev channels
                 {
-//                    dt += ( dt * erMod[ s ][ c ].getSampleCalculated( ) * erModD[ s ][ c ] * modFactor );
-//                    dt += ( dt * erMod[ s ][ c ].output( ) * erModD[ s ][ c ] * modFactor );
                     dt += ( dt * erMod[ s ][ c ].output( ) * modFactor );
                 }
                 er[ s ].setDelayTimeSamps( c, dt );
             }
             // flip some polarities
-            for ( int c = 0; c < m_revChannels; c++ )
+            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
                 erData[ c ] *= m_erFlip[ s ][ c ];
             }
             // write old samples to delay line and get delayed samples
             er[ s ].processAudioInPlaceRoundedIndex( indexThroughCurrentBuffer, erData );
-            Hadamard<float, m_revChannels>::inPlace( erData.data() );
-            for ( int c = 0; c < m_revChannels; c++ )
+            Hadamard<T, NUM_REV_CHANNELS>::inPlace( erData.data(), hadmardScale );
+            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
                 temp[ c ] += erData[ c ]; // accumulate early reflections in temporary buffer --> erTaps
             }
         }
         lrData = erData;
         erData = temp;
-        for ( int c = 0; c < m_revChannels; c++ )
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             erData[ c ] *= erScale;
         }
     }
     //==============================================================================
-    void processLateReflections( const int &indexThroughCurrentBuffer, const float &lrSizeFactor, const float &fbFactor, const float &modFactor, const float &lrCutOff, std::array< float, m_revChannels >& erData, std::array< float, m_revChannels >& lrData )
+    void processLateReflections( const int &indexThroughCurrentBuffer, const T &lrSizeFactor, const T &fbFactor, const T &modFactor, const T &lrCutOff, std::array< T, NUM_REV_CHANNELS >& erData, std::array< T, NUM_REV_CHANNELS >& lrData )
     {
-        float dt;
-//        float dtScale = ( m_SR * 0.001f );
+        T dt;
         // copy delayed samples into v2
-        for ( int c = 0; c < m_revChannels; c++ )
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
-//            dt = pow( lrDT[ c ], lrSizeFactor );
             dt = lrDT[ c ] * lrSizeFactor;
-//            dt *= dtScale;
             if ( c == 0 || c == 1 )
             {
 //                dt += ( dt * lrMod[c].getSample( ) * lrModD[c] * modFactor );
@@ -519,7 +566,7 @@ private:
             lr.setDelayTimeSamps( c, dt );
         }
 
-        for ( int c = 0; c < m_revChannels; c++ )
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             if ( c == 0 || c == 1 )
             {
@@ -532,36 +579,25 @@ private:
         }
 //        lr.popSamplesOutOfDelayLine( indexThroughCurrentBuffer, lrData );
 //        lr.popSamplesOutOfDelayLineRoundedIndex( indexThroughCurrentBuffer, lrData );
-        for ( int c = 0; c < m_revChannels; c++ )
+        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             lrLPF[ c ].setCutoff( lrCutOff );
             lrData[ c ] = lrLPF[ c ].filterInput( lrData[ c ] );
         }
         
-        Householder< float, m_revChannels >::mixInPlace( lrData );
+        Householder< T, NUM_REV_CHANNELS >::mixInPlace( lrData );
         
-//        mixWithHouseholderInPlace( lrData );
-//        std::array< float, m_revChannels > temp;
-//        for ( int c = 0; c < m_revChannels; c++ )
-//        {
-//            auto val = ( fbFactor * lrData[c] ) + erData[c];
-//            if ( m_feedbackControlFlag ) { val = tanh( val ); }
-//            // copy last er sample to respective buffer
-//            lr.setSample( c, indexThroughCurrentBuffer, val );
-//        }
         if ( m_feedbackControlFlag )
         {
-            for ( int c = 0; c < m_revChannels; c++ )
+            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
-//                temp[ c ] = tanh( ( fbFactor * lrData[c] ) + erData[c] );
                 lr.setSample( c, indexThroughCurrentBuffer, tanh( ( fbFactor * lrData[c] ) + erData[c] ) );
             }
         }
         else
         {
-            for ( int c = 0; c < m_revChannels; c++ )
+            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
-//                temp[ c ] = ( fbFactor * lrData[c] ) + erData[c];
                 lr.setSample( c, indexThroughCurrentBuffer, ( fbFactor * lrData[c] ) + erData[c] );
             }
         }
@@ -570,9 +606,9 @@ private:
     //==============================================================================
     void randomPolarityFlips()
     {
-        for ( int s = 0; s < m_erStages; s++ )
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
-            for ( int c = 0; c < m_revChannels; c ++ )
+            for ( int c = 0; c < NUM_REV_CHANNELS; c ++ )
             {
                 // randomise some polarities
                 auto rn = rand01();
@@ -584,7 +620,7 @@ private:
     //==============================================================================
     void initialiseDelayLines()
     {
-        for ( int s = 0; s < m_erStages; s++ )
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
             er[ s ].initialise( m_SR , m_erTotalLength );
         }
@@ -596,9 +632,9 @@ private:
     //==============================================================================
     void initialiseModulators()
     {
-        for (int c = 0; c < m_revChannels; c ++)
+        for (int c = 0; c < NUM_REV_CHANNELS; c ++)
         {
-            for ( int s = 0; s < m_erStages; s++ )
+            for ( int s = 0; s < NUM_ER_STAGES; s++ )
             {
                 erMod[ s ][ c ].initialise( m_SR );
             }
@@ -606,14 +642,14 @@ private:
         }
     }
     //==============================================================================
-    void setFiltersToFirstOrder()
-    {
-        for ( int i = 0; i < m_revChannels; i++ )
-        {
-            erLPF[ i ].isFirstOrder( true );
-            lrLPF[ i ].isFirstOrder( true );
-        }
-    }
+//    void setFiltersToFirstOrder()
+//    {
+//        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+//        {
+//            erLPF[ i ].isFirstOrder( true );
+//            lrLPF[ i ].isFirstOrder( true );
+//        }
+//    }
     //==============================================================================
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_reverb )

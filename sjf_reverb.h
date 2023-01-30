@@ -169,7 +169,6 @@ private:
     std::array< std::array< T,  NUM_REV_CHANNELS >, NUM_ER_STAGES > m_erFlip;
     
     
-    std::array< std::array< T, 2 >,  NUM_REV_CHANNELS > outputMixer; // stereo distribution
     
 public:
     //==============================================================================
@@ -190,7 +189,7 @@ public:
         randomiseLPF( );
         initialiseDelayLines( );
         initialiseModulators( );
-        setOutputMixer( );
+//        setOutputMixer( );
     }
     //==============================================================================
     ~sjf_reverb() {}
@@ -328,16 +327,16 @@ public:
     //==============================================================================
     
 private:
-    void setOutputMixer( )
-    {
-        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-        {
-            T val = (T)( c + 1 ) / (T)( NUM_REV_CHANNELS + 1 );
-            outputMixer[ c ][ 0 ] = sqrt( val );
-            outputMixer[ c ][ 1 ] = sqrt( 1.0f - val );
-        }
-        std::random_shuffle( std::begin( outputMixer ), std::end( outputMixer ) );
-    }
+//    void setOutputMixer( )
+//    {
+//        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//        {
+//            T val = (T)( c + 1 ) / (T)( NUM_REV_CHANNELS + 1 );
+//            outputMixer[ c ][ 0 ] = sqrt( val );
+//            outputMixer[ c ][ 1 ] = sqrt( 1.0f - val );
+//        }
+//        std::random_shuffle( std::begin( outputMixer ), std::end( outputMixer ) );
+//    }
     //==============================================================================
     T processShimmer( const int &indexThroughCurrentBuffer, const T &inVal )
     {
@@ -347,14 +346,21 @@ private:
     }
     
     //==============================================================================
+
     void randomiseDelayTimes()
     {
-        // set each stage to be twice the length of the last
+//        m_erTotalLength = m_maxTime - m_lrTotalLength
+        // first set early reflection times
         T c = 0;
-        for ( int s = 0; s < NUM_ER_STAGES; s++ ) { c += pow(2, s); }
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
+        { c += pow(2, s); }
         T frac = 1.0f / c; // fraction of total length for first stage
+        m_erTotalLength = 300;
+        DBG( " m_erTotalLength " << m_erTotalLength );
         for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
+            auto erMax = m_erTotalLength * frac * pow(2, s);
+            DBG( s << " erMax " << m_erTotalLength * frac * pow(2, s) );
             auto dtC = m_erTotalLength * frac * pow(2, s) / (T)NUM_REV_CHANNELS;
             for (int c = 0; c < NUM_REV_CHANNELS; c ++)
             {
@@ -365,73 +371,20 @@ private:
                 erDT[ s ][ c ] = dt;
             }
         }
-        // shuffle er channels
-        for ( int s = 0; s < NUM_ER_STAGES; s++ )
-        { std::random_shuffle ( std::begin( erDT[ s ] ), std::end( erDT[ s ] ) ); }
-        T maxLenForERChannel = 0.0f;
+        
+//        auto minLRtime = m_lrTotalLength * 0.5;
+//        auto dtC = ( m_lrTotalLength - minLRtime ) / (T)NUM_REV_CHANNELS;
+
+        auto minLRTime = 100;
+        auto maxLRTime = 200;
         for (int c = 0; c < NUM_REV_CHANNELS; c ++)
         {
-            T sum = 0.0f;
-            for ( int s = 0; s < NUM_ER_STAGES; s++ ) { sum += erDT[ s ][ c ]; }
-            if ( sum >  maxLenForERChannel ) { maxLenForERChannel = sum; }
+//            auto dt = rand01() * dtC;
+//            dt +=  minLRtime;
+            lrDT[ c ] = minLRTime + ( rand01() * ( maxLRTime - minLRTime ) );
         }
-        auto minLRtime = fmin( m_lrTotalLength * 0.5, maxLenForERChannel * 0.66);
-        auto dtC = ( m_lrTotalLength - minLRtime ) / (T)NUM_REV_CHANNELS;
-        
-        for (int c = 0; c < NUM_REV_CHANNELS; c ++)
-        {
-            auto dt = rand01() * dtC;
-            dt += (dtC * c) + minLRtime;
-            lrDT[ c ] = dt;
-        }
-        std::random_shuffle ( std::begin( lrDT ), std::end( lrDT ) );
-        
-        std::array< T, NUM_REV_CHANNELS > delayLineLengths;
-        // initialise array...
-        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-        {
-            delayLineLengths[ c ] = 0.0f;
-        }
-        for ( int s = 0; s < NUM_ER_STAGES; s++ )
-        {
-            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-            {
-                delayLineLengths[ c ] += erDT[ s ][ c ];
-            }
-        }
-        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-        {
-            delayLineLengths[ c ] += lrDT[ c ];
-        }
-        T longest = 0;
-        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-        {
-            if ( delayLineLengths[ c ] > longest )
-            {
-                longest = delayLineLengths[ c ];
-            }
-        }
-        
-        T sum = 0.0f;
-        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-        {
-            sum += delayLineLengths[ c ];
-            delayLineLengths[ c ] = 0;
-        }
-        auto avg = sum / (T) NUM_REV_CHANNELS;
-        auto scale = ( m_maxTime / avg );
-        for ( int s = 0; s < NUM_ER_STAGES; s++ )
-        {
-            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-            {
-                erDT[ s ][ c ] *= scale;
-            }
-        }
-        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-        {
-            lrDT[ c ] *= scale;
-        }
-        
+
+        DBG( "er len " << m_erTotalLength << " lr len " << m_lrTotalLength );
         for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
             for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
@@ -443,8 +396,106 @@ private:
         {
             DBG( "late reflection " << c << " - " << lrDT[ c ] );
         }
-        
+
     }
+//    void randomiseDelayTimes()
+//    {
+//        // set each stage to be twice the length of the last
+//        T c = 0;
+//        for ( int s = 0; s < NUM_ER_STAGES; s++ ) { c += pow(2, s); }
+//        T frac = 1.0f / c; // fraction of total length for first stage
+//        for ( int s = 0; s < NUM_ER_STAGES; s++ )
+//        {
+//            auto dtC = m_erTotalLength * frac * pow(2, s) / (T)NUM_REV_CHANNELS;
+//            for (int c = 0; c < NUM_REV_CHANNELS; c ++)
+//            {
+//                T minER = 1.0f + rand01();
+//                // space each channel so that the are randomly spaced but with roughly even distribution
+//                auto dt = fmax( rand01() *  dtC, minER );
+//                dt += ( dtC * c );
+//                erDT[ s ][ c ] = dt;
+//            }
+//        }
+//        // shuffle er channels
+//        for ( int s = 0; s < NUM_ER_STAGES; s++ )
+//        { std::random_shuffle ( std::begin( erDT[ s ] ), std::end( erDT[ s ] ) ); }
+//        T maxLenForERChannel = 0.0f;
+//        for (int c = 0; c < NUM_REV_CHANNELS; c ++)
+//        {
+//            T sum = 0.0f;
+//            for ( int s = 0; s < NUM_ER_STAGES; s++ ) { sum += erDT[ s ][ c ]; }
+//            if ( sum >  maxLenForERChannel ) { maxLenForERChannel = sum; }
+//        }
+//        auto minLRtime = fmin( m_lrTotalLength * 0.5, maxLenForERChannel * 0.66);
+//        auto dtC = ( m_lrTotalLength - minLRtime ) / (T)NUM_REV_CHANNELS;
+//
+//        for (int c = 0; c < NUM_REV_CHANNELS; c ++)
+//        {
+//            auto dt = rand01() * dtC;
+//            dt += (dtC * c) + minLRtime;
+//            lrDT[ c ] = dt;
+//        }
+//        std::random_shuffle ( std::begin( lrDT ), std::end( lrDT ) );
+//
+//        std::array< T, NUM_REV_CHANNELS > delayLineLengths;
+//        // initialise array...
+//        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//        {
+//            delayLineLengths[ c ] = 0.0f;
+//        }
+//        for ( int s = 0; s < NUM_ER_STAGES; s++ )
+//        {
+//            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//            {
+//                delayLineLengths[ c ] += erDT[ s ][ c ];
+//            }
+//        }
+//        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//        {
+//            delayLineLengths[ c ] += lrDT[ c ];
+//        }
+//        T longest = 0;
+//        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//        {
+//            if ( delayLineLengths[ c ] > longest )
+//            {
+//                longest = delayLineLengths[ c ];
+//            }
+//        }
+//
+//        T sum = 0.0f;
+//        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//        {
+//            sum += delayLineLengths[ c ];
+//            delayLineLengths[ c ] = 0;
+//        }
+//        auto avg = sum / (T) NUM_REV_CHANNELS;
+//        auto scale = ( m_maxTime / avg );
+//        for ( int s = 0; s < NUM_ER_STAGES; s++ )
+//        {
+//            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//            {
+//                erDT[ s ][ c ] *= scale;
+//            }
+//        }
+//        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//        {
+//            lrDT[ c ] *= scale;
+//        }
+//
+//        for ( int s = 0; s < NUM_ER_STAGES; s++ )
+//        {
+//            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//            {
+//                DBG( "early reflection " << s << " " << c << " - " << erDT[ s ][ c ] );
+//            }
+//        }
+//        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//        {
+//            DBG( "late reflection " << c << " - " << lrDT[ c ] );
+//        }
+//
+//    }
     //==============================================================================
     void randomiseModulators()
     {
@@ -457,7 +508,8 @@ private:
         }
         for (int c = 0; c < NUM_REV_CHANNELS; c ++)
         {
-            lrMod[ c ].setFrequency( rand01() * 0.1f );
+            lrMod[ c ].setFrequency( 0.1f );
+//            lrMod[ c ].setFrequency( rand01() * 0.1f );
         }
     }
     //==============================================================================
@@ -523,10 +575,10 @@ private:
             {
                 // for each channel
                 dt = erDT[ s ][ c ] * erSizeFactor;
-                if ( c == 0 || c == 1 ) // only modulate 2 rev channels
-                {
-                    dt += ( dt * erMod[ s ][ c ].output( ) * modFactor );
-                }
+//                if ( c == 0 || c == 1 ) // only modulate 2 rev channels
+//                {
+//                    dt += ( dt * erMod[ s ][ c ].output( ) * modFactor );
+//                }
                 er[ s ].setDelayTimeSamps( c, dt );
             }
             // flip some polarities
@@ -557,27 +609,28 @@ private:
         for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
             dt = lrDT[ c ] * lrSizeFactor;
-            if ( c == 0 || c == 1 )
-            {
-//                dt += ( dt * lrMod[c].getSample( ) * lrModD[c] * modFactor );
-//                dt += ( dt * lrMod[c].output( ) * lrModD[c] * modFactor );
-                dt += ( dt * lrMod[c].output( ) * modFactor );
-            }
+//            if ( c == 0 || c == 1 )
+//            {
+////                dt += ( dt * lrMod[c].getSample( ) * lrModD[c] * modFactor );
+////                dt += ( dt * lrMod[c].output( ) * lrModD[c] * modFactor );
+//                dt += ( dt * lrMod[c].output( ) * modFactor );
+//            }
+            dt += ( dt * lrMod[c].output( ) * modFactor );
             lr.setDelayTimeSamps( c, dt );
         }
 
-        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-        {
-            if ( c == 0 || c == 1 )
-            {
-                lrData[ c ] = lr.getSample( c, indexThroughCurrentBuffer );
-            }
-            else
-            {
-                lrData[ c ] = lr.getSampleRoundedIndex( c, indexThroughCurrentBuffer );
-            }
-        }
-//        lr.popSamplesOutOfDelayLine( indexThroughCurrentBuffer, lrData );
+//        for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+//        {
+//            if ( c == 0 || c == 1 )
+//            {
+//                lrData[ c ] = lr.getSample( c, indexThroughCurrentBuffer );
+//            }
+//            else
+//            {
+//                lrData[ c ] = lr.getSampleRoundedIndex( c, indexThroughCurrentBuffer );
+//            }
+//        }
+        lr.popSamplesOutOfDelayLine( indexThroughCurrentBuffer, lrData );
 //        lr.popSamplesOutOfDelayLineRoundedIndex( indexThroughCurrentBuffer, lrData );
         for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {

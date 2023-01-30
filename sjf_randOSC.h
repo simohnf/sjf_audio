@@ -12,7 +12,7 @@
 template< class floatType >
 class sjf_randOSC
 {
-    floatType m_lastPhase = 1.0f,  m_currentTarget = 0.0f, m_lastTarget = 0.0f, m_diff, m_phase = 0.0f, m_SR = 44100, m_increment;
+    floatType m_lastPhase = 1.0f,  m_currentTarget = 0.0f, m_lastTarget = 0.0f, m_diff, m_SR = 44100, m_increment;
     
 public:
     sjf_randOSC()
@@ -51,6 +51,7 @@ private:
     
     floatType calculateOutput( floatType phase )
     {
+//        DBG("phase " << phase << " m_lastPhase " << m_lastPhase);
         if ( phase >= 1.0f )
         {
             phase -= 1.0f;
@@ -59,9 +60,11 @@ private:
         {
             m_lastTarget = m_currentTarget;
             m_currentTarget = randomTarget();
+            DBG( " m_currentTarget " << m_currentTarget );
             m_diff = m_currentTarget - m_lastTarget;
         }
         m_lastPhase = phase;
+//        DBG( m_lastTarget + ( phase * m_diff ) );
         return m_lastTarget + ( phase * m_diff );
     }
     

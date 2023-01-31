@@ -69,7 +69,7 @@ public:
         pitchShiftTimeDiff += m_initialDelay;
         m_pitchShifter.setDelayTimeSamps( pitchShiftTimeDiff + m_initialDelay );
         auto amp = juce::dsp::FastMathApproximations::sin( M_PI * phase );
-        auto val = amp * m_pitchShifter.getSample( indexThroughCurrentBuffer );
+        auto val = amp * m_pitchShifter.getSample2( );
         // second voice
         phase += 0.5f;
         if ( phase >= 1.0f ) { phase -= 1.0f; }
@@ -77,13 +77,14 @@ public:
         pitchShiftTimeDiff += m_initialDelay;
         m_pitchShifter.setDelayTimeSamps( pitchShiftTimeDiff );
         amp = juce::dsp::FastMathApproximations::sin( M_PI * phase );
-        val += amp * m_pitchShifter.getSample( indexThroughCurrentBuffer );
+        val += amp * m_pitchShifter.getSample2( );
         return ( val );
     }
     
     void setSample( const int &indexThroughCurrentBuffer, const floatType &inVal )
     {
-        m_pitchShifter.setSample( indexThroughCurrentBuffer, inVal );
+//        m_pitchShifter.setSample( indexThroughCurrentBuffer, inVal );
+        m_pitchShifter.setSample2( inVal );
     }
     
     void setInterpolationType( const int &interpolationType )
@@ -91,9 +92,9 @@ public:
         m_pitchShifter.setInterpolationType( interpolationType );
     }
     
-    void updateBufferPositions( const int &bufferSize )
+    void updateBufferPosition( const int &bufferSize )
     {
-        m_pitchShifter.updateBufferPositions( bufferSize );
+        m_pitchShifter.updateBufferPosition( bufferSize );
     }
     
     void setDelayTimeSamps( const floatType &delayInSamps )

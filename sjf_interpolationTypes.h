@@ -251,7 +251,7 @@ float cubicInterpolateHermite( const std::vector<float> &buffer, const float rea
 //==============================================================================
 
 inline
-float linearInterpolate( const std::vector<float> &buffer, const float readPos, const unsigned long bufferSize )
+float linearInterpolate( const std::vector<float> &buffer, const float &readPos, const unsigned long &bufferSize )
 {
     double y1; // this step value
     double y2; // next step value
@@ -267,7 +267,7 @@ float linearInterpolate( const std::vector<float> &buffer, const float readPos, 
 }
 //==============================================================================
 inline
-float cubicInterpolate( const std::vector<float> &buffer, const float readPos, const unsigned long bufferSize )
+float cubicInterpolate( const std::vector<float> &buffer, const float &readPos, const unsigned long &bufferSize )
 {
     //    auto bufferSize = buffer.size();
     double y0; // previous step value
@@ -304,7 +304,7 @@ float cubicInterpolate( const std::vector<float> &buffer, const float readPos, c
 
 //==============================================================================
 inline
-float fourPointInterpolatePD( const std::vector<float> &buffer, const float readPos, const unsigned long bufferSize )
+float fourPointInterpolatePD( const std::vector<float> &buffer, const float &readPos, const unsigned long &bufferSize )
 {
     //    auto bufferSize = buffer.size();
     double y0; // previous step value
@@ -334,7 +334,7 @@ float fourPointInterpolatePD( const std::vector<float> &buffer, const float read
 
 //==============================================================================
 inline
-float fourPointFourthOrderOptimal( const std::vector<float> &buffer, const float readPos, const unsigned long bufferSize )
+float fourPointFourthOrderOptimal( const std::vector<float> &buffer, const float &readPos, const unsigned long &bufferSize )
 {
     //    Copied from Olli Niemitalo - Polynomial Interpolators for High-Quality Resampling of Oversampled Audio
     //    auto bufferSize = buffer.size();
@@ -375,7 +375,7 @@ float fourPointFourthOrderOptimal( const std::vector<float> &buffer, const float
 
 //==============================================================================
 inline
-float cubicInterpolateGodot( const std::vector<float> &buffer, const float readPos, const unsigned long bufferSize )
+float cubicInterpolateGodot( const std::vector<float> &buffer, const float &readPos, const unsigned long &bufferSize )
 {
     //    Copied from Olli Niemitalo - Polynomial Interpolators for High-Quality Resampling of Oversampled Audio
     //    auto bufferSize = buffer.size();
@@ -411,7 +411,7 @@ float cubicInterpolateGodot( const std::vector<float> &buffer, const float readP
 }
 //==============================================================================
 inline
-float cubicInterpolateHermite( const std::vector<float> &buffer, const float readPos, const unsigned long bufferSize )
+float cubicInterpolateHermite( const std::vector<float> &buffer, const float &readPos, const unsigned long &bufferSize )
 {
     //    auto bufferSize = buffer.size();
     double y0; // previous step value

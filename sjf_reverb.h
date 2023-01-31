@@ -130,18 +130,20 @@ class sjf_reverb
 private:
 //    const static int NUM_REV_CHANNELS = 8; // must be a power of 2 because of hadamard matrix!!!!
 //    const static int NUM_ER_STAGES = 4;
-    static constexpr T m_maxSize = 150;
-    static constexpr T m_c = 344; // speed of sound
-    static constexpr T m_maxTime = 1000.0f * m_maxSize / m_c;
-    T m_lrTotalLength = m_maxTime * 1.0f/3.0f;
-    T m_erTotalLength = m_maxTime - m_lrTotalLength;
+//    static constexpr T m_maxSize = 150;
+//    static constexpr T m_c = 344; // speed of sound
+//    static constexpr T m_maxTime = 1000.0f * m_maxSize / m_c;
+//    T m_lrTotalLength = m_maxTime * 1.0f/3.0f;
+//    T m_erTotalLength = m_maxTime - m_lrTotalLength;
+    static constexpr T m_lrTotalLength = 200;
+    static constexpr T m_erTotalLength = 300;
     
     
     // early reflections
     std::array< sjf_multiDelay< T, NUM_REV_CHANNELS >, NUM_ER_STAGES > er;
     std::array< std::array< T, NUM_REV_CHANNELS >, NUM_ER_STAGES >  erDT;
     std::array< sjf_lpf< T >, NUM_REV_CHANNELS > erLPF;
-    std::array< std::array<  sjf_randOSC< T >,  NUM_REV_CHANNELS >, NUM_ER_STAGES > erMod;
+//    std::array< std::array<  sjf_randOSC< T >,  NUM_REV_CHANNELS >, NUM_ER_STAGES > erMod;
     std::array< std::array<  T,  NUM_REV_CHANNELS >, NUM_ER_STAGES > erModD;
     
     
@@ -156,7 +158,7 @@ private:
     sjf_pitchShift< T > shimmer;
     T m_lastSummedOutput = 0;
     
-    int m_SR = 44100, m_blockSize = 64;
+    int m_SR = 44100; //, m_blockSize = 64;
 
     
     T m_modulationTarget, m_sizeTarget, m_dryTarget = 0.89443f, m_wetTarget = 0.44721f, m_lrFBTarget = 0.85f, m_lrCutOffTarget = 0.8f, m_erCutOffTarget = 0.8f, m_shimmerTransposeTarget = 2.0f, m_shimmerLevelTarget = 0.4f;
@@ -197,7 +199,7 @@ public:
     void intialise( int sampleRate , int totalNumInputChannels, int totalNumOutputChannels, int samplesPerBlock)
     {
         if ( sampleRate > 0 ) { m_SR = sampleRate; }
-        if ( samplesPerBlock > 0 ) { m_blockSize = samplesPerBlock; }
+//        if ( samplesPerBlock > 0 ) { m_blockSize = samplesPerBlock; }
         initialiseDelayLines( );
         initialiseModulators( );
         // reset shimmer output values
@@ -208,16 +210,16 @@ public:
     {
         auto nInChannels = buffer.getNumChannels();
         auto bufferSize = buffer.getNumSamples();
-        auto equalPowerGain = sqrt( 1.0f / nInChannels );
+        const T equalPowerGain = sqrt( 1.0f / nInChannels );
 //        auto gainFactor = 1.0f / ( (T)NUM_REV_CHANNELS / (T)nInChannels );
-        T erSizeFactor, lrSizeFactor, size, fbFactor, modFactor, lrCutOff, erCutOff;
+        T erSizeFactor, lrSizeFactor, size, fbFactor, modFactor, lrCutOff, erCutOff, wet, dry;
         std::array< T, NUM_REV_CHANNELS > erData, lrData, outMix;
         erData.fill ( 0 );
         lrData.fill( 0 );
         outMix.fill( 0 );
-        static constexpr auto shimLevelFactor = 1.0f / (T)NUM_REV_CHANNELS;
+        static constexpr T shimLevelFactor = 1.0f / (T)NUM_REV_CHANNELS;
         const T hadmardScale = std::sqrt( 1.0f / (T)NUM_REV_CHANNELS );
-        T dtScale = ( m_SR * 0.001f );
+        const T dtScale = ( m_SR * 0.001f );
         
         for ( int indexThroughCurrentBuffer = 0; indexThroughCurrentBuffer < bufferSize; ++indexThroughCurrentBuffer )
         {
@@ -230,6 +232,8 @@ public:
             lrSizeFactor = ( 0.1f + (size * 0.9f) ) * dtScale;
             lrCutOff = m_lrCutOffSmooth.filterInput( m_lrCutOffTarget );
             erCutOff = m_erCutOffSmooth.filterInput( m_erCutOffTarget );
+            wet = m_wetSmooth.filterInput( m_wetTarget );
+            dry = m_drySmooth.filterInput( m_dryTarget );
             
             T sum = 0.0f; // reset sum
 
@@ -239,7 +243,7 @@ public:
                 sum += buffer.getSample( inC, indexThroughCurrentBuffer );
             }
             sum *= equalPowerGain;
-            sum += processShimmer( indexThroughCurrentBuffer, m_lastSummedOutput * shimLevelFactor );
+            sum += processShimmer( indexThroughCurrentBuffer, m_lastSummedOutput);
             erData.fill( sum );
 
             // early reflections
@@ -251,64 +255,65 @@ public:
             for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
                 outMix[ c ]  = erData[ c ] + lrData[ c ];
-                m_lastSummedOutput += erData[ c ] + lrData[ c ]; // ER in shimmer ????
+//                outMix[ c ] *= equalPowerGain;
+                m_lastSummedOutput += lrData[ c ]; // ER in shimmer ????
             }
-            
-//            processOutputAndShimmer( buffer, indexThroughCurrentBuffer, nInChannels, gainFactor, erData, lrData );
+            m_lastSummedOutput *= shimLevelFactor;
             Hadamard< T, NUM_REV_CHANNELS >::inPlace( outMix.data(), hadmardScale ); // one last Mix of everything to get output
-            
+//            m_lastSummedOutput = outMix[ 0 ];
+
             for ( int c = 0; c < nInChannels; c ++ )
             {
-                sum = outMix[ c ] * m_wetSmooth.filterInput( m_wetTarget ); // WET
-                sum += buffer.getSample( c, indexThroughCurrentBuffer ) * m_drySmooth.filterInput( m_dryTarget ); // DRY
+                sum = outMix[ c ] * wet; // WET
+                sum += buffer.getSample( c, indexThroughCurrentBuffer ) * dry; // DRY
                 buffer.setSample( c, indexThroughCurrentBuffer, ( sum ) );
             }
         }
 //        DBG( "erSizeFactor " << erSizeFactor );
-        updateBuffers( bufferSize );
+//        updateBuffers( bufferSize );
     }
     //==============================================================================
-    void setSize ( T newSize )
+    void setSize ( const T &newSize )
     {
         m_sizeTarget = pow(newSize * 0.01f, 2.0f);
 //        DBG( "m_sizeTarget " << m_sizeTarget );
     }
     //==============================================================================
-    void setLrCutOff ( T newCutOff )
+    void setLrCutOff ( const T &newCutOff )
     {
         m_lrCutOffTarget = newCutOff;
     }
     //==============================================================================
-    void setErCutOff ( T newCutOff )
+    void setErCutOff ( const T &newCutOff )
     {
         m_erCutOffTarget = newCutOff;
     }
     //==============================================================================
-    void setDecay ( T newDecay )
+    void setDecay ( const T &newDecay )
     {
         m_lrFBTarget = newDecay * 0.01f;
     }
     //==============================================================================
-    void setModulation ( T newModulation )
+    void setModulation ( const T &newModulation )
     {
-        m_modulationTarget = newModulation * 0.01f;
+        m_modulationTarget = newModulation * 0.005f; // +/- 50% of max delayTime
     }
     //==============================================================================
-    void setMix ( T newMix )
+    void setMix ( const T &newMix )
     {
-        newMix *= 0.01f;
-        m_wetTarget = sqrt( newMix );
-        m_dryTarget = sqrt( 1.0f - ( newMix ) );
+//        newMix *= 0.01f;
+        m_wetTarget = sqrt( newMix * 0.01 );
+        m_dryTarget = sqrt( 1.0f - ( newMix * 0.01 ) );
     }
     //==============================================================================
-    void setShimmer ( T newShimmerLevel, T newShimmerTransposition )
+    void setShimmer ( const T &newShimmerLevel, const T &newShimmerTransposition )
     {
-        newShimmerLevel *= 0.01f;
-        m_shimmerLevelTarget = pow( newShimmerLevel, 2.0f );
+//        newShimmerLevel *= 0.01f;
+        m_shimmerLevelTarget = pow( newShimmerLevel * 0.01, 2.0f );
         m_shimmerTransposeTarget = pow( 2.0f, ( newShimmerTransposition / 12.0f ) );
     }
     //==============================================================================
-    void setInterpolationType( int interpolationType )
+    void setInterpolationType( const int &interpolationType )
     {
 //        DBG("interpolation changed");
         lr.setInterpolationType( interpolationType );
@@ -319,7 +324,7 @@ public:
         shimmer.setInterpolationType( interpolationType );
     }
     //==============================================================================
-    void setFeedbackControl( bool feedbackControlFlag )
+    void setFeedbackControl( const bool &feedbackControlFlag )
     {
         m_feedbackControlFlag = feedbackControlFlag;
     }
@@ -355,11 +360,11 @@ private:
         for ( int s = 0; s < NUM_ER_STAGES; s++ )
         { c += pow(2, s); }
         T frac = 1.0f / c; // fraction of total length for first stage
-        m_erTotalLength = 300;
+//        m_erTotalLength = 300;
         DBG( " m_erTotalLength " << m_erTotalLength );
         for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
-            auto erMax = m_erTotalLength * frac * pow(2, s);
+//            auto erMax = m_erTotalLength * frac * pow(2, s);
             DBG( s << " erMax " << m_erTotalLength * frac * pow(2, s) );
             auto dtC = m_erTotalLength * frac * pow(2, s) / (T)NUM_REV_CHANNELS;
             for (int c = 0; c < NUM_REV_CHANNELS; c ++)
@@ -372,16 +377,16 @@ private:
             }
         }
         
-//        auto minLRtime = m_lrTotalLength * 0.5;
+        auto minLRTime = m_lrTotalLength * 0.5;
 //        auto dtC = ( m_lrTotalLength - minLRtime ) / (T)NUM_REV_CHANNELS;
-
-        auto minLRTime = 100;
-        auto maxLRTime = 200;
+//
+//        auto minLRTime = 100;
+//        auto maxLRTime = 200;
         for (int c = 0; c < NUM_REV_CHANNELS; c ++)
         {
 //            auto dt = rand01() * dtC;
 //            dt +=  minLRtime;
-            lrDT[ c ] = minLRTime + ( rand01() * ( maxLRTime - minLRTime ) );
+            lrDT[ c ] = minLRTime + ( rand01() * ( m_lrTotalLength - minLRTime ) );
         }
 
         DBG( "er len " << m_erTotalLength << " lr len " << m_lrTotalLength );
@@ -499,16 +504,16 @@ private:
     //==============================================================================
     void randomiseModulators()
     {
-        for ( int s = 0; s < NUM_ER_STAGES; s++ )
-        {
-            for (int c = 0; c < NUM_REV_CHANNELS; c ++)
-            {
-                erMod[ s ][ c ].setFrequency( rand01() * 0.5f );
-            }
-        }
+//        for ( int s = 0; s < NUM_ER_STAGES; s++ )
+//        {
+//            for (int c = 0; c < NUM_REV_CHANNELS; c ++)
+//            {
+//                erMod[ s ][ c ].setFrequency( rand01() * 0.5f );
+//            }
+//        }
         for (int c = 0; c < NUM_REV_CHANNELS; c ++)
         {
-            lrMod[ c ].setFrequency( 0.1f );
+            lrMod[ c ].setFrequency( 0.001f );
 //            lrMod[ c ].setFrequency( rand01() * 0.1f );
         }
     }
@@ -530,17 +535,17 @@ private:
         }
     }
     //==============================================================================
-    void updateBuffers( const int &bufferSize )
-    {
-        lr.updateBufferPositions( bufferSize );
-
-        for ( int s = 0; s < NUM_ER_STAGES; s ++ )
-        {
-            er[s].updateBufferPositions( bufferSize );
-        }
-
-        shimmer.updateBufferPositions( bufferSize );
-    }
+//    void updateBuffers( const int &bufferSize )
+//    {
+//        lr.updateBufferPositions( bufferSize );
+//
+//        for ( int s = 0; s < NUM_ER_STAGES; s ++ )
+//        {
+//            er[s].updateBufferPositions( bufferSize );
+//        }
+//
+//        shimmer.updateBufferPosition( bufferSize );
+//    }
     //==============================================================================
 //    void processOutputAndShimmer( juce::AudioBuffer<T> &buffer, const int &indexThroughCurrentBuffer, const int &nInChannels, const T &gainFactor, std::array< T, NUM_REV_CHANNELS >& erData, std::array< T, NUM_REV_CHANNELS > lrData )
 //    {
@@ -605,6 +610,7 @@ private:
     void processLateReflections( const int &indexThroughCurrentBuffer, const T &lrSizeFactor, const T &fbFactor, const T &modFactor, const T &lrCutOff, std::array< T, NUM_REV_CHANNELS >& erData, std::array< T, NUM_REV_CHANNELS >& lrData )
     {
         T dt;
+//        std::array< T, NUM_REV_CHANNELS > temp;
         // copy delayed samples into v2
         for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
         {
@@ -675,9 +681,9 @@ private:
     {
         for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
-            er[ s ].initialise( m_SR , m_erTotalLength );
+            er[ s ].initialise( m_SR , m_erTotalLength * 1.5 );
         }
-        lr.initialise( m_SR , m_lrTotalLength );
+        lr.initialise( m_SR , m_lrTotalLength * 1.5 );
         
         shimmer.initialise( m_SR, 100.0f );
         shimmer.setDelayTimeSamps( 2 );
@@ -687,10 +693,10 @@ private:
     {
         for (int c = 0; c < NUM_REV_CHANNELS; c ++)
         {
-            for ( int s = 0; s < NUM_ER_STAGES; s++ )
-            {
-                erMod[ s ][ c ].initialise( m_SR );
-            }
+//            for ( int s = 0; s < NUM_ER_STAGES; s++ )
+//            {
+//                erMod[ s ][ c ].initialise( m_SR );
+//            }
             lrMod[ c ].initialise( m_SR );
         }
     }

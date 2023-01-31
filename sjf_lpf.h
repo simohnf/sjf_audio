@@ -18,7 +18,7 @@ public:
     T filterInput( const T &x )
     {
         m_y0 += m_b * (x - m_y0);
-        m_y1 = m_y0; // store incase user changes to second order
+        m_y1 = m_y0; // store in case user changes to second order
         return m_y1;
     }
     ///////////////////////////////////////////////////

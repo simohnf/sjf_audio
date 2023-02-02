@@ -168,6 +168,19 @@ public:
         }
     }
     
+    void initialise( const T &sizeInSamps )
+    {
+        for ( int channel = 0; channel < NUM_CHANNELS; channel++ )
+        {
+            m_delayLines[ channel ].initialise( sizeInSamps );
+        }
+    }
+    
+    void initialiseChannel( const int &channel, const T &sizeInSamps )
+    {
+        m_delayLines[ channel ].initialise( sizeInSamps );
+    }
+    
     
     void setDelayTimeSamps( const int &channel, const T &delayInSamps )
     {

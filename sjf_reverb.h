@@ -97,7 +97,7 @@ public:
     //==============================================================================
     ~sjf_reverb() {}
     //==============================================================================
-    void intialise( int sampleRate , int totalNumInputChannels, int totalNumOutputChannels, int samplesPerBlock)
+    void initialise( int sampleRate , int totalNumInputChannels, int totalNumOutputChannels, int samplesPerBlock)
     {
         if ( sampleRate > 0 ) { m_SR = sampleRate; }
 //        if ( samplesPerBlock > 0 ) { m_blockSize = samplesPerBlock; }

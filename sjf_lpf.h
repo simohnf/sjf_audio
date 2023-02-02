@@ -45,7 +45,7 @@ public:
     ///////////////////////////////////////////////////
     void setCutoff( const T &newCutoff )
     {
-        if (newCutoff >= 1) { m_b = 0.99999f; }
+        if (newCutoff > 0.999999f) { m_b = 0.999999f; }
         else if( newCutoff < 0 ) { m_b = 0.0f; }
         else { m_b = newCutoff; }
     }

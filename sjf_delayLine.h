@@ -37,6 +37,10 @@ public:
         m_delayTimeInSamps = delayInSamps;
     }
     
+    T getDelayTimeSamps(  )
+    {
+        return m_delayTimeInSamps;
+    }
     
     T getSample( const int &indexThroughCurrentBuffer )
     {
@@ -110,8 +114,13 @@ public:
 //        auto wp = m_writePos + indexThroughCurrentBuffer;
 //        fastMod3< int >( wp, m_delayLineSize );
         m_delayLine[ m_writePos ]  = value;
-        m_writePos ++;
-        fastMod3< int >( m_writePos, m_delayLineSize );
+//        m_writePos ++;
+//        fastMod3< int >( m_writePos, m_delayLineSize );
+        if ( ++m_writePos >= m_delayLineSize )
+        {
+            m_writePos = 0;
+        }
+
     }
     
 //    int updateBufferPosition( const int &bufferSize )

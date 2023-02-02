@@ -237,29 +237,66 @@ void fastMod3( type &input, const type &ceil )
     while ( input >= ceil ) { input -= ceil; }
 }
 //==============================================================================
-//
-//void hadamard( std::vector< std::vector<float> > &hadamard, int size )
-//{
-//    // note size must be a power of 2!!!
-//    hadamard.resize(size);
-//    for ( int i = 0; i < size; i++ )
-//    {
-//        hadamard[i].resize(size);
-//    }
-//    hadamard[0][0] = 1.0f / sqrt( size ); // most simple matrix of size 1 is [1], whole matrix is multiplied by 1 / sqrt(size)
-//    for ( int k = 1; k < size; k += k ) {
-//        
-//        // Loop to copy elements to
-//        // other quarters of the matrix
-//        for (int i = 0; i < k; i++) {
-//            for (int j = 0; j < k; j++) {
-//                hadamard[i + k][j] = hadamard[i][j];
-//                hadamard[i][j + k] = hadamard[i][j];
-//                hadamard[i + k][j + k] = -hadamard[i][j];
-//            }
-//        }
-//    }
-//}
 //==============================================================================
+//==============================================================================
+// Use like `Hadamard<double, 8>::inPlace(data)` - size must be a power of 2
+template< typename Sample, int size >
+class Hadamard
+{
+public:
+    static inline void recursiveUnscaled(Sample * data) {
+        if (size <= 1) return;
+        constexpr int hSize = size/2;
+        
+        // Two (unscaled) Hadamards of half the size
+        Hadamard<Sample, hSize>::recursiveUnscaled(data);
+        Hadamard<Sample, hSize>::recursiveUnscaled(data + hSize);
+        
+        // Combine the two halves using sum/difference
+        for (int i = 0; i < hSize; ++i) {
+            double a = data[i];
+            double b = data[i + hSize];
+            data[i] = (a + b);
+            data[i + hSize] = (a - b);
+        }
+    }
+    
+    static inline void inPlace(Sample * data) {
+        recursiveUnscaled(data);
+        
+        Sample scalingFactor = std::sqrt(1.0/size);
+        for (int c = 0; c < size; ++c) {
+            data[c] *= scalingFactor;
+        }
+    }
+    
+    static inline void inPlace(Sample * data, const Sample &scalingFactor) {
+        recursiveUnscaled(data);
+        
+        //        Sample scalingFactor = std::sqrt(1.0/size);
+        for (int c = 0; c < size; ++c) {
+            data[c] *= scalingFactor;
+        }
+    }
+};
 
+template< typename T, int size >
+class Householder
+{
+    static constexpr T m_householderWeight = ( -2.0f / (T)size );
+public:
+    static inline void mixInPlace( std::array< T, size >& data )
+    {
+        T sum = 0.0f; // use this to mix all samples with householder matrix
+        for( int c = 0; c < size; c++ )
+        {
+            sum += data[ c ];
+        }
+        sum *= m_householderWeight;
+        for ( int c = 0; c < size; c++ )
+        {
+            data[ c ] += sum;
+        }
+    }
+};
 #endif /* sjf_audioUtilities_h */

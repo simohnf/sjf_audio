@@ -37,6 +37,10 @@ public:
         m_delayTimeInSamps = delayInSamps;
     }
     
+    T size()
+    {
+        return m_delayLine.size();
+    }
     T getDelayTimeSamps(  )
     {
         return m_delayTimeInSamps;
@@ -181,6 +185,10 @@ public:
         m_delayLines[ channel ].initialise( sizeInSamps );
     }
     
+    void size( const int &channel )
+    {
+        return m_delayLines[ channel ].size();
+    }
     
     void setDelayTimeSamps( const int &channel, const T &delayInSamps )
     {

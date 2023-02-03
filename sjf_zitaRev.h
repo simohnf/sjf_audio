@@ -32,14 +32,17 @@ class sjf_zitaRev
 private:
     static const int NUM_REV_CHANNELS = 8;
     int m_nInChannels, m_nOutChannels;
-    T m_dry = 0, m_wet = 1, m_FB = 0.85, m_size = 1, m_erSize, m_modD = 0.1;
-    
-//    std::vector< T > m_outSamps;
+    T m_dry = 0, m_wet = 1, m_FB = 0.85, m_size = 1, m_modD = 0.1;
+    T m_SR = 44100;
+    std::vector< T > m_outSamps;
 //    std::vector< T > m_inSamps;
     std::array< sjf_comb< T >, NUM_REV_CHANNELS > m_allpass;
     std::array< sjf_delayLine< T >, NUM_REV_CHANNELS > m_delays;
     std::array< T, NUM_REV_CHANNELS > m_flip, m_revSamples;
-    std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_lowPass;
+    std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_lowPass, m_erSizeSmooth, m_lrSizeSmooth;
+    
+    sjf_lpf< T > m_modDSmooth;
+    
     const std::array< T, NUM_REV_CHANNELS > m_allpassT
     {
         0.020346, 0.024421, 0.031604, 0.027333, 0.022904, 0.029291, 0.013458, 0.019123
@@ -52,45 +55,63 @@ private:
     
     std::array< T, NUM_REV_CHANNELS > m_erDelayTimes, m_lrDelayTimesSamples;
     
-    sjf_randOSC< T > m_modulator;
+    std::array< sjf_randOSC< T >, NUM_REV_CHANNELS > m_ERModulator, m_LRModulator;
 public:
     sjf_zitaRev()
     {
         m_revSamples.fill( 0 );
+        bool flipped = false;
+        for ( int i = 0; i < NUM_REV_CHANNELS; i += 2 )
+        {
+            T val;
+            if ( flipped ) { val = -1; }
+            else { val = 1; }
+            m_flip[ i ] = val;
+            m_flip[ i + 1 ] = val;
+            flipped = !flipped;
+        }
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
         {
-            if ( rand01() < 0.5 ) { m_flip[ i ] = -1.0; }
-            else { m_flip[ i ] = 1.0; }
+            DBG( "flipp " << i << " " << m_flip[ i ] );
         }
+        
     }
     ~sjf_zitaRev(){}
     
     void initialise( const int &sampleRate, const int &totalNumInputChannels, const int &totalNumOutputChannels, const int &samplesPerBlock )
     {
+        m_SR = sampleRate;
         m_nInChannels = totalNumInputChannels;
         m_nOutChannels = totalNumOutputChannels;
-//        m_outSamps.resize( m_nOutChannels );
+        m_outSamps.resize( m_nOutChannels );
 //        m_inSamps.resize( m_nInChannels );
         DBG("samplerate " << sampleRate );
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
         {
-            int dt = sampleRate * m_allpassT[ i ] + 0.5;
-            m_allpass[ i ].initialise( round ( dt * 1.5 ) );
-            m_allpass[ i ].setDelayTimeSamps( dt );
+            T dt = m_SR * m_allpassT[ i ];
+            m_allpass[ i ].initialise( 2 * round( dt ) );
             m_allpass[ i ].setCoefficients( 0.6, 1, -0.6 );
-            m_erDelayTimes[ i ] = dt;
-            DBG("er " << i << " dt " << dt << " allpassT " << m_allpassT[ i ] << " m_erDelayTimes " << m_erDelayTimes[ i ] );
             
-            dt = ( sampleRate * m_totalDelayT[ i ] + 0.5 ) - dt;
-            m_delays[ i ].initialise( round( dt * 1.5 ) );
-            m_delays[ i ].setDelayTimeSamps( dt );
-            m_lrDelayTimesSamples[ i ] = dt;
+            dt = ( m_SR * m_totalDelayT[ i ]) - dt;
+            m_delays[ i ].initialise( 2 * round( dt ) );
             
-            m_lowPass[ i ].setCutoff( 0.7 );
+            m_lowPass[ i ].setCutoff( 1 );
+        }
+        calculateDelayTimes( 1 );
+        
+        for ( int i = 0 ; i < NUM_REV_CHANNELS; i++ )
+        {
+            m_ERModulator[ i ].initialise( m_SR );
+            m_ERModulator[ i ].setFrequency( 0.1 );
+            
+            m_LRModulator[ i ].initialise( m_SR );
+            m_LRModulator[ i ].setFrequency( 0.1 );
+            
+            m_erSizeSmooth[ i ].setCutoff( 0.001 );
+            m_lrSizeSmooth[ i ].setCutoff( 0.001 );
         }
         
-        m_modulator.initialise( sampleRate );
-        m_modulator.setFrequency( 0.1 );
+        m_modDSmooth.setCutoff( 0.001 );
     }
     
     void processAudio( juce::AudioBuffer<T> &buffer )
@@ -98,30 +119,32 @@ public:
         auto bufferSize = buffer.getNumSamples();
         T hadScale = 1 / sqrt( NUM_REV_CHANNELS );
         
-        T drySamp, wetSamp, dt;
+        T drySamp, wetSamp, dt, modDepth;
         for ( int indexThroughBuffer = 0; indexThroughBuffer < bufferSize; indexThroughBuffer++ )
         {
+            modDepth = m_modDSmooth.filterInput( m_modD );
+            
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
                 // first distribute input across rev channels
                 m_revSamples[ i ] += buffer.getSample( ( i % m_nInChannels ) , indexThroughBuffer ) * m_flip[ i ];
                 // then feed through allpass
-                dt = m_erDelayTimes[ i ] * m_size;
-                DBG("er " << i << " dt " << dt);
+                dt = m_erSizeSmooth[ i ].filterInput( m_erDelayTimes[ i ] );
+                dt += ( m_ERModulator[ i ].output() * dt * modDepth );
+//                DBG("er " << i << " dt " << dt);
                 m_allpass[ i ].setDelayTimeSamps( dt );
-                m_revSamples[ i ] = m_allpass[ i ].filterInputRounded( m_revSamples[ i ] );
+//                m_revSamples[ i ] = m_allpass[ i ].filterInputRoundedIndex( m_revSamples[ i ] );
+                m_revSamples[ i ] = m_allpass[ i ].filterInput( m_revSamples[ i ] );
             }
             // mix
             Hadamard< T, NUM_REV_CHANNELS >::inPlace( m_revSamples.data(), hadScale );
             // copy to output
             for ( int i = 0; i < m_nOutChannels; i++ )
             {
-//                m_outSamps[ i ] = m_revSamples[ i ];
                 wetSamp = m_revSamples[ i ] * m_wet;
                 drySamp = buffer.getSample( ( fastMod2( i, m_nInChannels ) ) , indexThroughBuffer ) * m_dry;
                 buffer.setSample( i, indexThroughBuffer, wetSamp + drySamp );
             }
-            
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
                 // filter things
@@ -132,33 +155,36 @@ public:
                 m_delays[ i ].setSample2( m_revSamples[ i ] );
             }
             // save delayed values for next sample
-            
-            dt = m_lrDelayTimesSamples[ 0 ] * m_size;
-            dt += dt + ( m_modulator.output() * dt * m_modD );
-            DBG("lr " << 0 << " dt " << dt);
-            m_delays[ 0 ].setDelayTimeSamps( dt );
-            m_revSamples[ 0 ] = m_delays[ 0 ].getSample2()  * m_FB ; // only modulate first channel;
-            
-            for ( int i = 1; i < NUM_REV_CHANNELS; i++ )
+
+            for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
-                dt = m_lrDelayTimesSamples[ i ] * m_size;
-                DBG("lr " << i << " dt " << dt);
+                dt = m_lrSizeSmooth[ i ].filterInput( m_lrDelayTimesSamples[ i ] );
+                dt += ( dt * m_LRModulator[ i ].output() * modDepth );
+//                DBG("lr " << i << " dt " << dt);
                 m_delays[ i ].setDelayTimeSamps( dt );
-                m_revSamples[ i ] = m_delays[ i ].getSampleRoundedIndex2()  * m_FB ; // only modulate first channel;
+                m_revSamples[ i ] = m_delays[ i ].getSample2()  * m_FB ; // only modulate first channel;
             }
-            
-            
+//            Householder< T, NUM_REV_CHANNELS >::mixInPlace( m_revSamples );
+//            Hadamard< T, NUM_REV_CHANNELS >::inPlace( m_revSamples.data(), hadScale );
         }
     }
     
     void setSize( const T &newSize )
     {
         
-        m_size = ( newSize * 0.01 ); // convert to 0 --> 1
-        m_size = m_size * 0.9 + 0.1;
-        m_size *= m_size;
+        m_size = newSize;//( newSize * 0.01 ); // convert to 0 --> 1
+//        m_size *= m_size;
+        T size = m_size;
+        size *= 0.01;
+        size *= 0.9;
+        size += 0.1;
+        size *= 0.5;
+//        m_size = m_size * 0.9 + 0.1; // size of delaylines is 2 * max delay
+        
+        calculateDelayTimes( size );
 //        m_erSize = ( m_size * 0.5 ) + 0.5;
-        DBG( "Size " << newSize << " " << m_size << " " << m_erSize );
+        DBG( "Size " << newSize << " " << m_size );
+        
     }
     void setModulation( const T &newModDepth )
     {
@@ -182,11 +208,33 @@ public:
     }
     void setInterpolationType( const int &newInterpolation )
     {
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+        {
+            m_allpass[ i ].setInterpolationType( newInterpolation );
+            m_delays[ i ].setInterpolationType( newInterpolation );
+        }
     }
     void setFeedbackControl( const T &newFeedback )
     {
     }
 private:
+    
+    void calculateDelayTimes( const float &proportionOfMaxSize )
+    {
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+        {
+//            T dt = m_SR * m_allpassT[ i ];
+//            m_erDelayTimes[ i ] = dt * proportionOfMaxSize;
+            m_erDelayTimes[ i ] = m_allpass[ i ].size() * proportionOfMaxSize;
+//            DBG("er " << i << " dt " << dt << " allpassT " << m_allpassT[ i ] << " m_erDelayTimes " << m_erDelayTimes[ i ] );
+//            DBG("er " << i << " dt " << " m_erDelayTimes " << m_erDelayTimes[ i ] );
+
+//            dt = ( m_SR * m_totalDelayT[ i ] ) - dt;
+//            m_lrDelayTimesSamples[ i ] = dt * proportionOfMaxSize;
+            m_lrDelayTimesSamples[ i ] = m_delays[ i ].size() * proportionOfMaxSize;
+        }
+        
+    }
     
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_zitaRev )

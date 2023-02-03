@@ -35,11 +35,11 @@ public:
         T delayed = m_delayLine.getSample2( );
         T delayedFB = delayed * m_feedback;
         m_delayLine.setSample2( input + delayedFB );
-//        T output = (input * BL);
+        //        T output = (input * BL);
         return ( ( input + delayedFB ) * m_blend ) + ( delayed * m_feedforward );
     }
     
-    T filterInputRounded( const T &input )
+    T filterInputRoundedIndex( const T &input )
     {
         T delayed = m_delayLine.getSampleRoundedIndex2( );
         T delayedFB = delayed * m_feedback;
@@ -65,8 +65,15 @@ public:
         m_feedback = feedback;
     }
     
+    void setInterpolationType( const int &interpolationType )
+    {
+        m_delayLine.setInterpolationType( interpolationType );
+    }
 
-    
+    T size()
+    {
+        return m_delayLine.size();
+    }
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_comb )
 };
 

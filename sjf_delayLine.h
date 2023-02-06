@@ -41,7 +41,8 @@ public:
     {
         return m_delayLine.size();
     }
-    T getDelayTimeSamps(  )
+    
+    const T& getDelayTimeSamps(  )
     {
         return m_delayTimeInSamps;
     }
@@ -124,7 +125,7 @@ public:
         return m_writePos;
     }
     
-    T getSampleAtIndex( cont int& index )
+    T getSampleAtIndex( const int& index )
     {
         return m_delayLine[ index ];
     }
@@ -277,4 +278,50 @@ public:
 //------------------------------------------------------------------------
 //------------------------------------------------------------------------
 //------------------------------------------------------------------------
+template< typename T >
+class sjf_reverseDelay
+{
+    sjf_delayLine< T > m_delayLine;
+//    T m_delayInSamps;
+    int m_revCount = 0, m_writePos;
+    
+public:
+    sjf_reverseDelay( ) { }
+    ~sjf_reverseDelay( ) { }
+    
+    void initialise( const T& maxDelayInSamps )
+    {
+        m_delayLine.initialise( maxDelayInSamps );
+    }
+    
+    void setDelayTimeSamps( const T& delayInSamps )
+    {
+//        m_delayInSamps = delayInSamps;
+        m_delayLine.setDelayTimeSamps( delayInSamps );
+    }
+    
+    void setSample2( const T& val ){ m_delayLine.setSample2( val ); }
+    
+    T getSample2( )
+    {
+        return m_delayLine.getSampleRoundedIndex2( );
+    }
+    
+    T getSampleReverse()
+    {
+//        int index;
+        if ( m_revCount == 0 )
+        {
+            m_writePos = m_delayLine.getWritePosition();
+        }
+        auto index = m_writePos - m_revCount;
+        fastMod3< int >( index, m_delayLine.size() );
+        m_revCount++;
+        if ( m_revCount >= m_delayLine.getDelayTimeSamps() )
+        {
+            m_revCount = 0;
+        }
+        return m_delayLine.getSampleAtIndex( index );
+    }
+};
 #endif /* sjf_delayLine_h */

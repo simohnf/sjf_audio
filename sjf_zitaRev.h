@@ -23,55 +23,6 @@
 
 //==============================================================================
 //==============================================================================
-tempate< typename T >
-class sjf_preDelay
-{
-    sjf_delayLine< T > m_delayLine;
-    T m_delayInSamps;
-    bool m_reverse;
-    int m_revCount = 0, m_size, m_writePos;
-    
-public:
-    sjf_preDelay( ) { }
-    ~sjf_preDelay( ) { }
-    
-    void initialise( const T& maxDelayInSamps )
-    {
-        m_size = maxDelayInSamps;
-        m_delayLine.initialise( m_size );
-    }
-    
-    void setDelayTimeSamps( const T& delayInSamps )
-    {
-        m_delayInSamps = delayInSamps;
-        m_delayLine.setDelayTimeSamps( delayInSamps );
-    }
-    
-    void setSample2( const T& val ){ m_delayLine.setSample2( val ); }
-    
-    T getSample2( const T& val )
-    {
-        if ( !m_reverse )
-        {
-            return m_delayLine.getSampleRoundedIndex2( val );
-        }
-        else
-        {
-            int index;
-            if ( m_revCount == 0 )
-            {
-                m_writePos = m_delayLine.getWritePosition();
-            }
-            index = fastMod2( m_writePos - m_revCount, m_size );
-            m_revCount++;
-            if ( m_revCount >= m_delayInSamps )
-            {
-                m_revCount = 0;
-            }
-            return m_delayLine.getSampleAtIndex( index );
-        }
-    }
-};
 //==============================================================================
 //==============================================================================
 
@@ -89,10 +40,11 @@ private:
     
     bool m_fbControl = false;
     
-    std::vector< T > m_outSamps;
-//    std::vector< T > m_inSamps;
+    std::array< T, NUM_REV_CHANNELS > m_outSamps;
+    std::array< T, NUM_REV_CHANNELS > m_inSamps;
     std::array< sjf_comb< T >, NUM_REV_CHANNELS > m_allpass;
     std::array< sjf_delayLine< T >, NUM_REV_CHANNELS > m_delays;
+    std::array< sjf_reverseDelay< T >, NUM_REV_CHANNELS > m_preDelay;
     
     std::array< sjf_randOSC< T >, NUM_REV_CHANNELS > m_ERModulator, m_LRModulator; // modulators for delayTimes
     
@@ -103,8 +55,9 @@ private:
     
     sjf_lpf< T > m_modDSmooth, m_shimTransposeSmooth, m_FBsmooth; // dezipper variables
     std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_lowPass, m_erSizeSmooth, m_lrSizeSmooth; // dezipper individual delay times
-    std::vector< std::unique_ptr< sjf_lpf< T > > > m_inputLPF;
-    std::vector< std::unique_ptr< sjf_delayLine< T > > > m_preDelay;
+//    std::vector< std::unique_ptr< sjf_lpf< T > > > m_inputLPF;
+    std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_inputLPF;
+    
     
     const std::array< T, NUM_REV_CHANNELS > m_allpassT
     {
@@ -133,22 +86,31 @@ public:
         
         setPolarityFlips( m_nInChannels );
 
-        for ( int i = m_inputLPF.size(); i < m_nInChannels; i++ )
-        {
-            auto filt = std::make_unique< sjf_lpf< float > >();
-            m_inputLPF.push_back( std::move( filt ) );
-            m_inputLPF[ i ]->setCutoff( 0.99 );
-        }
-        
+//        for ( int i = m_inputLPF.size(); i < m_nInChannels; i++ )
+//        {
+//            auto filt = std::make_unique< sjf_lpf< float > >();
+//            m_inputLPF.push_back( std::move( filt ) );
+//            m_inputLPF[ i ]->setCutoff( 0.99 );
+//        }
 
-        for ( int i = m_preDelay.size(); i < m_nInChannels; i++ )
+        for( int i = 0; i < NUM_REV_CHANNELS; i++ )
         {
-            auto del = std::make_unique< m_preDelay< float > >();
-            m_inputLPF.push_back( std::move( del ) );
-            m_preDelay.initialise( 0.02 * m_SR );
+            m_inputLPF[ i ].setCutoff( 0.99 );
         }
-        
-        m_outSamps.resize( m_nOutChannels );
+
+//        for ( int i = m_preDelay.size(); i < m_nInChannels; i++ )
+//        {
+//            auto del = std::make_unique< m_preDelay< float > >();
+//            m_inputLPF.push_back( std::move( del ) );
+//            m_preDelay.initialise( 0.02 * m_SR );
+//        }
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+        {
+            m_preDelay[ i ].initialise( 0.02 * m_SR );
+            m_preDelay[ i ].setDelayTimeSamps( 0.01 * m_SR );
+        }
+//
+//        m_outSamps.resize( m_nOutChannels );
         DBG("samplerate " << sampleRate );
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
         {
@@ -188,12 +150,14 @@ public:
     
     void processAudio( juce::AudioBuffer<T> &buffer )
     {
-        std::array< T, m_nInChannels > inSamps;
+//        std::array< T, m_nInChannels > inSamps;
+//        std::array< T, 8 > inSamps;
         auto bufferSize = buffer.getNumSamples();
         T hadScale = 1 / sqrt( NUM_REV_CHANNELS );
         
         T drySamp, wetSamp, dt, modDepthSmoothed, FBSmoothed;
         
+        bool reversePreDelay = false;
         bool shimmerOn = false;
         if ( m_shimLevel > 0 ){ shimmerOn = true; }
         T shimOutput;
@@ -202,10 +166,10 @@ public:
         
         T inScale = 1/ sqrt( m_nInChannels );
         
-        T inSamp;
+//        T inSamp;
         for ( int i = 0; i < m_nInChannels; i++ )
         {
-            m_inputLPF[ i ]->setCutoff( m_inputCutoff );
+            m_inputLPF[ i ].setCutoff( m_inputCutoff );
         }
         
         for ( int indexThroughBuffer = 0; indexThroughBuffer < bufferSize; indexThroughBuffer++ )
@@ -217,8 +181,17 @@ public:
             // PreDelay First
             for ( int i = 0; i < m_nInChannels; i++ )
             {
-                m_preDelay[ i ]->setSample2( buffer.getSample( i , indexThroughBuffer ) );
-                inSamps[ i ] = m_preDelay[ i ]->getSample2( ) * inScale;
+                m_preDelay[ i ].setSample2( buffer.getSample( i , indexThroughBuffer ) );
+                if ( reversePreDelay )
+                {
+                    m_inSamps[ i ] = m_preDelay[ i ].getSampleReverse( );
+                }
+                else
+                {
+                    m_inSamps[ i ] = m_preDelay[ i ].getSample2( );
+                }
+                m_inSamps[ i ] *= inScale;
+//                m_inSamps[ i ] = buffer.getSample( i , indexThroughBuffer ) * inScale;
             }
             
 
@@ -237,7 +210,7 @@ public:
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
                 int inChan =  fastMod( i, m_nInChannels );
-                m_revSamples[ i ] += (  m_inputLPF[ inChan ]->filterInput( m_inSamps[ inChan ] ) * m_flip[ i ] );
+                m_revSamples[ i ] += (  m_inputLPF[ inChan ].filterInput( m_inSamps[ inChan ] ) * m_flip[ i ] );
             }
             // allpass diffussion
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )

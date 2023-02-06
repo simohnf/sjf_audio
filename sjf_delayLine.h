@@ -115,18 +115,19 @@ public:
     
     void setSample2( const T &value )
     {
-//        auto wp = m_writePos + indexThroughCurrentBuffer;
-//        fastMod3< int >( wp, m_delayLineSize );
         m_delayLine[ m_writePos ]  = value;
-//        m_writePos ++;
-//        fastMod3< int >( m_writePos, m_delayLineSize );
-        if ( ++m_writePos >= m_delayLineSize )
-        {
-            m_writePos = 0;
-        }
-
+        if ( ++m_writePos >= m_delayLineSize ) { m_writePos = 0; }
     }
     
+    int getWritePosition()
+    {
+        return m_writePos;
+    }
+    
+    T getSampleAtIndex( cont int& index )
+    {
+        return m_delayLine[ index ];
+    }
 //    int updateBufferPosition( const int &bufferSize )
 //    {
 //        //    Update write position ensuring it stays within size of delay buffer

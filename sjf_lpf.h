@@ -28,6 +28,19 @@ public:
         m_y1 += m_b * (m_y0 - m_y1);
         return m_y1;
     }
+    ///////////////////////////////////////////////////
+    T filterInPlace( T& x )
+    {
+        m_y0 += m_b * (x - m_y0);
+        x = m_y1 = m_y0; // store in case user changes to second order
+    }
+    ///////////////////////////////////////////////////
+    T filterInPlaceSecondOrder( T& x )
+    {
+        m_y0 += m_b * (x - m_y0);
+        m_y1 += m_b * (m_y0 - m_y1);
+        x = m_y1;
+    }
     //    ///////////////////////////////////////////////////
     //    void filterInputInPlace( T &x )
     //    {

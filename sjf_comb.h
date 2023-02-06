@@ -39,6 +39,15 @@ public:
         return ( ( input + delayedFB ) * m_blend ) + ( delayed * m_feedforward );
     }
     
+    void filterInPlace( T& input )
+    {
+        T delayed = m_delayLine.getSample2( );
+        T delayedFB = delayed * m_feedback;
+        m_delayLine.setSample2( input + delayedFB );
+        //        T output = (input * BL);
+        input = ( ( input + delayedFB ) * m_blend ) + ( delayed * m_feedforward );
+    }
+    
     T filterInputRoundedIndex( const T &input )
     {
         T delayed = m_delayLine.getSampleRoundedIndex2( );
@@ -46,6 +55,15 @@ public:
         m_delayLine.setSample2( input + delayedFB );
         //        T output = (input * BL);
         return ( ( input + delayedFB ) * m_blend ) + ( delayed * m_feedforward );
+    }
+    
+    void filterInPlaceRoundedIndex( T& input )
+    {
+        T delayed = m_delayLine.getSampleRoundedIndex2( );
+        T delayedFB = delayed * m_feedback;
+        m_delayLine.setSample2( input + delayedFB );
+        //        T output = (input * BL);
+        input = ( ( input + delayedFB ) * m_blend ) + ( delayed * m_feedforward );
     }
     
     void setDelayTimeSamps( const T &delayInSamps )

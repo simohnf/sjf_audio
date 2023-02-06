@@ -237,6 +237,13 @@ void fastMod3( type &input, const type &ceil )
     while ( input >= ceil ) { input -= ceil; }
 }
 //==============================================================================
+template< class T >
+T sjf_scale( const T& valueToScale, const T& inMin, const T& inMax, const T& outMin, const T& outMax )
+{
+//    DBG("SCALE " << valueToScale << " " << inMin << " " << inMax << " " << outMin << " " << outMax );
+    return ( ( ( valueToScale - inMin ) / ( inMax - inMin ) ) * ( outMax - outMin ) ) + outMin;
+}
+//==============================================================================
 //==============================================================================
 //==============================================================================
 // Use like `Hadamard<double, 8>::inPlace(data)` - size must be a power of 2

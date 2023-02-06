@@ -77,7 +77,7 @@ public:
         pitchShiftTimeDiff += m_initialDelay;
         m_pitchShifter.setDelayTimeSamps( pitchShiftTimeDiff );
         amp = juce::dsp::FastMathApproximations::sin( M_PI * phase );
-        val += amp * m_pitchShifter.getSample2( );
+        val += ( amp * m_pitchShifter.getSample2( ) );
         return ( val );
     }
     

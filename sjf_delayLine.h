@@ -19,7 +19,7 @@ class sjf_delayLine
 protected:
     std::vector< T > m_delayLine;
     T m_delayTimeInSamps = 0.0f;
-    int m_writePos = 0, m_interpolationType = 1, m_delayLineSize;
+    int m_writePos = 0, m_interpolationType = 1, m_delayLineSize = 0;
     
 public:
     sjf_delayLine() { };
@@ -27,9 +27,13 @@ public:
     
     void initialise( const int &MaxDelayInSamps )
     {
-        m_delayLineSize = MaxDelayInSamps;
-        m_delayLine.resize( m_delayLineSize );
-        m_delayLine.shrink_to_fit();
+        if ( m_delayLineSize != MaxDelayInSamps )
+        {
+            m_delayLineSize = MaxDelayInSamps;
+            m_delayLine.resize( m_delayLineSize );
+            m_delayLine.shrink_to_fit();
+            std::fill(m_delayLine.begin(), m_delayLine.end(), 0);
+        }
     }
     
     void setDelayTimeSamps( const T &delayInSamps )
@@ -282,7 +286,7 @@ template< typename T >
 class sjf_reverseDelay
 {
     sjf_delayLine< T > m_delayLine;
-//    T m_delayInSamps;
+    T m_delayInSamps, m_invDelInSamps;
     int m_revCount = 0, m_writePos;
     
 public:
@@ -296,7 +300,8 @@ public:
     
     void setDelayTimeSamps( const T& delayInSamps )
     {
-//        m_delayInSamps = delayInSamps;
+        m_delayInSamps = delayInSamps;
+        m_invDelInSamps = 1/ m_delayInSamps;
         m_delayLine.setDelayTimeSamps( delayInSamps );
     }
     
@@ -309,19 +314,39 @@ public:
     
     T getSampleReverse()
     {
-//        int index;
         if ( m_revCount == 0 )
         {
-            m_writePos = m_delayLine.getWritePosition();
+            m_writePos = m_delayLine.getWritePosition() - 1; // always read from behind write pointer
         }
         auto index = m_writePos - m_revCount;
         fastMod3< int >( index, m_delayLine.size() );
+        T amp = phaseEnvelope( m_revCount * m_invDelInSamps );
         m_revCount++;
-        if ( m_revCount >= m_delayLine.getDelayTimeSamps() )
-        {
+        if ( m_revCount >= m_delayInSamps )
             m_revCount = 0;
-        }
-        return m_delayLine.getSampleAtIndex( index );
+        return m_delayLine.getSampleAtIndex( index ) * amp;
+    }
+    
+private:
+    T phaseEnvelope( const T& phase )
+    {
+        T up, down;
+        
+        up = down = phase * 100;
+//        if ( up > 1 )
+//            up = 1;
+//        else if ( up < 0 )
+//            up = 0;
+
+        clipInPlace< T >( up, 0, 1 );
+        
+        down -= 99;
+        down *= -1;
+//        if( down < -1 ){ down = -1; }
+//        else if ( down > 0 ) { down = 0; }
+        clipInPlace< T > ( down, -1, 0 );
+        
+        return up + down;
     }
 };
 #endif /* sjf_delayLine_h */

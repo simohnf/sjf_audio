@@ -106,8 +106,8 @@ public:
 //        }
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
         {
-            m_preDelay[ i ].initialise( 0.02 * m_SR );
-            m_preDelay[ i ].setDelayTimeSamps( 0.01 * m_SR );
+            m_preDelay[ i ].initialise( m_SR );
+            m_preDelay[ i ].setDelayTimeSamps( 0.1 * m_SR );
         }
 //
 //        m_outSamps.resize( m_nOutChannels );

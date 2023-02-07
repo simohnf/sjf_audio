@@ -11,6 +11,15 @@
 
 
 #define PI 3.14159265
+template< typename T >
+void clipInPlace( T& value, const T& min, const T& max )
+{
+    if ( value < min )
+        value = min;
+    else if ( value > max )
+        value = max;
+}
+
 //==============================================================================
 // A simple phase ramp based envelope
 inline

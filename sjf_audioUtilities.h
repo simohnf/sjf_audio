@@ -295,7 +295,9 @@ public:
         }
     }
 };
-
+//==============================================================================
+//==============================================================================
+//==============================================================================
 template< typename T, int size >
 class Householder
 {
@@ -316,19 +318,31 @@ public:
     }
 };
 
-
+//==============================================================================
+//==============================================================================
+//==============================================================================
 
 template< typename T >
 T calculateLPFCoefficient( const T& frequency, const T& sampleRate )
 {
+    T w = ( frequency / sampleRate );
+    T twoPiW = ( 2 * PI * w );
     // MAKE SURE FREQUENCY IS IN A LOGICAL RANGE
-    T coef = sin( frequency * 2.0f * PI / sampleRate );
-    DBG( "1 - f " << frequency << " coef " << coef);
-    coef = 1 - exp( -4.0f * PI * frequency / sampleRate );
-    DBG( "2 - f " << frequency << " coef " << coef);
-    T y = 1 - cos( frequency * 2.0f * PI / sampleRate );
-    coef = sqrt( y*y + 2*y ) - y;
-    DBG( "3 - f " << frequency << " coef " << coef);
-    return coef;
+//    T coef = sin(  twoPiW );
+//    DBG( "1 - sin f " << frequency << " coef " << coef );
+    
+//    coef = 1.0 - exp( -1.0 * twoPiW );
+//    DBG( "2 - exp f " << frequency << " coef " << coef );
+//
+//    T y = 1 - cos( twoPiW );
+//    coef = sqrt( y*y + 2*y ) - y;
+//    DBG( "3 - cos f " << frequency << " coef " << coef );
+    
+//    coef = twoPiW  / ( 1 + twoPiW  );
+//    DBG( "4 - f " << frequency << " coef " << coef );
+    
+//    DBG( " " );
+//    return coef;
+    return 1.0 - exp( -1.0*twoPiW );
 }
 #endif /* sjf_audioUtilities_h */

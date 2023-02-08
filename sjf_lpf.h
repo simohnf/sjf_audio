@@ -63,16 +63,6 @@ public:
     {
         return m_y1;
     }
-//    ///////////////////////////////////////////////////
-//    void isFirstOrder( const bool &yesIfFirstOrder )
-//    {
-//        m_firstOrderFlag = yesIfFirstOrder;
-//    }
-//    ///////////////////////////////////////////////////
-//    bool getIsFirstOrder()
-//    {
-//        return m_firstOrderFlag;
-//    }
     ///////////////////////////////////////////////////
 private:
     T m_y0 = 0.0f, m_y1 = 0.0f, m_b = 0.5;

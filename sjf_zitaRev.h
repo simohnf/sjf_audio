@@ -57,7 +57,7 @@ private:
     sjf_lpf< T > m_modDSmooth, m_shimTransposeSmooth, m_FBsmooth; // dezipper variables
     std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_lowPass, m_erSizeSmooth, m_lrSizeSmooth; // dezipper individual delay times
 //    std::vector< std::unique_ptr< sjf_lpf< T > > > m_inputLPF;
-    std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_inputLPF;
+    std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_inputLPF, m_DCBlockers;
     
     
     const std::array< T, NUM_REV_CHANNELS > m_allpassT
@@ -126,6 +126,7 @@ public:
         }
         calculateDelayTimes( 1 );
         
+        T smoothSlewVal = calculateLPFCoefficient< float >( 1, sampleRate );
         for ( int i = 0 ; i < NUM_REV_CHANNELS; i++ )
         {
             m_ERModulator[ i ].initialise( m_SR );
@@ -134,19 +135,21 @@ public:
             m_LRModulator[ i ].initialise( m_SR );
             m_LRModulator[ i ].setFrequency( 0.1 );
             
-            m_erSizeSmooth[ i ].setCutoff( 0.001 );
-            m_lrSizeSmooth[ i ].setCutoff( 0.001 );
+            m_erSizeSmooth[ i ].setCutoff( smoothSlewVal );
+            m_lrSizeSmooth[ i ].setCutoff( smoothSlewVal );
+            
+            m_DCBlockers[ i ].setCutoff( smoothSlewVal );
         }
         
         shimmer.initialise( m_SR, 100.0f );
         shimmer.setDelayTimeSamps( 2 );
-        m_shimTransposeSmooth.setCutoff( 0.001 );
+        m_shimTransposeSmooth.setCutoff( smoothSlewVal );
         
-        m_modDSmooth.setCutoff( 0.001 );
-        m_FBsmooth.setCutoff( 0.001 );
+        m_modDSmooth.setCutoff( smoothSlewVal );
+        m_FBsmooth.setCutoff( smoothSlewVal );
         
-        m_shimLPF.setCutoff( 0.99 );
-        m_shimHPF.setCutoff( 0.01 );
+        m_shimLPF.setCutoff( calculateLPFCoefficient< float >( 150000, sampleRate ) );
+        m_shimHPF.setCutoff( calculateLPFCoefficient< float >( 20, sampleRate ) );
     }
     
     void processAudio( juce::AudioBuffer<T> &buffer )
@@ -198,11 +201,11 @@ public:
             // SHIMMER
             if ( shimmerOn )
             {
-                shimmer.setSample( indexThroughBuffer, m_revSamples[ 0 ] ); // no need to pitchShift Everything because it all gets mixed anyway
+                shimmer.setSample( indexThroughBuffer, m_revSamples[  NUM_REV_CHANNELS - 1 ] ); // no need to pitchShift Everything because it all gets mixed anyway
                 shimOutput = shimmer.pitchShiftOutput( indexThroughBuffer, m_shimTransposeSmooth.filterInput( m_shimTranspose ) ) ;
                 shimOutput -= m_shimHPF.filterInput( shimOutput );
                 m_shimLPF.filterInPlace( shimOutput );
-                m_revSamples[ 0 ] = ( shimOutput * shimWetLevel ) + ( m_revSamples[ 0 ] * shimDryLevel );
+                m_revSamples[ NUM_REV_CHANNELS - 1 ] = ( shimOutput * shimWetLevel ) + ( m_revSamples[  NUM_REV_CHANNELS - 1 ] * shimDryLevel );
             }
             
 
@@ -246,7 +249,11 @@ public:
 //                DBG("lr " << i << " dt " << dt);
                 m_delays[ i ].setDelayTimeSamps( dt );
                 m_revSamples[ i ] = m_delays[ i ].getSample2()  * FBSmoothed ; // only modulate first channel;
-                if ( m_fbControl ) { m_revSamples[ i ] = juce::dsp::FastMathApproximations::tanh( m_revSamples[ i ] ); }
+                if ( m_fbControl )
+                {
+                    m_revSamples[ i ] = juce::dsp::FastMathApproximations::tanh( m_revSamples[ i ] );
+                    m_revSamples[ i ] -= m_DCBlockers[ i ].filterInput( m_revSamples[ i ] );
+                }
             }
 //            Householder< T, NUM_REV_CHANNELS >::mixInPlace( m_revSamples );
 //            Hadamard< T, NUM_REV_CHANNELS >::inPlace( m_revSamples.data(), hadScale );
@@ -265,11 +272,15 @@ public:
     void setModulation( const T &newModDepth )
     {
         m_modD = sjf_scale< float > ( newModDepth, 0, 100, -0.00001, 1 );
+        m_modD *= m_modD * m_modD;
     }
     
     void setDecay( const T &newDecay )
     {
-        m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1. ); // * 0.01;
+        if ( !m_fbControl )
+        { m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1. ); }// * 0.01;
+        else
+        { m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1.25 ); }
     }
     
     void setMix( const T &newMix )
@@ -297,7 +308,7 @@ public:
     void setShimmer( const T &newShimmerLevel, const T &newShimmerTransposition )
     {
         m_shimLevel = sjf_scale< T >( newShimmerLevel, 0, 100, 0, 1 );
-        m_shimLevel *= m_shimLevel;
+        m_shimLevel *= m_shimLevel * m_shimLevel;
         m_shimLevel *= 0.5;
         m_shimTranspose = pow( 2.0f, ( newShimmerTransposition / 12.0f ) );
     }

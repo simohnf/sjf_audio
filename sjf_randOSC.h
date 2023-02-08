@@ -60,7 +60,7 @@ private:
         {
             m_lastTarget = m_currentTarget;
             m_currentTarget = randomTarget();
-            DBG( " m_currentTarget " << m_currentTarget );
+//            DBG( " m_currentTarget " << m_currentTarget );
             m_diff = m_currentTarget - m_lastTarget;
         }
         m_lastPhase = phase;

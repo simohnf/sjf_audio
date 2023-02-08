@@ -315,4 +315,20 @@ public:
         }
     }
 };
+
+
+
+template< typename T >
+T calculateLPFCoefficient( const T& frequency, const T& sampleRate )
+{
+    // MAKE SURE FREQUENCY IS IN A LOGICAL RANGE
+    T coef = sin( frequency * 2.0f * PI / sampleRate );
+    DBG( "1 - f " << frequency << " coef " << coef);
+    coef = 1 - exp( -4.0f * PI * frequency / sampleRate );
+    DBG( "2 - f " << frequency << " coef " << coef);
+    T y = 1 - cos( frequency * 2.0f * PI / sampleRate );
+    coef = sqrt( y*y + 2*y ) - y;
+    DBG( "3 - f " << frequency << " coef " << coef);
+    return coef;
+}
 #endif /* sjf_audioUtilities_h */

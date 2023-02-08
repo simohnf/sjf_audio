@@ -41,20 +41,6 @@ public:
         m_y1 += m_b * (m_y0 - m_y1);
         x = m_y1;
     }
-    //    ///////////////////////////////////////////////////
-    //    void filterInputInPlace( T &x )
-    //    {
-    //        m_y0 += m_b * (x - m_y0);
-    //        if ( m_firstOrderFlag )
-    //        {
-    //            m_y1 = m_y0;
-    //        }
-    //        else
-    //        {
-    //            m_y1 += m_b * (m_y0 - m_y1);
-    //        }
-    //        x = m_y1;
-    //    }
     ///////////////////////////////////////////////////
     void setCutoff( const T &newCutoff )
     {

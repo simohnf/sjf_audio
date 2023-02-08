@@ -39,8 +39,9 @@ private:
     T m_inputCutoff = 0.7;
     
     bool m_fbControl = false;
+    bool m_reversePreDelay = false;
     
-    std::array< T, NUM_REV_CHANNELS > m_outSamps;
+//    std::array< T, NUM_REV_CHANNELS > m_outSamps;
     std::array< T, NUM_REV_CHANNELS > m_inSamps;
     std::array< sjf_comb< T >, NUM_REV_CHANNELS > m_allpass;
     std::array< sjf_delayLine< T >, NUM_REV_CHANNELS > m_delays;
@@ -107,7 +108,7 @@ public:
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
         {
             m_preDelay[ i ].initialise( m_SR );
-            m_preDelay[ i ].setDelayTimeSamps( 0.1 * m_SR );
+            m_preDelay[ i ].setDelayTimeSamps( 0.005 * m_SR );
         }
 //
 //        m_outSamps.resize( m_nOutChannels );
@@ -157,7 +158,8 @@ public:
         
         T drySamp, wetSamp, dt, modDepthSmoothed, FBSmoothed;
         
-        bool reversePreDelay = false;
+        bool modulateDelays = true;
+        
         bool shimmerOn = false;
         if ( m_shimLevel > 0 ){ shimmerOn = true; }
         T shimOutput;
@@ -166,43 +168,23 @@ public:
         
         T inScale = 1/ sqrt( m_nInChannels );
         
-//        T inSamp;
-        for ( int i = 0; i < m_nInChannels; i++ )
-        {
-            m_inputLPF[ i ].setCutoff( m_inputCutoff );
-        }
-        
         for ( int indexThroughBuffer = 0; indexThroughBuffer < bufferSize; indexThroughBuffer++ )
         {
             // first calculate smoothed global variables
             modDepthSmoothed = m_modDSmooth.filterInput( m_modD );
+//            DBG( modDepthSmoothed );
+            if ( modDepthSmoothed <= 0 ) { modulateDelays = false; }
+            
             FBSmoothed = m_FBsmooth.filterInput( m_FB );
             
             // PreDelay First
             for ( int i = 0; i < m_nInChannels; i++ )
             {
-                m_preDelay[ i ].setSample2( buffer.getSample( i , indexThroughBuffer ) );
-                if ( reversePreDelay )
-                {
-                    m_inSamps[ i ] = m_preDelay[ i ].getSampleReverse( );
-                }
-                else
-                {
-                    m_inSamps[ i ] = m_preDelay[ i ].getSample2( );
-                }
+                m_preDelay[ i ].setSample2( buffer.getSample( i , indexThroughBuffer ) ); // feed into predelay
+                if ( m_reversePreDelay ) { m_inSamps[ i ] = m_preDelay[ i ].getSampleReverse( ); }
+                else { m_inSamps[ i ] = m_preDelay[ i ].getSample2( ); }
+                m_inputLPF[ i ].filterInPlace( m_inSamps[ i ] );
                 m_inSamps[ i ] *= inScale;
-//                m_inSamps[ i ] = buffer.getSample( i , indexThroughBuffer ) * inScale;
-            }
-            
-
-            // SHIMMER
-            if ( shimmerOn )
-            {
-                shimmer.setSample( indexThroughBuffer, m_revSamples[ 0 ] ); // no need to pitchShift Everything because it all gets mixed anyway
-                shimOutput = shimmer.pitchShiftOutput( indexThroughBuffer, m_shimTransposeSmooth.filterInput( m_shimTranspose ) ) ;
-                shimOutput -= m_shimHPF.filterInput( shimOutput );
-                m_shimLPF.filterInPlace( shimOutput );
-                m_revSamples[ 0 ] = ( shimOutput * shimWetLevel ) +  ( m_revSamples[ 0 ] * shimDryLevel );
             }
             
 
@@ -210,14 +192,27 @@ public:
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
                 int inChan =  fastMod( i, m_nInChannels );
-                m_revSamples[ i ] += (  m_inputLPF[ inChan ].filterInput( m_inSamps[ inChan ] ) * m_flip[ i ] );
+                m_revSamples[ i ] += ( m_inSamps[ inChan ]  * m_flip[ i ] );
             }
+            
+            // SHIMMER
+            if ( shimmerOn )
+            {
+                shimmer.setSample( indexThroughBuffer, m_revSamples[ 0 ] ); // no need to pitchShift Everything because it all gets mixed anyway
+                shimOutput = shimmer.pitchShiftOutput( indexThroughBuffer, m_shimTransposeSmooth.filterInput( m_shimTranspose ) ) ;
+                shimOutput -= m_shimHPF.filterInput( shimOutput );
+                m_shimLPF.filterInPlace( shimOutput );
+                m_revSamples[ 0 ] = ( shimOutput * shimWetLevel ) + ( m_revSamples[ 0 ] * shimDryLevel );
+            }
+            
+
+
             // allpass diffussion
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
                 // calculate allpass delay times
                 dt = m_erSizeSmooth[ i ].filterInput( m_erDelayTimes[ i ] );
-                dt += ( m_ERModulator[ i ].output() * dt * modDepthSmoothed );
+                if ( modulateDelays ) { dt += ( m_ERModulator[ i ].output() * dt * modDepthSmoothed ); }
                 m_allpass[ i ].setDelayTimeSamps( dt );
                 // then feed through allpass
                 m_allpass[ i ].filterInPlace( m_revSamples[ i ] );
@@ -230,7 +225,7 @@ public:
             for ( int i = 0; i < m_nOutChannels; i++ )
             {
                 wetSamp = m_revSamples[ i ] * m_wet;
-                drySamp = buffer.getSample( ( fastMod2( i, m_nInChannels ) ) , indexThroughBuffer ) * m_dry;
+                drySamp = buffer.getSample(  fastMod2( i, m_nInChannels ) , indexThroughBuffer ) * m_dry;
                 buffer.setSample( i, indexThroughBuffer, wetSamp + drySamp );
             }
             
@@ -247,14 +242,11 @@ public:
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
                 dt = m_lrSizeSmooth[ i ].filterInput( m_lrDelayTimesSamples[ i ] );
-                dt += ( dt * m_LRModulator[ i ].output() * modDepthSmoothed );
+                if ( modulateDelays ) { dt += ( dt * m_LRModulator[ i ].output() * modDepthSmoothed ); }
 //                DBG("lr " << i << " dt " << dt);
                 m_delays[ i ].setDelayTimeSamps( dt );
                 m_revSamples[ i ] = m_delays[ i ].getSample2()  * FBSmoothed ; // only modulate first channel;
-                if ( m_fbControl )
-                {
-                    m_revSamples[ i ] = tanh( m_revSamples[ i ] );
-                }
+                if ( m_fbControl ) { m_revSamples[ i ] = juce::dsp::FastMathApproximations::tanh( m_revSamples[ i ] ); }
             }
 //            Householder< T, NUM_REV_CHANNELS >::mixInPlace( m_revSamples );
 //            Hadamard< T, NUM_REV_CHANNELS >::inPlace( m_revSamples.data(), hadScale );
@@ -272,12 +264,12 @@ public:
     
     void setModulation( const T &newModDepth )
     {
-        m_modD = newModDepth * 0.01;
+        m_modD = sjf_scale< float > ( newModDepth, 0, 100, -0.00001, 1 );
     }
     
     void setDecay( const T &newDecay )
     {
-        m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1 );// * 0.01;
+        m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1. ); // * 0.01;
     }
     
     void setMix( const T &newMix )
@@ -294,6 +286,12 @@ public:
     void setErCutOff( const T &newInputCutOff )
     {
         m_inputCutoff = pow( newInputCutOff, 3 );
+        
+        for ( int i = 0; i < m_nInChannels; i++ )
+        {
+            m_inputLPF[ i ].setCutoff( m_inputCutoff );
+        }
+        
     }
     
     void setShimmer( const T &newShimmerLevel, const T &newShimmerTransposition )
@@ -333,10 +331,10 @@ private:
             for ( int j = 0; j < nSteps; j++ ) { m_flip[ i + j ] = val; }
             flipped = !flipped;
         }
-        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
-        {
-            DBG( "flipp " << i << " " << m_flip[ i ] );
-        }
+//        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+//        {
+//            DBG( "flipp " << i << " " << m_flip[ i ] );
+//        }
     }
     
     void calculateDelayTimes( const float &proportionOfMaxSize )
@@ -347,7 +345,6 @@ private:
             m_erDelayTimes[ i ] = m_allpass[ i ].size() * sizeFactor;
             m_lrDelayTimesSamples[ i ] = m_delays[ i ].size() * sizeFactor;
         }
-        
     }
     
     

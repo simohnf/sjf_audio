@@ -301,7 +301,7 @@ public:
     void setDelayTimeSamps( const T& delayInSamps )
     {
         m_delayInSamps = delayInSamps;
-        m_invDelInSamps = 1/ m_delayInSamps;
+        m_invDelInSamps = 1 / m_delayInSamps;
         m_delayLine.setDelayTimeSamps( delayInSamps );
     }
     
@@ -315,12 +315,10 @@ public:
     T getSampleReverse()
     {
         if ( m_revCount == 0 )
-        {
             m_writePos = m_delayLine.getWritePosition() - 1; // always read from behind write pointer
-        }
         auto index = m_writePos - m_revCount;
         fastMod3< int >( index, m_delayLine.size() );
-        T amp = phaseEnvelope( m_revCount * m_invDelInSamps );
+        T amp = phaseEnvelope( (T)m_revCount * m_invDelInSamps );
         m_revCount++;
         if ( m_revCount >= m_delayInSamps )
             m_revCount = 0;
@@ -333,17 +331,10 @@ private:
         T up, down;
         
         up = down = phase * 100;
-//        if ( up > 1 )
-//            up = 1;
-//        else if ( up < 0 )
-//            up = 0;
-
         clipInPlace< T >( up, 0, 1 );
         
         down -= 99;
         down *= -1;
-//        if( down < -1 ){ down = -1; }
-//        else if ( down > 0 ) { down = 0; }
         clipInPlace< T > ( down, -1, 0 );
         
         return up + down;

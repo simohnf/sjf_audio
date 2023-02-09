@@ -195,9 +195,14 @@ public:
         m_lrFBTarget = newDecay * 0.01f;
     }
     //==============================================================================
-    void setModulation ( const T &newModulation )
+    void setModulationDepth ( const T &newModulation )
     {
         m_modulationTarget = newModulation * 0.005f; // +/- 50% of max delayTime
+    }
+    //==============================================================================
+    void setModulationRate( const T& newModRate )
+    {
+        
     }
     //==============================================================================
     void setMix ( const T &newMix )
@@ -207,11 +212,15 @@ public:
         m_dryTarget = sqrt( 1.0f - ( newMix * 0.01 ) );
     }
     //==============================================================================
-    void setShimmer ( const T &newShimmerLevel, const T &newShimmerTransposition )
+    void setShimmerLevel ( const T &newShimmerLevel )
     {
 //        newShimmerLevel *= 0.01f;
         m_shimmerLevelTarget = pow( newShimmerLevel * 0.01, 2.0f );
-        m_shimmerTransposeTarget = pow( 2.0f, ( newShimmerTransposition / 12.0f ) );
+    }
+
+    void setShimmerTransposition( const T &newShimmerTransposition )
+    {
+        m_shimTranspose = pow( 2.0f, ( newShimmerTransposition / 12.0f ) );
     }
     //==============================================================================
     void setInterpolationType( const int &interpolationType )

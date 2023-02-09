@@ -269,7 +269,15 @@ public:
         }
     }
     
-    void setModulation( const T &newModDepth )
+    void setModulationRate( const T& newModRate )
+    {
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+        {
+            m_ERModulator[ i ].setFrequency( newModRate );
+            m_LRModulator[ i ].setFrequency( newModRate );
+        }
+    }
+    void setModulationDepth( const T &newModDepth )
     {
         m_modD = sjf_scale< float > ( newModDepth, 0, 100, -0.00001, 1 );
         m_modD *= m_modD * m_modD;
@@ -305,11 +313,15 @@ public:
         
     }
     
-    void setShimmer( const T &newShimmerLevel, const T &newShimmerTransposition )
+    void setShimmerLevel( const T &newShimmerLevel )
     {
         m_shimLevel = sjf_scale< T >( newShimmerLevel, 0, 100, 0, 1 );
         m_shimLevel *= m_shimLevel * m_shimLevel;
         m_shimLevel *= 0.5;
+    }
+    
+    void setShimmerTransposition( const T &newShimmerTransposition )
+    {
         m_shimTranspose = pow( 2.0f, ( newShimmerTransposition / 12.0f ) );
     }
     

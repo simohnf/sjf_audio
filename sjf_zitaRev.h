@@ -14,7 +14,7 @@
 #include "sjf_comb.h"
 #include "sjf_lpf.h"
 #include "sjf_randOSC.h"
-//#include "sjf_monoPitchShift.h"
+#include "sjf_phasor.h"
 #include "sjf_pitchShift.h"
 #include <algorithm>    // std::random_erShuffle
 #include <random>       // std::default_random_engine
@@ -33,44 +33,32 @@ private:
     static const int NUM_REV_CHANNELS = 8;
     int m_nInChannels = 2, m_nOutChannels = 2;
     T m_dry = 0, m_wet = 1, m_FB = 0.85, m_size = 1, m_modD = 0.1;
-    T m_SR = 44100;
     T m_shimLevel = 0, m_shimTranspose = 2;
     T m_LRCutOff = 0.7;
     T m_inputCutoff = 0.7;
     
     bool m_fbControl = false;
     bool m_reversePreDelay = false;
+    bool m_modType = false;
     
-//    std::array< T, NUM_REV_CHANNELS > m_outSamps;
-    std::array< T, NUM_REV_CHANNELS > m_inSamps;
     std::array< sjf_comb< T >, NUM_REV_CHANNELS > m_allpass;
     std::array< sjf_delayLine< T >, NUM_REV_CHANNELS > m_delays;
     std::array< sjf_reverseDelay< T >, NUM_REV_CHANNELS > m_preDelay;
     
     std::array< sjf_randOSC< T >, NUM_REV_CHANNELS > m_ERModulator, m_LRModulator; // modulators for delayTimes
-    
-    std::array< T, NUM_REV_CHANNELS > m_flip, m_revSamples; // polarity flips and storage of samples
+    sjf_phasor< T > m_modPhasor;
+    std::array< T, NUM_REV_CHANNELS > m_flip, m_revSamples, m_inSamps; // polarity flips and storage of samples
     
     sjf_pitchShift< T > shimmer; // shimmer
     sjf_lpf< T > m_shimLPF, m_shimHPF;
     
     sjf_lpf< T > m_modDSmooth, m_shimTransposeSmooth, m_FBsmooth; // dezipper variables
     std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_lowPass, m_erSizeSmooth, m_lrSizeSmooth; // dezipper individual delay times
-//    std::vector< std::unique_ptr< sjf_lpf< T > > > m_inputLPF;
     std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_inputLPF, m_DCBlockers;
     
     
-    const std::array< T, NUM_REV_CHANNELS > m_allpassT
-    {
-        0.020346, 0.024421, 0.031604, 0.027333, 0.022904, 0.029291, 0.013458, 0.019123
-    };
     
-    const std::array< T, NUM_REV_CHANNELS > m_totalDelayT
-    {
-        0.153129, 0.210389, 0.127837, 0.256891, 0.174713, 0.192303, 0.125, 0.219991
-    };
-    
-    std::array< T, NUM_REV_CHANNELS > m_erDelayTimes, m_lrDelayTimesSamples;
+    std::array< T, NUM_REV_CHANNELS > m_erDelayTimesSamples, m_lrDelayTimesSamples;
     
 public:
     sjf_zitaRev()
@@ -81,81 +69,26 @@ public:
     
     void initialise( const int &sampleRate, const int &totalNumInputChannels, const int &totalNumOutputChannels, const int &samplesPerBlock )
     {
-        m_SR = sampleRate;
         m_nInChannels = totalNumInputChannels;
         m_nOutChannels = totalNumOutputChannels;
         
         setPolarityFlips( m_nInChannels );
 
-//        for ( int i = m_inputLPF.size(); i < m_nInChannels; i++ )
-//        {
-//            auto filt = std::make_unique< sjf_lpf< float > >();
-//            m_inputLPF.push_back( std::move( filt ) );
-//            m_inputLPF[ i ]->setCutoff( 0.99 );
-//        }
-
-        for( int i = 0; i < NUM_REV_CHANNELS; i++ )
-        {
-            m_inputLPF[ i ].setCutoff( 0.99 );
-        }
-
-//        for ( int i = m_preDelay.size(); i < m_nInChannels; i++ )
-//        {
-//            auto del = std::make_unique< m_preDelay< float > >();
-//            m_inputLPF.push_back( std::move( del ) );
-//            m_preDelay.initialise( 0.02 * m_SR );
-//        }
-        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
-        {
-            m_preDelay[ i ].initialise( m_SR );
-            m_preDelay[ i ].setDelayTimeSamps( 0.005 * m_SR );
-        }
-//
-//        m_outSamps.resize( m_nOutChannels );
-        DBG("samplerate " << sampleRate );
-        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
-        {
-            T dt = m_SR * m_allpassT[ i ];
-            m_allpass[ i ].initialise( 2 * round( dt ) );
-            m_allpass[ i ].setCoefficients( 0.6, 1, -0.6 );
-            
-            dt = ( m_SR * m_totalDelayT[ i ]) - dt;
-            m_delays[ i ].initialise( 2 * round( dt ) );
-            
-            m_lowPass[ i ].setCutoff( 0.7 );
-        }
+        initialiseDelayLines( sampleRate );
         calculateDelayTimes( 1 );
+        setPreDelay( 0.005 * sampleRate );
+        
+        initialiseModulators( sampleRate );
         
         T smoothSlewVal = calculateLPFCoefficient< float >( 1, sampleRate );
-        for ( int i = 0 ; i < NUM_REV_CHANNELS; i++ )
-        {
-            m_ERModulator[ i ].initialise( m_SR );
-            m_ERModulator[ i ].setFrequency( 0.1 );
-            
-            m_LRModulator[ i ].initialise( m_SR );
-            m_LRModulator[ i ].setFrequency( 0.1 );
-            
-            m_erSizeSmooth[ i ].setCutoff( smoothSlewVal );
-            m_lrSizeSmooth[ i ].setCutoff( smoothSlewVal );
-            
-            m_DCBlockers[ i ].setCutoff( smoothSlewVal );
-        }
+        initialiseVariableSmoothers( smoothSlewVal );
         
-        shimmer.initialise( m_SR, 100.0f );
-        shimmer.setDelayTimeSamps( 2 );
-        m_shimTransposeSmooth.setCutoff( smoothSlewVal );
+        initialiseShimmer( sampleRate );
         
-        m_modDSmooth.setCutoff( smoothSlewVal );
-        m_FBsmooth.setCutoff( smoothSlewVal );
-        
-        m_shimLPF.setCutoff( calculateLPFCoefficient< float >( 150000, sampleRate ) );
-        m_shimHPF.setCutoff( calculateLPFCoefficient< float >( 20, sampleRate ) );
     }
     
     void processAudio( juce::AudioBuffer<T> &buffer )
     {
-//        std::array< T, m_nInChannels > inSamps;
-//        std::array< T, 8 > inSamps;
         auto bufferSize = buffer.getNumSamples();
         T hadScale = 1 / sqrt( NUM_REV_CHANNELS );
         
@@ -169,16 +102,19 @@ public:
         T shimWetLevel = sqrt( m_shimLevel );
         T shimDryLevel = sqrt( 1 - m_shimLevel );
         
-        T inScale = 1/ sqrt( m_nInChannels );
+        T inScale = 1.0f / sqrt( m_nInChannels );
+        T phasorOut;
+        T phasorOffset = 1.0f / NUM_REV_CHANNELS;
         
         for ( int indexThroughBuffer = 0; indexThroughBuffer < bufferSize; indexThroughBuffer++ )
         {
             // first calculate smoothed global variables
             modDepthSmoothed = m_modDSmooth.filterInput( m_modD );
-//            DBG( modDepthSmoothed );
             if ( modDepthSmoothed <= 0 ) { modulateDelays = false; }
-            
+            else if ( !m_modType ) { modDepthSmoothed *= 0.5; }
             FBSmoothed = m_FBsmooth.filterInput( m_FB );
+            
+            phasorOut = m_modPhasor.output();
             
             // PreDelay First
             for ( int i = 0; i < m_nInChannels; i++ )
@@ -214,8 +150,19 @@ public:
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
                 // calculate allpass delay times
-                dt = m_erSizeSmooth[ i ].filterInput( m_erDelayTimes[ i ] );
-                if ( modulateDelays ) { dt += ( m_ERModulator[ i ].output() * dt * modDepthSmoothed ); }
+                dt = m_erSizeSmooth[ i ].filterInput( m_erDelayTimesSamples[ i ] );
+                if ( modulateDelays )
+                {
+                    if ( m_modType )
+                    { dt += ( m_ERModulator[ i ].output() * dt * modDepthSmoothed ); }
+                    else
+                    {
+                        dt += ( juce::dsp::FastMathApproximations::sin( (2.0f*phasorOut - 1.0f) * PI ) * dt * modDepthSmoothed );
+//                        DBG( "er " << i << " " << phasorOut << " " << phasorOffset);
+                        phasorOut += phasorOffset;
+                        if ( phasorOut >= 1 ) { phasorOut -= 1; }
+                    }
+                }
                 m_allpass[ i ].setDelayTimeSamps( dt );
                 // then feed through allpass
                 m_allpass[ i ].filterInPlace( m_revSamples[ i ] );
@@ -245,8 +192,18 @@ public:
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
                 dt = m_lrSizeSmooth[ i ].filterInput( m_lrDelayTimesSamples[ i ] );
-                if ( modulateDelays ) { dt += ( dt * m_LRModulator[ i ].output() * modDepthSmoothed ); }
-//                DBG("lr " << i << " dt " << dt);
+                if ( modulateDelays )
+                {
+                    if ( m_modType )
+                    { dt += ( dt * m_LRModulator[ i ].output() * modDepthSmoothed ); }
+                    else
+                    {
+                        dt += ( juce::dsp::FastMathApproximations::sin( (2.0f*phasorOut - 1.0f) * PI ) * dt * modDepthSmoothed );
+//                        DBG( "lr " << i << " " << phasorOut << " " << phasorOffset);
+                        phasorOut += phasorOffset;
+                        if ( phasorOut >= 1 ) { phasorOut -= 1; }
+                    }
+                }
                 m_delays[ i ].setDelayTimeSamps( dt );
                 m_revSamples[ i ] = m_delays[ i ].getSample2()  * FBSmoothed ; // only modulate first channel;
                 if ( m_fbControl )
@@ -271,6 +228,8 @@ public:
     
     void setModulationRate( const T& newModRate )
     {
+        m_modPhasor.setFrequency( newModRate );
+        
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
         {
             m_ERModulator[ i ].setFrequency( newModRate );
@@ -279,8 +238,13 @@ public:
     }
     void setModulationDepth( const T &newModDepth )
     {
-        m_modD = sjf_scale< float > ( newModDepth, 0, 100, -0.00001, 1 );
-        m_modD *= m_modD * m_modD;
+        m_modD = sjf_scale< float > ( newModDepth, 0, 100, -0.00001, 0.999f );
+//        m_modD *= m_modD * m_modD;
+    }
+    
+    void setModulationType( const bool& trueForRandomFalseForSin )
+    {
+        m_modType = trueForRandomFalseForSin;
     }
     
     void setDecay( const T &newDecay )
@@ -288,7 +252,7 @@ public:
         if ( !m_fbControl )
         { m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1. ); }// * 0.01;
         else
-        { m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1.25 ); }
+        { m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1.1 ); }
     }
     
     void setMix( const T &newMix )
@@ -310,7 +274,6 @@ public:
         {
             m_inputLPF[ i ].setCutoff( m_inputCutoff );
         }
-        
     }
     
     void setShimmerLevel( const T &newShimmerLevel )
@@ -340,6 +303,11 @@ public:
         m_fbControl = shouldLimitFeedback;
     }
     
+    void setPreDelay( const T& preDelayInSamps )
+    {
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+        { m_preDelay[ i ].setDelayTimeSamps( preDelayInSamps ); }
+    }
 private:
     
     void setPolarityFlips( const int& nInChannels )
@@ -354,10 +322,6 @@ private:
             for ( int j = 0; j < nSteps; j++ ) { m_flip[ i + j ] = val; }
             flipped = !flipped;
         }
-//        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
-//        {
-//            DBG( "flipp " << i << " " << m_flip[ i ] );
-//        }
     }
     
     void calculateDelayTimes( const float &proportionOfMaxSize )
@@ -365,11 +329,71 @@ private:
         T sizeFactor = proportionOfMaxSize * 0.5; // max delay vector size is double max delay time!!!
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
         {
-            m_erDelayTimes[ i ] = m_allpass[ i ].size() * sizeFactor;
+            m_erDelayTimesSamples[ i ] = m_allpass[ i ].size() * sizeFactor;
             m_lrDelayTimesSamples[ i ] = m_delays[ i ].size() * sizeFactor;
         }
     }
     
+    void initialiseModulators( const T& sampleRate )
+    {
+        m_modPhasor.initialise( sampleRate, 1 );
+        for ( int i = 0 ; i < NUM_REV_CHANNELS; i++ )
+        {
+            m_ERModulator[ i ].initialise( sampleRate );
+            m_ERModulator[ i ].setFrequency( 0.1 );
+            
+            m_LRModulator[ i ].initialise( sampleRate );
+            m_LRModulator[ i ].setFrequency( 0.1 );
+        }
+    }
+    
+    void initialiseShimmer( const T& sampleRate )
+    {
+        shimmer.initialise( sampleRate, 100.0f );
+        shimmer.setDelayTimeSamps( 2 );
+        
+        m_shimLPF.setCutoff( calculateLPFCoefficient< float >( 150000, sampleRate ) );
+        m_shimHPF.setCutoff( calculateLPFCoefficient< float >( 20, sampleRate ) );
+    }
+    
+    void initialiseDelayLines( const T& sampleRate )
+    {
+        T dt;
+        
+        const std::array< T, NUM_REV_CHANNELS > allpassT
+        { 0.020346, 0.024421, 0.031604, 0.027333, 0.022904, 0.029291, 0.013458, 0.019123 };
+        
+        const std::array< T, NUM_REV_CHANNELS > totalDelayT
+        { 0.153129, 0.210389, 0.127837, 0.256891, 0.174713, 0.192303, 0.125, 0.219991 };
+        
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+        {
+            dt = sampleRate * allpassT[ i ];
+            m_allpass[ i ].initialise( 2 * round( dt ) );
+            m_allpass[ i ].setCoefficients( 0.6, 1, -0.6 );
+            
+            dt = ( sampleRate * totalDelayT[ i ]) - dt;
+            m_delays[ i ].initialise( 2 * round( dt ) );
+            
+            m_preDelay[ i ].initialise( sampleRate );
+        }
+    }
+    
+    void initialiseVariableSmoothers( const T& smoothSlewVal )
+    {
+        m_shimTransposeSmooth.setCutoff( smoothSlewVal );
+        
+        m_modDSmooth.setCutoff( smoothSlewVal );
+        m_FBsmooth.setCutoff( smoothSlewVal );
+        
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+        {
+            m_erSizeSmooth[ i ].setCutoff( smoothSlewVal );
+            m_lrSizeSmooth[ i ].setCutoff( smoothSlewVal );
+            
+            m_DCBlockers[ i ].setCutoff( smoothSlewVal );
+        }
+    }
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_zitaRev )
 };

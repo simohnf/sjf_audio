@@ -37,7 +37,22 @@ float phaseEnv( float phase, float period, float envLen){
     //    return rampUp+rampDown; // this would give linear fade
     return sin( PI* (rampUp+rampDown)/2 ); // this gives a smooth sinewave based fade
 }
-
+//==============================================================================
+// phase envelopVersion 2
+template < typename T >
+T phaseEnvelope( const T& phase, const T& nRampSegments )
+{
+    T up, down;
+    
+    up = down = phase * nRampSegments;
+    clipInPlace< T >( up, 0, 1 );
+    
+    down -= ( nRampSegments - 1 );
+    down *= -1;
+    clipInPlace< T > ( down, -1, 0 );
+    
+    return up + down;
+}
 //==============================================================================
 // simple stereo panning based on 1/4 of a sine wave cycle
 inline

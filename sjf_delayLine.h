@@ -286,7 +286,7 @@ template< typename T >
 class sjf_reverseDelay
 {
     sjf_delayLine< T > m_delayLine;
-    T m_delayInSamps, m_invDelInSamps;
+    T m_delayInSamps, m_invDelInSamps, m_rampLenSamps = 100.0f, m_nRampSegments = 100.0f;
     int m_revCount = 0, m_writePos;
     
 public:
@@ -298,11 +298,24 @@ public:
         m_delayLine.initialise( maxDelayInSamps );
     }
     
+    void initialise( const T& maxDelayInSamps, const T& rampLenInSamps )
+    {
+        m_delayLine.initialise( maxDelayInSamps );
+        setRampLength( rampLenInSamps );
+    }
+    
     void setDelayTimeSamps( const T& delayInSamps )
     {
         m_delayInSamps = delayInSamps;
         m_invDelInSamps = 1 / m_delayInSamps;
         m_delayLine.setDelayTimeSamps( delayInSamps );
+        calculateNRampSegments();
+    }
+    
+    void setRampLength( const T& rampLenInSamps )
+    {
+        m_rampLenSamps = rampLenInSamps;
+        calculateNRampSegments();
     }
     
     void setSample2( const T& val ){ m_delayLine.setSample2( val ); }
@@ -318,26 +331,41 @@ public:
             m_writePos = m_delayLine.getWritePosition() - 1; // always read from behind write pointer
         auto index = m_writePos - m_revCount;
         fastMod3< int >( index, m_delayLine.size() );
-        T amp = phaseEnvelope( (T)m_revCount * m_invDelInSamps );
+        T amp = phaseEnvelope< T >( (T)m_revCount * m_invDelInSamps, m_nRampSegments );
         m_revCount++;
         if ( m_revCount >= m_delayInSamps )
             m_revCount = 0;
         return m_delayLine.getSampleAtIndex( index ) * amp;
     }
+
+//    T getSampleReverse()
+//    {
+//        if ( m_revCount == 0 )
+//            m_writePos = m_delayLine.getWritePosition() - 1; // always read from behind write pointer
+//        auto index = m_writePos - m_revCount;
+//        fastMod3< int >( index, m_delayLine.size() );
+//        auto index2 = fastMod2( index + ( 0.5 * m_delayInSamps ), m_delayLine.size() );
+//        T phase1 = (T)m_revCount * m_invDelInSamps;
+//        T phase2 = fastMod2( phase1+ 0.5, 1.0 );
+////        T amp = phaseEnvelope( (T)m_revCount * m_invDelInSamps );
+//        T amp = cos( phase1 * PI ) * 0.5 + 1;
+//        T amp2 = cos( phase2 * PI ) * 0.5 + 1;
+//        m_revCount++;
+//        if ( m_revCount >= m_delayInSamps )
+//            m_revCount = 0;
+//        return ( m_delayLine.getSampleAtIndex( index ) * amp ) + ( m_delayLine.getSampleAtIndex( index2 ) * amp2 );
+//    }
     
 private:
-    T phaseEnvelope( const T& phase )
+    
+    void calculateNRampSegments()
     {
-        T up, down;
-        
-        up = down = phase * 100;
-        clipInPlace< T >( up, 0, 1 );
-        
-        down -= 99;
-        down *= -1;
-        clipInPlace< T > ( down, -1, 0 );
-        
-        return up + down;
+        m_nRampSegments = m_delayInSamps / m_rampLenSamps;
+        if ( m_nRampSegments < 2 )
+        { m_nRampSegments = 2; }
+//        DBG( "delay " << m_delayInSamps << " ramp " << m_rampLenSamps << " segments " << m_nRampSegments );
     }
+    
+
 };
 #endif /* sjf_delayLine_h */

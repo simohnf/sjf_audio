@@ -34,7 +34,7 @@ private:
     int m_nInChannels = 2, m_nOutChannels = 2;
     T m_dry = 0, m_wet = 1, m_FB = 0.85, m_size = 1, m_modD = 0.1;
     T m_shimLevel = 0, m_shimTranspose = 2;
-    T m_LRCutOff = 0.7;
+    T m_lrLPFCutOff = 0.99, m_lrHPFCutOff = 0.001;
     T m_inputCutoff = 0.7;
     
     bool m_fbControl = false;
@@ -53,7 +53,7 @@ private:
     sjf_lpf< T > m_shimLPF, m_shimHPF;
     
     sjf_lpf< T > m_modDSmooth, m_shimTransposeSmooth, m_FBsmooth; // dezipper variables
-    std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_lowPass, m_erSizeSmooth, m_lrSizeSmooth; // dezipper individual delay times
+    std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_hiPass, m_lowPass, m_erSizeSmooth, m_lrSizeSmooth; // dezipper individual delay times
     std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_inputLPF, m_DCBlockers;
     
     
@@ -89,8 +89,8 @@ public:
     
     void processAudio( juce::AudioBuffer<T> &buffer )
     {
-        auto bufferSize = buffer.getNumSamples();
-        T hadScale = 1 / sqrt( NUM_REV_CHANNELS );
+        const auto bufferSize = buffer.getNumSamples();
+        const T hadScale = 1 / sqrt( NUM_REV_CHANNELS );
         
         T drySamp, wetSamp, dt, modDepthSmoothed, FBSmoothed;
         
@@ -99,13 +99,16 @@ public:
         bool shimmerOn = false;
         if ( m_shimLevel > 0 ){ shimmerOn = true; }
         T shimOutput;
-        T shimWetLevel = sqrt( m_shimLevel );
-        T shimDryLevel = sqrt( 1 - m_shimLevel );
+        const T shimWetLevel = sqrt( m_shimLevel );
+        const T shimDryLevel = sqrt( 1 - m_shimLevel );
         
-        T inScale = 1.0f / sqrt( m_nInChannels );
+//        const T inScale = hadScale * 1.0f / sqrt( m_nInChannels );
+//        const T inScale = sqrt( (float)m_nInChannels / (float)NUM_REV_CHANNELS );
+        const T inScale = 1.0f / sqrt( (float)m_nInChannels );
         T phasorOut;
-        T phasorOffset = 1.0f / NUM_REV_CHANNELS;
+        const T phasorOffset = 1.0f / (float)( NUM_REV_CHANNELS * 2 ) ; // every delay gets a slightly different phase for sinewave modulation
         
+        static const T drive = 1.01f;
         for ( int indexThroughBuffer = 0; indexThroughBuffer < bufferSize; indexThroughBuffer++ )
         {
             // first calculate smoothed global variables
@@ -184,9 +187,12 @@ public:
             {
                 // filter things
                 // ?????
-                m_lowPass[ i ].setCutoff( m_LRCutOff );
+                m_lowPass[ i ].setCutoff( m_lrLPFCutOff );
                 m_lowPass[ i ].filterInPlace( m_revSamples[ i ] );
-                m_delays[ i ].setSample2( m_revSamples[ i ] ); // feed through delay lines
+                
+                m_hiPass[ i ].setCutoff( m_lrHPFCutOff );
+//                m_hiPass[ i ].filterInput( m_revSamples[ i ] );
+                m_delays[ i ].setSample2( m_revSamples[ i ] - m_hiPass[ i ].filterInput( m_revSamples[ i ] ) ); // feed through delay lines
             }
             // save delayed values for next sample
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
@@ -205,10 +211,12 @@ public:
                     }
                 }
                 m_delays[ i ].setDelayTimeSamps( dt );
+                T val = m_delays[ i ].getSample2();
+                if ( val > 1.0f || val < -1.0f ) { DBG( "BIG VALUE!!!!" );}
                 m_revSamples[ i ] = m_delays[ i ].getSample2()  * FBSmoothed ; // only modulate first channel;
                 if ( m_fbControl )
                 {
-                    m_revSamples[ i ] = juce::dsp::FastMathApproximations::tanh( m_revSamples[ i ] );
+                    m_revSamples[ i ] = juce::dsp::FastMathApproximations::tanh( m_revSamples[ i ] * drive );
                     m_revSamples[ i ] -= m_DCBlockers[ i ].filterInput( m_revSamples[ i ] );
                 }
             }
@@ -249,10 +257,7 @@ public:
     
     void setDecay( const T &newDecay )
     {
-        if ( !m_fbControl )
-        { m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1. ); }// * 0.01;
-        else
-        { m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1.1 ); }
+        m_FB = sjf_scale< float > ( newDecay, 0, 100, 0, 1. );// * 0.01;
     }
     
     void setMix( const T &newMix )
@@ -261,9 +266,14 @@ public:
         m_wet = sqrt( newMix * 0.01 );
     }
     
-    void setLrCutOff( const T &newLRCutOff )
+    void setLrLPFCutOff( const T &newCutOff )
     {
-        m_LRCutOff = pow( newLRCutOff, 3 );
+        m_lrLPFCutOff = pow( newCutOff, 3 );
+    }
+    
+    void setLrHPFCutOff( const T &newCutOff )
+    {
+        m_lrHPFCutOff = pow( newCutOff, 3 );
     }
     
     void setErCutOff( const T &newInputCutOff )
@@ -307,6 +317,11 @@ public:
     {
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
         { m_preDelay[ i ].setDelayTimeSamps( preDelayInSamps ); }
+    }
+    
+    void reversePredelay( const bool& trueIfReversed )
+    {
+        m_reversePreDelay = trueIfReversed;
     }
 private:
     
@@ -375,7 +390,8 @@ private:
             dt = ( sampleRate * totalDelayT[ i ]) - dt;
             m_delays[ i ].initialise( 2 * round( dt ) );
             
-            m_preDelay[ i ].initialise( sampleRate );
+            m_preDelay[ i ].initialise( sampleRate, sampleRate * 0.001);
+//            m_preDelay[ i ].setRampLength( sampleRate * 0.001 );
         }
     }
     

@@ -96,6 +96,92 @@ public:
 };
 
 
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// One multiply allpass as per Moorer
+
+template< typename T >
+class sjf_allpass
+{
+private:
+    sjf_delayLine < T > m_delayLine;
+    T m_gain;
+public:
+    sjf_allpass() {}
+    ~sjf_allpass() {}
+    
+    void initialise( const int &MaxDelayInSamps )
+    {
+        m_delayLine.initialise( MaxDelayInSamps );
+    }
+    
+    T filterInput( const T &input )
+    {
+        T delayed = m_delayLine.getSample2( );
+        T xhn = ( input - delayed ) * m_gain;
+        m_delayLine.setSample2( input + xhn );
+        return delayed + xhn;
+    }
+    
+    void filterInPlace( T& input )
+    {
+        T delayed = m_delayLine.getSample2( );
+        T xhn = ( input - delayed ) * m_gain;
+        m_delayLine.setSample2( input + xhn );
+        input = delayed + xhn;
+    }
+    
+    void filterInPlace2Multiply( T& input )
+    {
+        T delayed = m_delayLine.getSample2( );
+        T xhn = input - ( delayed * m_gain );
+        m_delayLine.setSample2( xhn );
+        input = delayed + ( xhn * m_gain );
+    }
+    
+    T filterInputRoundedIndex( const T &input )
+    {
+        T delayed = m_delayLine.getSampleRoundedIndex2( );
+        T xhn = ( input - delayed ) * m_gain;
+        m_delayLine.setSample2( input + xhn );
+        return delayed + xhn;
+    }
+    
+    void filterInPlaceRoundedIndex( T& input )
+    {
+        T delayed = m_delayLine.getSampleRoundedIndex2( );
+        T xhn = ( input - delayed ) * m_gain;
+        m_delayLine.setSample2( input + xhn );
+        input = delayed + xhn;
+    }
+    
+    void setDelayTimeSamps( const T &delayInSamps )
+    {
+        m_delayLine.setDelayTimeSamps( delayInSamps );
+    }
+    
+    T getDelayTimeSamps(  )
+    {
+        return m_delayLine.getDelayTimeSamps( );
+    }
+    
+    void setCoefficient( const T &gain )
+    {
+        m_gain = gain;
+    }
+    
+    void setInterpolationType( const int &interpolationType )
+    {
+        m_delayLine.setInterpolationType( interpolationType );
+    }
+    
+    T size()
+    {
+        return m_delayLine.size();
+    }
+};
+
+
 #endif /* sjf_comb_h */
 
 

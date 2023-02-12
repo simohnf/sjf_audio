@@ -41,7 +41,7 @@ private:
     bool m_reversePreDelay = false;
     bool m_modType = false;
     
-    std::array< sjf_comb< T >, NUM_REV_CHANNELS > m_allpass;
+    std::array< sjf_allpass< T >, NUM_REV_CHANNELS > m_allpass;
     std::array< sjf_delayLine< T >, NUM_REV_CHANNELS > m_delays;
     std::array< sjf_reverseDelay< T >, NUM_REV_CHANNELS > m_preDelay;
     
@@ -385,7 +385,7 @@ private:
         {
             dt = sampleRate * allpassT[ i ];
             m_allpass[ i ].initialise( 2 * round( dt ) );
-            m_allpass[ i ].setCoefficients( 0.6, 1, -0.6 );
+            m_allpass[ i ].setCoefficient( 0.6 );
             
             dt = ( sampleRate * totalDelayT[ i ]) - dt;
             m_delays[ i ].initialise( 2 * round( dt ) );

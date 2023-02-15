@@ -43,12 +43,14 @@ private:
     int m_nInChannels = 2, m_nOutChannels = 2;
     T m_dry = 0, m_wet = 1, m_FB = 0.85, m_size = 1, m_modD = 0.1;
     T m_shimLevel = 0, m_shimTranspose = 2;
-    T m_lrLPFCutOff = 0.99, m_lrHPFCutOff = 0.001;
-    T m_inputCutoff = 0.7;
+    T m_lrLPFCutoff = 0.99, m_lrHPFCutoff = 0.001;
+    T m_inputLPFCutoff = 0.7, m_inputHPFCutoff = 0.01;
     
     bool m_fbControl = false;
     bool m_reversePreDelay = false;
     bool m_modType = false;
+    
+    bool m_filtBeforeShimmerFlag = false;
     
     std::array< sjf_allpass< T >, NUM_REV_CHANNELS > m_allpass;
     std::array< sjf_delayLine< T >, NUM_REV_CHANNELS > m_delays;
@@ -58,12 +60,12 @@ private:
     sjf_phasor< T > m_modPhasor; // phasor for sinewave modulation
     std::array< T, NUM_REV_CHANNELS > m_flip, m_revSamples, m_inSamps; // polarity flips and storage of samples
     
-    sjf_pitchShift< T > shimmer; // shimmer
-    sjf_lpf< T > m_shimLPF, m_shimHPF;
+    sjf_pitchShift< T > m_shimmer; // shimmer
+    sjf_lpf< T > m_shimLPF, m_shimLPF2, m_shimHPF;
     
     sjf_lpf< T > m_modDSmooth, m_shimTransposeSmooth, m_FBsmooth; // dezipper variables
     std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_hiPass, m_lowPass, m_erSizeSmooth, m_lrSizeSmooth; // dezipper individual delay times
-    std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_inputLPF, m_DCBlockers;
+    std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_inputLPF, m_inputHPF, m_DCBlockers;
     
     std::array< T, NUM_REV_CHANNELS > m_erDelayTimesSamples, m_lrDelayTimesSamples;
     
@@ -73,14 +75,10 @@ public:
     sjf_zitaRev()
     {
         m_revSamples.fill( 0 );
-        DBG( " TABSIZE " << TABSIZE << " NUM_REV_CHANNELS " << NUM_REV_CHANNELS );
-        DBG(" PHASOR_OFFSET " << PHASOR_OFFSET );
-        DBG(" PHASOR_OFFSET2 " << PHASOR_OFFSET2 );
-//        for ( int i = 0; i < TABSIZE; i++ )
-//        {
-//            m_sinTab[ i ] = gcem::sin( 2.0f * PI * (T)i/(T)TABSIZE );
-////            DBG( "sin " << i << " " << m_sinTab[ i ] );
-//        }
+        setErHPFCutoff( m_inputHPFCutoff );
+        setErLPFCutoff( m_inputLPFCutoff );
+        setLrHPFCutoff( m_lrHPFCutoff );
+        setLrLPFCutoff( m_lrLPFCutoff );
     }
     ~sjf_zitaRev(){}
     
@@ -101,7 +99,6 @@ public:
         initialiseVariableSmoothers( smoothSlewVal );
         
         initialiseShimmer( sampleRate );
-        
     }
     
     void processAudio( juce::AudioBuffer<T> &buffer )
@@ -116,12 +113,11 @@ public:
         
         bool shimmerOn = false;
         if ( m_shimLevel > 0 ){ shimmerOn = true; }
+        else { m_shimmer.clearDelayline(); }
         const T shimWetLevel = sqrt( m_shimLevel );
         const T shimDryLevel = sqrt( 1 - m_shimLevel );
         
         const T inScale = 1.0f / sqrt( (T)m_nInChannels );
-        
-
         
         for ( int indexThroughBuffer = 0; indexThroughBuffer < bufferSize; indexThroughBuffer++ )
         {
@@ -140,6 +136,7 @@ public:
                 if ( m_reversePreDelay ) { m_inSamps[ i ] = m_preDelay[ i ].getSampleReverse( ); }
                 else { m_inSamps[ i ] = m_preDelay[ i ].getSample2( ); }
                 m_inputLPF[ i ].filterInPlace( m_inSamps[ i ] );
+                m_inputHPF[ i ].filterInPlaceHP( m_inSamps[ i ] );
                 m_inSamps[ i ] *= inScale;
             }
             
@@ -151,11 +148,25 @@ public:
             // SHIMMER
             if ( shimmerOn )
             {
-                shimmer.setSample( indexThroughBuffer, m_revSamples[  NUM_REV_CHANNELS - 1 ] ); // no need to pitchShift Everything because it all gets mixed anyway
-                shimOutput = shimmer.pitchShiftOutput( indexThroughBuffer, m_shimTransposeSmooth.filterInput( m_shimTranspose ) ) ;
-                shimOutput -= m_shimHPF.filterInput( shimOutput );
-                m_shimLPF.filterInPlace( shimOutput );
-                m_revSamples[ NUM_REV_CHANNELS - 1 ] = ( shimOutput * shimWetLevel ) + ( m_revSamples[  NUM_REV_CHANNELS - 1 ] * shimDryLevel );
+                constexpr int lastChannel = NUM_REV_CHANNELS - 1;
+                if ( m_filtBeforeShimmerFlag )
+                {
+                    m_shimmer.setSample( indexThroughBuffer,  m_shimLPF.filterInput( m_revSamples[ lastChannel ] ) ); // no need to pitchShift Everything because it all gets mixed anyway
+                    shimOutput = m_shimmer.pitchShiftOutput( indexThroughBuffer, m_shimTransposeSmooth.filterInput( m_shimTranspose ) ) ;
+                    m_shimHPF.filterInPlaceHP( shimOutput );
+                    m_shimLPF2.filterInPlace( shimOutput );
+                    m_revSamples[ lastChannel ] *= shimDryLevel;
+                    m_revSamples[ lastChannel ] += ( shimOutput * shimWetLevel );
+                }
+                else
+                {
+                    m_shimmer.setSample( indexThroughBuffer,  m_revSamples[ lastChannel ] ); // no need to pitchShift Everything because it all gets mixed anyway
+                    shimOutput = m_shimmer.pitchShiftOutput( indexThroughBuffer, m_shimTransposeSmooth.filterInput( m_shimTranspose ) ) ;
+                    m_shimHPF.filterInPlaceHP( shimOutput );
+                    m_shimLPF.filterInPlace( shimOutput );
+                    m_revSamples[ lastChannel ] *= shimDryLevel;
+                    m_revSamples[ lastChannel ] += ( shimOutput * shimWetLevel );
+                }
             }
             
 
@@ -185,9 +196,6 @@ public:
                 m_allpass[ i ].filterInPlace( m_revSamples[ i ] );
             }
             
-            phasorOut += PHASOR_OFFSET2; // shift latereflection offset so they're misaligned with allpass
-            fastMod3< T >( phasorOut, TABSIZE);
-            
             // mix
             Hadamard< T, NUM_REV_CHANNELS >::inPlace( m_revSamples.data(), m_hadScale );
             
@@ -203,12 +211,16 @@ public:
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
                 // filter things
-                m_lowPass[ i ].setCutoff( m_lrLPFCutOff );
+//                m_lowPass[ i ].setCutoff( m_lrLPFCutoff );
                 m_lowPass[ i ].filterInPlace( m_revSamples[ i ] );
                 
-                m_hiPass[ i ].setCutoff( m_lrHPFCutOff );
-                m_delays[ i ].setSample2( m_revSamples[ i ] - m_hiPass[ i ].filterInput( m_revSamples[ i ] ) ); // feed through delay lines
+//                m_hiPass[ i ].setCutoff( m_lrHPFCutoff );
+                m_hiPass[ i ].filterInPlaceHP( m_revSamples[ i ] );
+                m_delays[ i ].setSample2( m_revSamples[ i ] ); // feed through delay lines
             }
+            
+            phasorOut += PHASOR_OFFSET2; // shift latereflection offset so they're misaligned with allpass
+            fastMod3< T >( phasorOut, TABSIZE);
             // save delayed values for next sample
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
@@ -237,7 +249,7 @@ public:
                     m_revSamples[ i ] -= m_DCBlockers[ i ].filterInput( m_revSamples[ i ] );
                 }
             }
-//            Householder< T, NUM_REV_CHANNELS >::mixInPlace( m_revSamples );
+            Householder< T, NUM_REV_CHANNELS >::mixInPlace( m_revSamples );
 //            Hadamard< T, NUM_REV_CHANNELS >::inPlace( m_revSamples.data(), m_hadScale );
         }
     }
@@ -282,26 +294,34 @@ public:
         m_wet = sqrt( newMix * 0.01 );
     }
     
-    void setLrLPFCutOff( const T &newCutOff )
+    void setLrLPFCutoff( const T &newCutoff )
     {
-        m_lrLPFCutOff = pow( newCutOff, 3 );
+        m_lrLPFCutoff = newCutoff;
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ ) { m_lowPass[ i ].setCutoff( m_lrLPFCutoff ); }
     }
     
-    void setLrHPFCutOff( const T &newCutOff )
+    void setLrHPFCutoff( const T &newCutoff )
     {
-        m_lrHPFCutOff = pow( newCutOff, 3 );
+        m_lrHPFCutoff = newCutoff;
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ ) { m_hiPass[ i ].setCutoff( m_lrHPFCutoff ); }
     }
     
-    void setErCutOff( const T &newInputCutOff )
+    void setErLPFCutoff( const T &newCutoff )
     {
-        m_inputCutoff = pow( newInputCutOff, 3 );
-        
-        for ( int i = 0; i < m_nInChannels; i++ )
-        {
-            m_inputLPF[ i ].setCutoff( m_inputCutoff );
-        }
+        m_inputLPFCutoff =  newCutoff;
+        for ( int i = 0; i < m_nInChannels; i++ ) { m_inputLPF[ i ].setCutoff( m_inputLPFCutoff ); }
     }
     
+    void setErHPFCutoff( const T &newCutoff )
+    {
+        m_inputHPFCutoff = newCutoff;
+        for ( int i = 0; i < m_nInChannels; i++ ) { m_inputHPF[ i ].setCutoff( m_inputHPFCutoff ); }
+    }
+    
+    void filterBeforeShimmer( const bool& trueIfFilterBeforeShimmer )
+    {
+        m_filtBeforeShimmerFlag = trueIfFilterBeforeShimmer;
+    }
     void setShimmerLevel( const T &newShimmerLevel )
     {
         m_shimLevel = sjf_scale< T >( newShimmerLevel, 0, 100, 0, 1 );
@@ -321,7 +341,7 @@ public:
             m_allpass[ i ].setInterpolationType( newInterpolation );
             m_delays[ i ].setInterpolationType( newInterpolation );
         }
-        shimmer.setInterpolationType( newInterpolation );
+        m_shimmer.setInterpolationType( newInterpolation );
     }
     
     void setFeedbackControl( const bool& shouldLimitFeedback )
@@ -339,6 +359,13 @@ public:
     {
         m_reversePreDelay = trueIfReversed;
     }
+    
+    void setDiffusion( const T& diffusion )
+    {
+        T dif = sjf_scale< T >( diffusion, 0, 100, 0.1, 0.85 );
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ ) { m_allpass[ i ].setCoefficient( dif ); }
+    }
+        
 private:
     
     void setPolarityFlips( const int& nInChannels )
@@ -380,10 +407,11 @@ private:
     
     void initialiseShimmer( const T& sampleRate )
     {
-        shimmer.initialise( sampleRate, 100.0f );
-        shimmer.setDelayTimeSamps( 2 );
+        m_shimmer.initialise( sampleRate, 100.0f );
+        m_shimmer.setDelayTimeSamps( 2 );
         
-        m_shimLPF.setCutoff( calculateLPFCoefficient< T >( 150000, sampleRate ) );
+        m_shimLPF.setCutoff( calculateLPFCoefficient< T >( 2000, sampleRate ) );
+        m_shimLPF2.setCutoff( calculateLPFCoefficient< T >( 2000, sampleRate ) );
         m_shimHPF.setCutoff( calculateLPFCoefficient< T >( 20, sampleRate ) );
     }
     

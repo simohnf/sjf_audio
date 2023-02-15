@@ -35,11 +35,24 @@ public:
         x = m_y0; 
     }
     ///////////////////////////////////////////////////
+    void filterInPlaceHP( T& x )
+    {
+        m_y0 += m_b * (x - m_y0);
+        x -= m_y0;
+    }
+    ///////////////////////////////////////////////////
     void filterInPlaceSecondOrder( T& x )
     {
         m_y0 += m_b * (x - m_y0);
         m_y1 += m_b * (m_y0 - m_y1);
         x = m_y1;
+    }
+    ///////////////////////////////////////////////////
+    void filterInPlaceSecondOrderHP( T& x )
+    {
+        m_y0 += m_b * (x - m_y0);
+        m_y1 += m_b * (m_y0 - m_y1);
+        x -= m_y1;
     }
     ///////////////////////////////////////////////////
     void setCutoff( const T &newCutoff )

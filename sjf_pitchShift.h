@@ -96,6 +96,10 @@ public:
         m_initialDelay = delayInSamps;
     }
     
+    void clearDelayline()
+    {
+        m_pitchShifter.clearDelayline();
+    }
 private:
     
     void setTransopositionFactor( const T &sampleRate, const T &windowSize )

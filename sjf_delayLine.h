@@ -57,19 +57,19 @@ public:
         switch ( m_interpolationType )
         {
             case 1:
-                return linearInterpolate( m_delayLine.data(), readPos, ARRAYSIZE );
+                return sjf_interpolators::linearInterpolate( m_delayLine.data(), readPos, ARRAYSIZE );
             case 2:
-                return cubicInterpolate( m_delayLine.data(), readPos, ARRAYSIZE );
+                return sjf_interpolators::cubicInterpolate( m_delayLine.data(), readPos, ARRAYSIZE );
             case 3:
-                return fourPointInterpolatePD( m_delayLine.data(), readPos, ARRAYSIZE );
+                return sjf_interpolators::fourPointInterpolatePD( m_delayLine.data(), readPos, ARRAYSIZE );
             case 4:
-                return fourPointFourthOrderOptimal( m_delayLine.data(), readPos, ARRAYSIZE );
+                return sjf_interpolators::fourPointFourthOrderOptimal( m_delayLine.data(), readPos, ARRAYSIZE );
             case 5:
-                return cubicInterpolateGodot( m_delayLine.data(), readPos, ARRAYSIZE );
+                return sjf_interpolators::cubicInterpolateGodot( m_delayLine.data(), readPos, ARRAYSIZE );
             case 6:
-                return cubicInterpolateHermite( m_delayLine.data(), readPos, ARRAYSIZE );
+                return sjf_interpolators::cubicInterpolateHermite( m_delayLine.data(), readPos, ARRAYSIZE );
             default:
-                return linearInterpolate( m_delayLine.data(), readPos, ARRAYSIZE );
+                return sjf_interpolators::linearInterpolate( m_delayLine.data(), readPos, ARRAYSIZE );
         }
     }
     
@@ -114,6 +114,7 @@ protected:
     std::vector< T > m_delayLine;
     T m_delayTimeInSamps = 0.0f;
     int m_writePos = 0, m_interpolationType = 1, m_delayLineSize = 0;
+    bool m_clearFlag = true;
     
 public:
     sjf_delayLine() { };
@@ -135,17 +136,13 @@ public:
         m_delayTimeInSamps = delayInSamps;
     }
     
-    T size()
-    {
-        return m_delayLine.size();
-    }
+    const T size()
+    { return m_delayLine.size(); }
     
     const T& getDelayTimeSamps(  )
-    {
-        return m_delayTimeInSamps;
-    }
+    { return m_delayTimeInSamps; }
     
-    T getSample( const int &indexThroughCurrentBuffer )
+    const T getSample( const int &indexThroughCurrentBuffer )
     {
         T findex = m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps;
         findex--; // offset at the begining so it only has to be done once
@@ -170,24 +167,24 @@ public:
         
         switch ( m_interpolationType )
         {
-            case 1:
-                return linearInterpolate< T >( mu, y1, y2 );
-            case 2:
-                return cubicInterpolate< T >( mu, y0, y1, y2, y3 );
-            case 3:
-                return fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
-            case 4:
-                return fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
-            case 5:
-                return cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
-            case 6:
-                return cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::linear:
+                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
+            case sjf_interpolators::interpolatorTypes::cubic:
+                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::pureData:
+                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::fourthOrder:
+                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::godot:
+                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::hermite:
+                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
             default:
-                return linearInterpolate< T >( mu, y1, y2 );
+                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
         }
     }
     
-    T getSample2( )
+    const T getSample2( )
     {
         T findex = m_writePos - m_delayTimeInSamps;
         findex--; // offset at the begining so it only has to be done once
@@ -212,31 +209,31 @@ public:
         
         switch ( m_interpolationType )
         {
-            case 1:
-                return linearInterpolate< T >( mu, y1, y2 );
-            case 2:
-                return cubicInterpolate< T >( mu, y0, y1, y2, y3 );
-            case 3:
-                return fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
-            case 4:
-                return fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
-            case 5:
-                return cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
-            case 6:
-                return cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::linear:
+                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
+            case sjf_interpolators::interpolatorTypes::cubic:
+                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::pureData:
+                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::fourthOrder:
+                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::godot:
+                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::hermite:
+                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
             default:
-                return linearInterpolate< T >( mu, y1, y2 );
+                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
         }
     }
     
-    T getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
+    const T getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
     {
         int readPos =  m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps ;
         fastMod3< int >( readPos, m_delayLineSize );
         return m_delayLine[ readPos ];
     }
     
-    T getSampleRoundedIndex2( )
+    const T getSampleRoundedIndex2( )
     {
         int readPos =  m_writePos - m_delayTimeInSamps ;
         fastMod3< int >( readPos, m_delayLineSize );
@@ -248,23 +245,21 @@ public:
         auto wp = m_writePos + indexThroughCurrentBuffer;
         fastMod3< int >( wp, m_delayLineSize );
         m_delayLine[ wp ]  = value;
+        if ( m_clearFlag ){ m_clearFlag = false; }
     }
     
     void setSample2( const T &value )
     {
         m_delayLine[ m_writePos ]  = value;
         if ( ++m_writePos >= m_delayLineSize ) { m_writePos = 0; }
+        if ( m_clearFlag ){ m_clearFlag = false; }
     }
     
-    int getWritePosition()
-    {
-        return m_writePos;
-    }
+    const int getWritePosition()
+    { return m_writePos; }
     
-    T getSampleAtIndex( const int& index )
-    {
-        return m_delayLine[ index ];
-    }
+    const T getSampleAtIndex( const int& index )
+    { return m_delayLine[ index ]; }
 
     int updateBufferPosition( const int &bufferSize )
     {
@@ -277,6 +272,15 @@ public:
     void setInterpolationType( const int &interpolationType )
     {
         m_interpolationType = interpolationType;
+    }
+    
+    void clearDelayline()
+    {
+        if( !m_clearFlag )
+        {
+            std::fill(m_delayLine.begin(), m_delayLine.end(), 0);
+            m_clearFlag = true;
+        }
     }
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_delayLine )

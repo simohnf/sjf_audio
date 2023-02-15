@@ -10,7 +10,6 @@
 #include <JuceHeader.h>
 #include <vector>
 #include "sjf_audioUtilities.h"
-#include "sjf_interpolationTypes.h"
 
 //==============================================================================
 //==============================================================================

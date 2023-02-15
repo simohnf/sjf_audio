@@ -18,8 +18,8 @@ public:
     T filterInput( const T &x )
     {
         m_y0 += m_b * (x - m_y0);
-        m_y1 = m_y0; // store in case user changes to second order
-        return m_y1;
+//        m_y1 = m_y0; // store in case user changes to second order
+        return m_y0;
     }
     ///////////////////////////////////////////////////
     T filterInputSecondOrder( const T &x )
@@ -29,13 +29,13 @@ public:
         return m_y1;
     }
     ///////////////////////////////////////////////////
-    T filterInPlace( T& x )
+    void filterInPlace( T& x )
     {
         m_y0 += m_b * (x - m_y0);
-        x = m_y1 = m_y0; // store in case user changes to second order
+        x = m_y0; 
     }
     ///////////////////////////////////////////////////
-    T filterInPlaceSecondOrder( T& x )
+    void filterInPlaceSecondOrder( T& x )
     {
         m_y0 += m_b * (x - m_y0);
         m_y1 += m_b * (m_y0 - m_y1);

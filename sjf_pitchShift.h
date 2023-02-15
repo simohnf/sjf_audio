@@ -16,19 +16,20 @@
 //------------------------------------------------------------------------
 //------------------------------------------------------------------------
 //------------------------------------------------------------------------
-template < class floatType >
+template < class T >
 class sjf_pitchShift
 {
-    sjf_delayLine< floatType > m_pitchShifter;
-    sjf_phasor< floatType > m_pitchPhasor;
-    floatType m_windowSize = 4410, m_transpositionCalculationFactor, m_initialDelay = 0.0f;
+    sjf_delayLine< T > m_pitchShifter;
+    sjf_phasor< T > m_pitchPhasor;
+    T m_windowSize = 4410, m_transpositionCalculationFactor, m_initialDelay = 0.0f;
+    
     
 public:
     sjf_pitchShift() { }
     ~sjf_pitchShift() { }
     
     
-    void initialise( const int &sampleRate, const floatType &windowSizeMS )
+    void initialise( const int &sampleRate, const T &windowSizeMS )
     {
 //        m_windowSize = windowSizeMS;
         DBG( "windowSizeMS " << windowSizeMS );
@@ -40,7 +41,7 @@ public:
         m_pitchPhasor.initialise( sampleRate, 1.0f );
     }
     
-    void initialise( const floatType &sampleRate, const floatType &windowSizeMS, const floatType &maxDelayMS )
+    void initialise( const T &sampleRate, const T &windowSizeMS, const T &maxDelayMS )
     {
         if ( maxDelayMS <= windowSizeMS )
         {
@@ -56,7 +57,7 @@ public:
         }
     }
     // transposition should be calculated as multiple (i.e. 2 would be an octave up, 0.5 an octave down)
-    floatType pitchShiftOutput( const int &indexThroughCurrentBuffer, floatType transposition )
+    T pitchShiftOutput( const int &indexThroughCurrentBuffer, T transposition )
     {
         // f = (t-1)* R/s
         transposition -= 1.0f;
@@ -65,25 +66,18 @@ public:
         m_pitchPhasor.setFrequency( transposition );
         // first voice
         auto phase = m_pitchPhasor.output();
-        auto pitchShiftTimeDiff = phase * m_windowSize;
-        pitchShiftTimeDiff += m_initialDelay;
-        m_pitchShifter.setDelayTimeSamps( pitchShiftTimeDiff + m_initialDelay );
-        auto amp = juce::dsp::FastMathApproximations::sin( M_PI * phase );
-        auto val = amp * m_pitchShifter.getSample2( );
+        m_pitchShifter.setDelayTimeSamps( ( phase * m_windowSize ) + m_initialDelay );
+        auto val = juce::dsp::FastMathApproximations::sin( M_PI * phase ) * m_pitchShifter.getSample2( );
         // second voice
         phase += 0.5f;
         if ( phase >= 1.0f ) { phase -= 1.0f; }
-        pitchShiftTimeDiff = phase * m_windowSize;
-        pitchShiftTimeDiff += m_initialDelay;
-        m_pitchShifter.setDelayTimeSamps( pitchShiftTimeDiff );
-        amp = juce::dsp::FastMathApproximations::sin( M_PI * phase );
-        val += ( amp * m_pitchShifter.getSample2( ) );
+        m_pitchShifter.setDelayTimeSamps( ( phase * m_windowSize ) + m_initialDelay );
+        val += ( juce::dsp::FastMathApproximations::sin( M_PI * phase ) * m_pitchShifter.getSample2( ) );
         return ( val );
     }
     
-    void setSample( const int &indexThroughCurrentBuffer, const floatType &inVal )
+    void setSample( const int &indexThroughCurrentBuffer, const T &inVal )
     {
-//        m_pitchShifter.setSample( indexThroughCurrentBuffer, inVal );
         m_pitchShifter.setSample2( inVal );
     }
     
@@ -97,21 +91,21 @@ public:
         m_pitchShifter.updateBufferPosition( bufferSize );
     }
     
-    void setDelayTimeSamps( const floatType &delayInSamps )
+    void setDelayTimeSamps( const T &delayInSamps )
     {
         m_initialDelay = delayInSamps;
     }
     
 private:
     
-    void setTransopositionFactor( const floatType &sampleRate, const floatType &windowSize )
+    void setTransopositionFactor( const T &sampleRate, const T &windowSize )
     {
         DBG( "SR / WindowSize " << (sampleRate / windowSize) );
         m_transpositionCalculationFactor = -1.0f * sampleRate / windowSize ; // f = (t-1)* R/s
     }
     
     
-//    void setTransopositionFactor( float windowSize )
+//    void setTransopositionFactor( T windowSize )
 //    {
 //        m_transpositionCalculationFactor = -1.0f  / ( windowSize * 0.001f ); // f = (t-1)* R/s
 //    }

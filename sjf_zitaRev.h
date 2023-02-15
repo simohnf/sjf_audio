@@ -9,13 +9,13 @@
 #define sjf_zitaRev_h
 #include <JuceHeader.h>
 #include "sjf_audioUtilities.h"
-//#include "sjf_monoDelay.h"
 #include "sjf_delayLine.h"
 #include "sjf_comb.h"
 #include "sjf_lpf.h"
 #include "sjf_randOSC.h"
 #include "sjf_phasor.h"
 #include "sjf_pitchShift.h"
+#include "sjf_wavetables.h"
 #include <algorithm>    // std::random_erShuffle
 #include <random>       // std::default_random_engine
 #include <vector>
@@ -26,19 +26,19 @@
 //==============================================================================
 //==============================================================================
 //==============================================================================
-
 template < typename T >
 class sjf_zitaRev
 {
 private:
     static constexpr int NUM_REV_CHANNELS = 8;
-    static constexpr T m_hadScale = 1.0f / gcem::sqrt( (T)NUM_REV_CHANNELS );
-    static constexpr int TABSIZE = 4096;
-    std::array< T, TABSIZE > m_sinTab;
     
-    static constexpr int m_phasorOffset = TABSIZE / ( NUM_REV_CHANNELS ) ; // every delay gets a slightly different phase for sinewave modulation
-    static constexpr int m_phasorOffset2 = TABSIZE / ( NUM_REV_CHANNELS * 2 ) ;
-    static constexpr T drive = 1.01f;
+    static constexpr int TABSIZE = 1024;
+    
+
+    static constexpr int PHASOR_OFFSET = TABSIZE / ( NUM_REV_CHANNELS ) ; // every delay gets a slightly different phase for sinewave modulation
+    static constexpr int PHASOR_OFFSET2 = TABSIZE / ( NUM_REV_CHANNELS * 2 ) ;
+    
+    static constexpr T DRIVE = 1.01f;
     
     int m_nInChannels = 2, m_nOutChannels = 2;
     T m_dry = 0, m_wet = 1, m_FB = 0.85, m_size = 1, m_modD = 0.1;
@@ -55,7 +55,7 @@ private:
     std::array< sjf_reverseDelay< T >, NUM_REV_CHANNELS > m_preDelay;
     
     std::array< sjf_randOSC< T >, NUM_REV_CHANNELS > m_ERModulator, m_LRModulator; // modulators for delayTimes
-    sjf_phasor< T > m_modPhasor;
+    sjf_phasor< T > m_modPhasor; // phasor for sinewave modulation
     std::array< T, NUM_REV_CHANNELS > m_flip, m_revSamples, m_inSamps; // polarity flips and storage of samples
     
     sjf_pitchShift< T > shimmer; // shimmer
@@ -73,8 +73,14 @@ public:
     sjf_zitaRev()
     {
         m_revSamples.fill( 0 );
-        for ( int i = 0; i < TABSIZE; i++ )
-        { m_sinTab[ i ] = gcem::sin( 2.0f * PI * (T)i/(T)TABSIZE ); }
+        DBG( " TABSIZE " << TABSIZE << " NUM_REV_CHANNELS " << NUM_REV_CHANNELS );
+        DBG(" PHASOR_OFFSET " << PHASOR_OFFSET );
+        DBG(" PHASOR_OFFSET2 " << PHASOR_OFFSET2 );
+//        for ( int i = 0; i < TABSIZE; i++ )
+//        {
+//            m_sinTab[ i ] = gcem::sin( 2.0f * PI * (T)i/(T)TABSIZE );
+////            DBG( "sin " << i << " " << m_sinTab[ i ] );
+//        }
     }
     ~sjf_zitaRev(){}
     
@@ -101,7 +107,8 @@ public:
     void processAudio( juce::AudioBuffer<T> &buffer )
     {
         const auto bufferSize = buffer.getNumSamples();
-        
+        static constexpr T m_hadScale = 1.0f / gcem::sqrt( NUM_REV_CHANNELS );
+        static constexpr auto m_sinTab = sinArray< T, TABSIZE >();
         
         T drySamp, wetSamp, dt, modDepthSmoothed, FBSmoothed, shimOutput, phasorOut;
         
@@ -165,10 +172,12 @@ public:
                     else
                     {
 //                        dt += ( juce::dsp::FastMathApproximations::sin( (2.0f*phasorOut - 1.0f) * PI ) * dt * modDepthSmoothed );
-                        dt += ( m_sinTab[ phasorOut ] * dt * modDepthSmoothed );
-//                        DBG( "er " << i << " " << phasorOut << " " << m_phasorOffset);
-                        phasorOut += m_phasorOffset;
-                        if ( phasorOut >= TABSIZE ) { phasorOut -= TABSIZE; }
+//                        dt += ( m_sinTab[ (int)phasorOut ] * dt * modDepthSmoothed );
+                        dt += ( m_sinTab.getValue( phasorOut ) * dt * modDepthSmoothed );
+//                        DBG( "er " << i << " " << phasorOut << " " << PHASOR_OFFSET);
+                        phasorOut += PHASOR_OFFSET;
+                        fastMod3< T >( phasorOut, TABSIZE);
+//                        if ( phasorOut >= TABSIZE ) { phasorOut -= TABSIZE; }
                     }
                 }
                 m_allpass[ i ].setDelayTimeSamps( dt );
@@ -176,7 +185,8 @@ public:
                 m_allpass[ i ].filterInPlace( m_revSamples[ i ] );
             }
             
-            phasorOut += m_phasorOffset2; // shift latereflection offset so they're misaligned with allpass
+            phasorOut += PHASOR_OFFSET2; // shift latereflection offset so they're misaligned with allpass
+            fastMod3< T >( phasorOut, TABSIZE);
             
             // mix
             Hadamard< T, NUM_REV_CHANNELS >::inPlace( m_revSamples.data(), m_hadScale );
@@ -193,7 +203,6 @@ public:
             for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
                 // filter things
-                // ?????
                 m_lowPass[ i ].setCutoff( m_lrLPFCutOff );
                 m_lowPass[ i ].filterInPlace( m_revSamples[ i ] );
                 
@@ -211,10 +220,12 @@ public:
                     else
                     {
 //                        dt += ( juce::dsp::FastMathApproximations::sin( (2.0f*phasorOut - 1.0f) * PI ) * dt * modDepthSmoothed );
-                        dt += ( m_sinTab[ phasorOut ] * dt * modDepthSmoothed );
-//                        DBG( "lr " << i << " " << phasorOut << " " << m_phasorOffset);
-                        phasorOut += m_phasorOffset;
-                        if ( phasorOut >= TABSIZE ) { phasorOut -= TABSIZE; }
+//                        dt += ( m_sinTab[ (int)phasorOut ] * dt * modDepthSmoothed );
+                        dt += ( m_sinTab.getValue( phasorOut ) * dt * modDepthSmoothed );
+//                        DBG( "lr " << i << " " << phasorOut << " " << PHASOR_OFFSET);
+                        phasorOut += PHASOR_OFFSET;
+                        fastMod3< T >( phasorOut, TABSIZE);
+//                        if ( phasorOut >= TABSIZE ) { phasorOut -= TABSIZE; }
                     }
                 }
                 m_delays[ i ].setDelayTimeSamps( dt );
@@ -222,7 +233,7 @@ public:
                 
                 if ( m_fbControl )
                 {
-                    m_revSamples[ i ] = juce::dsp::FastMathApproximations::tanh( m_revSamples[ i ] * drive );
+                    m_revSamples[ i ] = juce::dsp::FastMathApproximations::tanh( m_revSamples[ i ] * DRIVE );
                     m_revSamples[ i ] -= m_DCBlockers[ i ].filterInput( m_revSamples[ i ] );
                 }
             }
@@ -380,10 +391,10 @@ private:
     {
         T dt;
         
-        const std::array< T, NUM_REV_CHANNELS > allpassT
+        static constexpr std::array< T, NUM_REV_CHANNELS > allpassT
         { 0.020346, 0.024421, 0.031604, 0.027333, 0.022904, 0.029291, 0.013458, 0.019123 };
         
-        const std::array< T, NUM_REV_CHANNELS > totalDelayT
+        static constexpr std::array< T, NUM_REV_CHANNELS > totalDelayT
         { 0.153129, 0.210389, 0.127837, 0.256891, 0.174713, 0.192303, 0.125, 0.219991 };
         
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
@@ -396,7 +407,6 @@ private:
             m_delays[ i ].initialise( 2 * round( dt ) );
             
             m_preDelay[ i ].initialise( sampleRate, sampleRate * 0.001);
-//            m_preDelay[ i ].setRampLength( sampleRate * 0.001 );
         }
     }
     

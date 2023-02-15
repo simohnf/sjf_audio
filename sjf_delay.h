@@ -11,6 +11,13 @@
 #include "sjf_interpolationTypes.h"
 
 class sjf_delayLine {
+protected:
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> m_delL, m_delR;
+    juce::AudioBuffer<float> m_delayBuffer; // This is the circular buffer for the delay
+    
+    int m_SR = 44100;
+    int m_writePos = 0; // this is the index to write to in the "m_delayBuffer"
+    float m_delBufferLength = 3; // Maximum delay time equals 2 seconds plus 1 second for safety with stereo spread increase
     
 public:
     sjf_delayLine()
@@ -127,14 +134,7 @@ public:
     //==============================================================================
     
     
-protected:
-    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> m_delL, m_delR;
-    juce::AudioBuffer<float> m_delayBuffer; // This is the circular buffer for the delay
-    
-    int m_SR = 44100;
-    int m_writePos = 0; // this is the index to write to in the "m_delayBuffer"
-    float m_delBufferLength = 3; // Maximum delay time equals 2 seconds plus 1 second for safety with stereo spread increase
-    
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_delayLine)
 };
 

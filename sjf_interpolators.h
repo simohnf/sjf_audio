@@ -6,11 +6,8 @@
 
 #ifndef sjf_interpolators_h
 #define sjf_interpolators_h
-
-#include <JuceHeader.h>
-#include <vector>
 #include "sjf_audioUtilities.h"
-
+#include <immintrin.h>
 
 //==============================================================================
 //==============================================================================

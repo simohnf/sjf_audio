@@ -52,24 +52,43 @@ public:
     
     T getSample2( )
     {
-        T readPos = m_writePos - m_delayTimeInSamps;
-        fastMod3< T >( readPos, ARRAYSIZE );
+        T findex = m_writePos - m_delayTimeInSamps;
+        findex--; // offset at the begining so it only has to be done once
+        fastMod3< T >( findex, ARRAYSIZE );
+        
+        T y0; // previous step value
+        T y1; // this step value
+        T y2; // next step value
+        T y3; // next next step value
+        T mu; // fractional part between step 1 & 2
+        
+        int index = findex;
+        mu = findex - index;
+        
+        y0 = m_delayLine[ index ];
+        fastMod3( ++index, ARRAYSIZE );
+        y1 = m_delayLine[ index ];
+        fastMod3( ++index, ARRAYSIZE );
+        y2 = m_delayLine[ index ];
+        fastMod3( ++index, ARRAYSIZE );
+        y3 = m_delayLine[ index ];
+        
         switch ( m_interpolationType )
         {
-            case 1:
-                return sjf_interpolators::linearInterpolate( m_delayLine.data(), readPos, ARRAYSIZE );
-            case 2:
-                return sjf_interpolators::cubicInterpolate( m_delayLine.data(), readPos, ARRAYSIZE );
-            case 3:
-                return sjf_interpolators::fourPointInterpolatePD( m_delayLine.data(), readPos, ARRAYSIZE );
-            case 4:
-                return sjf_interpolators::fourPointFourthOrderOptimal( m_delayLine.data(), readPos, ARRAYSIZE );
-            case 5:
-                return sjf_interpolators::cubicInterpolateGodot( m_delayLine.data(), readPos, ARRAYSIZE );
-            case 6:
-                return sjf_interpolators::cubicInterpolateHermite( m_delayLine.data(), readPos, ARRAYSIZE );
+            case sjf_interpolators::interpolatorTypes::linear:
+                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
+            case sjf_interpolators::interpolatorTypes::cubic:
+                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::pureData:
+                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::fourthOrder:
+                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::godot:
+                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::hermite:
+                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
             default:
-                return sjf_interpolators::linearInterpolate( m_delayLine.data(), readPos, ARRAYSIZE );
+                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
         }
     }
     

@@ -57,10 +57,10 @@ public:
         }
     }
     // transposition should be calculated as multiple (i.e. 2 would be an octave up, 0.5 an octave down)
-    T pitchShiftOutput( const int &indexThroughCurrentBuffer, T transposition )
+    T pitchShiftOutput( const T& transposeFactor )
     {
         // f = (t-1)* R/s
-        transposition -= 1.0f;
+        T transposition = transposeFactor - 1.0f;
         transposition *= m_transpositionCalculationFactor;
 //        DBG( "transposition " << transposition );
         m_pitchPhasor.setFrequency( transposition );
@@ -76,7 +76,7 @@ public:
         return ( val );
     }
     
-    void setSample( const int &indexThroughCurrentBuffer, const T &inVal )
+    void setSample( const T &inVal )
     {
         m_pitchShifter.setSample2( inVal );
     }

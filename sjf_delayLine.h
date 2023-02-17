@@ -13,116 +13,6 @@
 
 #include <vector>
 
-//enum sjf_interpolators : char
-//{
-//    linear = 1, cubic, pureData, fourthOrder, godot, Hermite
-//};
-
-template< class T, int ARRAYSIZE >
-class sjf_delayLineArray
-{
-protected:
-    std::array< T, ARRAYSIZE > m_delayLine;
-    T m_delayTimeInSamps = 0.0f;
-    int m_writePos = 0, m_interpolationType = 1, m_maxDel;
-    
-public:
-    sjf_delayLineArray(){ };
-    ~sjf_delayLineArray() {};
-    
-    void initialise( const int &maxDelayInSamps )
-    {
-        m_maxDel = maxDelayInSamps;
-    }
-    
-    void setDelayTimeSamps( const T &delayInSamps )
-    {
-        m_delayTimeInSamps = delayInSamps;
-    }
-    
-    T size()
-    {
-        return m_maxDel;
-    }
-    
-    const T& getDelayTimeSamps(  )
-    {
-        return m_delayTimeInSamps;
-    }
-    
-    T getSample2( )
-    {
-        T findex = m_writePos - m_delayTimeInSamps;
-        findex--; // offset at the begining so it only has to be done once
-        fastMod3< T >( findex, ARRAYSIZE );
-        
-        T y0; // previous step value
-        T y1; // this step value
-        T y2; // next step value
-        T y3; // next next step value
-        T mu; // fractional part between step 1 & 2
-        
-        int index = findex;
-        mu = findex - index;
-        
-        y0 = m_delayLine[ index ];
-        fastMod3( ++index, ARRAYSIZE );
-        y1 = m_delayLine[ index ];
-        fastMod3( ++index, ARRAYSIZE );
-        y2 = m_delayLine[ index ];
-        fastMod3( ++index, ARRAYSIZE );
-        y3 = m_delayLine[ index ];
-        
-        switch ( m_interpolationType )
-        {
-            case sjf_interpolators::interpolatorTypes::linear:
-                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
-            case sjf_interpolators::interpolatorTypes::cubic:
-                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::pureData:
-                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::fourthOrder:
-                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::godot:
-                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::hermite:
-                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
-            default:
-                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
-        }
-    }
-    
-    T getSampleRoundedIndex2( )
-    {
-        int readPos =  m_writePos - m_delayTimeInSamps ;
-        fastMod3< int >( readPos, ARRAYSIZE );
-        return m_delayLine[ readPos ];
-    }
-
-    void setSample2( const T &value )
-    {
-        m_delayLine[ m_writePos ]  = value;
-        m_writePos++;
-        if ( m_writePos >= ARRAYSIZE ) { m_writePos = 0; }
-    }
-    
-    int getWritePosition()
-    {
-        return m_writePos;
-    }
-    
-    T getSampleAtIndex( const int& index )
-    {
-        return m_delayLine[ index ];
-    }
-    
-    void setInterpolationType( const int &interpolationType )
-    {
-        m_interpolationType = interpolationType;
-    }
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_delayLineArray )
-};
-
 //------------------------------------------------
 //------------------------------------------------
 //------------------------------------------------
@@ -206,7 +96,7 @@ public:
     const T getSample2( )
     {
         T findex = m_writePos - m_delayTimeInSamps;
-        findex--; // offset at the begining so it only has to be done once
+//        findex--; // offset at the begining so it only has to be done once
         fastMod3< T >( findex, m_delayLineSize );
         
         T y0; // previous step value
@@ -218,8 +108,9 @@ public:
         int index = findex;
         mu = findex - index;
         
-        y0 = m_delayLine[ index ];
-        fastMod3( ++index, m_delayLineSize );
+        y0 = ( index == 0 ) ? m_delayLine[ m_delayLineSize - 1 ] : m_delayLine[ index - 1 ];
+//        y0 = m_delayLine[ index ];
+//        fastMod3( ++index, m_delayLineSize );
         y1 = m_delayLine[ index ];
         fastMod3( ++index, m_delayLineSize );
         y2 = m_delayLine[ index ];

@@ -32,13 +32,48 @@ class sjf_zitaRev
 private:
     //==============================================================================
     //==============================================================================
-    template< int NUM_STAGES, int NUM_CHANNELS, int totalLengthMS >
-    struct glDelayTimes
+    template< int NUM_CHANNELS, int NUM_TAPS, int totalLengthMS >
+    struct velveltDelays
     {
-        constexpr glDelayTimes( ) : dtArray()
+        constexpr velveltDelays( ) : dtArray()
+        {
+            int count = 1;
+            T frac = 1.0f / NUM_TAPS; // fraction of total length for first stage
+            T minER = 1.0f + random0to1( count ); // make sure we dont get any 0 delay times
+            count ++;
+            T dtC = totalLengthMS * frac;
+            for ( int t = 0; t < NUM_TAPS; t++ )
+            {
+                for ( int c = 0; c < NUM_CHANNELS; c++ )
+                {
+                    // space each channel so that the are randomly spaced but with roughly even distribution
+                    T dt = ( random0to1( count ) *  dtC ) + minER;
+                    count ++;
+                    dt += ( dtC * t );
+                    dtArray[ c ][ t ] = dt;
+                }
+            }
+        }
+        
+        const T& getValue ( const int& channel, const int& tap )const { return dtArray[ channel ][ tap ]; }
+    private:
+        //----------------------------------------
+        constexpr T random0to1( int count )
+        {
+            return (T)sjf_compileTimeRandom::get_random( count ) / (T)RAND_MAX;
+        }
+        //----------------------------------------
+        T dtArray[ NUM_CHANNELS ][ NUM_TAPS ];
+    };
+    //==============================================================================
+    //==============================================================================
+    template< int NUM_STAGES, int NUM_CHANNELS, int totalLengthMS >
+    struct glVelvetDelayTimes
+    {
+        constexpr glVelvetDelayTimes( ) : dtArray()
         {
             T c = 0;
-            int count = 0;
+            int count = 1;
             
             for ( int s = 0; s < NUM_STAGES; s++ ) { c += gcem::pow(2, s); }
             T frac = 1.0f / c; // fraction of total length for first stage
@@ -70,11 +105,68 @@ private:
     };
     //==============================================================================
     //==============================================================================
+    template< int NUM_ROWS, int NUM_COLUMNS >
+    struct matrixOfRandomFloats
+    {
+        constexpr matrixOfRandomFloats( ) : floatArray()
+        {
+            int count = 1;
+            
+            for ( int r = 0; r < NUM_ROWS; r++ )
+            {
+                for (int c = 0; c < NUM_COLUMNS; c ++)
+                {
+                    floatArray[ r ][ c ] = random0to1( count );
+                    count ++;
+                }
+            }
+        }
+        
+        const T& getValue ( const int& index1, const int& index2 )const { return floatArray[ index1 ][ index2 ]; }
+    private:
+        //----------------------------------------
+        constexpr T random0to1( int count )
+        {
+            return (T)sjf_compileTimeRandom::get_random( count ) / (T)RAND_MAX;
+        }
+        //----------------------------------------
+        T floatArray[ NUM_ROWS ][ NUM_COLUMNS ];
+    };
+    //==============================================================================
+    template< int NUM_ROWS, int NUM_COLUMNS >
+    struct matrixOfRandomBools
+    {
+        constexpr matrixOfRandomBools( ) : boolArray()
+        {
+
+            int count = 1;
+            for ( int r = 0; r < NUM_ROWS; r ++)
+            {
+                for ( int c = 0; c < NUM_COLUMNS; c ++)
+                {
+                    boolArray[ r ][ c ] = ( random0to1( count ) >= 0.5 ) ? false : true;
+                    count ++;
+                }
+            }
+        }
+        
+        const bool& getValue ( const int& index1, const int& index2 )const { return boolArray[ index1 ][ index2 ]; }
+    private:
+        //----------------------------------------
+        constexpr T random0to1( int count )
+        {
+            return (T)sjf_compileTimeRandom::get_random( count ) / (T)RAND_MAX;
+        }
+        //----------------------------------------
+        bool boolArray[ NUM_ROWS ][ NUM_COLUMNS ];
+    };
+    //==============================================================================
+    //==============================================================================
     static constexpr int NUM_REV_CHANNELS = 8;
     static constexpr int NUM_ER_STAGES = 4; // for Geraint Luff style reverb
-    static constexpr int glERTime = 300;
+    static constexpr int MAX_ER_TIME = 300;
     static constexpr int TABSIZE = 1024;
-    
+    static constexpr int NUM_TAPS = NUM_REV_CHANNELS * NUM_ER_STAGES;
 
     static constexpr int PHASOR_OFFSET = TABSIZE / ( NUM_REV_CHANNELS ) ; // every delay gets a slightly different phase for sinewave modulation
     static constexpr int PHASOR_OFFSET2 = TABSIZE / ( NUM_REV_CHANNELS * 2 ) ;
@@ -88,14 +180,15 @@ private:
     T m_lrLPFCutoff = 0.99, m_lrHPFCutoff = 0.001;
     T m_inputLPFCutoff = 0.7, m_inputHPFCutoff = 0.01;
     T m_diffusion = 0.6;
-    bool m_fbControl = false;
+    T m_SR = 44100;
+    bool m_fbDrive = false;
     bool m_reversePreDelay = false;
     bool m_modType = false;
     bool m_monoLow = false;
-    bool m_erType = false;
+    int m_erType = 1;
     
     std::array< sjf_allpass< T >, NUM_REV_CHANNELS > m_allpass;
-    std::array< std::array< sjf_delayLine< T >, NUM_REV_CHANNELS >, NUM_ER_STAGES > m_erDelays; // for Geraint Luff style reverb
+    std::array< std::array< sjf_delayLine< T >, NUM_REV_CHANNELS >, NUM_ER_STAGES > m_erGLDelays; // for Geraint Luff style reverb
     std::array< sjf_delayLine< T >, NUM_REV_CHANNELS > m_delays;
     std::array< sjf_reverseDelay< T >, NUM_REV_CHANNELS > m_preDelay;
     
@@ -109,22 +202,27 @@ private:
     
     sjf_lpf< T > m_modDSmooth, m_shimTransposeSmooth, m_FBsmooth, m_diffusionSmooth; // dezipper variables
     std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_hiPass, m_lowPass, m_erSizeSmooth, m_lrSizeSmooth; // dezipper individual delay times
-    std::array< std::array< sjf_lpf< T >, NUM_REV_CHANNELS >, NUM_ER_STAGES >
+    
     std::array< sjf_lpf< T >, NUM_REV_CHANNELS > m_inputLPF, m_inputHPF/*, m_DCBlockers*/;
     sjf_lpf < T > m_midsideHPF;
     
     std::array< T, NUM_REV_CHANNELS > m_erDelayTimesSamples, m_lrDelayTimesSamples;
 
+    std::array< std::array< sjf_lpf< T >, NUM_REV_CHANNELS >, NUM_ER_STAGES > m_glERSizeSmooth;
+    std::array< std::array< bool, NUM_REV_CHANNELS >, NUM_ER_STAGES > m_glERFlip;
     std::array< std::array< T, NUM_REV_CHANNELS >, NUM_ER_STAGES > m_glERDelayTimesSamps;
 
+    std::array< sjf_delayLine< T >, NUM_REV_CHANNELS > m_multitapErDelays;
+    std::array< std::array< T, NUM_TAPS >, NUM_REV_CHANNELS > m_multitapERDelayTimesSamps, m_multitapERScaling;
     
+    enum m_erTypes { zitaRev = 1, zitaRevType2, geraintLuff, multitap };
 public:
     //==============================================================================
     sjf_zitaRev()
     {
         m_revSamples.fill( 0 );
-        setErHPFCutoff( m_inputHPFCutoff );
-        setErLPFCutoff( m_inputLPFCutoff );
+        setinputHPFCutoff( m_inputHPFCutoff );
+        setinputLPFCutoff( m_inputLPFCutoff );
         setLrHPFCutoff( m_lrHPFCutoff );
         setLrLPFCutoff( m_lrLPFCutoff );
 //        setGLERDelays
@@ -135,6 +233,7 @@ public:
     //==============================================================================
     void initialise( const int &sampleRate, const int &totalNumInputChannels, const int &totalNumOutputChannels, const int &samplesPerBlock )
     {
+        m_SR = sampleRate;
         m_nInChannels = totalNumInputChannels;
         m_nOutChannels = totalNumOutputChannels;
         
@@ -151,7 +250,7 @@ public:
         initialiseVariableSmoothers( smoothSlewVal );
         
         initialiseShimmer( sampleRate );
-        
+
     }
     //==============================================================================
 
@@ -188,12 +287,31 @@ public:
             preDelay( buffer, indexThroughBuffer );
             
             // early reflections
+            
             setAllpassCoefficients( diffusionSmoothed );
             // calculate allpass delay times
             setAllPassDelayTimes( sinTab, modDepthSmoothed, modulateDelays, phasorOut /*, dt */);
+            setERGLDelayTimes(); // no smoothing to save cpu????
+            setMultitapScaling( diffusionSmoothed );
             // different early reflection types
-            if ( !m_erType ) { earlyReflectionsType1( inScale ); }
-            else { earlyReflectionsType3( inScale ); }
+            switch( m_erType )
+            {
+                case m_erTypes::zitaRev:
+                    earlyReflectionsType1( inScale );
+                    break;
+                case m_erTypes::zitaRevType2:
+                    earlyReflectionsType2( inScale );
+                    break;
+                case m_erTypes::geraintLuff:
+                    earlyReflectionsType3( inScale );
+                    break;
+                case m_erTypes::multitap:
+                    earlyReflectionsType4( inScale );
+                    break;
+                default:
+                    earlyReflectionsType1( inScale );
+                    break;
+            }
 
             
             // mix
@@ -217,10 +335,9 @@ public:
             {
                 m_revSamples[ i ] = m_delays[ i ].getSample2()  * FBSmoothed ;
                 
-                if ( m_fbControl )
+                if ( m_fbDrive )
                 {
                     m_revSamples[ i ] = juce::dsp::FastMathApproximations::tanh( m_revSamples[ i ] * DRIVE );
-//                    m_revSamples[ i ] -= m_DCBlockers[ i ].filterInput( m_revSamples[ i ] );
                 }
             }
 //            Householder< T, NUM_REV_CHANNELS >::mixInPlace( m_revSamples );
@@ -282,13 +399,13 @@ public:
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ ) { m_hiPass[ i ].setCutoff( m_lrHPFCutoff ); }
     }
     //==============================================================================
-    void setErLPFCutoff( const T &newCutoff )
+    void setinputLPFCutoff( const T &newCutoff )
     {
         m_inputLPFCutoff =  newCutoff;
         for ( int i = 0; i < m_nInChannels; i++ ) { m_inputLPF[ i ].setCutoff( m_inputLPFCutoff ); }
     }
     //==============================================================================
-    void setErHPFCutoff( const T &newCutoff )
+    void setinputHPFCutoff( const T &newCutoff )
     {
         m_inputHPFCutoff = newCutoff;
         for ( int i = 0; i < m_nInChannels; i++ ) { m_inputHPF[ i ].setCutoff( m_inputHPFCutoff ); }
@@ -312,13 +429,18 @@ public:
         {
             m_allpass[ i ].setInterpolationType( newInterpolation );
             m_delays[ i ].setInterpolationType( newInterpolation );
+            
+            for ( int s = 0; s < NUM_ER_STAGES; s++ )
+            { m_erGLDelays[ s ][ i ].setInterpolationType( newInterpolation ); }
+            
+            m_multitapErDelays[ i ].setInterpolationType( newInterpolation );
         }
         m_shimmer.setInterpolationType( newInterpolation );
     }
     //==============================================================================
-    void setFeedbackControl( const bool& shouldLimitFeedback )
+    void setfeedbackDrive( const bool& shouldLimitFeedback )
     {
-        m_fbControl = shouldLimitFeedback;
+        m_fbDrive = shouldLimitFeedback;
     }
     //==============================================================================
     void setPreDelay( const T& preDelayInSamps )
@@ -342,9 +464,34 @@ public:
         m_monoLow = trueIfMonoLow;
     }
     //==============================================================================
-    void setEarlyReflectionType ( const bool& erType )
+    void setEarlyReflectionType ( const int& erType )
     {
         m_erType = erType;
+        if ( m_erType != m_erTypes::zitaRev && m_erType != m_erTypes::zitaRevType2 )
+        {
+            for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+            {
+                m_allpass[ i ].clearDelayline();
+            }
+        }
+        if ( m_erType != m_erTypes::geraintLuff )
+        {
+            for ( int s = 0; s < NUM_ER_STAGES; s++ )
+            {
+                for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+                {
+                    
+                    m_erGLDelays[ s ][ i ].clearDelayline();
+                }
+            }
+        }
+        if ( m_erType != m_erTypes::multitap )
+        {
+            for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
+            {
+                m_multitapErDelays[ i ].clearDelayline();
+            }
+        }
     }
 private:
     //==============================================================================
@@ -362,36 +509,20 @@ private:
     //==============================================================================
     inline void setAllpassCoefficients( const T& diffusionSmoothed )
     {
-        for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
-        {
-            m_allpass[ i ].setCoefficient( diffusionSmoothed );
-        }
+        for ( int i = 0; i < NUM_REV_CHANNELS; i++ ) { m_allpass[ i ].setCoefficient( diffusionSmoothed ); }
     }
     //==============================================================================
-    inline void setGLDelayTimes( const sinArray< T, TABSIZE >& sinTab, const T& modDepthSmoothed, const bool& modulateDelays, T& phasorOut/*, T& dt*/ )
+    inline void setMultitapScaling( const T& diffusionSmoothed )
     {
-        T dt;
-        for ( int s = 0; s < NUM_ER_STAGES; s++ )
+        static constexpr auto randomMatrix = matrixOfRandomFloats< NUM_REV_CHANNELS, NUM_TAPS>( );
+        for ( int t = 0; t < NUM_TAPS; t++ )
         {
-            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+            for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
             {
-                // calculate allpass delay times
-                dt = m_erSizeSmooth[ i ].filterInput( m_erDelayTimesSamples[ i ] );
-                if ( modulateDelays )
-                {
-                    if ( m_modType )
-                    { dt += ( m_ERRandomModulator[ i ].output() * dt * modDepthSmoothed ); }
-                    else
-                    {
-                        dt += ( sinTab.getValue( phasorOut ) * dt * modDepthSmoothed );
-                        phasorOut += PHASOR_OFFSET;
-                        fastMod3< T >( phasorOut, TABSIZE);
-                    }
-                }
-                m_allpass[ i ].setDelayTimeSamps( dt );
+                m_multitapERScaling[ i ][ t ] = sjf_scale< T >( randomMatrix.getValue( i, t ), 0, 1, 0.4, 0.9 );
+                if ( t % NUM_REV_CHANNELS != 0 ){ m_multitapERScaling[ i ][ t ] *= diffusionSmoothed; }
             }
         }
-        
     }
     //==============================================================================
     inline void setAllPassDelayTimes( const sinArray< T, TABSIZE >& sinTab, const T& modDepthSmoothed, const bool& modulateDelays, T& phasorOut/*, T& dt*/ )
@@ -416,6 +547,17 @@ private:
         }
     }
     //==============================================================================
+    inline void setERGLDelayTimes()
+    {
+        for ( int s = 0; s < NUM_ER_STAGES; s++ )
+        {
+            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
+            {
+                m_erGLDelays[ s ][ c ].setDelayTimeSamps( m_glERSizeSmooth[ s ][ c ].filterInput(m_glERDelayTimesSamps[ s ][ c ] ) );
+            }
+        }
+    }
+    //==============================================================================
     inline void earlyReflectionsType1( const T& inScale )
     {
         // based on zita rev
@@ -435,17 +577,23 @@ private:
     inline void earlyReflectionsType2( const T& inScale )
     {
         // parallel stereo allpass with hadamard mixing only fed to channels 1 & 2
-        static constexpr int NUM_CHANNELS = 2;
+        static constexpr int NUM_ALLPASS_CHANNELS = 2;
+        static constexpr int NUM_ALLPASS_STAGES = NUM_REV_CHANNELS / NUM_ALLPASS_CHANNELS;
+        static constexpr int LAST_ALLPASS_STAGE = NUM_ALLPASS_STAGES - 1;
         // allpass diffussion
-        for ( int i = 0; i < NUM_REV_CHANNELS / 2; i++)
+        for ( int i = 0; i < LAST_ALLPASS_STAGE; i++)
         {
-            Hadamard< T, NUM_CHANNELS >::inPlace( m_inOutSamps.data(), inScale );
-            for ( int j = 0; j < NUM_CHANNELS; j++ )
+            for ( int j = 0; j < NUM_ALLPASS_CHANNELS; j++ )
             {
-                m_allpass[ (i * NUM_CHANNELS) + j ].filterInPlace( m_inOutSamps[ j ] );
+                m_allpass[ (i * NUM_ALLPASS_CHANNELS) + j ].filterInPlace( m_inOutSamps[ j ] );
             }
+            Hadamard< T, NUM_ALLPASS_CHANNELS >::inPlace( m_inOutSamps.data(), inScale );
         }
-        for ( int i = 0; i < NUM_CHANNELS; i++ )
+        for ( int j = 0; j < NUM_ALLPASS_CHANNELS; j++ )
+        {
+            m_allpass[ (LAST_ALLPASS_STAGE * NUM_ALLPASS_CHANNELS) + j ].filterInPlace( m_inOutSamps[ j ] );
+        }
+        for ( int i = 0; i < NUM_ALLPASS_CHANNELS; i++ )
         {
             m_revSamples[ i ] += m_inOutSamps[ i ];
         }
@@ -457,30 +605,47 @@ private:
         std::array< T, NUM_REV_CHANNELS > temp;
         static constexpr T glScale = 1.0f / gcem::sqrt( NUM_ER_STAGES );
         static constexpr T hadScale = 1.0f / gcem::sqrt( NUM_REV_CHANNELS );
-        
+        static constexpr auto flipMatrix = matrixOfRandomBools< NUM_ER_STAGES, NUM_REV_CHANNELS >();
         // distribute input across rev channels
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
         { temp[ i ] = ( m_inOutSamps[ fastMod( i, m_nInChannels ) ]  * m_flip[ i ] * inScale ); }
         
+        // pass through a series of multichannel delays with polrity flips and hadmard mixing
         for ( int s = 0; s < NUM_ER_STAGES; s++ )
         {
             for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
-                m_erDelays[ s ][ c ].setDelayTimeSamps( m_glERDelayTimesSamps[ s ][ c ] );
-            }
-            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-            {
-                m_erDelays[ s ][ c ].setSample2( temp[ c ] );
-                temp[ c ] = m_erDelays[ s ][ c ].getSample2();
+                m_erGLDelays[ s ][ c ].setSample2( temp[ c ] );
+                temp[ c ] = m_erGLDelays[ s ][ c ].getSample2();
+                if ( flipMatrix.getValue( s, c ) ){ temp[ c ] *= -1.0f; }
             }
             Hadamard< T, NUM_REV_CHANNELS >::inPlace( temp.data(), hadScale );
             for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
             {
-                m_revSamples[ c ] += temp[ c ] /* * glScale */;
+                m_revSamples[ c ] += temp[ c ] * glScale ;
             }
         }
-        
-        
+    }
+    //==============================================================================
+    inline void earlyReflectionsType4( const T& inScale )
+    {
+        // early reflections based on multitap delayLine... a little as per Moorer "About this reverberation Business"
+        static constexpr auto flipMatrix = matrixOfRandomBools< NUM_REV_CHANNELS, NUM_TAPS >();
+        for ( int i = 0; i < m_nInChannels; i++ )
+        {
+            m_multitapErDelays[ i ].setSample2( m_inOutSamps[ i ] * inScale ); // write input to delay lines
+        }
+
+        for ( int i = 0; i < m_nInChannels; i++ )
+        {
+            for ( int t = 0; t < NUM_TAPS; t++ ) // count through taps
+            {
+                m_multitapErDelays[ i ].setDelayTimeSamps( m_multitapERDelayTimesSamps[ i ][ t ] ); // set delay Time for each tap
+//                m_revSamples[ i ] += ( flipMatrix.getValue( i, t ) ) ? m_multitapErDelays[ i ].getSample2( ) * m_multitapERScaling[ i ][ t ] : m_multitapErDelays[ i ].getSample2( ) * m_multitapERScaling[ i ][ t ] * -1.0f; // copy output to buffer with amplitude scale and random polarity flips...
+                m_revSamples[ i ] += ( flipMatrix.getValue( i, t ) ) ? m_multitapErDelays[ i ].getSampleRoundedIndex2( ) * m_multitapERScaling[ i ][ t ] : m_multitapErDelays[ i ].getSampleRoundedIndex2( ) * m_multitapERScaling[ i ][ t ] * -1.0f; // copy output to buffer with amplitude scale and random polarity flips...
+
+            }
+        }
     }
     //==============================================================================
     inline void output( juce::AudioBuffer<T> &buffer, const int& indexThroughBuffer )
@@ -564,6 +729,19 @@ private:
         {
             m_erDelayTimesSamples[ i ] = m_allpass[ i ].size() * sizeFactor;
             m_lrDelayTimesSamples[ i ] = m_delays[ i ].size() * sizeFactor;
+            for ( int s = 0; s < NUM_ER_STAGES; s++ )
+            {
+                m_glERDelayTimesSamps[ s ][ i ] = m_erGLDelays[ s ][ i ].size() * sizeFactor;
+            }
+            const T sampsPerMS = m_SR * 0.001;
+//            static constexpr std::array< glVelvetDelayTimes< 1, NUM_TAPS, MAX_ER_TIME >, NUM_REV_CHANNELS > multiTapTimes;
+            static constexpr auto multiTapTimes = velveltDelays< NUM_REV_CHANNELS, NUM_TAPS, MAX_ER_TIME / 2 >();
+            for ( int t = 0; t < NUM_TAPS; t ++ )
+            {
+                m_multitapERDelayTimesSamps[ i ][ t ] = multiTapTimes.getValue( i, t ) * sampsPerMS * sizeFactor;
+                DBG( i << " " << t << " m_multitapERDelayTimesSamps " << m_multitapERDelayTimesSamps[ i ][ t ] << " m_multitapERScaling " << m_multitapERScaling[ i ][ t ] );
+            }
+            DBG("");
         }
     }
     //==============================================================================
@@ -600,27 +778,31 @@ private:
         static constexpr std::array< T, NUM_REV_CHANNELS > totalDelayT
         { 0.153129, 0.210389, 0.127837, 0.256891, 0.174713, 0.192303, 0.125, 0.219991 };
         
+        static constexpr auto m_glERDelayTimesMS = glVelvetDelayTimes< NUM_ER_STAGES, NUM_REV_CHANNELS, MAX_ER_TIME >();
+        const T sampsPerMS = sampleRate * 0.001;
         for ( int i = 0; i < NUM_REV_CHANNELS; i++ )
         {
             dt = sampleRate * allpassT[ i ];
             m_allpass[ i ].initialise( 2 * round( dt ) );
             m_allpass[ i ].setCoefficient( m_diffusion );
             
+            
+            for ( int s = 0; s < NUM_ER_STAGES; s++ )
+            {
+                m_erGLDelays[ s ][ i ].initialise( 2 * m_glERDelayTimesMS.getValue( s, i ) * sampsPerMS );
+            }
+            
+            m_multitapErDelays[ i ].initialise( 2 * MAX_ER_TIME * sampsPerMS );
+            
             dt = ( sampleRate * totalDelayT[ i ]) - dt;
             m_delays[ i ].initialise( 2 * round( dt ) );
             
-            m_preDelay[ i ].initialise( sampleRate, sampleRate * 0.001);
+            m_preDelay[ i ].initialise( sampleRate, sampleRate * 2);
         }
         
-        static constexpr auto m_glERDelayTimesMS = glDelayTimes< NUM_ER_STAGES, NUM_REV_CHANNELS, glERTime >();
-        for ( int s = 0; s < NUM_ER_STAGES; s++ )
-        {
-            for ( int c = 0; c < NUM_REV_CHANNELS; c++ )
-            {
-                m_glERDelayTimesSamps[ s ][ c ] = m_glERDelayTimesMS.getValue( s, c ) * sampleRate * 0.001;
-                m_erDelays[ s ][ c ].initialise( 2 * m_glERDelayTimesSamps[ s ][ c ] );
-            }
-        }
+        
+        
+        
     }
     //==============================================================================
     void initialiseVariableSmoothers( const T& smoothSlewVal )
@@ -636,8 +818,12 @@ private:
             m_erSizeSmooth[ i ].setCutoff( smoothSlewVal );
             m_lrSizeSmooth[ i ].setCutoff( smoothSlewVal );
             
-//            m_DCBlockers[ i ].setCutoff( smoothSlewVal );
+            for ( int s = 0; s < NUM_ER_STAGES; s++ )
+            {
+                m_glERSizeSmooth[ s ][ i ].setCutoff( smoothSlewVal );
+            }
         }
+        
     }
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_zitaRev )

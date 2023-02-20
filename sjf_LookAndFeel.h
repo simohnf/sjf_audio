@@ -8,6 +8,7 @@
 #define sjf_LookAndFeel_h
 
 #include <JuceHeader.h>
+#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_compileTimeRandom.h"
 
 class sjf_lookAndFeel : public juce::LookAndFeel_V4
 {
@@ -21,6 +22,8 @@ public:
         //        setColour (juce::Slider::thumbColourId, juce::Colours::darkred.withAlpha(0.5f));
         setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::darkblue.withAlpha(0.2f) );
         setColour(juce::Slider::rotarySliderFillColourId, juce::Colours::darkred.withAlpha(0.7f) );
+        setColour(juce::TextButton::buttonColourId, juce::Colours::darkgrey.withAlpha(0.2f));
+        setColour(juce::ComboBox::backgroundColourId, juce::Colours::darkgrey.withAlpha(0.2f));
     }
     ~sjf_lookAndFeel(){};
     
@@ -252,4 +255,96 @@ public:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_lookAndFeel)
 };
 
+
+template< int NUM_RAND_BOXES >
+inline void sjf_makeBackground (juce::Graphics& g, juce::Rectangle< int >& c )
+{
+    // (Our component is opaque, so we must completely fill the background with a solid colour)
+    auto backColour = juce::Colours::darkgrey;
+    g.fillAll ( backColour );
+    
+//    static constexpr int NUM_RAND_BOXES = 70;
+    constexpr auto randomColours = sjf_matrixOfRandomFloats< float, NUM_RAND_BOXES, 4 >();
+    constexpr auto randomCoordinates = sjf_matrixOfRandomFloats< float, NUM_RAND_BOXES, 5 >();
+    constexpr auto CORNER_SIZE = 5;
+    
+    for ( int i = 0; i < NUM_RAND_BOXES; i++)
+    {
+        int red = randomColours.getValue(i, 0) * 255;
+        int green = randomColours.getValue(i, 1)  * 255;
+        int blue = randomColours.getValue(i, 2) * 255;
+        float alpha = randomColours.getValue(i, 3) * 0.3;
+        auto randColour = juce::Colour( red, green, blue );
+        randColour = randColour.withAlpha(alpha);
+        g.setColour( randColour );
+        
+        auto x = randomCoordinates.getValue( i, 0 ) * c.getWidth()*1.5;// - getWidth();
+        auto y = randomCoordinates.getValue( i, 1 ) * c.getHeight()*1.5;// - getHeight();
+        auto w = randomCoordinates.getValue( i, 2 ) * c.getWidth();
+        auto h = randomCoordinates.getValue( i, 3 ) * c.getHeight();
+        auto rectRand = juce::Rectangle<float>( x, y, w, h );
+        auto rotate = randomCoordinates.getValue( i, 4 ) * M_PI*2;
+        auto shearX = randomCoordinates.getValue( i, 5 );
+        auto shearY = randomCoordinates.getValue( i, 6 );
+        DBG(" rotate " << rotate << " " << shearX << " " << shearY );
+        auto rotation = juce::AffineTransform::rotation( rotate, rectRand.getX(), rectRand.getY() );
+        auto shear = juce::AffineTransform::shear(shearX, shearY);
+        juce::Path path;
+        path.addRoundedRectangle( rectRand, CORNER_SIZE );
+      
+        int count = 0;
+        bool breakFlag = false;
+        while( !breakFlag )
+        {
+            path.applyTransform( shear );
+            path.applyTransform( rotation );
+            
+            count++;
+            auto p = path.getBounds().getSmallestIntegerContainer();
+            if ( p.intersects( c ) || count > 100 )
+            { breakFlag = true; }
+        }
+        g.fillPath( path );
+    }
+}
+
+template< int NUM_RAND_BOXES >
+inline void sjf_makeBackgroundNoFill (juce::Graphics& g, juce::Rectangle< int >& c )
+{
+    // (Our component is opaque, so we must completely fill the background with a solid colour)
+//    auto backColour = juce::Colours::darkgrey;
+//    g.fillAll ( backColour );
+    
+    //    static constexpr int NUM_RAND_BOXES = 70;
+    constexpr auto randomColours = sjf_matrixOfRandomFloats< float, NUM_RAND_BOXES, 4 >();
+    constexpr auto randomCoordinates = sjf_matrixOfRandomFloats< float, NUM_RAND_BOXES, 5 >();
+    constexpr auto CORNER_SIZE = 5;
+    
+    for ( int i = 0; i < NUM_RAND_BOXES; i++)
+    {
+        int red = randomColours.getValue(i, 0) * 255;
+        int green = randomColours.getValue(i, 1)  * 255;
+        int blue = randomColours.getValue(i, 2) * 255;
+        float alpha = randomColours.getValue(i, 3) * 0.3;
+        auto randColour = juce::Colour( red, green, blue );
+        randColour = randColour.withAlpha(alpha);
+        g.setColour( randColour );
+        
+        auto x = randomCoordinates.getValue( i, 0 ) * c.getWidth()*1.5;// - getWidth();
+        auto y = randomCoordinates.getValue( i, 1 ) * c.getHeight()*1.5;// - getHeight();
+        auto w = randomCoordinates.getValue( i, 2 ) * c.getWidth();
+        auto h = randomCoordinates.getValue( i, 3 ) * c.getHeight();
+        auto rectRand = juce::Rectangle<float>( x, y, w, h );
+        auto rotate = randomCoordinates.getValue( i, 4 ) * M_PI*2;
+        auto shearX = randomCoordinates.getValue( i, 5 );
+        auto shearY = randomCoordinates.getValue( i, 6 );
+        DBG(" rotate " << rotate << " " << shearX << " " << shearY );
+        auto rotation = juce::AffineTransform::rotation( rotate, rectRand.getX(), rectRand.getY() );
+        auto shear = juce::AffineTransform::shear(shearX, shearY);
+        juce::Path path;
+        path.addRoundedRectangle( rectRand, CORNER_SIZE );
+        path.applyTransform( shear );
+        g.fillPath(path, rotation );
+    }
+}
 #endif /* sjf_lookAndFeel_h */

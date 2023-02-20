@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <limits>
+#include "/Users/simonfay/Programming_Stuff/gcem/include/gcem.hpp"
 
 namespace sjf_compileTimeRandom
 {
@@ -70,7 +71,7 @@ namespace sjf_compileTimeRandom
             --count;
         }
         
-        return pcg();
+        return pcg() % RAND_MAX;
     }
     
 

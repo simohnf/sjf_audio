@@ -170,6 +170,11 @@ public:
         m_gain = gain;
     }
     
+    void clearDelayline()
+    {
+        m_delayLine.clearDelayline();
+    }
+    
     void setInterpolationType( const int &interpolationType )
     {
         m_delayLine.setInterpolationType( interpolationType );

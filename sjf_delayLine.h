@@ -165,7 +165,8 @@ public:
         if ( m_clearFlag ){ m_clearFlag = false; }
     }
     
-    const int getWritePosition()
+    
+    const int getWritePosition ()
     { return m_writePos; }
     
     const T getSampleAtIndex( const int& index )

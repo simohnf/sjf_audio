@@ -7,6 +7,20 @@
 #ifndef sjf_overdrive_h
 #define sjf_overdrive_h
 #include <JuceHeader.h>
+template< typename T >
+struct sjf_drive
+{
+    static inline T driveInput( const T& input, const T& drive )
+    {
+        return juce::dsp::FastMathApproximations::tanh( input * drive  ) / juce::dsp::FastMathApproximations::tanh( drive );
+    }
+    
+    static inline T driveInPlace( T& input, const T& drive )
+    {
+        input = juce::dsp::FastMathApproximations::tanh( input * drive  ) / juce::dsp::FastMathApproximations::tanh( drive );
+    }
+};
+
 
 class sjf_overdrive {
     

@@ -10,6 +10,8 @@
 #include <JuceHeader.h>
 #include "sjf_numBox.h"
 #include "sjf_audioUtilities.h"
+#include "sjf_LookAndFeel.h"
+
 #define PI 3.14159265
 //==============================================================================
 //  Functions for drawing graphs
@@ -145,8 +147,11 @@ public:
 
     void paint (juce::Graphics& g) override
     {
-        g.setColour( findColour(backgroundColourId) );
-        g.fillAll();
+//        g.setColour( findColour(backgroundColourId) );
+//        g.fillAll();
+        juce::Rectangle<int> r = getLocalBounds();
+        sjf_makeBackgroundNoFill< 20 >( g, r );
+        
         g.setColour ( findColour(outlineColourId) );
         g.drawRect(0, 0, getWidth(), getHeight());
         
@@ -417,8 +422,11 @@ public:
     //==============================================================================
     void paint (juce::Graphics& g) override
     {
-        g.setColour( findColour(backgroundColourId) );
-        g.fillAll();
+//        g.setColour( findColour(backgroundColourId).withAlpha( 0.3f ) );
+//        g.fillAll();
+        juce::Rectangle<int> r = getLocalBounds();
+        sjf_makeBackgroundNoFill< 20 >( g, r );
+
         g.setColour ( findColour(outlineColourId) );
         g.drawRect(0, 0, getWidth(), getHeight());
         m_graph.setColour(m_graph.pointColourID, juce::Colours::white);

@@ -8,7 +8,7 @@
 #define sjf_audioUtilities_h
 
 #include <JuceHeader.h>
-
+#include "sjf_compileTimeRandom.h"
 
 #define PI 3.14159265
 template< typename T >
@@ -360,4 +360,35 @@ T calculateLPFCoefficient( const T& frequency, const T& sampleRate )
 //    return coef;
     return 1.0 - exp( -1.0*twoPiW );
 }
+
+
+template< typename T, int NUM_ROWS, int NUM_COLUMNS >
+struct sjf_matrixOfRandomFloats
+{
+    constexpr sjf_matrixOfRandomFloats( ) : floatArray()
+    {
+        int count = 1;
+        
+        for ( int r = 0; r < NUM_ROWS; r++ )
+        {
+            for (int c = 0; c < NUM_COLUMNS; c ++)
+            {
+//                floatArray[ r ][ c ] = r*c;
+                floatArray[ r ][ c ] = random0to1( count );
+                count ++;
+            }
+        }
+    }
+    
+    const T& getValue ( const int& index1, const int& index2 )const { return floatArray[ index1 ][ index2 ]; }
+private:
+    //----------------------------------------
+    constexpr T random0to1( int count )
+    {
+        return (T)sjf_compileTimeRandom::get_random( count ) / (T)RAND_MAX;
+    }
+    //----------------------------------------
+    T floatArray[ NUM_ROWS ][ NUM_COLUMNS ];
+};
+
 #endif /* sjf_audioUtilities_h */

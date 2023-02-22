@@ -18,6 +18,7 @@ public:
     juce::Colour backGroundColour;
     juce::Colour panelColour = juce::Colours::aliceblue;
     juce::Colour tickColour = juce::Colours::lightgrey;
+    juce::Colour sliderFillColour = juce::Colours::red;
     sjf_lookAndFeel()
     {
         outlineColour = juce::Colours::grey;
@@ -26,10 +27,11 @@ public:
         //        setColour (juce::Slider::thumbColourId, juce::Colours::darkred.withAlpha(0.5f));
         
         setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::black.withAlpha(0.5f) );
-        setColour(juce::Slider::rotarySliderFillColourId, juce::Colours::red.withAlpha(0.5f) );
-//        setColour(juce::Slider::rotarySliderFillColourId, juce::Colours::darkred.withAlpha(0.7f) );
+        setColour(juce::Slider::rotarySliderFillColourId, sliderFillColour.withAlpha(0.5f) );
+        setColour(juce::Slider::trackColourId, sliderFillColour.withAlpha(0.5f) );
         setColour(juce::TextButton::buttonColourId, backGroundColour.withAlpha(0.2f));
         setColour(juce::ComboBox::backgroundColourId, backGroundColour.withAlpha(0.2f));
+        setColour(juce::Slider::backgroundColourId, backGroundColour.withAlpha( 0.7f ) );
         setColour(juce::Slider::ColourIds::textBoxOutlineColourId, outlineColour );
         setColour(juce::ComboBox::outlineColourId, outlineColour );
 //        setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::darkblue.withAlpha(0.2f) );

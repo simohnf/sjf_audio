@@ -147,10 +147,10 @@ public:
 
     void paint (juce::Graphics& g) override
     {
-//        g.setColour( findColour(backgroundColourId) );
-//        g.fillAll();
-        juce::Rectangle<int> r = getLocalBounds();
-        sjf_makeBackgroundNoFill< 20 >( g, r );
+        g.setColour( findColour(backgroundColourId).withAlpha(0.0f) );
+        g.fillAll();
+//        juce::Rectangle<int> r = getLocalBounds();
+//        sjf_makeBackgroundNoFill< 20 >( g, r );
         
         g.setColour ( findColour(outlineColourId) );
         g.drawRect(0, 0, getWidth(), getHeight());
@@ -422,10 +422,10 @@ public:
     //==============================================================================
     void paint (juce::Graphics& g) override
     {
-//        g.setColour( findColour(backgroundColourId).withAlpha( 0.3f ) );
-//        g.fillAll();
-        juce::Rectangle<int> r = getLocalBounds();
-        sjf_makeBackgroundNoFill< 20 >( g, r );
+        g.setColour( findColour(backgroundColourId).withAlpha( 0.3f ) );
+        g.fillAll();
+//        juce::Rectangle<int> r = getLocalBounds();
+//        sjf_makeBackgroundNoFill< 20 >( g, r );
 
         g.setColour ( findColour(outlineColourId) );
         g.drawRect(0, 0, getWidth(), getHeight());

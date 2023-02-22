@@ -14,16 +14,28 @@ class sjf_lookAndFeel : public juce::LookAndFeel_V4
 {
 public:
     juce::Colour outlineColour;
-    
-    sjf_lookAndFeel(){
+    juce::Colour toggleBoxOutlineColour;
+    juce::Colour backGroundColour;
+    juce::Colour panelColour = juce::Colours::aliceblue;
+    juce::Colour tickColour = juce::Colours::lightgrey;
+    sjf_lookAndFeel()
+    {
         outlineColour = juce::Colours::grey;
-        
+        backGroundColour = juce::Colours::darkgrey;
         //        auto slCol = juce::Colours::darkred.withAlpha(0.5f);
         //        setColour (juce::Slider::thumbColourId, juce::Colours::darkred.withAlpha(0.5f));
-        setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::darkblue.withAlpha(0.2f) );
-        setColour(juce::Slider::rotarySliderFillColourId, juce::Colours::darkred.withAlpha(0.7f) );
-        setColour(juce::TextButton::buttonColourId, juce::Colours::darkgrey.withAlpha(0.2f));
-        setColour(juce::ComboBox::backgroundColourId, juce::Colours::darkgrey.withAlpha(0.2f));
+        
+        setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::black.withAlpha(0.5f) );
+        setColour(juce::Slider::rotarySliderFillColourId, juce::Colours::red.withAlpha(0.5f) );
+//        setColour(juce::Slider::rotarySliderFillColourId, juce::Colours::darkred.withAlpha(0.7f) );
+        setColour(juce::TextButton::buttonColourId, backGroundColour.withAlpha(0.2f));
+        setColour(juce::ComboBox::backgroundColourId, backGroundColour.withAlpha(0.2f));
+        setColour(juce::Slider::ColourIds::textBoxOutlineColourId, outlineColour );
+        setColour(juce::ComboBox::outlineColourId, outlineColour );
+//        setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::darkblue.withAlpha(0.2f) );
+        setColour(juce::PopupMenu::backgroundColourId, backGroundColour.withAlpha(0.7f) );
+        setColour(juce::ToggleButton::tickColourId, tickColour.withAlpha(0.5f) );
+        toggleBoxOutlineColour = outlineColour;
     }
     ~sjf_lookAndFeel(){};
     
@@ -57,18 +69,22 @@ public:
     {
         juce::ignoreUnused (isEnabled, shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
         
-        juce::Rectangle<float> tickBounds (x, y, w, h);
-        
-        g.setColour (component.findColour (juce::ToggleButton::tickDisabledColourId));
-        g.drawRect(tickBounds.getX(), tickBounds.getY(), tickBounds.getWidth(), tickBounds.getHeight());
-        
         if (ticked)
         {
-            g.setColour (component.findColour (juce::ToggleButton::tickColourId));
-            g.setOpacity(0.3);
-            auto tick = getCrossShape(0.75f);
-            g.fillPath (tick, tick.getTransformToScaleToFit (tickBounds.reduced (4, 5).toFloat(), false));
+            g.setColour (component.findColour (juce::ToggleButton::tickColourId, true));
+//            g.setOpacity(0.3);
+//            auto x = component.getWidth();
+//            auto y = component.getHeight();// - getHeight();
+//            auto w = component.getWidth();
+//            auto h = component.getHeight();
+            g.fillRect( x, y, w, h );
         }
+        
+        juce::Rectangle<float> tickBounds (x, y, w, h);
+//        g.setColour (component.findColour (juce::ToggleButton::tickDisabledColourId));
+        g.setColour( toggleBoxOutlineColour );
+        g.drawRect(tickBounds.getX(), tickBounds.getY(), tickBounds.getWidth(), tickBounds.getHeight());
+
     };
     
     void drawComboBox (juce::Graphics& g, int width, int height, bool,
@@ -79,7 +95,7 @@ public:
         g.setColour (box.findColour (juce::ComboBox::outlineColourId));
         g.drawRect(boxBounds.getX(), boxBounds.getY(), boxBounds.getWidth(), boxBounds.getHeight());
         
-        juce::Rectangle<int> arrowZone (width - 30, 0, 20, height);
+        juce::Rectangle<int> arrowZone (width - width*.2, 0, width*.2, height);
         juce::Path path;
         path.startNewSubPath ((float) arrowZone.getX() + 3.0f, (float) arrowZone.getCentreY() - 2.0f);
         path.lineTo ((float) arrowZone.getCentreX(), (float) arrowZone.getCentreY() + 3.0f);
@@ -254,6 +270,45 @@ public:
     }
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_lookAndFeel)
 };
+
+inline void sjf_drawBackgroundImage( juce::Graphics& g, const juce::Image& backGroundImage, const float& componentW, const float& componentH)
+{
+    auto backColour = juce::Colours::grey;
+    g.fillAll ( backColour );
+    float scale = 1;
+    
+    float imageW = backGroundImage.getWidth();
+    float imageH = backGroundImage.getHeight();
+    
+    if ( imageW > imageH ) { scale = componentW / imageW; }
+    else { scale = componentH / imageH; }
+    imageW *= scale;
+    imageH *= scale;
+    juce::Image temp = backGroundImage.rescaled(imageW, imageH);
+    temp.multiplyAllAlphas( 0.7f );
+    imageW = temp.getWidth();
+    imageH = temp.getHeight();
+    float imgA = imageH * imageW;
+    float componentA = componentW * componentH;
+    scale = 1;
+    while( imgA < componentA )
+    {
+        if( imageW < componentW ) { scale *= componentW / imageW; }
+        else if ( imageH < componentH ) { scale *= componentH / imageH; }
+        imageW *= scale;
+        imageH *= scale;
+        imgA = imageH * imageW;
+    }
+    temp = temp.rescaled(imageW, imageH);
+    // centre image
+    imageW = temp.getWidth();
+    imageH = temp.getHeight();
+    float bcx = imageW / 2;
+    float bcy = imageH / 2;
+    float gcx = componentW / 2;
+    float gcy = componentH / 2;
+    g.drawImageAt ( temp, gcx - bcx,  gcy - bcy );
+}
 
 
 template< int NUM_RAND_BOXES >

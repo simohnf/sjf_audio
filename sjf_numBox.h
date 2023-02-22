@@ -31,7 +31,8 @@ public:
             else
                 setNumDecimalPlacesToDisplay(0);
         };
-    };
+    }
+    
     ~sjf_numBox(){};
     
     void paint(juce::Graphics& g) override
@@ -44,7 +45,7 @@ public:
             auto len = juce::jmin (h, w) * 0.15f;
             auto thick  = len / 1.8f;
             
-            g.setColour (findColour (juce::Slider::textBoxOutlineColourId));
+            g.setColour (findColour (juce::Slider::textBoxOutlineColourId, true));
             
             // Left top
             g.drawLine (0.0f, 0.0f, 0.0f, len, thick);
@@ -62,9 +63,8 @@ public:
             g.drawLine (w, h, w, h - len, thick);
             g.drawLine (w, h, w - len, h, thick);
         }
-    };
+    }
     
-
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_numBox)
 };
 

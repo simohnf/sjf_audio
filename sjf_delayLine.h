@@ -160,8 +160,12 @@ public:
     
     void setSample2( const T &value )
     {
+        if ( m_delayLineSize <= 0 ){ return; }
+        fastMod3< int >( m_writePos, m_delayLineSize);
         m_delayLine[ m_writePos ]  = value;
-        if ( ++m_writePos >= m_delayLineSize ) { m_writePos = 0; }
+        m_writePos++;
+        
+//        if ( ++m_writePos >= m_delayLineSize ) { m_writePos = 0; }
         if ( m_clearFlag ){ m_clearFlag = false; }
     }
     

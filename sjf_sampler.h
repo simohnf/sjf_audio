@@ -59,7 +59,8 @@ public:
                                       m_AudioSample.makeCopyOf(m_tempBuffer);
                                       m_sliceLenSamps = m_durationSamps/(float)m_nSlices;
                                       //                                          setPatterns();
-                                      m_samplePath = file;
+                                      m_samplePath = file.getFullPathName();
+                                      m_sampleName = file.getFileName();
                                       m_tempBuffer.setSize(0, 0);
                                       m_sampleLoadedFlag = true;
                                       m_canPlayFlag = lastPlayState;
@@ -80,10 +81,21 @@ public:
             reader->read (&m_AudioSample, 0, (int) reader->lengthInSamples, 0, true, true);
             m_sliceLenSamps = m_durationSamps/m_nSlices;
             setPatterns();
-            m_samplePath = file;
+            m_samplePath = file.getFullPathName();
+            m_sampleName = file.getFileName();
             m_sampleLoadedFlag = true;
         }
     };
+    //==============================================================================
+    const juce::String getFilePath()
+    {
+        return m_samplePath;
+    }
+    //==============================================================================
+    const juce::String getFileName()
+    {
+        return m_sampleName;
+    }
     //==============================================================================
     void setFadeLenMs(float fade)
     {
@@ -457,9 +469,10 @@ public:
     bool m_subDivFlag = false; bool m_ampFlag = false; bool m_stepShuffleFlag = false;
     int m_interpolationType = 1;
     
-    juce::File m_samplePath;
+    
     
 protected:
+    juce::String m_samplePath, m_sampleName;
     std::vector<float> m_revPat, m_speedPat, m_subDivPat, m_subDivAmpRampPat, m_ampPat, m_stepPat;
     
     int m_nSteps = 16; int m_nSlices = 16;

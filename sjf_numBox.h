@@ -33,7 +33,7 @@ public:
         };
     }
     
-    ~sjf_numBox(){};
+    ~sjf_numBox(){ DBG("DELETED NUM BOX");};
     
     void paint(juce::Graphics& g) override
     {
@@ -44,6 +44,7 @@ public:
             auto w = bounds.getWidth();
             auto len = juce::jmin (h, w) * 0.15f;
             auto thick  = len / 1.8f;
+            
             
             g.setColour (findColour (juce::Slider::textBoxOutlineColourId, true));
             

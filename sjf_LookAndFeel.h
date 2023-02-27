@@ -13,33 +13,35 @@
 class sjf_lookAndFeel : public juce::LookAndFeel_V4
 {
 public:
-    juce::Colour outlineColour;
-    juce::Colour toggleBoxOutlineColour;
-    juce::Colour backGroundColour;
+    juce::Colour outlineColour = juce::Colours::grey;
+    juce::Colour toggleBoxOutlineColour = outlineColour;
+    juce::Colour backGroundColour = juce::Colours::darkgrey;
     juce::Colour panelColour = juce::Colours::aliceblue;
     juce::Colour tickColour = juce::Colours::lightgrey;
     juce::Colour sliderFillColour = juce::Colours::red;
     sjf_lookAndFeel()
     {
-        outlineColour = juce::Colours::grey;
-        backGroundColour = juce::Colours::darkgrey;
         //        auto slCol = juce::Colours::darkred.withAlpha(0.5f);
         //        setColour (juce::Slider::thumbColourId, juce::Colours::darkred.withAlpha(0.5f));
         
         setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::black.withAlpha(0.5f) );
         setColour(juce::Slider::rotarySliderFillColourId, sliderFillColour.withAlpha(0.5f) );
         setColour(juce::Slider::trackColourId, sliderFillColour.withAlpha(0.5f) );
+        
         setColour(juce::TextButton::buttonColourId, backGroundColour.withAlpha(0.2f));
         setColour(juce::ComboBox::backgroundColourId, backGroundColour.withAlpha(0.2f));
         setColour(juce::Slider::backgroundColourId, backGroundColour.withAlpha( 0.7f ) );
-        setColour(juce::Slider::ColourIds::textBoxOutlineColourId, outlineColour );
+        setColour(juce::Slider::textBoxOutlineColourId, outlineColour );
+//        setColour(juce::Slider::textBoxOutlineColourId, outlineColour );
         setColour(juce::ComboBox::outlineColourId, outlineColour );
 //        setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::darkblue.withAlpha(0.2f) );
         setColour(juce::PopupMenu::backgroundColourId, backGroundColour.withAlpha(0.7f) );
         setColour(juce::ToggleButton::tickColourId, tickColour.withAlpha(0.5f) );
-        toggleBoxOutlineColour = outlineColour;
     }
-    ~sjf_lookAndFeel(){};
+    ~sjf_lookAndFeel()
+    {
+        DBG("DELETING LOOK ANd FEEL");
+    }
     
     void drawToggleButton (juce::Graphics& g, juce::ToggleButton& button,
                            bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override
@@ -270,6 +272,7 @@ public:
             g.drawRoundedRectangle (bounds, cornerSize, 1.0f);
         }
     }
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_lookAndFeel)
 };
 
@@ -343,7 +346,7 @@ inline void sjf_makeBackground (juce::Graphics& g, juce::Rectangle< int >& c )
         auto rotate = randomCoordinates.getValue( i, 4 ) * M_PI*2;
         auto shearX = randomCoordinates.getValue( i, 5 );
         auto shearY = randomCoordinates.getValue( i, 6 );
-        DBG(" rotate " << rotate << " " << shearX << " " << shearY );
+//        DBG(" rotate " << rotate << " " << shearX << " " << shearY );
         auto rotation = juce::AffineTransform::rotation( rotate, rectRand.getX(), rectRand.getY() );
         auto shear = juce::AffineTransform::shear(shearX, shearY);
         juce::Path path;
@@ -395,13 +398,27 @@ inline void sjf_makeBackgroundNoFill (juce::Graphics& g, juce::Rectangle< int >&
         auto rotate = randomCoordinates.getValue( i, 4 ) * M_PI*2;
         auto shearX = randomCoordinates.getValue( i, 5 );
         auto shearY = randomCoordinates.getValue( i, 6 );
-        DBG(" rotate " << rotate << " " << shearX << " " << shearY );
+//        DBG(" rotate " << rotate << " " << shearX << " " << shearY );
         auto rotation = juce::AffineTransform::rotation( rotate, rectRand.getX(), rectRand.getY() );
         auto shear = juce::AffineTransform::shear(shearX, shearY);
         juce::Path path;
         path.addRoundedRectangle( rectRand, CORNER_SIZE );
         path.applyTransform( shear );
         g.fillPath(path, rotation );
+    }
+}
+
+inline void sjf_setTooltipLabel( juce::Component* mainComponent, const juce::String& MAIN_TOOLTIP, juce::Label& tooltipLabel  )
+{
+    juce::Point mouseThisTopLeft = mainComponent->getMouseXYRelative();
+    if( mainComponent->reallyContains( mouseThisTopLeft, true ) )
+    {
+        juce::Component* const underMouse = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse();
+        juce::TooltipClient* const ttc = dynamic_cast <juce::TooltipClient*> (underMouse);
+        juce::String toolTip = MAIN_TOOLTIP;
+        if (ttc != 0 && !(underMouse->isMouseButtonDown() || underMouse->isCurrentlyBlockedByAnotherModalComponent()))
+            toolTip = ttc->getTooltip();
+        tooltipLabel.setText( toolTip, juce::dontSendNotification );
     }
 }
 #endif /* sjf_lookAndFeel_h */

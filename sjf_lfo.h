@@ -17,12 +17,11 @@
 class sjf_lfo
 {
 public:
-    sjf_lfo()
-    {
-        setBpm( 120 );
-    };
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    sjf_lfo() { setBpm( 120 ); };
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ~sjf_lfo(){};
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     float output()
     {
         if ( m_isSyncedToTempo )
@@ -51,8 +50,6 @@ public:
         {
             m_count -= m_SR;
         }
-             
-
         
         if ( m_lfoType == noise1 )
         { // smooth out random changes slightly
@@ -60,29 +57,28 @@ public:
         }
         return m_out + m_offset;
     }
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void setSampleRate( float sr )
     {
         m_SR = sr;
         lpf.setCutoff( sin( 20.0f * 2.0f * 3.141593f / m_SR ) );
     }
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void setLFOtype( int type )
     {
         m_lfoType = type;
     }
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void setTriangleDuty( float d )
     {
         m_triangle.setDuty( d );
     }
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void setRateChange( float r )
     {
         m_rateMultiplier.setRate( r );
     }
-    
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void setSyncDivision ( int div )
     {
         if (div == m_syncVal)
@@ -91,7 +87,7 @@ public:
         }
         m_syncVal = div;
         float rate;
-    switch( div )
+        switch( div )
         {
             case eightWholeNotes:
                 rate = 8.0 / 8.0;
@@ -123,7 +119,7 @@ public:
             case fiveQuarterNotes:
                 rate = 5.0 / ( 8.0 * 4.0 );
                 break;
-            case wholeNote:
+            case oneWholeNote:
                 rate = 1.0 / 8.0;
                 break;
             case sevenEightNotes:
@@ -135,19 +131,19 @@ public:
             case fiveEightNotes:
                 rate = 5.0 / ( 8.0 * 8.0 );
                 break;
-            case halfNote:
+            case oneHalfNote:
                 rate = 4.0 / ( 8.0 * 8.0 );
                 break;
             case dottedQuarterNote:
                 rate = 3.0 / ( 8.0 * 8.0 );
                 break;
-            case quarterNote:
+            case oneQuarterNote:
                 rate = 2.0 / ( 8.0 * 8.0 );
                 break;
             case dottedEightNote:
                 rate = 1.5 / ( 8.0 * 8.0 );
                 break;
-            case eightNote:
+            case oneEightNote:
                 rate = 1.0 / ( 8.0 * 8.0 );
                 break;
             case wholeNoteTriplet:
@@ -166,11 +162,60 @@ public:
         DBG("RATE " << rate );
         m_rateMultiplier.setRate( rate );
     }
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    void setSyncDivision( const int& nBeats, const int& beatName, const int& beatType )
+    {
+        float rate = 1.0f;
+        switch ( beatType )
+        {
+            case tuplet:
+                break;
+            case dotted:
+                rate *= 1.5f;
+            case triplet:
+                rate *= 2.0f;
+                rate /=3.0f;
+                break;
+            case quintuplet:
+                rate *= 4.0f;
+                rate /= 5.0f;
+                break;
+            case septuplet:
+                rate *= 4.0f;
+                rate /= 7.0f;
+                break;
+            default:
+                break;
+        }
+        switch ( beatName )
+        {
+            case wholeNote:
+                rate /= 8.0f;
+                break;
+            case halfNote:
+                rate /= 16.0f;
+                break;
+            case quarterNote:
+                rate /= 32.0f;
+                break;
+            case eightNote:
+                rate /= 64.0f;
+                break;
+            case sixteenthNote:
+                rate /= 128.0f;
+                break;
+            default:
+                rate /= 32.0f;
+        }
+        rate *= nBeats;
+        m_rateMultiplier.setRate( rate );
+    }
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void setOffset( float o )
     {
         m_offset = o;
     }
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void setPosition( float pos )
     {
         // ensure sync to tempo at start of each block
@@ -183,8 +228,7 @@ public:
             DBG( "m_pos " << m_pos );
         }
     }
-    
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void setBpm( float bpm )
     {
         if ( m_bpm != bpm )
@@ -195,29 +239,42 @@ public:
             m_increment = 1.0f / sampsperperiod; // increment per sample when synced to tempo
         }
     }
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void isSyncedToTempo( bool isSyncedToTempo )
     {
         m_isSyncedToTempo = isSyncedToTempo;
     }
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     enum lfoType
     {
         sine = 1, triangle, noise1, noise2, sah
     };
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     enum syncDivisions
     {
-        eightWholeNotes = 1, sevenWholeNotes, sixWholeNotes, fiveWholeNotes, fourWholeNotes, threeWholeNotes, twoWholeNotes, sevenQuarterNotes, dottedWholeNote, fiveQuarterNotes, wholeNote, sevenEightNotes, dottedHalfNote, wholeNoteTriplet, fiveEightNotes, halfNote, dottedQuarterNote, halfNoteTriplet, quarterNote, dottedEightNote, quarterNoteTriplet, eightNote
+        eightWholeNotes = 1, sevenWholeNotes, sixWholeNotes, fiveWholeNotes, fourWholeNotes, threeWholeNotes, twoWholeNotes, sevenQuarterNotes, dottedWholeNote, fiveQuarterNotes, oneWholeNote, sevenEightNotes, dottedHalfNote, wholeNoteTriplet, fiveEightNotes, oneHalfNote, dottedQuarterNote, halfNoteTriplet, oneQuarterNote, dottedEightNote, quarterNoteTriplet, oneEightNote
     };
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    enum beatNames
+    {
+        wholeNote = 1, halfNote, quarterNote, eightNote, sixteenthNote 
+    };
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    enum beatTypes
+    {
+        tuplet = 1, dotted, triplet, quintuplet, septuplet
+    };
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     
     
 private:
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void setInvertedRate( float invRate )
     {
         m_rateMultiplier.setInvertedRate( invRate );
     }
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void calculateOutput()
     {
         switch( m_lfoType )
@@ -242,9 +299,7 @@ private:
                 break;
         }
     }
-    
-    
-    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     float m_count = 0, m_SR = 44100.0f, m_phase = 0.0f, m_out = 0.0f, m_lastPhase = 1.0f, m_offset = 0.0f, m_bpm = 0, m_pos, m_increment;
     const float m_maxSyncBeats = 32.0f;
     const float m_syncFactor = 1.0f/m_maxSyncBeats;

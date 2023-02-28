@@ -19,6 +19,7 @@ public:
     juce::Colour panelColour = juce::Colours::aliceblue;
     juce::Colour tickColour = juce::Colours::lightgrey;
     juce::Colour sliderFillColour = juce::Colours::red;
+    bool drawComboBoxTick = true;
     sjf_lookAndFeel()
     {
         //        auto slCol = juce::Colours::darkred.withAlpha(0.5f);
@@ -99,16 +100,40 @@ public:
         g.setColour (box.findColour (juce::ComboBox::outlineColourId));
         g.drawRect(boxBounds.getX(), boxBounds.getY(), boxBounds.getWidth(), boxBounds.getHeight());
         
-        juce::Rectangle<int> arrowZone (width - width*.2, 0, width*.2, height);
-        juce::Path path;
-        path.startNewSubPath ((float) arrowZone.getX() + 3.0f, (float) arrowZone.getCentreY() - 2.0f);
-        path.lineTo ((float) arrowZone.getCentreX(), (float) arrowZone.getCentreY() + 3.0f);
-        path.lineTo ((float) arrowZone.getRight() - 3.0f, (float) arrowZone.getCentreY() - 2.0f);
+        if ( drawComboBoxTick )
+        {
+            juce::Rectangle<int> arrowZone (width - width*.2, 0, width*.2, height);
+            juce::Path path;
+            path.startNewSubPath ((float) arrowZone.getX() + 3.0f, (float) arrowZone.getCentreY() - 2.0f);
+            path.lineTo ((float) arrowZone.getCentreX(), (float) arrowZone.getCentreY() + 3.0f);
+            path.lineTo ((float) arrowZone.getRight() - 3.0f, (float) arrowZone.getCentreY() - 2.0f);
+            
+            g.setColour (box.findColour (juce::ComboBox::arrowColourId).withAlpha ((box.isEnabled() ? 0.9f : 0.2f)));
+            g.strokePath (path, juce::PathStrokeType (2.0f));
+        }
         
-        g.setColour (box.findColour (juce::ComboBox::arrowColourId).withAlpha ((box.isEnabled() ? 0.9f : 0.2f)));
-        g.strokePath (path, juce::PathStrokeType (2.0f));
     }
     
+    void positionComboBoxText (juce::ComboBox& box, juce::Label& label) override
+    {
+        if ( drawComboBoxTick )
+        {
+            label.setBounds (1, 1,
+                             box.getWidth() + 3 - box.getHeight(),
+                             box.getHeight() - 2);
+            
+            label.setFont (getComboBoxFont (box));
+        }
+        else
+        {
+            label.setBounds (1, 1,
+                             box.getWidth() - 2,
+                             box.getHeight() - 2);
+            
+            label.setFont (getComboBoxFont (box));
+        }
+        
+    }
     
     
     void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,

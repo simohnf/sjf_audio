@@ -416,9 +416,12 @@ inline void sjf_setTooltipLabel( juce::Component* mainComponent, const juce::Str
         juce::Component* const underMouse = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse();
         juce::TooltipClient* const ttc = dynamic_cast <juce::TooltipClient*> (underMouse);
         juce::String toolTip = MAIN_TOOLTIP;
-        if (ttc != 0 && !(underMouse->isMouseButtonDown() || underMouse->isCurrentlyBlockedByAnotherModalComponent()))
+        if (ttc != 0 && !(/*underMouse->isMouseButtonDown() ||*/ underMouse->isCurrentlyBlockedByAnotherModalComponent()))
             toolTip = ttc->getTooltip();
         tooltipLabel.setText( toolTip, juce::dontSendNotification );
+        DBG( "TOOLTIP " << toolTip );
+        
     }
+    DBG("NO TOOLTIP");
 }
 #endif /* sjf_lookAndFeel_h */

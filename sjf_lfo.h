@@ -79,90 +79,6 @@ public:
         m_rateMultiplier.setRate( r );
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    void setSyncDivision ( int div )
-    {
-        if (div == m_syncVal)
-        {
-            return;
-        }
-        m_syncVal = div;
-        float rate;
-        switch( div )
-        {
-            case eightWholeNotes:
-                rate = 8.0 / 8.0;
-                break;
-            case sevenWholeNotes:
-                rate = 7.0 / 8.0;
-                break;
-            case sixWholeNotes:
-                rate = 6.0 / 8.0;
-                break;
-            case fiveWholeNotes:
-                rate = 5.0 / 8.0;
-                break;
-            case fourWholeNotes:
-                rate = 4.0 / 8.0;
-                break;
-            case threeWholeNotes:
-                rate = 3.0 / 8.0;
-                break;
-            case twoWholeNotes:
-                rate = 2.0 / 8.0;
-                break;
-            case sevenQuarterNotes:
-                rate = 7.0 / ( 8.0 * 4.0 );
-                break;
-            case dottedWholeNote:
-                rate = 6.0 / ( 8.0 * 4.0 );
-                break;
-            case fiveQuarterNotes:
-                rate = 5.0 / ( 8.0 * 4.0 );
-                break;
-            case oneWholeNote:
-                rate = 1.0 / 8.0;
-                break;
-            case sevenEightNotes:
-                rate = 7.0 / ( 8.0 * 8.0 );
-                break;
-            case dottedHalfNote:
-                rate = 6.0 / ( 8.0 * 8.0 );
-                break;
-            case fiveEightNotes:
-                rate = 5.0 / ( 8.0 * 8.0 );
-                break;
-            case oneHalfNote:
-                rate = 4.0 / ( 8.0 * 8.0 );
-                break;
-            case dottedQuarterNote:
-                rate = 3.0 / ( 8.0 * 8.0 );
-                break;
-            case oneQuarterNote:
-                rate = 2.0 / ( 8.0 * 8.0 );
-                break;
-            case dottedEightNote:
-                rate = 1.5 / ( 8.0 * 8.0 );
-                break;
-            case oneEightNote:
-                rate = 1.0 / ( 8.0 * 8.0 );
-                break;
-            case wholeNoteTriplet:
-                rate = 2.0 /( 3.0 * 8.0 );
-                break;
-            case halfNoteTriplet:
-                rate = 0.5 * 2.0 / ( 3.0 * 8.0 );
-                break;
-            case quarterNoteTriplet:
-                rate = 0.25 * 2.0 / ( 3.0 * 8.0 );
-                break;
-            default:
-                rate = 0.5;
-                break;
-        }
-        DBG("RATE " << rate );
-        m_rateMultiplier.setRate( rate );
-    }
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void setSyncDivision( const int& nBeats, const int& beatName, const int& beatType )
     {
         float rate = 1.0f;
@@ -248,11 +164,6 @@ public:
     enum lfoType
     {
         sine = 1, triangle, noise1, noise2, sah
-    };
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    enum syncDivisions
-    {
-        eightWholeNotes = 1, sevenWholeNotes, sixWholeNotes, fiveWholeNotes, fourWholeNotes, threeWholeNotes, twoWholeNotes, sevenQuarterNotes, dottedWholeNote, fiveQuarterNotes, oneWholeNote, sevenEightNotes, dottedHalfNote, wholeNoteTriplet, fiveEightNotes, oneHalfNote, dottedQuarterNote, halfNoteTriplet, oneQuarterNote, dottedEightNote, quarterNoteTriplet, oneEightNote
     };
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     enum beatNames

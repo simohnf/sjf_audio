@@ -19,6 +19,8 @@ public:
     juce::Colour panelColour = juce::Colours::aliceblue;
     juce::Colour tickColour = juce::Colours::lightgrey;
     juce::Colour sliderFillColour = juce::Colours::red;
+    juce::Colour fontColour = juce::Colours::white;
+    
     bool drawComboBoxTick = true;
     sjf_lookAndFeel()
     {

@@ -251,6 +251,51 @@ public:
         m_stepShuffleFlag = true;
     };
     //==============================================================================
+    void setStepPat( const std::vector< float >& pattern )
+    {
+        m_stepPat.resize(m_nSteps);
+        for (int index = 0; index < m_nSteps; index++)
+        {
+            if(  m_stepShuffleProb/100.0f <= pattern[ i ] )
+            {
+                m_stepPat[index] = index;
+            }
+            else
+            {
+                int step = floor(rand01() * m_nSteps);
+                m_stepPat[index] = step;
+            }
+        }
+    };
+    //==============================================================================
+    void setAmpPat ( const std::vector< float >& pattern )
+    {
+        m_ampPat = pattern;
+    };
+    //==============================================================================
+    void setSubDivPat( const std::vector< float >& pattern )
+    {
+        m_subDivPat = pattern;
+        for (int index = 0; index < m_nSteps; index++)
+        {
+            m_subDivAmpRampPat[index] = rand01();
+        }
+    }
+    //==============================================================================
+    void setSpeedPat( const std::vector< float >& pattern )
+    {
+        m_speedPat = pattern;
+        for (int index = 0; index < m_nSteps; index++)
+        {
+            if (rand01() >=0.5) { m_speedPat[index]  *= -1.0f; }
+        }
+    }
+    //==============================================================================
+    void setRevPat( const std::vector< float >& pattern )
+    {
+        m_revPat = pattern;
+    };
+    //==============================================================================
 private:
     bool checkForChangeOfBeat(int currentStep)
     {
@@ -409,6 +454,7 @@ private:
     {
         setRandPat(m_revPat, m_revProb/100.0f);
     };
+
     //==============================================================================
     void setRandSpeedPat()
     {
@@ -420,6 +466,7 @@ private:
         }
         
     };
+
     //==============================================================================
     void setRandSubDivPat()
     {
@@ -429,11 +476,14 @@ private:
             m_subDivAmpRampPat[index] = rand01();
         }
     };
+
+
     //==============================================================================
     void setRandAmpPat()
     {
         setRandPat(m_ampPat, 1 - pow(m_ampProb/100.0f, 4));
     };
+
     //==============================================================================
     void setRandStepPat()
     {
@@ -451,6 +501,7 @@ private:
             }
         }
     };
+
     //==============================================================================
     void setRandPat(std::vector<float>& pattern, float prob)
     {
@@ -496,5 +547,20 @@ protected:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_sampler)
     //    END OF sjf_sampler CLASS
     //==============================================================================
+};
+
+
+class sjf_samplerPoly
+{
+    
+    std::vector< sjf_sampler > m_samplers;
+    std::vector< float > m_sampleChoice;
+public:
+    sjf_samplerPoly(){}
+    ~sjf_samplerPoly(){}
+    
+    
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_samplerPoly )
 };
 #endif /* sjf_sampler_h */

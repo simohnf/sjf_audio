@@ -39,7 +39,7 @@ protected:
     std::unique_ptr<juce::FileChooser> m_chooser;
     
     float m_fadeInMs = 1;
-    float m_durationSamps = 44100;
+    std::vector< float > m_durationSamps;
     float m_hostBPM = 120;
     std::vector< float > m_sliceLenSamps;
     int m_SR = 44100;
@@ -52,9 +52,10 @@ protected:
 public:
     sjf_samplerPoly()
     {
-        for ( int sampleNumber = 0; sampleNumber < m_AudioSample.size(); sampleNumber++ )
+        setNumVoices( 1 );
+        for ( int voiceNumber = 0; voiceNumber < m_AudioSample.size(); voiceNumber++ )
         {
-            m_AudioSample[ sampleNumber ].clear();
+            m_AudioSample[ voiceNumber ].clear();
         }
         m_formatManager.registerBasicFormats();
         setPatterns();
@@ -74,7 +75,20 @@ public:
         m_samplePath.resize( nVoices );
         m_sampleName.resize( nVoices );
         m_stepPat.resize( nVoices );
-        m_nSlices.resize( nVoices );
+        m_sliceLenSamps.resize( nVoices );
+        m_durationSamps.resize( nVoices );
+        if ( nVoices > m_nSlices.size() )
+        {
+            while ( nVoices > m_nSlices.size() )
+            {
+                m_nSlices.push_back( 16 );
+            }
+        }
+        else
+        {
+            m_nSlices.resize( nVoices );
+        }
+        
     }
     
     const int getNumVoices()
@@ -82,18 +96,18 @@ public:
         return m_AudioSample.size();
     }
     //==============================================================================
-    float getDuration() { return m_durationSamps; };
+    float getDuration( const int voiceNumber ) { return m_durationSamps[ voiceNumber ]; };
     //==============================================================================
-    float getDurationMS() { return (float)m_durationSamps * 1000.0f / (float)m_SR; };
+    float getDurationMS( const int voiceNumber ) { return (float)m_durationSamps[ voiceNumber ] * 1000.0f / (float)m_SR; };
     //==============================================================================
-    void loadSample( int sampleNumber )
+    void loadSample( int voiceNumber )
     {
         m_chooser = std::make_unique<juce::FileChooser> ("Select a Wave/Aiff file to play..." ,
                                                          juce::File{}, "*.aif, *.wav");
         auto chooserFlags = juce::FileBrowserComponent::openMode
         | juce::FileBrowserComponent::canSelectFiles;
         
-        m_chooser->launchAsync (chooserFlags, [this, sampleNumber] (const juce::FileChooser& fc)
+        m_chooser->launchAsync (chooserFlags, [this, voiceNumber] (const juce::FileChooser& fc)
                                 {
                                     auto file = fc.getResult();
                                     if (file == juce::File{}) { return; }
@@ -104,14 +118,14 @@ public:
                                         m_canPlayFlag = false;
                                         m_tempBuffer.clear();
                                         m_tempBuffer.setSize((int) reader->numChannels, (int) reader->lengthInSamples);
-                                        m_durationSamps = m_tempBuffer.getNumSamples();
+                                        m_durationSamps[ voiceNumber ] = m_tempBuffer.getNumSamples();
                                         reader->read (&m_tempBuffer, 0, (int) reader->lengthInSamples, 0, true, true);
                                         //                                          m_AudioSample.clear();
-                                        m_AudioSample[ sampleNumber ].makeCopyOf(m_tempBuffer);
-                                        m_sliceLenSamps[ sampleNumber ] = m_durationSamps/(float)m_nSlices[ sampleNumber ];
+                                        m_AudioSample[ voiceNumber ].makeCopyOf(m_tempBuffer);
+                                        m_sliceLenSamps[ voiceNumber ] = m_durationSamps[ voiceNumber ]/(float)m_nSlices[ voiceNumber ];
                                         //                                          setPatterns();
-                                        m_samplePath[ sampleNumber ] = file.getFullPathName();
-                                        m_sampleName[ sampleNumber ] = file.getFileName();
+                                        m_samplePath[ voiceNumber ] = file.getFullPathName();
+                                        m_sampleName[ voiceNumber ] = file.getFileName();
                                         m_tempBuffer.setSize(0, 0);
                                         m_sampleLoadedFlag = true;
                                         m_canPlayFlag = lastPlayState;
@@ -119,33 +133,33 @@ public:
                                 });
     };
     //==============================================================================
-    void loadSample(juce::Value path, int sampleNumber)
+    void loadSample(juce::Value path, int voiceNumber)
     {
         juce::File file( path.getValue().toString() );
         if (file == juce::File{}) { return; }
         std::unique_ptr<juce::AudioFormatReader> reader (m_formatManager.createReaderFor (file));
         if (reader.get() != nullptr)
         {
-            m_AudioSample[ sampleNumber ].clear();
-            m_AudioSample[ sampleNumber ].setSize((int) reader->numChannels, (int) reader->lengthInSamples);
-            m_durationSamps = m_AudioSample[ sampleNumber ].getNumSamples();
-            reader->read (&m_AudioSample[ sampleNumber ], 0, (int) reader->lengthInSamples, 0, true, true);
-            m_sliceLenSamps[ sampleNumber ] = m_durationSamps/m_nSlices[ sampleNumber ];
+            m_AudioSample[ voiceNumber ].clear();
+            m_AudioSample[ voiceNumber ].setSize((int) reader->numChannels, (int) reader->lengthInSamples);
+            m_durationSamps[ voiceNumber ] = m_AudioSample[ voiceNumber ].getNumSamples();
+            reader->read (&m_AudioSample[ voiceNumber ], 0, (int) reader->lengthInSamples, 0, true, true);
+            m_sliceLenSamps[ voiceNumber ] = m_durationSamps[ voiceNumber ]/m_nSlices[ voiceNumber ];
             setPatterns();
-            m_samplePath[ sampleNumber ] = file.getFullPathName();
-            m_sampleName[ sampleNumber ] = file.getFileName();
+            m_samplePath[ voiceNumber ] = file.getFullPathName();
+            m_sampleName[ voiceNumber ] = file.getFileName();
             m_sampleLoadedFlag = true;
         }
     };
     //==============================================================================
-    const juce::String getFilePath( const int sampleNumber )
+    const juce::String getFilePath( const int voiceNumber )
     {
-        return m_samplePath[ sampleNumber ];
+        return m_samplePath[ voiceNumber ];
     }
     //==============================================================================
-    const juce::String getFileName( const int sampleNumber )
+    const juce::String getFileName( const int voiceNumber )
     {
-        return m_sampleName[ sampleNumber ];
+        return m_sampleName[ voiceNumber ];
     }
     //==============================================================================
     void setFadeLenMs(float fade)
@@ -158,16 +172,18 @@ public:
         return m_fadeInMs;
     }
     //==============================================================================
-    void setNumSlices( const int slices, const int sampleNumber )
+    void setNumSlices( const int slices, const int voiceNumber )
     {
-        m_nSlices[ sampleNumber ] = slices;
-        m_sliceLenSamps[ sampleNumber ] = m_durationSamps/m_nSlices[ sampleNumber ];
+        DBG("Change Num Slices " << slices << " voice " << voiceNumber );
+        m_nSlices[ voiceNumber ] = slices;
+        m_sliceLenSamps[ voiceNumber ] = m_durationSamps[ voiceNumber ]/m_nSlices[ voiceNumber ];
         setPatterns();
     }
     //==============================================================================
-    int getNumSlices( const int sampleNumber )
+    int getNumSlices( const int voiceNumber )
     {
-        return m_nSlices[ sampleNumber ];
+        DBG( "Get Num Slices " << voiceNumber );
+        return m_nSlices[ voiceNumber ];
     }
     //==============================================================================
     void setNumSteps( int steps )
@@ -177,9 +193,9 @@ public:
         m_subDivPat.resize(steps);
         m_subDivAmpRampPat.resize(steps);
         m_ampPat.resize(steps);
-        for ( int sampleNumber = 0; sampleNumber < m_nSlices.size(); sampleNumber++ )
+        for ( int voiceNumber = 0; voiceNumber < m_nSlices.size(); voiceNumber++ )
         {
-            m_stepPat[ sampleNumber ].resize(steps);
+            m_stepPat[ voiceNumber ].resize(steps);
         }
         if (steps > m_nSteps)
             for (int index = m_nSteps; index < steps; index++)
@@ -189,9 +205,9 @@ public:
                 m_subDivPat[index] = 0;
                 m_subDivAmpRampPat[index] = rand01();
                 m_ampPat[index] = 1.0f;
-                for ( int sampleNumber = 0; sampleNumber < m_nSlices.size(); sampleNumber++ )
+                for ( int voiceNumber = 0; voiceNumber < m_nSlices.size(); voiceNumber++ )
                 {
-                    m_stepPat[ sampleNumber ][ index ] = index % m_nSlices[ sampleNumber ];
+                    m_stepPat[ voiceNumber ][ index ] = index % m_nSlices[ voiceNumber ];
                 }
             }
         m_nSteps = steps;
@@ -226,29 +242,29 @@ public:
         for (int index = 0; index < bufferSize; index++)
         {
             checkForChangeOfBeat( m_stepCount );
-            auto sampleNumber = calculateSampleChoice( m_stepCount );
+            auto voiceNumber = calculateSampleChoice( m_stepCount );
             auto pos = m_readPos;
             auto subDiv = floor(m_subDivPat[m_stepCount] * 8.0f) + 1.0f ;
-            auto subDivLenSamps = m_sliceLenSamps[ sampleNumber ] / subDiv ;
+            auto subDivLenSamps = m_sliceLenSamps[ voiceNumber ] / subDiv ;
             auto subDivAmp = calculateSubDivAmp( m_stepCount, subDiv, int(pos / subDivLenSamps) );
-            auto speedVal = calculateSpeedVal( m_stepCount, (m_readPos / m_sliceLenSamps[ sampleNumber ]) );
+            auto speedVal = calculateSpeedVal( m_stepCount, (m_readPos / m_sliceLenSamps[ voiceNumber ]) );
             while (pos >= subDivLenSamps){ pos -= subDivLenSamps; }
             auto env = envelope( pos , (int)subDivLenSamps - 1, envLen ); // Check this out more
             auto amp = calculateAmpValue( m_stepCount );
             pos = calculateReverse( m_stepCount, pos, subDivLenSamps );
             pos *= speedVal;
-            pos += m_stepPat[ sampleNumber ][ m_stepCount ] * m_sliceLenSamps[ sampleNumber ];
+            pos += m_stepPat[ voiceNumber ][ m_stepCount ] * m_sliceLenSamps[ voiceNumber ];
             
             for (int channel = 0; channel < numChannels; channel ++)
             {
-                auto val = calculateSampleValue( m_AudioSample[ sampleNumber ], channel % m_AudioSample[ sampleNumber ].getNumChannels(), pos );
+                auto val = calculateSampleValue( m_AudioSample[ voiceNumber ], channel % m_AudioSample[ voiceNumber ].getNumChannels(), pos );
                 val *= subDivAmp * amp;
                 val *= env;
                 buffer.setSample(channel, index, val);
             }
             m_readPos += increment;
-            if (m_readPos >= m_sliceLenSamps[ sampleNumber ]) {m_stepCount++; m_stepCount %= m_nSteps; }
-            while (m_readPos >= m_sliceLenSamps[ sampleNumber ]){ m_readPos -= m_sliceLenSamps[ sampleNumber ]; }
+            if (m_readPos >= m_sliceLenSamps[ voiceNumber ]) {m_stepCount++; m_stepCount %= m_nSteps; }
+            while (m_readPos >= m_sliceLenSamps[ voiceNumber ]){ m_readPos -= m_sliceLenSamps[ voiceNumber ]; }
         }
     };
     //==============================================================================
@@ -258,47 +274,47 @@ public:
         auto bufferSize = buffer.getNumSamples();
         auto numChannels = buffer.getNumChannels();
         
+        DBG( "BPM " << bpm );
         for (int index = 0; index < bufferSize; index++)
         {
             checkForChangeOfBeat( m_stepCount );
-            auto sampleNumber = calculateSampleChoice( m_stepCount );
-            auto hostSyncCompenstation =  calculateHostCompensation( bpm, sampleNumber );
+            auto voiceNumber = calculateSampleChoice( m_stepCount );
+            
+            auto hostSyncCompenstation =  calculateHostCompensation( bpm, voiceNumber );
+            
             auto envLen = floor(m_fadeInMs * m_SR / 1000) + 1;
             auto increment = m_phaseRateMultiplier * hostSyncCompenstation;
-            
-
-            
             auto hostSampQuarter = 60.0f*m_SR/bpm;
             hostPosition *= hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
-            auto leftOver = hostPosition / m_sliceLenSamps[ sampleNumber ];
+            auto leftOver = hostPosition / m_sliceLenSamps[ voiceNumber ];
             m_stepCount = (int)leftOver;
-            leftOver = hostPosition - m_stepCount*m_sliceLenSamps[ sampleNumber ];
+            leftOver = hostPosition - m_stepCount*m_sliceLenSamps[ voiceNumber ];
             
             m_readPos = leftOver;
             m_stepCount %= m_nSteps;
             
             auto pos = m_readPos;
             auto subDiv = floor(m_subDivPat[m_stepCount] * 8.0f) + 1.0f ;
-            auto subDivLenSamps = m_sliceLenSamps[ sampleNumber ] / subDiv ;
+            auto subDivLenSamps = m_sliceLenSamps[ voiceNumber ] / subDiv ;
             auto subDivAmp = calculateSubDivAmp( m_stepCount, subDiv, int(pos / subDivLenSamps) );
-            auto speedVal = calculateSpeedVal( m_stepCount, (m_readPos / m_sliceLenSamps[ sampleNumber ]) );
+            auto speedVal = calculateSpeedVal( m_stepCount, (m_readPos / m_sliceLenSamps[ voiceNumber ]) );
             while (pos >= subDivLenSamps){ pos -= subDivLenSamps; }
             auto env = envelope( floor(pos / increment) , floor(subDivLenSamps / increment), envLen ); // Check this out more
             auto amp = calculateAmpValue( m_stepCount );
             pos = calculateReverse(m_stepCount, pos, subDivLenSamps);
             pos *= speedVal;
-            pos += m_stepPat[ sampleNumber ][m_stepCount] * m_sliceLenSamps[ sampleNumber ];
+            pos += m_stepPat[ voiceNumber ][m_stepCount] * m_sliceLenSamps[ voiceNumber ];
             
             for (int channel = 0; channel < numChannels; channel ++)
             {
-                auto val = calculateSampleValue(m_AudioSample[ sampleNumber ], channel % m_AudioSample[ sampleNumber ].getNumChannels(), pos);
+                auto val = calculateSampleValue(m_AudioSample[ voiceNumber ], channel % m_AudioSample[ voiceNumber ].getNumChannels(), pos);
                 val *= subDivAmp * amp;
                 val *= env;
                 buffer.setSample(channel, index, val);
             }
             m_readPos +=  increment;
-            if (m_readPos >= m_sliceLenSamps[ sampleNumber ]) {m_stepCount++; m_stepCount %= m_nSteps; }
-            while (m_readPos >= m_sliceLenSamps[ sampleNumber ]){ m_readPos -= m_sliceLenSamps[ sampleNumber ]; }
+            if (m_readPos >= m_sliceLenSamps[ voiceNumber ]) {m_stepCount++; m_stepCount %= m_nSteps; }
+            while (m_readPos >= m_sliceLenSamps[ voiceNumber ]){ m_readPos -= m_sliceLenSamps[ voiceNumber ]; }
             
         }
     }
@@ -416,45 +432,46 @@ private:
         return linearInterpolate(buffer, channel, pos);
     };
     //==============================================================================
-    float calculateHostCompensation( float bpm, const int sampleNumber ){
+    float calculateHostCompensation( float bpm, const int voiceNumber ){
         if (!m_sampleLoadedFlag ) { return 1; }
         m_hostBPM = bpm;
         auto hostQuarterNoteSamps = m_SR*60.0f/bpm;
         auto multiplier = 1.0f;
         if (!m_syncToHostFlag) { return 1; }
-        if (m_sliceLenSamps[ sampleNumber ] == hostQuarterNoteSamps){
+        if (m_sliceLenSamps[ voiceNumber ] == hostQuarterNoteSamps){
             return 1;
         }
-        else if (m_sliceLenSamps[ sampleNumber ] < hostQuarterNoteSamps){
-            while (m_sliceLenSamps[ sampleNumber ] * multiplier < hostQuarterNoteSamps){ multiplier *= 2; }
-            auto lastDiff = abs(hostQuarterNoteSamps - m_sliceLenSamps[ sampleNumber ]*multiplier);
+        else if (m_sliceLenSamps[ voiceNumber ] < hostQuarterNoteSamps){
+            while (m_sliceLenSamps[ voiceNumber ] * multiplier < hostQuarterNoteSamps){ multiplier *= 2; }
+            auto lastDiff = abs(hostQuarterNoteSamps - m_sliceLenSamps[ voiceNumber ]*multiplier);
             auto halfMultiplier = multiplier * 0.5;
-            auto newDiff = abs(hostQuarterNoteSamps - m_sliceLenSamps[ sampleNumber ]*halfMultiplier);
+            auto newDiff = abs(hostQuarterNoteSamps - m_sliceLenSamps[ voiceNumber ]*halfMultiplier);
             if ( newDiff < lastDiff) { multiplier = halfMultiplier; }
         }
         else
         {
-            while (m_sliceLenSamps[ sampleNumber ] > hostQuarterNoteSamps *multiplier){ multiplier *= 2; }
-            float lastDiff = abs(hostQuarterNoteSamps*multiplier - m_sliceLenSamps[ sampleNumber ]);
+            while (m_sliceLenSamps[ voiceNumber ] > hostQuarterNoteSamps *multiplier){ multiplier *= 2; }
+            float lastDiff = abs(hostQuarterNoteSamps*multiplier - m_sliceLenSamps[ voiceNumber ]);
             auto halfMultiplier = multiplier * 0.5f;
-            auto newDiff = abs(hostQuarterNoteSamps*halfMultiplier - m_sliceLenSamps[ sampleNumber ]);
+            auto newDiff = abs(hostQuarterNoteSamps*halfMultiplier - m_sliceLenSamps[ voiceNumber ]);
             if (newDiff < lastDiff ) { multiplier = halfMultiplier;}
             multiplier = 1/multiplier;
         }
-        return (m_sliceLenSamps[ sampleNumber ]*multiplier) / hostQuarterNoteSamps ;
+        return (m_sliceLenSamps[ voiceNumber ]*multiplier) / hostQuarterNoteSamps ;
     };
     
     //==============================================================================
     void setPatterns( )
     {
+        DBG( "Setting Patterns. nSteps " << m_nSteps << " nVoices " << m_stepPat.size() );
         m_revPat.resize(m_nSteps);
         m_speedPat.resize(m_nSteps);
         m_subDivPat.resize(m_nSteps);
         m_subDivAmpRampPat.resize(m_nSteps);
         m_ampPat.resize(m_nSteps);
-        for ( int sampleNumber = 0; sampleNumber < m_nSlices.size(); sampleNumber++ )
+        for ( int voiceNumber = 0; voiceNumber < m_nSlices.size(); voiceNumber++ )
         {
-            m_stepPat[ sampleNumber ].resize(m_nSteps);
+            m_stepPat[ voiceNumber ].resize(m_nSteps);
         }
         for (int index = 0; index < m_nSteps; index++)
         {
@@ -463,9 +480,9 @@ private:
             m_subDivPat[index] = 0;
             m_subDivAmpRampPat[index] = rand01();
             m_ampPat[index] = 1.0f;
-            for ( int sampleNumber = 0; sampleNumber < m_nSlices.size(); sampleNumber++ )
+            for ( int voiceNumber = 0; voiceNumber < m_stepPat.size(); voiceNumber++ )
             {
-                m_stepPat[ sampleNumber ][index] = index % m_nSlices[ sampleNumber ];
+                m_stepPat[ voiceNumber ][index] = index % m_nSlices[ voiceNumber ];
             }
             
         }
@@ -512,19 +529,19 @@ private:
     //==============================================================================
     void setRandStepPat()
     {
-        for ( int sampleNumber = 0; sampleNumber < m_stepPat.size(); sampleNumber++ )
+        for ( int voiceNumber = 0; voiceNumber < m_stepPat.size(); voiceNumber++ )
         {
-            m_stepPat[ sampleNumber ].resize(m_nSteps);
+            m_stepPat[ voiceNumber ].resize(m_nSteps);
             for (int index = 0; index < m_nSteps; index++)
             {
                 if(  m_stepShuffleProb/100.0f <= rand01() )
                 {
-                    m_stepPat[ sampleNumber ][index] = index;
+                    m_stepPat[ voiceNumber ][index] = index;
                 }
                 else
                 {
                     int step = floor(rand01() * m_nSteps);
-                    m_stepPat[ sampleNumber ][index] = step;
+                    m_stepPat[ voiceNumber ][index] = step;
                 }
             }
         }

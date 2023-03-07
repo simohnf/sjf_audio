@@ -197,12 +197,14 @@ public:
     void play(juce::AudioBuffer<float> &buffer, float bpm, double hostPosition)
     {
         if (!m_sampleLoadedFlag) { return; }
+        auto bufferSize = buffer.getNumSamples();
+        auto numChannels = buffer.getNumChannels();
+        
         auto hostSyncCompenstation =  calculateHostCompensation( bpm );
         auto envLen = floor(m_fadeInMs * m_SR / 1000) + 1;
         auto increment = m_phaseRateMultiplier * hostSyncCompenstation;
         
-        auto bufferSize = buffer.getNumSamples();
-        auto numChannels = buffer.getNumChannels();
+
         
         auto hostSampQuarter = 60.0f*m_SR/bpm;
         hostPosition *= hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
@@ -549,9 +551,16 @@ protected:
     //==============================================================================
 };
 
-
+//==============================================================================
+//==============================================================================
+//==============================================================================
+//==============================================================================
 class sjf_samplerPoly
 {
+    float m_revProb = 0; float m_speedProb = 0; float m_subDivProb = 0; float m_ampProb = 0; float m_stepShuffleProb = 0, m_voiceProb = 0;
+    bool m_randomOnLoopFlag = false;
+    bool m_revFlag = false, m_speedFlag = false, m_speedRampFlag = true, m_subDivFlag = false, m_ampFlag = false, m_stepShuffleFlag = false;
+    
     
     std::vector< sjf_sampler > m_samplers;
     std::vector< float > m_sampleChoice;
@@ -559,7 +568,114 @@ public:
     sjf_samplerPoly(){}
     ~sjf_samplerPoly(){}
     
-    
+    //==============================================================================
+    void setRevProb( const float& prob )
+    {
+        m_revProb = prob;
+    }
+    //==============================================================================
+    void setSpeedProb( const float& prob )
+    {
+        m_speedProb = prob;
+    }
+    //==============================================================================
+    void setSubDivProb( const float& prob )
+    {
+        m_subDivProb = prob;
+    }
+    //==============================================================================
+    void setAmpProb( const float& prob )
+    {
+        m_ampProb = prob;
+    }
+    //==============================================================================
+    void setShuffleProb( const float& prob )
+    {
+        m_stepShuffleProb = prob;
+    }
+    //==============================================================================
+    void setShuffleProb( const float& prob )
+    {
+        m_stepShuffleProb = prob;
+    }
+    //==============================================================================
+    void setChoiceProb( const float& prob )
+    {
+        m_voiceProb = prob;
+    }
+    //==============================================================================
+    void loadSample( const int voiceNumber )
+    {
+        m_samplers[ voiceNumber ].loadSample();
+    }
+    //==============================================================================
+    void loadSample( juce::Value path, const int voiceNumber )
+    {
+        m_samplers[ voiceNumber ].loadSample( path );
+    }
+    //==============================================================================
+    const juce::String getFilePath( const int voiceNumber )
+    {
+        return m_samplers[ voiceNumber ].getFilePath();
+    }
+    //==============================================================================
+    const juce::String getFileName( const int voiceNumber )
+    {
+        return m_samplers[ voiceNumber ].getFileName();
+    }
+    //==============================================================================
+    void setFadeLenMs(const float& fade)
+    {
+        for ( int v = 0; v < m_samplers.size(); v++ )
+        {
+            m_samplers[ v ].setFadeLenMs( fade );
+        }
+    };
+    //==============================================================================
+    float getFadeInMs()
+    {
+        return m_samplers[ 0 ].getFadeInMs();
+    }
+    //==============================================================================
+    int getNumSlices( const int& voiceNumber )
+    {
+        return m_samplers[ voiceNumber ].getNumSlices();
+    }
+    //==============================================================================
+    void setNumSteps(const int& steps)
+    {
+        for ( int v = 0; v < m_samplers.size(); v++ )
+        {
+            m_samplers[ v ].setNumSteps( steps );
+        }
+    }
+    //==============================================================================
+    int getNumSteps()
+    {
+        return m_samplers[ 0 ].getNumSteps();
+    }
+    //==============================================================================
+    void setPhaseRateMultiplierIndex(int i)
+    {
+        for ( int v = 0; v < m_samplers.size(); v++ )
+        {
+            m_samplers[ v ].setPhaseRateMultiplierIndex( i );
+        }
+    }
+    //==============================================================================
+    int getPhaseRateMultiplierIndex()
+    {
+        return m_samplers[ 0 ].getPhaseRateMultiplierIndex();
+    }
+    //==============================================================================
+    void randomiseAll()
+    {
+        m_revFlag = true;
+        m_speedFlag = true;
+        m_subDivFlag = true;
+        m_ampFlag = true;
+        m_stepShuffleFlag = true;
+    }
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_samplerPoly )
 };

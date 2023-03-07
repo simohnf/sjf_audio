@@ -19,7 +19,7 @@ public:
     bool m_revFlag = false; bool m_speedFlag = false; bool m_speedRampFlag = true;
     bool m_subDivFlag = false, m_ampFlag = false, m_stepShuffleFlag = false, m_sampleChoiceFlag = false;
     int m_interpolationType = 1;
-    
+    int m_voiceNumber = 0;
     
     
 protected:
@@ -82,11 +82,13 @@ public:
             while ( nVoices > m_nSlices.size() )
             {
                 m_nSlices.push_back( 16 );
+                m_sampleChoicePat.push_back( 0 );
             }
         }
         else
         {
             m_nSlices.resize( nVoices );
+            m_sampleChoicePat.resize( nVoices );
         }
         
     }
@@ -242,79 +244,120 @@ public:
         for (int index = 0; index < bufferSize; index++)
         {
             checkForChangeOfBeat( m_stepCount );
-            auto voiceNumber = calculateSampleChoice( m_stepCount );
+            m_voiceNumber = calculateSampleChoice( m_stepCount );
+//            auto pos = calculateMangledReadPosition( m_readPos, 1, m_stepCount, m_voiceNumber );
             auto pos = m_readPos;
             auto subDiv = floor(m_subDivPat[m_stepCount] * 8.0f) + 1.0f ;
-            auto subDivLenSamps = m_sliceLenSamps[ voiceNumber ] / subDiv ;
+            auto subDivLenSamps = m_sliceLenSamps[ m_voiceNumber ] / subDiv ;
             auto subDivAmp = calculateSubDivAmp( m_stepCount, subDiv, int(pos / subDivLenSamps) );
-            auto speedVal = calculateSpeedVal( m_stepCount, (m_readPos / m_sliceLenSamps[ voiceNumber ]) );
+            auto speedVal = calculateSpeedVal( m_stepCount, (m_readPos / m_sliceLenSamps[ m_voiceNumber ]) );
             while (pos >= subDivLenSamps){ pos -= subDivLenSamps; }
             auto env = envelope( pos , (int)subDivLenSamps - 1, envLen ); // Check this out more
             auto amp = calculateAmpValue( m_stepCount );
             pos = calculateReverse( m_stepCount, pos, subDivLenSamps );
             pos *= speedVal;
-            pos += m_stepPat[ voiceNumber ][ m_stepCount ] * m_sliceLenSamps[ voiceNumber ];
+            pos += m_stepPat[ m_voiceNumber ][ m_stepCount ] * m_sliceLenSamps[ m_voiceNumber ];
             
             for (int channel = 0; channel < numChannels; channel ++)
             {
-                auto val = calculateSampleValue( m_AudioSample[ voiceNumber ], channel % m_AudioSample[ voiceNumber ].getNumChannels(), pos );
+                auto val = calculateSampleValue( m_AudioSample[ m_voiceNumber ], channel % m_AudioSample[ m_voiceNumber ].getNumChannels(), pos );
                 val *= subDivAmp * amp;
                 val *= env;
                 buffer.setSample(channel, index, val);
             }
             m_readPos += increment;
-            if (m_readPos >= m_sliceLenSamps[ voiceNumber ]) {m_stepCount++; m_stepCount %= m_nSteps; }
-            while (m_readPos >= m_sliceLenSamps[ voiceNumber ]){ m_readPos -= m_sliceLenSamps[ voiceNumber ]; }
+            if (m_readPos >= m_sliceLenSamps[ m_voiceNumber ]) {m_stepCount++; m_stepCount %= m_nSteps; }
+            while (m_readPos >= m_sliceLenSamps[ m_voiceNumber ]){ m_readPos -= m_sliceLenSamps[ m_voiceNumber ]; }
         }
     };
     //==============================================================================
     void play(juce::AudioBuffer<float> &buffer, float bpm, double hostPosition)
     {
+        DBG( "host position " << hostPosition );
         if (!m_sampleLoadedFlag) { return; }
+//        hostPosition *= 2;
+//        fastMod3< double > ( hostPosition, m_nSteps );
+//        hostPosition *= 0.5;
         auto bufferSize = buffer.getNumSamples();
         auto numChannels = buffer.getNumChannels();
         
-        DBG( "BPM " << bpm );
+        auto envLen = floor(m_fadeInMs * m_SR / 1000) + 1;
+        auto hostSampQuarter = 60.0f*m_SR/bpm;
+        
+        auto hostSyncCompenstation =  calculateHostCompensation( bpm, m_voiceNumber );
+        auto increment = m_phaseRateMultiplier * hostSyncCompenstation;
+        auto hostPos = hostPosition * hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
+        m_stepCount = (int)( hostPos / m_sliceLenSamps[ m_voiceNumber ] );
+        m_stepCount %= m_nSteps;
+        m_readPos = hostPos - m_stepCount*m_sliceLenSamps[ m_voiceNumber ];
+        fastMod3< float > ( m_readPos, m_sliceLenSamps[ m_voiceNumber ] );
+        
+//        m_voiceNumber = calculateSampleChoice( m_stepCount );
+//
+//        auto hostSampQuarter = 60.0f*m_SR/bpm;
+//        auto envLen = floor(m_fadeInMs * m_SR / 1000) + 1;
+//
+//        auto hostSyncCompenstation =  calculateHostCompensation( bpm );
+//        auto increment = m_phaseRateMultiplier * hostSyncCompenstation;
+//        hostPosition *= hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
+//        m_stepCount = (int) ( hostPosition / m_sliceLenSamps );
+//        auto leftOver = hostPosition - m_stepCount*m_sliceLenSamps;
+//        m_readPos = leftOver;
+//        m_stepCount %= m_nSteps;
+//
         for (int index = 0; index < bufferSize; index++)
         {
-            checkForChangeOfBeat( m_stepCount );
-            auto voiceNumber = calculateSampleChoice( m_stepCount );
+//            DBG( "step " << m_stepCount );
+            if ( checkForChangeOfBeat( m_stepCount ) )
+            {
+//                DBG("NEW BEAT");
+                m_voiceNumber = calculateSampleChoice( m_stepCount );
+                
+                
+                hostSyncCompenstation =  calculateHostCompensation( bpm, m_voiceNumber );
+                increment = m_phaseRateMultiplier * hostSyncCompenstation;
+                hostPos = (hostPosition * hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation) + index;
+                m_readPos = hostPos - m_stepCount*m_sliceLenSamps[ m_voiceNumber ];
+                fastMod3< float > ( m_readPos, m_sliceLenSamps[ m_voiceNumber ] );
+//                m_stepCount %= m_nSteps;
+            }
+//            else
+//            {
+//                DBG("NOT A BEAT");
+//            }
+//            DBG( "stepAfter " << m_stepCount );
             
-            auto hostSyncCompenstation =  calculateHostCompensation( bpm, voiceNumber );
-            
-            auto envLen = floor(m_fadeInMs * m_SR / 1000) + 1;
-            auto increment = m_phaseRateMultiplier * hostSyncCompenstation;
-            auto hostSampQuarter = 60.0f*m_SR/bpm;
-            hostPosition *= hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
-            auto leftOver = hostPosition / m_sliceLenSamps[ voiceNumber ];
-            m_stepCount = (int)leftOver;
-            leftOver = hostPosition - m_stepCount*m_sliceLenSamps[ voiceNumber ];
-            
-            m_readPos = leftOver;
-            m_stepCount %= m_nSteps;
-            
+
+
+//            auto pos = calculateMangledReadPosition( m_readPos, increment, m_stepCount, m_voiceNumber );
             auto pos = m_readPos;
-            auto subDiv = floor(m_subDivPat[m_stepCount] * 8.0f) + 1.0f ;
-            auto subDivLenSamps = m_sliceLenSamps[ voiceNumber ] / subDiv ;
+            auto subDiv = floor( m_subDivPat[ m_stepCount ] * 8.0f ) + 1.0f ;
+            auto subDivLenSamps = m_sliceLenSamps[ m_voiceNumber ] / subDiv ;
             auto subDivAmp = calculateSubDivAmp( m_stepCount, subDiv, int(pos / subDivLenSamps) );
-            auto speedVal = calculateSpeedVal( m_stepCount, (m_readPos / m_sliceLenSamps[ voiceNumber ]) );
-            while (pos >= subDivLenSamps){ pos -= subDivLenSamps; }
-            auto env = envelope( floor(pos / increment) , floor(subDivLenSamps / increment), envLen ); // Check this out more
+            auto speedVal = calculateSpeedVal( m_stepCount, ( m_readPos / m_sliceLenSamps[ m_voiceNumber ] ) );
+            fastMod3< float >( pos, subDivLenSamps ); //while ( pos >= subDivLenSamps ){ pos -= subDivLenSamps; }
+            auto env = envelope( floor( pos / increment ) , floor( subDivLenSamps / increment ), envLen ); // Check this out more
             auto amp = calculateAmpValue( m_stepCount );
-            pos = calculateReverse(m_stepCount, pos, subDivLenSamps);
+            pos = calculateReverse( m_stepCount, pos, subDivLenSamps );
             pos *= speedVal;
-            pos += m_stepPat[ voiceNumber ][m_stepCount] * m_sliceLenSamps[ voiceNumber ];
+            pos += m_stepPat[ m_voiceNumber ][ m_stepCount ] * m_sliceLenSamps[ m_voiceNumber ];
             
             for (int channel = 0; channel < numChannels; channel ++)
             {
-                auto val = calculateSampleValue(m_AudioSample[ voiceNumber ], channel % m_AudioSample[ voiceNumber ].getNumChannels(), pos);
+                auto val = calculateSampleValue( m_AudioSample[ m_voiceNumber ], channel % m_AudioSample[ m_voiceNumber ].getNumChannels(), pos );
                 val *= subDivAmp * amp;
                 val *= env;
                 buffer.setSample(channel, index, val);
             }
             m_readPos +=  increment;
-            if (m_readPos >= m_sliceLenSamps[ voiceNumber ]) {m_stepCount++; m_stepCount %= m_nSteps; }
-            while (m_readPos >= m_sliceLenSamps[ voiceNumber ]){ m_readPos -= m_sliceLenSamps[ voiceNumber ]; }
+            if ( m_readPos >= m_sliceLenSamps[ m_voiceNumber ] )
+            {
+                m_stepCount++;
+                m_stepCount %= m_nSteps;
+                fastMod3< float > ( m_readPos, m_sliceLenSamps[ m_voiceNumber ] );
+            }
+//            while (m_readPos >= m_sliceLenSamps[ m_voiceNumber ])
+//            { m_readPos -= m_sliceLenSamps[ m_voiceNumber ]; }
             
         }
     }
@@ -330,17 +373,36 @@ public:
     };
     //==============================================================================
 private:
-    bool checkForChangeOfBeat(int currentStep)
+//    float calculateMangledReadPosition( float pos, const float& increment, const int& step, const int& voiceNumber )
+//    {
+//        auto subDiv = floor(m_subDivPat[step] * 8.0f) + 1.0f ;
+//        auto subDivLenSamps = m_sliceLenSamps[ voiceNumber ] / subDiv ;
+//        auto subDivAmp = calculateSubDivAmp( step, subDiv, int(pos / subDivLenSamps) );
+//        auto speedVal = calculateSpeedVal( step, ( pos / m_sliceLenSamps[ voiceNumber ]) );
+//        while (pos >= subDivLenSamps){ pos -= subDivLenSamps; }
+//        auto env = envelope( floor( pos / increment) , floor(subDivLenSamps / increment), envLen ); // Check this out more
+//        auto amp = calculateAmpValue( step );
+//        pos = calculateReverse( step, pos, subDivLenSamps);
+//        pos *= speedVal;
+//        pos += m_stepPat[ voiceNumber ][step] * m_sliceLenSamps[ voiceNumber ];
+//        return pos;
+//
+//    }
+    //==============================================================================
+    bool checkForChangeOfBeat( int currentStep )
     {
-        bool newStep = false;
-        if ( currentStep != m_lastStep )
+//        DBG( "last " << m_lastStep << " current " << currentStep );
+        if ( currentStep == m_lastStep )
+        {
+            return false;
+        }
+        else
         {   // This is just to randomise patterns at the start of each loop
             if (currentStep == 0 && m_randomOnLoopFlag) { randomiseAll(); }
             checkPatternRandomisationFlags();
-            newStep = true;
+            m_lastStep = currentStep;
+            return true;
         }
-        m_lastStep = currentStep;
-        return newStep;
     };
     //==============================================================================
     float envelope( float pos, float period, float envLen)
@@ -401,7 +463,7 @@ private:
     //==============================================================================
     int calculateSampleChoice( const int& currentStep )
     {
-        return round( m_sampleChoicePat[ currentStep ] * m_AudioSample.size() );
+        return round( m_sampleChoicePat[ currentStep ] * ( m_AudioSample.size() - 1 ) );
     }
     //==============================================================================
     float calculateSampleValue(juce::AudioBuffer<float>& buffer, int channel, float pos)

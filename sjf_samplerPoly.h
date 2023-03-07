@@ -71,30 +71,33 @@ public:
     
     void setNumVoices( const int& nVoices )
     {
+        if( m_AudioSample.size() == nVoices ){ return; }
         m_AudioSample.resize( nVoices );
         m_samplePath.resize( nVoices );
         m_sampleName.resize( nVoices );
         m_stepPat.resize( nVoices );
         m_sliceLenSamps.resize( nVoices );
         m_durationSamps.resize( nVoices );
-        m_sampleLoadedFlag.resize( nVoices );
-        for ( int v = 0; v < m_sampleLoadedFlag.size(); v++ )
-        {
-            m_sampleLoadedFlag[ v ] = false;
-        }
-        
+//        m_sampleLoadedFlag.resize( nVoices );
+//        for ( int v = 0; v < m_sampleLoadedFlag.size(); v++ )
+//        {
+//            m_sampleLoadedFlag[ v ] = false;
+//        }
+//
         if ( nVoices > m_nSlices.size() )
         {
             while ( nVoices > m_nSlices.size() )
             {
                 m_nSlices.push_back( 16 );
                 m_phaseRateMultiplier.push_back( 1 );
+                m_sampleLoadedFlag.push_back( false );
             }
         }
         else
         {
             m_nSlices.resize( nVoices );
             m_phaseRateMultiplier.resize( nVoices );
+            m_sampleLoadedFlag.resize( nVoices );
         }
     }
     
@@ -654,7 +657,13 @@ private:
     //==============================================================================
     void setRandomVoicePattern()
     {
-        setRandPat( m_sampleChoicePat, m_sampleChoiceProb/100.0f );
+        m_sampleChoicePat.resize(m_nSteps);
+        for (int index = 0; index < m_nSteps; index++)
+        {
+            if ( m_sampleChoiceProb == 0 ) { m_sampleChoicePat[index] = 0; }
+            else { m_sampleChoicePat[index] = rand01()*m_sampleChoiceProb/100.0f; }
+        }
+//        setRandPat( m_sampleChoicePat, m_sampleChoiceProb/100.0f );
     }
     //==============================================================================
     void setRandPat(std::vector<float>& pattern, float prob)

@@ -12,7 +12,8 @@
 #include "sjf_interpolationTypes.h"
 #include <time.h>
 
-class sjf_samplerPoly{
+class sjf_samplerPoly
+{
 public:
     float m_revProb = 0, m_speedProb = 0, m_subDivProb = 0, m_ampProb = 0, m_stepShuffleProb = 0, m_sampleChoiceProb = 0;
     bool m_canPlayFlag = false, m_randomOnLoopFlag = false, m_syncToHostFlag = false, m_revFlag = false, m_speedFlag = false, m_speedRampFlag = true, m_subDivFlag = false, m_ampFlag = false, m_stepShuffleFlag = false, m_sampleChoiceFlag = false;
@@ -352,6 +353,7 @@ public:
             if ( checkForChangeOfBeat( m_stepCount ) )
             {
                 m_voiceNumber = calculateSampleChoice( m_stepCount );
+                DBG( "voice " << m_voiceNumber );
                 if ( !m_sampleLoadedFlag[ m_voiceNumber ] )
                 {
                     bool samples = false;
@@ -508,7 +510,9 @@ private:
     //==============================================================================
     int calculateSampleChoice( const int& currentStep )
     {
-        return round( m_sampleChoicePat[ currentStep ] * ( m_AudioSample.size() - 1 ) );
+        if( m_sampleChoicePat[ currentStep ] >= m_sampleChoiceProb/100.0f ) { return 0; }
+        else { return 1; }
+//        return round( m_sampleChoicePat[ currentStep ] * ( m_AudioSample.size() - 1 ) );
     }
     //==============================================================================
     float calculateSampleValue(juce::AudioBuffer<float>& buffer, int channel, float pos)
@@ -661,7 +665,7 @@ private:
         for (int index = 0; index < m_nSteps; index++)
         {
             if ( m_sampleChoiceProb == 0 ) { m_sampleChoicePat[index] = 0; }
-            else { m_sampleChoicePat[index] = rand01()*m_sampleChoiceProb/100.0f; }
+            else { m_sampleChoicePat[index] = rand01(); }
         }
 //        setRandPat( m_sampleChoicePat, m_sampleChoiceProb/100.0f );
     }

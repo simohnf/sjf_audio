@@ -15,9 +15,7 @@
 class sjf_samplerPoly{
 public:
     float m_revProb = 0, m_speedProb = 0, m_subDivProb = 0, m_ampProb = 0, m_stepShuffleProb = 0, m_sampleChoiceProb = 0;
-    bool m_canPlayFlag = false; bool m_randomOnLoopFlag = false; bool m_syncToHostFlag = false;
-    bool m_revFlag = false; bool m_speedFlag = false; bool m_speedRampFlag = true;
-    bool m_subDivFlag = false, m_ampFlag = false, m_stepShuffleFlag = false, m_sampleChoiceFlag = false;
+    bool m_canPlayFlag = false, m_randomOnLoopFlag = false, m_syncToHostFlag = false, m_revFlag = false, m_speedFlag = false, m_speedRampFlag = true, m_subDivFlag = false, m_ampFlag = false, m_stepShuffleFlag = false, m_sampleChoiceFlag = false;
     int m_interpolationType = 1;
     int m_voiceNumber = 0;
     
@@ -27,8 +25,10 @@ protected:
     std::vector< float > m_revPat, m_speedPat, m_subDivPat, m_subDivAmpRampPat, m_ampPat;
     std::vector< std::vector< float > > m_stepPat;
     std::vector< float > m_sampleChoicePat;
-    
-    
+    std::vector< float > m_durationSamps;
+    std::vector< float > m_sliceLenSamps;
+    std::vector< float > m_phaseRateMultiplier;
+    std::vector< bool > m_sampleLoadedFlag;
     int m_nSteps = 16;
     std::vector< int > m_nSlices;
     
@@ -39,13 +39,13 @@ protected:
     std::unique_ptr<juce::FileChooser> m_chooser;
     
     float m_fadeInMs = 1;
-    std::vector< float > m_durationSamps;
+    
     float m_hostBPM = 120;
-    std::vector< float > m_sliceLenSamps;
+    
     int m_SR = 44100;
     int m_lastStep = -1;
-    float m_phaseRateMultiplier = 1;
-    bool m_sampleLoadedFlag = false;
+    
+    
     float m_readPos = 0;
     int m_stepCount = 0;
     
@@ -69,7 +69,7 @@ public:
         srand((unsigned)time(NULL));
     }
     
-    void setNumVoices( const int nVoices )
+    void setNumVoices( const int& nVoices )
     {
         m_AudioSample.resize( nVoices );
         m_samplePath.resize( nVoices );
@@ -77,20 +77,25 @@ public:
         m_stepPat.resize( nVoices );
         m_sliceLenSamps.resize( nVoices );
         m_durationSamps.resize( nVoices );
+        m_sampleLoadedFlag.resize( nVoices );
+        for ( int v = 0; v < m_sampleLoadedFlag.size(); v++ )
+        {
+            m_sampleLoadedFlag[ v ] = false;
+        }
+        
         if ( nVoices > m_nSlices.size() )
         {
             while ( nVoices > m_nSlices.size() )
             {
                 m_nSlices.push_back( 16 );
-                m_sampleChoicePat.push_back( 0 );
+                m_phaseRateMultiplier.push_back( 1 );
             }
         }
         else
         {
             m_nSlices.resize( nVoices );
-            m_sampleChoicePat.resize( nVoices );
+            m_phaseRateMultiplier.resize( nVoices );
         }
-        
     }
     
     const int getNumVoices()
@@ -98,11 +103,11 @@ public:
         return m_AudioSample.size();
     }
     //==============================================================================
-    float getDuration( const int voiceNumber ) { return m_durationSamps[ voiceNumber ]; };
+    float getDuration( const int& voiceNumber ) { return m_durationSamps[ voiceNumber ]; };
     //==============================================================================
-    float getDurationMS( const int voiceNumber ) { return (float)m_durationSamps[ voiceNumber ] * 1000.0f / (float)m_SR; };
+    float getDurationMS( const int& voiceNumber ) { return (float)m_durationSamps[ voiceNumber ] * 1000.0f / (float)m_SR; };
     //==============================================================================
-    void loadSample( int voiceNumber )
+    void loadSample( const int& voiceNumber )
     {
         m_chooser = std::make_unique<juce::FileChooser> ("Select a Wave/Aiff file to play..." ,
                                                          juce::File{}, "*.aif, *.wav");
@@ -129,13 +134,13 @@ public:
                                         m_samplePath[ voiceNumber ] = file.getFullPathName();
                                         m_sampleName[ voiceNumber ] = file.getFileName();
                                         m_tempBuffer.setSize(0, 0);
-                                        m_sampleLoadedFlag = true;
+                                        m_sampleLoadedFlag[ voiceNumber ] = true;
                                         m_canPlayFlag = lastPlayState;
                                     }
                                 });
     };
     //==============================================================================
-    void loadSample(juce::Value path, int voiceNumber)
+    void loadSample(juce::Value path, const int& voiceNumber)
     {
         juce::File file( path.getValue().toString() );
         if (file == juce::File{}) { return; }
@@ -150,7 +155,7 @@ public:
             setPatterns();
             m_samplePath[ voiceNumber ] = file.getFullPathName();
             m_sampleName[ voiceNumber ] = file.getFileName();
-            m_sampleLoadedFlag = true;
+            m_sampleLoadedFlag[ voiceNumber ] = true;
         }
     };
     //==============================================================================
@@ -176,6 +181,7 @@ public:
     //==============================================================================
     void setNumSlices( const int slices, const int voiceNumber )
     {
+        if(slices <= 0){ return; }
         DBG("Change Num Slices " << slices << " voice " << voiceNumber );
         m_nSlices[ voiceNumber ] = slices;
         m_sliceLenSamps[ voiceNumber ] = m_durationSamps[ voiceNumber ]/m_nSlices[ voiceNumber ];
@@ -195,11 +201,13 @@ public:
         m_subDivPat.resize(steps);
         m_subDivAmpRampPat.resize(steps);
         m_ampPat.resize(steps);
+        m_sampleChoicePat.resize( steps );
         for ( int voiceNumber = 0; voiceNumber < m_nSlices.size(); voiceNumber++ )
         {
             m_stepPat[ voiceNumber ].resize(steps);
         }
         if (steps > m_nSteps)
+        {
             for (int index = m_nSteps; index < steps; index++)
             {
                 m_revPat[index] = 0;
@@ -207,11 +215,13 @@ public:
                 m_subDivPat[index] = 0;
                 m_subDivAmpRampPat[index] = rand01();
                 m_ampPat[index] = 1.0f;
+                m_sampleChoicePat[ index ] = 0;
                 for ( int voiceNumber = 0; voiceNumber < m_nSlices.size(); voiceNumber++ )
                 {
                     m_stepPat[ voiceNumber ][ index ] = index % m_nSlices[ voiceNumber ];
                 }
             }
+        }
         m_nSteps = steps;
     };
     //==============================================================================
@@ -220,31 +230,60 @@ public:
         return m_nSteps;
     }
     //==============================================================================
-    void setPhaseRateMultiplierIndex(int i)
+    void setPhaseRateMultiplierIndex( const int& i, const int& voiceNumber )
     {
-        m_phaseRateMultiplier = pow(2, i-3);
+        m_phaseRateMultiplier[ voiceNumber ] = pow(2, i-3);
     }
     //==============================================================================
-    int getPhaseRateMultiplierIndex()
+    int getPhaseRateMultiplierIndex( const int& voiceNumber )
     {
-        return 3 + log10(m_phaseRateMultiplier)/log10(2);
+        return 3 + log10(m_phaseRateMultiplier[ voiceNumber ])/log10(2);
     }
     //==============================================================================
     void play(juce::AudioBuffer<float> &buffer)
     {
-        if (!m_sampleLoadedFlag) { return; }
-        auto envLen = m_phaseRateMultiplier * m_fadeInMs * m_SR / 1000;
-        envLen = (int)envLen + 1 ;
-        
+        if (!m_sampleLoadedFlag[ m_voiceNumber ])
+        {
+            bool samples = false;
+            for ( int v = 0; v < m_sampleLoadedFlag.size(); v++ )
+            {
+                if ( m_sampleLoadedFlag[ v ] )
+                {
+                    m_voiceNumber = v;
+                    samples = true;
+                }
+            }
+            if ( !samples ){ return; }
+        }
+
         auto bufferSize = buffer.getNumSamples();
         auto numChannels = buffer.getNumChannels();
         
-        auto increment = m_phaseRateMultiplier;
+        auto increment = m_phaseRateMultiplier[ m_voiceNumber ];
+        auto envLen =(int)( m_phaseRateMultiplier[ m_voiceNumber ] * m_fadeInMs * m_SR / 1000 ) + 1;
         
         for (int index = 0; index < bufferSize; index++)
         {
-            checkForChangeOfBeat( m_stepCount );
-            m_voiceNumber = calculateSampleChoice( m_stepCount );
+            if ( checkForChangeOfBeat( m_stepCount ) )
+            {
+                m_voiceNumber = calculateSampleChoice( m_stepCount );
+                if (!m_sampleLoadedFlag[ m_voiceNumber ])
+                {
+                    bool samples = false;
+                    for ( int v = 0; v < m_sampleLoadedFlag.size(); v++ )
+                    {
+                        if ( m_sampleLoadedFlag[ v ] )
+                        {
+                            m_voiceNumber = v;
+                            samples = true;
+                        }
+                    }
+                    if ( !samples ){ return; }
+                }
+                envLen = (int)( m_phaseRateMultiplier[ m_voiceNumber ] * m_fadeInMs * m_SR / 1000 ) + 1;
+                increment = m_phaseRateMultiplier[ m_voiceNumber ];
+            }
+            
 //            auto pos = calculateMangledReadPosition( m_readPos, 1, m_stepCount, m_voiceNumber );
             auto pos = m_readPos;
             auto subDiv = floor(m_subDivPat[m_stepCount] * 8.0f) + 1.0f ;
@@ -273,8 +312,20 @@ public:
     //==============================================================================
     void play(juce::AudioBuffer<float> &buffer, float bpm, double hostPosition)
     {
-        DBG( "host position " << hostPosition );
-        if (!m_sampleLoadedFlag) { return; }
+//        DBG( "host position " << hostPosition );
+        if ( !m_sampleLoadedFlag[ m_voiceNumber ] )
+        {
+            bool samples = false;
+            for ( int v = 0; v < m_sampleLoadedFlag.size(); v++ )
+            {
+                if ( m_sampleLoadedFlag[ v ] )
+                {
+                    m_voiceNumber = v;
+                    samples = true;
+                }
+            }
+            if ( !samples ){ return; }
+        }
 //        hostPosition *= 2;
 //        fastMod3< double > ( hostPosition, m_nSteps );
 //        hostPosition *= 0.5;
@@ -285,51 +336,42 @@ public:
         auto hostSampQuarter = 60.0f*m_SR/bpm;
         
         auto hostSyncCompenstation =  calculateHostCompensation( bpm, m_voiceNumber );
-        auto increment = m_phaseRateMultiplier * hostSyncCompenstation;
-        auto hostPos = hostPosition * hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
+        auto increment = m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
+        auto hostPos = hostPosition * hostSampQuarter * m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
         m_stepCount = (int)( hostPos / m_sliceLenSamps[ m_voiceNumber ] );
-        m_stepCount %= m_nSteps;
+        
         m_readPos = hostPos - m_stepCount*m_sliceLenSamps[ m_voiceNumber ];
         fastMod3< float > ( m_readPos, m_sliceLenSamps[ m_voiceNumber ] );
-        
-//        m_voiceNumber = calculateSampleChoice( m_stepCount );
-//
-//        auto hostSampQuarter = 60.0f*m_SR/bpm;
-//        auto envLen = floor(m_fadeInMs * m_SR / 1000) + 1;
-//
-//        auto hostSyncCompenstation =  calculateHostCompensation( bpm );
-//        auto increment = m_phaseRateMultiplier * hostSyncCompenstation;
-//        hostPosition *= hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
-//        m_stepCount = (int) ( hostPosition / m_sliceLenSamps );
-//        auto leftOver = hostPosition - m_stepCount*m_sliceLenSamps;
-//        m_readPos = leftOver;
-//        m_stepCount %= m_nSteps;
-//
+        m_stepCount %= m_nSteps;
+
         for (int index = 0; index < bufferSize; index++)
         {
-//            DBG( "step " << m_stepCount );
             if ( checkForChangeOfBeat( m_stepCount ) )
             {
-//                DBG("NEW BEAT");
                 m_voiceNumber = calculateSampleChoice( m_stepCount );
-                
+                if ( !m_sampleLoadedFlag[ m_voiceNumber ] )
+                {
+                    bool samples = false;
+                    for ( int v = 0; v < m_sampleLoadedFlag.size(); v++ )
+                    {
+                        if ( m_sampleLoadedFlag[ v ] )
+                        {
+                            m_voiceNumber = v;
+                            samples = true;
+                        }
+                    }
+                    if ( !samples ){ return; }
+                }
                 
                 hostSyncCompenstation =  calculateHostCompensation( bpm, m_voiceNumber );
-                increment = m_phaseRateMultiplier * hostSyncCompenstation;
-                hostPos = (hostPosition * hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation) + index;
+                increment = m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
+                hostPos = (hostPosition * hostSampQuarter * m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation) + index;
                 m_readPos = hostPos - m_stepCount*m_sliceLenSamps[ m_voiceNumber ];
                 fastMod3< float > ( m_readPos, m_sliceLenSamps[ m_voiceNumber ] );
-//                m_stepCount %= m_nSteps;
             }
-//            else
-//            {
-//                DBG("NOT A BEAT");
-//            }
-//            DBG( "stepAfter " << m_stepCount );
-            
 
 
-//            auto pos = calculateMangledReadPosition( m_readPos, increment, m_stepCount, m_voiceNumber );
+
             auto pos = m_readPos;
             auto subDiv = floor( m_subDivPat[ m_stepCount ] * 8.0f ) + 1.0f ;
             auto subDivLenSamps = m_sliceLenSamps[ m_voiceNumber ] / subDiv ;
@@ -494,8 +536,8 @@ private:
         return linearInterpolate(buffer, channel, pos);
     };
     //==============================================================================
-    float calculateHostCompensation( float bpm, const int voiceNumber ){
-        if (!m_sampleLoadedFlag ) { return 1; }
+    float calculateHostCompensation( const float& bpm, const int& voiceNumber ){
+        if (!m_sampleLoadedFlag[ voiceNumber ] ) { return 1; }
         m_hostBPM = bpm;
         auto hostQuarterNoteSamps = m_SR*60.0f/bpm;
         auto multiplier = 1.0f;

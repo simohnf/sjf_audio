@@ -111,7 +111,7 @@ public:
     //==============================================================================
     float getDurationMS( const int& voiceNumber ) { return (float)m_durationSamps[ voiceNumber ] * 1000.0f / (float)m_SR; };
     //==============================================================================
-    void loadSample( const int& voiceNumber )
+    bool loadSample( const int& voiceNumber )
     {
         m_chooser = std::make_unique<juce::FileChooser> ("Select a Wave/Aiff file to play..." ,
                                                          juce::File{}, "*.aif, *.wav");
@@ -121,7 +121,7 @@ public:
         m_chooser->launchAsync (chooserFlags, [this, voiceNumber] (const juce::FileChooser& fc)
                                 {
                                     auto file = fc.getResult();
-                                    if (file == juce::File{}) { return; }
+                                    if (file == juce::File{}) { return false; }
                                     std::unique_ptr<juce::AudioFormatReader> reader (m_formatManager.createReaderFor (file));
                                     if (reader.get() != nullptr)
                                     {
@@ -141,13 +141,15 @@ public:
                                         m_sampleLoadedFlag[ voiceNumber ] = true;
                                         m_canPlayFlag = lastPlayState;
                                     }
+                                    else { return false; }
                                 });
+        return true;
     };
     //==============================================================================
-    void loadSample(juce::Value path, const int& voiceNumber)
+    bool loadSample(juce::Value path, const int& voiceNumber)
     {
         juce::File file( path.getValue().toString() );
-        if (file == juce::File{}) { return; }
+        if (file == juce::File{}) { return false; }
         std::unique_ptr<juce::AudioFormatReader> reader (m_formatManager.createReaderFor (file));
         if (reader.get() != nullptr)
         {
@@ -161,6 +163,8 @@ public:
             m_sampleName[ voiceNumber ] = file.getFileName();
             m_sampleLoadedFlag[ voiceNumber ] = true;
         }
+        else{ return false; }
+        return true;
     };
     //==============================================================================
     const juce::String getFilePath( const int voiceNumber )

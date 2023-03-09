@@ -30,6 +30,7 @@ protected:
     std::vector< float > m_sliceLenSamps;
     std::vector< float > m_phaseRateMultiplier;
     std::vector< bool > m_sampleLoadedFlag;
+    std::vector< float > m_sampleChoiceProbabilities;
     int m_nSteps = 16;
     std::vector< int > m_nSlices;
     
@@ -79,6 +80,7 @@ public:
         m_stepPat.resize( nVoices );
         m_sliceLenSamps.resize( nVoices );
         m_durationSamps.resize( nVoices );
+        
 //        m_sampleLoadedFlag.resize( nVoices );
 //        for ( int v = 0; v < m_sampleLoadedFlag.size(); v++ )
 //        {
@@ -92,6 +94,7 @@ public:
                 m_nSlices.push_back( 16 );
                 m_phaseRateMultiplier.push_back( 1 );
                 m_sampleLoadedFlag.push_back( false );
+                m_sampleChoiceProbabilities.push_back( 0.0f );
             }
         }
         else
@@ -99,6 +102,7 @@ public:
             m_nSlices.resize( nVoices );
             m_phaseRateMultiplier.resize( nVoices );
             m_sampleLoadedFlag.resize( nVoices );
+            m_sampleChoiceProbabilities.resize( nVoices );
         }
     }
     
@@ -274,7 +278,8 @@ public:
         {
             if ( checkForChangeOfBeat( m_stepCount ) )
             {
-                m_voiceNumber = calculateSampleChoice( m_stepCount );
+//                m_voiceNumber = calculateSampleChoice( m_stepCount );
+                m_voiceNumber = m_sampleChoicePat[ m_stepCount ];
                 if (!m_sampleLoadedFlag[ m_voiceNumber ])
                 {
                     bool samples = false;
@@ -356,7 +361,9 @@ public:
         {
             if ( checkForChangeOfBeat( m_stepCount ) )
             {
-                m_voiceNumber = calculateSampleChoice( m_stepCount );
+//                m_voiceNumber = calculateSampleChoice( m_stepCount );
+                m_voiceNumber = m_sampleChoicePat[ m_stepCount ];
+                
                 DBG( "voice " << m_voiceNumber );
                 if ( !m_sampleLoadedFlag[ m_voiceNumber ] )
                 {
@@ -411,6 +418,21 @@ public:
 //            { m_readPos -= m_sliceLenSamps[ m_voiceNumber ]; }
             
         }
+    }
+    //==============================================================================
+    void setSampleChoiceProbabilities( const std::vector< float >& probs )
+    {
+        m_sampleChoiceProbabilities = probs;
+    }
+    //==============================================================================
+    void setSampleChoiceProbabilities( const float& prob, const int& voiceNumber )
+    {
+        m_sampleChoiceProbabilities[ voiceNumber ] = prob;
+    }
+    //==============================================================================
+    float getSampleChoiceProbability( const int& voiceNumber )
+    {
+        return m_sampleChoiceProbabilities[ voiceNumber ];
     }
     //==============================================================================
     void randomiseAll()
@@ -666,11 +688,43 @@ private:
     void setRandomVoicePattern()
     {
         m_sampleChoicePat.resize(m_nSteps);
-        for (int index = 0; index < m_nSteps; index++)
+        float maxProb = *std::max_element( m_sampleChoiceProbabilities.begin(), m_sampleChoiceProbabilities.end() );
+        if (  maxProb <= 0 )
         {
-            if ( m_sampleChoiceProb == 0 ) { m_sampleChoicePat[index] = 0; }
-            else { m_sampleChoicePat[index] = rand01(); }
+            for (int index = 0; index < m_nSteps; index++)
+            {
+                m_sampleChoicePat[index] = 0;
+            }
         }
+        else
+        {
+            float sum = 0.0f;
+            for ( auto& n : m_sampleChoiceProbabilities )
+                sum += n;
+            for (int index = 0; index < m_nSteps; index++)
+            {
+//                auto sum2 = sum;
+                auto rand = rand01() * sum;
+                for ( int v = 0; v < m_sampleChoiceProbabilities.size(); v++ )
+                {
+                    if ( rand <= m_sampleChoiceProbabilities[ v ] )
+                    {
+                        m_sampleChoicePat[index] = v;
+                        break;
+                    }
+                    else
+                    {
+                        rand -= m_sampleChoiceProbabilities[ v ];
+                    }
+                }
+//                m_sampleChoicePat[index] = 0;
+            }
+        }
+//        for (int index = 0; index < m_nSteps; index++)
+//        {
+//            if ( m_sampleChoiceProb == 0 ) { m_sampleChoicePat[index] = 0; }
+//            else { m_sampleChoicePat[index] = rand01(); }
+//        }
 //        setRandPat( m_sampleChoicePat, m_sampleChoiceProb/100.0f );
     }
     //==============================================================================

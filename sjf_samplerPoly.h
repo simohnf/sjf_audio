@@ -571,30 +571,83 @@ private:
     //==============================================================================
     float calculateHostCompensation( const float& bpm, const int& voiceNumber ){
         if (!m_sampleLoadedFlag[ voiceNumber ] ) { return 1; }
+        if (!m_syncToHostFlag) { return 1; }
+        
         m_hostBPM = bpm;
         auto hostQuarterNoteSamps = m_SR*60.0f/bpm;
         auto multiplier = 1.0f;
-        if (!m_syncToHostFlag) { return 1; }
-        if (m_sliceLenSamps[ voiceNumber ] == hostQuarterNoteSamps){
-            return 1;
-        }
-        else if (m_sliceLenSamps[ voiceNumber ] < hostQuarterNoteSamps){
-            while (m_sliceLenSamps[ voiceNumber ] * multiplier < hostQuarterNoteSamps){ multiplier *= 2; }
-            auto lastDiff = abs(hostQuarterNoteSamps - m_sliceLenSamps[ voiceNumber ]*multiplier);
+        if ( m_sliceLenSamps[ voiceNumber ] == hostQuarterNoteSamps ) { return 1; }
+        else if ( m_sliceLenSamps[ voiceNumber ] < hostQuarterNoteSamps )
+        {
+            while ( m_sliceLenSamps[ voiceNumber ] * multiplier < hostQuarterNoteSamps ){ multiplier *= 2; }
+            auto lastDiff = abs( hostQuarterNoteSamps - m_sliceLenSamps[ voiceNumber ]*multiplier );
             auto halfMultiplier = multiplier * 0.5;
-            auto newDiff = abs(hostQuarterNoteSamps - m_sliceLenSamps[ voiceNumber ]*halfMultiplier);
-            if ( newDiff < lastDiff) { multiplier = halfMultiplier; }
+            auto newDiff = abs( hostQuarterNoteSamps - m_sliceLenSamps[ voiceNumber ]*halfMultiplier );
+            if ( newDiff < lastDiff ) { multiplier = halfMultiplier; }
         }
         else
         {
-            while (m_sliceLenSamps[ voiceNumber ] > hostQuarterNoteSamps *multiplier){ multiplier *= 2; }
-            float lastDiff = abs(hostQuarterNoteSamps*multiplier - m_sliceLenSamps[ voiceNumber ]);
+            while ( m_sliceLenSamps[ voiceNumber ] > hostQuarterNoteSamps *multiplier ){ multiplier *= 2; }
+            float lastDiff = abs( hostQuarterNoteSamps*multiplier - m_sliceLenSamps[ voiceNumber ] );
             auto halfMultiplier = multiplier * 0.5f;
-            auto newDiff = abs(hostQuarterNoteSamps*halfMultiplier - m_sliceLenSamps[ voiceNumber ]);
-            if (newDiff < lastDiff ) { multiplier = halfMultiplier;}
+            auto newDiff = abs( hostQuarterNoteSamps*halfMultiplier - m_sliceLenSamps[ voiceNumber ] );
+            if ( newDiff < lastDiff ) { multiplier = halfMultiplier; }
             multiplier = 1/multiplier;
         }
-        return (m_sliceLenSamps[ voiceNumber ]*multiplier) / hostQuarterNoteSamps ;
+        return ( m_sliceLenSamps[ voiceNumber ]*multiplier ) / hostQuarterNoteSamps ;
+        
+//        if (!m_sampleLoadedFlag[ voiceNumber ] ) { return 1; }
+//        if (!m_syncToHostFlag) { return 1; }
+//        
+//        m_hostBPM = bpm;
+//        const auto hostQuarterNoteSamps = m_SR*60.0f/bpm;
+//        auto multiplier = 1.0f;
+//        auto v0Compensation = 1.0f;
+//        // first calculate compensation for first Voice
+//        const auto v0SliceLen = m_sliceLenSamps[ 0 ];
+//        if ( v0SliceLen == hostQuarterNoteSamps ) { v0Compensation = 1; }
+//        else if ( v0SliceLen < hostQuarterNoteSamps )
+//        {
+//            while ( v0SliceLen * multiplier < hostQuarterNoteSamps ){ multiplier *= 2; }
+//            auto lastDiff = abs( hostQuarterNoteSamps - v0SliceLen*multiplier );
+//            auto halfMultiplier = multiplier * 0.5;
+//            auto newDiff = abs( hostQuarterNoteSamps - v0SliceLen*halfMultiplier );
+//            if ( newDiff < lastDiff ) { multiplier = halfMultiplier; }
+//        }
+//        else
+//        {
+//            while ( v0SliceLen > hostQuarterNoteSamps *multiplier ){ multiplier *= 2; }
+//            float lastDiff = abs( hostQuarterNoteSamps*multiplier - v0SliceLen );
+//            auto halfMultiplier = multiplier * 0.5f;
+//            auto newDiff = abs( hostQuarterNoteSamps*halfMultiplier - v0SliceLen );
+//            if ( newDiff < lastDiff ) { multiplier = halfMultiplier; }
+//            multiplier = 1/multiplier;
+//        }
+//        v0Compensation = ( v0SliceLen*multiplier ) / hostQuarterNoteSamps;
+//        if ( voiceNumber == 0 ){ return v0Compensation; }
+//        
+//        // otherwise calculate voice compensation relative to first voice
+//        multiplier = 1.0f;
+//        const vSliceLen = m_sliceLenSamps[ voiceNumber ];
+//        if ( vSliceLen == hostQuarterNoteSamps ) { return 1; }
+//        else if ( vSliceLen < hostQuarterNoteSamps )
+//        {
+//            while ( vSliceLen * multiplier < hostQuarterNoteSamps ){ multiplier *= 2; }
+//            auto lastDiff = abs( hostQuarterNoteSamps - vSliceLen*multiplier );
+//            auto halfMultiplier = multiplier * 0.5;
+//            auto newDiff = abs( hostQuarterNoteSamps - vSliceLen*halfMultiplier );
+//            if ( newDiff < lastDiff ) { multiplier = halfMultiplier; }
+//        }
+//        else
+//        {
+//            while ( vSliceLen > hostQuarterNoteSamps *multiplier ){ multiplier *= 2; }
+//            float lastDiff = abs( hostQuarterNoteSamps*multiplier - vSliceLen );
+//            auto halfMultiplier = multiplier * 0.5f;
+//            auto newDiff = abs( hostQuarterNoteSamps*halfMultiplier - vSliceLen );
+//            if ( newDiff < lastDiff ) { multiplier = halfMultiplier; }
+//            multiplier = 1/multiplier;
+//        }
+//        return ( vSliceLen*multiplier ) / hostQuarterNoteSamps;
     };
     
     //==============================================================================

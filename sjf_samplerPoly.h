@@ -28,11 +28,12 @@ protected:
     std::vector< float > m_sampleChoicePat;
     std::vector< float > m_durationSamps;
     std::vector< float > m_sliceLenSamps;
-    std::vector< float > m_phaseRateMultiplier;
+//    std::vector< float > m_phaseRateMultiplier;
     std::vector< bool > m_sampleLoadedFlag;
     std::vector< float > m_sampleChoiceProbabilities;
-    int m_nSteps = 16;
     std::vector< int > m_nSlices;
+    int m_nSteps = 16;
+    float m_phaseRateMultiplier = 1;
     
     std::vector< juce::AudioBuffer<float> > m_AudioSample;
     juce::AudioBuffer<float> m_tempBuffer;
@@ -92,7 +93,7 @@ public:
             while ( nVoices > m_nSlices.size() )
             {
                 m_nSlices.push_back( 16 );
-                m_phaseRateMultiplier.push_back( 1 );
+//                m_phaseRateMultiplier.push_back( 1 );
                 m_sampleLoadedFlag.push_back( false );
                 m_sampleChoiceProbabilities.push_back( 0.0f );
             }
@@ -100,7 +101,7 @@ public:
         else
         {
             m_nSlices.resize( nVoices );
-            m_phaseRateMultiplier.resize( nVoices );
+//            m_phaseRateMultiplier.resize( nVoices );
             m_sampleLoadedFlag.resize( nVoices );
             m_sampleChoiceProbabilities.resize( nVoices );
         }
@@ -241,15 +242,25 @@ public:
     {
         return m_nSteps;
     }
+//    //==============================================================================
+//    void setPhaseRateMultiplierIndex( const int& i, const int& voiceNumber )
+//    {
+//        m_phaseRateMultiplier[ voiceNumber ] = pow(2, i-3);
+//    }
     //==============================================================================
-    void setPhaseRateMultiplierIndex( const int& i, const int& voiceNumber )
+    void setPhaseRateMultiplierIndex( const int& i )
     {
-        m_phaseRateMultiplier[ voiceNumber ] = pow(2, i-3);
+        m_phaseRateMultiplier = pow(2, i-3);
     }
+//    //==============================================================================
+//    int getPhaseRateMultiplierIndex( const int& voiceNumber )
+//    {
+//        return 3 + log10(m_phaseRateMultiplier[ voiceNumber ])/log10(2);
+//    }
     //==============================================================================
-    int getPhaseRateMultiplierIndex( const int& voiceNumber )
+    int getPhaseRateMultiplierIndex( )
     {
-        return 3 + log10(m_phaseRateMultiplier[ voiceNumber ])/log10(2);
+        return 3 + log10(m_phaseRateMultiplier)/log10(2);
     }
     //==============================================================================
     void play(juce::AudioBuffer<float> &buffer)
@@ -271,9 +282,10 @@ public:
         auto bufferSize = buffer.getNumSamples();
         auto numChannels = buffer.getNumChannels();
         
-        auto increment = m_phaseRateMultiplier[ m_voiceNumber ];
-        auto envLen =(int)( m_phaseRateMultiplier[ m_voiceNumber ] * m_fadeInMs * m_SR / 1000 ) + 1;
-        
+//        auto increment = m_phaseRateMultiplier[ m_voiceNumber ];
+        auto increment = m_phaseRateMultiplier;
+//        auto envLen =(int)( m_phaseRateMultiplier[ m_voiceNumber ] * m_fadeInMs * m_SR / 1000 ) + 1;
+        auto envLen =(int)( m_phaseRateMultiplier * m_fadeInMs * m_SR / 1000 ) + 1;
         for (int index = 0; index < bufferSize; index++)
         {
             if ( checkForChangeOfBeat( m_stepCount ) )
@@ -293,8 +305,10 @@ public:
                     }
                     if ( !samples ){ return; }
                 }
-                envLen = (int)( m_phaseRateMultiplier[ m_voiceNumber ] * m_fadeInMs * m_SR / 1000 ) + 1;
-                increment = m_phaseRateMultiplier[ m_voiceNumber ];
+//                envLen = (int)( m_phaseRateMultiplier[ m_voiceNumber ] * m_fadeInMs * m_SR / 1000 ) + 1;
+                envLen = (int)( m_phaseRateMultiplier * m_fadeInMs * m_SR / 1000 ) + 1;
+//                increment = m_phaseRateMultiplier[ m_voiceNumber ];
+                increment = m_phaseRateMultiplier;
             }
             
 //            auto pos = calculateMangledReadPosition( m_readPos, 1, m_stepCount, m_voiceNumber );
@@ -326,6 +340,7 @@ public:
     void play(juce::AudioBuffer<float> &buffer, float bpm, double hostPosition)
     {
 //        DBG( "host position " << hostPosition );
+        m_voiceNumber %= m_sampleLoadedFlag.size();
         if ( !m_sampleLoadedFlag[ m_voiceNumber ] )
         {
             bool samples = false;
@@ -349,8 +364,10 @@ public:
         auto hostSampQuarter = 60.0f*m_SR/bpm;
         
         auto hostSyncCompenstation =  calculateHostCompensation( bpm, m_voiceNumber );
-        auto increment = m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
-        auto hostPos = hostPosition * hostSampQuarter * m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
+//        auto increment = m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
+        auto increment = m_phaseRateMultiplier * hostSyncCompenstation;
+//        auto hostPos = hostPosition * hostSampQuarter * m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
+        auto hostPos = hostPosition * hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
         m_stepCount = (int)( hostPos / m_sliceLenSamps[ m_voiceNumber ] );
         
         m_readPos = hostPos - m_stepCount*m_sliceLenSamps[ m_voiceNumber ];
@@ -380,8 +397,10 @@ public:
                 }
                 
                 hostSyncCompenstation =  calculateHostCompensation( bpm, m_voiceNumber );
-                increment = m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
-                hostPos = (hostPosition * hostSampQuarter * m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation) + index;
+//                increment = m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
+                increment = m_phaseRateMultiplier * hostSyncCompenstation;
+//                hostPos = (hostPosition * hostSampQuarter * m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation) + index;
+                hostPos = (hostPosition * hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation) + index;
                 m_readPos = hostPos - m_stepCount*m_sliceLenSamps[ m_voiceNumber ];
                 fastMod3< float > ( m_readPos, m_sliceLenSamps[ m_voiceNumber ] );
             }

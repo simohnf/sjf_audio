@@ -265,6 +265,7 @@ public:
     //==============================================================================
     void play(juce::AudioBuffer<float> &buffer)
     {
+        if ( !m_canPlayFlag ){ return; }
         if (!m_sampleLoadedFlag[ m_voiceNumber ])
         {
             bool samples = false;
@@ -292,7 +293,7 @@ public:
             {
 //                m_voiceNumber = calculateSampleChoice( m_stepCount );
                 m_voiceNumber = m_sampleChoicePat[ m_stepCount ];
-                if (!m_sampleLoadedFlag[ m_voiceNumber ])
+                if (m_voiceNumber > m_sampleLoadedFlag.size() || !m_sampleLoadedFlag[ m_voiceNumber ])
                 {
                     bool samples = false;
                     for ( int v = 0; v < m_sampleLoadedFlag.size(); v++ )
@@ -340,6 +341,7 @@ public:
     void play(juce::AudioBuffer<float> &buffer, float bpm, double hostPosition)
     {
 //        DBG( "host position " << hostPosition );
+        if ( !m_canPlayFlag ){ return; }
         m_voiceNumber %= m_sampleLoadedFlag.size();
         if ( !m_sampleLoadedFlag[ m_voiceNumber ] )
         {
@@ -382,7 +384,7 @@ public:
                 m_voiceNumber = m_sampleChoicePat[ m_stepCount ];
                 
                 DBG( "voice " << m_voiceNumber );
-                if ( !m_sampleLoadedFlag[ m_voiceNumber ] )
+                if ( m_voiceNumber > m_sampleLoadedFlag.size() || !m_sampleLoadedFlag[ m_voiceNumber ] )
                 {
                     bool samples = false;
                     for ( int v = 0; v < m_sampleLoadedFlag.size(); v++ )

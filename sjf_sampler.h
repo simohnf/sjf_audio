@@ -157,6 +157,7 @@ public:
     //==============================================================================
     void play(juce::AudioBuffer<float> &buffer)
     {
+        if ( !m_canPlayFlag ){ return; }
         if (!m_sampleLoadedFlag) { return; }
         auto envLen = m_phaseRateMultiplier * m_fadeInMs * m_SR / 1000;
         envLen = (int)envLen + 1 ;
@@ -196,6 +197,7 @@ public:
     //==============================================================================
     void play(juce::AudioBuffer<float> &buffer, float bpm, double hostPosition)
     {
+        if ( !m_canPlayFlag ){ return; }
         if (!m_sampleLoadedFlag) { return; }
         auto bufferSize = buffer.getNumSamples();
         auto numChannels = buffer.getNumChannels();

@@ -11,6 +11,8 @@
 
 // implementation of biquadCascade
 // maximum of 5 stages ==> 10th order
+#define MAX_NUM_STAGES 5
+#define MAX_ORDER MAX_NUM_STAGES*2
 template <class T>
 class sjf_biquadCascade {
 public:
@@ -24,7 +26,7 @@ public:
     {
         for ( int i = 0; i < cascade.size(); i++ )
         {
-            cascade.initialise( sampleRate );
+            cascade[ i ].initialise( sampleRate );
         }
     }
     
@@ -41,7 +43,7 @@ public:
     void setNumOrders( int nOrders )
     {
         DBG(" NUM ORDERS " << nOrders);
-        jassert( nOrders > 0 && nOrders <= 5);
+        jassert( nOrders > 0 && nOrders <= MAX_ORDER );
         m_nOrders = nOrders;
         m_nStages = ceil( m_nOrders * 0.5 ); // number of stages in us is equal to ceil(nOrders / 2)
         DBG("STages == " << m_nStages);
@@ -101,7 +103,7 @@ private:
     // coefficients for butterworth filters of up to 10 orders
     // [ stage ] [ order ]
     // just for avoiding any possible divide by 0 I have set default values (i.e. not in use values) to '1'
-    const T butterworthCoefficients[ 5 ][ 10 ] =
+    const T butterworthCoefficients[ MAX_NUM_STAGES ][ MAX_ORDER ] =
     {
         { 0.7071, 0.7071, 1, 0.5412, 0.618, 0.5176, 0.555, 0.5098, 0.5321, 0.5062 }, // stage 1
         { 1, 1, 1, 1.3065, 1.6182, 0.7071, 0.8019, 0.6013, 0.6527, 0.5612 }, // stage 2
@@ -110,7 +112,7 @@ private:
         { 1, 1, 1, 1, 1, 1, 1, 1, 1, 3.197 } // stage 5
     };
     
-    std::array< sjf_biquadWrapper < T >, 5 > cascade;
+    std::array< sjf_biquadWrapper < T >, MAX_NUM_STAGES > cascade;
     int m_nOrders = 3, m_nStages = 2;
     int type = filterDesign::butterworth;
     T m_f0 = 1000;

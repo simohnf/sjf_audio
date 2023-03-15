@@ -54,6 +54,10 @@ public:
         return m_calculator.getCoefficients();
     }
     
+    const T filterInput( T input )
+    {
+        return m_biquad.filterInput( input );
+    }
 private:
     sjf_biquad< T > m_biquad;
     sjf_biquadCalculator< T > m_calculator;

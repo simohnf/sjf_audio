@@ -141,7 +141,7 @@ public:
         {
             pos *= m_syncFactor;  // longest possible length when synced is 32 quarter notes
             m_pos = pos - (int)pos; // just get fractional part
-            DBG( "m_pos " << m_pos );
+//            DBG( "m_pos " << m_pos );
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

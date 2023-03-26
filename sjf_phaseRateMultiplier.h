@@ -19,9 +19,9 @@ public:
     {
         if ( x < m_lastIn * 0.5 ) // multiply by 0.5 to compensate for slight inaccuracies with sync increment
         {
-            DBG(x << " " << m_lastIn);
+//            DBG(x << " " << m_lastIn);
             m_accum += 1.0f;
-            DBG( "one more ");
+//            DBG( "one more ");
         }
         m_lastIn = x;
         x *= m_rate;

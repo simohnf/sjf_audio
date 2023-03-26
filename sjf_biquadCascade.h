@@ -49,12 +49,12 @@ public:
     
     void setNumOrders( int nOrders )
     {
-        DBG(" NUM ORDERS " << nOrders);
+//        DBG(" NUM ORDERS " << nOrders);
         jassert( nOrders > 0 && nOrders <= MAX_ORDER );
         m_nOrders = nOrders;
         m_nStages = ceil( m_nOrders * 0.5 ); // number of stages in us is equal to ceil(nOrders / 2)
-        DBG("STages == " << m_nStages);
-        DBG("nOrders % 2 == " << m_nOrders %2);
+//        DBG("Stages == " << m_nStages);
+//        DBG("nOrders % 2 == " << m_nOrders %2);
         for ( int i = 0; i < m_nStages; i ++ ) // set all stages but last of an odd number of orders to be second order... NOT WORKING
         {
             if ( i == (m_nStages - 1) && m_nOrders %2 != 0 )
@@ -78,21 +78,21 @@ public:
             case( butterworth ):
                 for ( int s = 0; s < m_nStages; s++ )
                 {
-                    DBG( "stage " << s );
+//                    DBG( "stage " << s );
                     cascade[ s ].setFrequency( m_f0 * butterworthFSFCoefficients[ s ][ m_nOrders - 1 ] );
                 }
                 break;
             case( bessel ):
                 for ( int s = 0; s < m_nStages; s++ )
                 {
-                    DBG( "stage " << s );
+//                    DBG( "stage " << s );
                     cascade[ s ].setFrequency( m_f0 * besselFSFCoefficients[ s ][ m_nOrders - 1 ] );
                 }
                 break;
             default:
                 for ( int s = 0; s < m_nStages; s++ )
                 {
-                    DBG( "stage " << s );
+//                    DBG( "stage " << s );
                     cascade[ s ].setFrequency( m_f0 * butterworthFSFCoefficients[ s ][ m_nOrders - 1 ] );
                 }
                 break;
@@ -124,21 +124,21 @@ private:
             case( butterworth ):
                 for ( int s = 0; s < stages; s++ )
                 {
-                    DBG( "stage " << s );
+//                    DBG( "stage " << s );
                     cascade[ s ].setQFactor( butterworthQCoefficients[ s ][ m_nOrders - 1 ] );
                 }
                 break;
             case( bessel ):
                 for ( int s = 0; s < stages; s++ )
                 {
-                    DBG( "stage " << s );
+//                    DBG( "stage " << s );
                     cascade[ s ].setQFactor( besselQCoefficients[ s ][ m_nOrders - 1 ] );
                 }
                 break;
             default:
                 for ( int s = 0; s < stages; s++ )
                 {
-                    DBG( "stage " << s );
+//                    DBG( "stage " << s );
                     cascade[ s ].setQFactor( butterworthQCoefficients[ s ][ m_nOrders - 1 ] );
                 }
                 break;

@@ -34,7 +34,7 @@ public:
     {
         m_calculator.setQFactor( q );
         m_biquad.setCoefficients( m_calculator.getCoefficients() );
-        DBG("q " << q);
+//        DBG("q " << q);
     }
     
     void setOrder( bool isFirstOrder )

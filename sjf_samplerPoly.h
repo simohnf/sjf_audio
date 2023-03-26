@@ -340,7 +340,6 @@ public:
     //==============================================================================
     void play(juce::AudioBuffer<float> &buffer, float bpm, double hostPosition)
     {
-//        DBG( "host position " << hostPosition );
         if ( !m_canPlayFlag ){ return; }
         m_voiceNumber %= m_sampleLoadedFlag.size();
         if ( !m_sampleLoadedFlag[ m_voiceNumber ] )
@@ -356,9 +355,6 @@ public:
             }
             if ( !samples ){ return; }
         }
-//        hostPosition *= 2;
-//        fastMod3< double > ( hostPosition, m_nSteps );
-//        hostPosition *= 0.5;
         auto bufferSize = buffer.getNumSamples();
         auto numChannels = buffer.getNumChannels();
         
@@ -366,24 +362,18 @@ public:
         auto hostSampQuarter = 60.0f*m_SR/bpm;
         
         auto hostSyncCompenstation =  calculateHostCompensation( bpm, m_voiceNumber );
-//        auto increment = m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
         auto increment = m_phaseRateMultiplier * hostSyncCompenstation;
-//        auto hostPos = hostPosition * hostSampQuarter * m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
         auto hostPos = hostPosition * hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
         m_stepCount = (int)( hostPos / m_sliceLenSamps[ m_voiceNumber ] );
-        
         m_readPos = hostPos - m_stepCount*m_sliceLenSamps[ m_voiceNumber ];
         fastMod3< float > ( m_readPos, m_sliceLenSamps[ m_voiceNumber ] );
-        m_stepCount %= m_nSteps;
+        fastMod3< int >( m_stepCount, m_nSteps );
 
         for (int index = 0; index < bufferSize; index++)
         {
             if ( checkForChangeOfBeat( m_stepCount ) )
             {
-//                m_voiceNumber = calculateSampleChoice( m_stepCount );
                 m_voiceNumber = m_sampleChoicePat[ m_stepCount ];
-                
-                DBG( "voice " << m_voiceNumber );
                 if ( m_voiceNumber > m_sampleLoadedFlag.size() || !m_sampleLoadedFlag[ m_voiceNumber ] )
                 {
                     bool samples = false;
@@ -399,12 +389,12 @@ public:
                 }
                 
                 hostSyncCompenstation =  calculateHostCompensation( bpm, m_voiceNumber );
-//                increment = m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation;
                 increment = m_phaseRateMultiplier * hostSyncCompenstation;
-//                hostPos = (hostPosition * hostSampQuarter * m_phaseRateMultiplier[ m_voiceNumber ] * hostSyncCompenstation) + index;
                 hostPos = (hostPosition * hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation) + index;
+                m_stepCount = (int)( hostPos / m_sliceLenSamps[ m_voiceNumber ] );
                 m_readPos = hostPos - m_stepCount*m_sliceLenSamps[ m_voiceNumber ];
                 fastMod3< float > ( m_readPos, m_sliceLenSamps[ m_voiceNumber ] );
+                fastMod3< int >( m_stepCount, m_nSteps );
             }
 
 

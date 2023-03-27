@@ -40,6 +40,8 @@ public:
     T getD1() { return m_d1; }
     
     T getD2() { return m_d2; }
+    
+    void clear() { m_d1 = m_d2 = 0; }
 private:
     
     T m_d1 = 0, m_d2 = 0;

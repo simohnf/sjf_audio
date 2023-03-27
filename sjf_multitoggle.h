@@ -11,7 +11,7 @@
 #include <vector>
 #include <JuceHeader.h>
 
-class sjf_multitoggle : public juce::Component
+class sjf_multitoggle : public juce::Component, public juce::SettableTooltipClient
 {
     //==============================================================================
     //==============================================================================

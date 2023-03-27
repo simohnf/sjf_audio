@@ -51,10 +51,16 @@ public:
     {
 //        DBG(" NUM ORDERS " << nOrders);
         jassert( nOrders > 0 && nOrders <= MAX_ORDER );
+        if ( m_nOrders != nOrders )
+        {
+            for ( int i = 0; i < m_nStages; i ++ ) // set all stages but last of an odd number of orders to be second order... NOT WORKING
+            {
+                cascade[ i ].clear();
+            }
+        }
         m_nOrders = nOrders;
         m_nStages = ceil( m_nOrders * 0.5 ); // number of stages in us is equal to ceil(nOrders / 2)
-//        DBG("Stages == " << m_nStages);
-//        DBG("nOrders % 2 == " << m_nOrders %2);
+
         for ( int i = 0; i < m_nStages; i ++ ) // set all stages but last of an odd number of orders to be second order... NOT WORKING
         {
             if ( i == (m_nStages - 1) && m_nOrders %2 != 0 )
@@ -89,6 +95,13 @@ public:
                     cascade[ s ].setFrequency( m_f0 * besselFSFCoefficients[ s ][ m_nOrders - 1 ] );
                 }
                 break;
+            case( chebyshev ):
+                for ( int s = 0; s < m_nStages; s++ )
+                {
+                    //                    DBG( "stage " << s );
+                    cascade[ s ].setFrequency( m_f0 * chebyshev1dbFSFCoefficients[ s ][ m_nOrders - 1 ] );
+                }
+                break;
             default:
                 for ( int s = 0; s < m_nStages; s++ )
                 {
@@ -103,6 +116,7 @@ public:
     {
         for ( int i = 0; i < cascade.size(); i++ )
         {
+//            if ( cascade[ i ].getFilterType)
             cascade[ i ].setFilterType( type );
         }
         setFrequency( m_f0 );
@@ -111,7 +125,7 @@ public:
     
     enum filterDesign
     {
-        butterworth, bessel
+        butterworth = 1, bessel, chebyshev
     };
    
 private:
@@ -133,6 +147,13 @@ private:
                 {
 //                    DBG( "stage " << s );
                     cascade[ s ].setQFactor( besselQCoefficients[ s ][ m_nOrders - 1 ] );
+                }
+                break;
+            case( chebyshev ):
+                for ( int s = 0; s < stages; s++ )
+                {
+                    //                    DBG( "stage " << s );
+                    cascade[ s ].setQFactor( chebyshev1dbQCoefficients[ s ][ m_nOrders - 1 ] );
                 }
                 break;
             default:
@@ -186,6 +207,24 @@ private:
         { 1, 1, 1, 1, 1.5069, 1.9071, 2.0507, 1.9591, 2.0815, 2.0680 }, // stage 3
         { 1, 1, 1, 1, 1, 1, 1.6853, 1.8376, 2.3235, 2.2210 }, // stage 4
         { 1, 1, 1, 1, 1, 1, 1, 1, 1.8575, 2.4850 } // stage 5
+    };
+    
+    static constexpr T chebyshev1dbQCoefficients[ MAX_NUM_STAGES ][ MAX_ORDER ] =
+    { // table didn't give first order...
+        { 1, 0.9565, 2.0176, 0.7845, 1.3988, 0.7608, 1.2967, 0.7530, 1.1964, 0.7495 }, // stage 1
+        { 1, 1, 1, 3.5600, 5.5538, 2.1977, 3.1544, 1.9564, 2.7119, 1.8639 }, // stage 2
+        { 1, 1, 1, 1, 1, 8.0012, 10.9010, 2.7776, 5.5239, 3.5609 }, // stage 3
+        { 1, 1, 1, 1, 1, 1, 1, 14.2445, 18.0069, 6.9419 }, // stage 4
+        { 1, 1, 1, 1, 1, 1, 1, 1, 1, 22.2779 } // stage 5
+    };
+    
+    static constexpr T chebyshev1dbFSFCoefficients[ MAX_NUM_STAGES ][ MAX_ORDER ] =
+    { // table didn't give first order...
+        { 1, 1.0500, 0.9971, 0.9932, 0.9941, 0.9953, 0.9963, 0.9971, 0.9976, 0.9981 }, // stage 1
+        { 1, 1, 0.4942, 0.5286, 0.6652, 0.7468, 0.8084, 0.5538, 0.8805, 0.7214 }, // stage 2
+        { 1, 1, 1, 1, 0.2895, 0.3532, 0.4800, 0.5838, 0.6623, 0.9024 }, // stage 3
+        { 1, 1, 1, 1, 1, 1, 0.2054, 0.2651, 0.3812, 0.4760 }, // stage 4
+        { 1, 1, 1, 1, 1, 1, 1, 1, 0.1593, 0.2121 } // stage 5
     };
     
     std::array< sjf_biquadWrapper < T >, MAX_NUM_STAGES > cascade;

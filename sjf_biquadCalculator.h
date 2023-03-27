@@ -91,6 +91,11 @@ public:
         m_type = type;
     }
     
+    int getFilterType(  )
+    {
+        return m_type;
+    }
+    
     void setOrder( bool isFirstOrder )
     {
         m_isFirstOrder = isFirstOrder;

@@ -45,8 +45,12 @@ public:
     
     void setFilterType( int type )
     {
-        m_calculator.setFilterType( type );
-        m_biquad.setCoefficients( m_calculator.getCoefficients() );
+        if ( m_calculator.getFilterType() != type )
+        {
+            m_biquad.clear();
+            m_calculator.setFilterType( type );
+            m_biquad.setCoefficients( m_calculator.getCoefficients() );
+        }
     }
     
     std::vector< T > getCoefficients()
@@ -57,6 +61,11 @@ public:
     const T filterInput( T input )
     {
         return m_biquad.filterInput( input );
+    }
+    
+    void clear()
+    {
+        m_biquad.clear();
     }
 private:
     sjf_biquad< T > m_biquad;

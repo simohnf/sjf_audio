@@ -232,7 +232,7 @@ public:
     //==============================================================================
     float fetch(int buttonRow, int buttonIndex)
     {
-        auto ind = buttonRow * buttonIndex;
+        auto ind = buttonRow *m_buttons.size() + buttonIndex;
         return ( m_buttons[ind]->getToggleState() );
     }
     

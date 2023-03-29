@@ -13,5 +13,5 @@
 #include "sjf_numBox.h"
 #include "sjf_label.h"
 #include "sjf_graph.h"
-
+#include "sjf_XYpad.h"
 #endif /* sjf_widgets_h */

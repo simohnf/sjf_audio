@@ -259,7 +259,7 @@ public:
         m_stepPat.resize(m_nSteps);
         for (int index = 0; index < m_nSteps; index++)
         {
-            if(  m_stepShuffleProb/100.0f <= pattern[ i ] )
+            if(  m_stepShuffleProb/100.0f <= pattern[ index ] )
             {
                 m_stepPat[index] = index;
             }

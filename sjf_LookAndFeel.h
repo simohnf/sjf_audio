@@ -41,10 +41,7 @@ public:
         setColour(juce::PopupMenu::backgroundColourId, backGroundColour.withAlpha(0.7f) );
         setColour(juce::ToggleButton::tickColourId, tickColour.withAlpha(0.5f) );
     }
-    ~sjf_lookAndFeel()
-    {
-        DBG("DELETING LOOK ANd FEEL");
-    }
+    ~sjf_lookAndFeel() { /*DBG("DELETING LOOK ANd FEEL");*/ }
     
     void drawToggleButton (juce::Graphics& g, juce::ToggleButton& button,
                            bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override

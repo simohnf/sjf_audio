@@ -269,6 +269,8 @@ public:
         auto toggleNumber = column + ( m_nColumns * row ); 
         m_buttons[ toggleNumber ]->setToggleState( state, juce::dontSendNotification );
     }
+    
+    std::function<void()> onMouseEvent;
 private:
     //==============================================================================
     int calulateMousePosToToggleNumber(const juce::MouseEvent& e)
@@ -318,6 +320,7 @@ private:
             m_buttons[b]->setToggleState(! m_buttons[b]->getToggleState(), juce::dontSendNotification );
             m_lastMouseDownToggleState = m_buttons[b]->getToggleState();
         }
+        if ( onMouseEvent != nullptr ){ onMouseEvent(); }
     }
     //==============================================================================
     void mouseDrag(const juce::MouseEvent& e) override
@@ -325,6 +328,7 @@ private:
         auto b = calulateMousePosToToggleNumber(e);
         if (b < 0) { return; }
         m_buttons[b]->setToggleState( m_lastMouseDownToggleState, juce::dontSendNotification );
+        if ( onMouseEvent != nullptr ){ onMouseEvent(); }
     }
     //==============================================================================
     void createButtonArray(int numRows, int numColumns)

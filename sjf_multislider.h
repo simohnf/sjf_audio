@@ -134,6 +134,7 @@ public:
         return m_sliders;
     }
     //==============================================================================
+    std::function<void()> onMouseEvent;
 private:
     //==============================================================================
     void calulateMousePosToSliderVal( const juce::MouseEvent& e )
@@ -250,11 +251,13 @@ private:
     void mouseDown (const juce::MouseEvent& e) override
     {
         calulateMousePosToSliderVal(e);
+        if ( onMouseEvent != nullptr ){ onMouseEvent(); }
     }
     //==============================================================================
     void mouseDrag(const juce::MouseEvent& e) override
     {
         calulateMousePosToSliderVal(e);
+        if ( onMouseEvent != nullptr ){ onMouseEvent(); }
     }
     //==============================================================================
     void createSliderArray(int nSliders)

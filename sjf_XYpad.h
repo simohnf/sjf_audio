@@ -76,20 +76,26 @@ public:
         outlineColourId             = 0x1000c00,
         circleColourID              = 0x1001310,
     };
-private:
     //==============================================================================
-    void mouseDown (const juce::MouseEvent& e) override
+    std::function<void()> onMouseEvent;
+private:
+    void calculatePositions( const juce::MouseEvent& e )
     {
         m_pos[0] = std::fmax(std::fmin(e.position.getX(), getWidth()), 0);
         m_pos[1] = std::fmax(std::fmin(e.position.getY(), getWidth()), 0);
         repaint();
     }
     //==============================================================================
+    void mouseDown (const juce::MouseEvent& e) override
+    {
+        calculatePositions( e );
+        if ( onMouseEvent != nullptr ){ onMouseEvent(); }
+    }
+    //==============================================================================
     void mouseDrag(const juce::MouseEvent& e) override
     {
-        m_pos[0] = std::fmax(std::fmin(e.position.getX(), getWidth()), 0);
-        m_pos[1] = std::fmax(std::fmin(e.position.getY(), getWidth()), 0);
-        repaint();
+        calculatePositions( e );
+        if ( onMouseEvent != nullptr ){ onMouseEvent(); }
     }
     
     std::array< float, 2 > m_pos = {0, 0};

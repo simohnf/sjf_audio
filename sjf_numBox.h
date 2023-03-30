@@ -33,7 +33,7 @@ public:
         };
     }
     
-    ~sjf_numBox(){ DBG("DELETED NUM BOX");};
+    ~sjf_numBox(){ /*DBG("DELETED NUM BOX"); */ };
     
     void paint(juce::Graphics& g) override
     {

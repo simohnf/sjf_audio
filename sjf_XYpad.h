@@ -55,6 +55,16 @@ public:
         return nPos;
     }
     //==============================================================================
+    void setNormalisedXposition( const float x )
+    {
+        m_pos[ 0 ] = std::fmax(0, std::fmin( x, 1.0f ) ) * (float)getWidth();
+    }
+    //==============================================================================
+    void setNormalisedYposition( const float y )
+    {
+        m_pos[ 1 ] = std::fmax(0, std::fmin( y, 1.0f ) ) * (float)getWidth();
+    }
+    //==============================================================================
     const std::array< float, 4 > distanceFromCorners()
     {
         std::array< float, 2 > nPos = getNormalisedPosition();

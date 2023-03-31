@@ -211,7 +211,7 @@ private:
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    float m_count = 0, m_SR = 44100.0f, m_phase = 0.0f, m_out = 0.0f, m_lastPhase = 1.0f, m_offset = 0.0f, m_bpm = 0, m_pos, m_increment;
+    float m_count = 0, m_SR = 44100.0f, m_phase = 0.0f, m_out = 0.0f, m_lastPhase = 1.0f, m_offset = 0.0f, m_bpm = 0, m_pos = 0, m_increment = 0;
     const float m_maxSyncBeats = 32.0f;
     const float m_syncFactor = 1.0f/m_maxSyncBeats;
     bool m_isSyncedToTempo = false;

@@ -332,6 +332,24 @@ public:
         }
     }
 };
+//==============================================================================
+//==============================================================================
+//==============================================================================
+
+template< typename T > // fold input within given range
+T fFold( T input, const T outMin, const T outMax )
+{
+    if ( input > outMin && input < outMax ){ return input; }
+    T range = outMax - outMin;
+    T twoRange = range * 2.0f;
+//    bool neg = input < 0 ? true : false;
+//    if ( neg ) { input *= -1.0f; }
+    input = abs(input);
+    fastMod3< T >( input, twoRange );
+    if ( input > range ) { input = twoRange - input; }
+    input += outMin;
+    return input;
+}
 
 //==============================================================================
 //==============================================================================
@@ -390,5 +408,8 @@ private:
     //----------------------------------------
     T floatArray[ NUM_ROWS ][ NUM_COLUMNS ];
 };
+
+
+
 
 #endif /* sjf_audioUtilities_h */

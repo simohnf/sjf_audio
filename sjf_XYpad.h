@@ -58,11 +58,13 @@ public:
     void setNormalisedXposition( const float x )
     {
         m_pos[ 0 ] = std::fmax(0, std::fmin( x, 1.0f ) ) * (float)getWidth();
+        repaint();
     }
     //==============================================================================
     void setNormalisedYposition( const float y )
     {
         m_pos[ 1 ] = std::fmax(0, std::fmin( y, 1.0f ) ) * (float)getWidth();
+        repaint();
     }
     //==============================================================================
     const std::array< float, 4 > distanceFromCorners()

@@ -67,6 +67,13 @@ public:
         repaint();
     }
     //==============================================================================
+    void setNormalisedPosition( const std::array< float, 2 > pos )
+    {
+        m_pos[ 0 ] = std::fmax(0, std::fmin( pos[0], 1.0f ) ) * (float)getWidth();
+        m_pos[ 1 ] = std::fmax(0, std::fmin( pos[1], 1.0f ) ) * (float)getWidth();
+        repaint();
+    }
+    //==============================================================================
     const std::array< float, 4 > distanceFromCorners()
     {
         std::array< float, 2 > nPos = getNormalisedPosition();

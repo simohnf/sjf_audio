@@ -33,10 +33,12 @@ public:
         juce::Rectangle<float> rect = { 0, 0, (float)getWidth(), (float)getHeight() };
         g.drawRect( rect );
         
+        if( m_drawCornerCirclesFlag ){ drawCirclesForCorners( g ); }
+        
         g.setColour( findColour( circleColourID ) );
         
         rect = { m_pos[0] - 5, m_pos[1] - 5, 10, 10 };
-        g.drawEllipse( rect, 2 );
+        g.fillEllipse( rect ); //( rect, 2 );
     }
     //==============================================================================
     void resized() override
@@ -46,12 +48,13 @@ public:
     //==============================================================================
     const std::array< float, 2 > getPosition()
     {
-        return m_pos;
+        std::array< float, 2 > outPos = { m_pos[ 0 ], getHeight() - m_pos[ 1 ] };
+        return outPos;
     }
     //==============================================================================
     const std::array< float, 2 > getNormalisedPosition()
     {
-        std::array< float, 2 > nPos = { m_pos[0] / (float)getWidth(), m_pos[1] / (float)getHeight() };
+        std::array< float, 2 > nPos = { m_pos[0] / (float)getWidth(), 1.0f - (m_pos[1] / (float)getHeight()) };
         return nPos;
     }
     //==============================================================================
@@ -63,14 +66,14 @@ public:
     //==============================================================================
     void setNormalisedYposition( const float y )
     {
-        m_pos[ 1 ] = std::fmax(0, std::fmin( y, 1.0f ) ) * (float)getWidth();
+        m_pos[ 1 ] = ( std::fmax(0, std::fmin( 1.0f - y, 1.0f ) ) ) * (float)getHeight();
         repaint();
     }
     //==============================================================================
     void setNormalisedPosition( const std::array< float, 2 > pos )
     {
         m_pos[ 0 ] = std::fmax(0, std::fmin( pos[0], 1.0f ) ) * (float)getWidth();
-        m_pos[ 1 ] = std::fmax(0, std::fmin( pos[1], 1.0f ) ) * (float)getWidth();
+        m_pos[ 1 ] = std::fmax(0, std::fmin( 1.0f - pos[1], 1.0f ) ) * (float)getHeight();
         repaint();
     }
     //==============================================================================
@@ -89,6 +92,13 @@ public:
         return corners;
     }
     //==============================================================================
+    void shouldDrawCornerCircles( const bool trueIfShouoldDrawCornerCircles )
+    {
+        m_drawCornerCirclesFlag = trueIfShouoldDrawCornerCircles;
+        DBG("should draw corner circles");
+        repaint();
+    }
+    //==============================================================================
     enum ColourIds
     {
         backgroundColourId          = 0x1001200,
@@ -100,8 +110,10 @@ public:
 private:
     void calculatePositions( const juce::MouseEvent& e )
     {
-        m_pos[0] = std::fmax(std::fmin(e.position.getX(), getWidth()), 0);
-        m_pos[1] = std::fmax(std::fmin(e.position.getY(), getWidth()), 0);
+        auto w = getWidth();
+        auto h = getHeight();
+        m_pos[0] = std::fmax( std::fmin(e.position.getX(), w ), 0);
+        m_pos[1] = std::fmax( std::fmin(e.position.getY(), h ), 0);
         repaint();
     }
     //==============================================================================
@@ -116,7 +128,39 @@ private:
         calculatePositions( e );
         if ( onMouseEvent != nullptr ){ onMouseEvent(); }
     }
+    //==============================================================================
+    void drawCirclesForCorners( juce::Graphics& g )
+    {
+        DBG("!!!!! draw corner circles !!!!");
+        static const int nCorners = 4;
+        static constexpr std::array< float, nCorners*2 > corners = { 0, 0, 1, 0, 1, 1, 0, 1 }; 
+        constexpr auto randomColours = sjf_matrixOfRandomFloats< float, nCorners, 4 >();
+        juce::Rectangle< float > rect;
+        float w = getWidth();
+        float h = getHeight();
+        float tWidth = w*2.0f;
+        float tHeight = h*2.0f;
+        float alpha = 0.1;
+        for ( int i = 0; i < nCorners; i++)
+        {
+            int red = randomColours.getValue(i, 0) * 255;
+            int green = randomColours.getValue(i, 1)  * 255;
+            int blue = randomColours.getValue(i, 2) * 255;
+//            float alpha = randomColours.getValue(i, 3) * 0.3;
+            
+            auto randColour = juce::Colour( red, green, blue );
+            randColour = randColour.withAlpha(alpha);
+            DBG("COLOUR " << red << " " << green << " " << blue << " " << alpha);
+            g.setColour( randColour );
+            
+            rect = { corners[ i*2 ]*w - w, corners[ i*2 + 1 ]*h - h, tWidth, tHeight };
+            DBG("RECTANGLE " << rect.getX() << " " << rect.getY() << " " << rect.getRight() << " " << rect.getBottom() << " " );
+            g.fillEllipse( rect );
+        }
+    }
+    //==============================================================================
     
+    bool m_drawCornerCirclesFlag = false;
     std::array< float, 2 > m_pos = {0, 0};
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_XYpad)

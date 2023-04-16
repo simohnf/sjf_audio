@@ -21,7 +21,7 @@ public:
     {
         for ( int i = 0; i < KERNEL_SIZE; i++ )
         {
-            m_delay[ i ] = 0;
+            m_kernel[ i ] = m_delay[ i + KERNEL_SIZE ] = m_delay[ i ] = 0; // initialise everything to zero
         }
     };
     ~sjf_buffir(){};
@@ -34,13 +34,32 @@ public:
         }
     }
     
+    void setKernel( float* kernel )
+    {
+        for ( int i = 0; i < KERNEL_SIZE; i++ )
+        {
+            m_kernel[ i ] = kernel[ i ];
+        }
+    }
+    
+    
     float filterInput( float samp )
     {
         float y;
         m_delay[ m_wp ] = m_delay[ m_wp + KERNEL_SIZE ] = samp;
-        vDSP_dotpr ( m_delay.data() + m_wp, 1, m_kernel.data(), 1, &y, KERNEL_SIZE);
+        vDSP_dotpr ( m_delay.data() + m_wp, 1, m_kernel.data(), 1, &y, KERNEL_SIZE );
         fastMod3< int > ( --m_wp, KERNEL_SIZE ); // delay line is written in reverse to line up with kernel
         return y;
+    }
+    
+    void filterInputBlock( float* samp, int nSamples )
+    {
+        for ( int s = 0; s < nSamples; s++ )
+        {
+            m_delay[ m_wp ] = m_delay[ m_wp + KERNEL_SIZE ] = samp[ s ];
+            vDSP_dotpr ( m_delay.data() + m_wp, 1, m_kernel.data(), 1, &samp[ s ], KERNEL_SIZE );
+            fastMod3< int > ( --m_wp, KERNEL_SIZE ); // delay line is written in reverse to line up with kernel
+        }
     }
     
 private:

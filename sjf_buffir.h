@@ -31,6 +31,8 @@ public:
         }
     }
     
+    
+    
     T filterInput( T samp )
     {
         m_delay[ m_wp ] = samp;

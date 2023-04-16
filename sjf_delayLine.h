@@ -48,7 +48,7 @@ public:
     const T size()
     { return m_delayLine.size(); }
     
-    const T& getDelayTimeSamps(  )
+    const T getDelayTimeSamps(  )
     { return m_delayTimeInSamps; }
     
     const T getSample( const int &indexThroughCurrentBuffer )

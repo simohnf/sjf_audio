@@ -67,9 +67,11 @@ public:
                                         m_IRSampleRate = reader->sampleRate;
                                         m_impulseBuffer.setSize( m_nChannelsInImpulse, m_durationSamps );
                                         reader->read (&m_impulseBuffer, 0, (int) reader->lengthInSamples, 0, true, true);
+                                        m_impulseBufferOriginal.makeCopyOf( m_impulseBuffer ); // store for future editing
                                         m_samplePath = file.getFullPathName();
                                         m_sampleName = file.getFileName();
                                         m_loadImpulseFlag = true;
+                                        m_reverseFlag = false;
                                         setImpulseResponse();
                                     }
                                 });
@@ -114,11 +116,13 @@ public:
     
     void reverseImpulse()
     {
+        auto nSamps = m_impulseBuffer.getNumSamples();
         for ( int c = 0; c < m_nChannelsInImpulse; c++ )
         {
-            m_impulseBuffer.reverse( c, 0, m_durationSamps );
+            m_impulseBuffer.reverse( c, 0, nSamps );
         }
         m_loadImpulseFlag = true;
+        m_reverseFlag = !m_reverseFlag;
         setImpulseResponse();
     }
     
@@ -126,6 +130,44 @@ public:
     {
         
     }
+    
+    
+    void trimImpulseEnd( )
+    {
+        int indx =0,  indxC = 0;
+        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
+        {
+            int s = m_durationSamps - 1;
+            auto db = 20*log10( abs(m_impulseBufferOriginal.getSample( c, s ) ) );
+            while (  (db < -1*80) && s > 0 )
+            {
+                indxC = s;
+                
+                
+                db = 20*log10( abs(m_impulseBufferOriginal.getSample( c, s ) ) );
+                s--;
+            }
+            if ( indxC > indx ){ indx = indxC; }
+        }
+        if ( indx == 0 )
+        { return;   }
+        int newLen = indx + 1; // add one sample for safety
+        m_impulseBuffer.setSize( m_nChannelsInImpulse, newLen );
+        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
+        { 
+            m_impulseBuffer.copyFrom( c, 0, m_impulseBufferOriginal, c, 0, newLen );
+        }
+        if ( m_reverseFlag )
+        {
+            m_reverseFlag = !m_reverseFlag;
+            reverseImpulse();
+        }
+        else
+        {
+            setImpulseResponse();
+        }
+    }
+    
     
     void setPreDelay( int preDelayInSamps )
     {
@@ -149,15 +191,16 @@ private:
     {
         if ( !m_loadImpulseFlag ){ return; }
         
+        auto nSamps = m_impulseBuffer.getNumSamples();
         for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
             m_FIR[ c ].setKernel( m_impulseBuffer.getWritePointer( c % m_nChannelsInImpulse ) );
         }
         
-        m_fftImpulseBuffer.setSize( NUM_CHANNELS, m_durationSamps - FIR_BUFFER_SIZE );
+        m_fftImpulseBuffer.setSize( NUM_CHANNELS, nSamps - FIR_BUFFER_SIZE );
         for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
-            m_fftImpulseBuffer.copyFrom( c, 0, m_impulseBuffer, c%m_nChannelsInImpulse, FIR_BUFFER_SIZE, m_durationSamps - FIR_BUFFER_SIZE );
+            m_fftImpulseBuffer.copyFrom( c, 0, m_impulseBuffer, c%m_nChannelsInImpulse, FIR_BUFFER_SIZE, nSamps - FIR_BUFFER_SIZE );
         }
         m_conv.loadImpulseResponse( juce::AudioBuffer< float >(m_fftImpulseBuffer), m_IRSampleRate, juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::no, juce::dsp::Convolution::Normalise::no );
         
@@ -173,9 +216,9 @@ private:
     juce::dsp::Convolution m_conv{juce::dsp::Convolution::NonUniform{ FIR_BUFFER_SIZE }, m_convBackgroundMessageQueue };
     
     
-    juce::AudioBuffer< float > m_impulseBuffer, m_fftImpulseBuffer, m_FIRbuffer;
+    juce::AudioBuffer< float > m_impulseBuffer, m_impulseBufferOriginal, m_fftImpulseBuffer, m_FIRbuffer;
     
-    bool m_loadImpulseFlag = false;
+    bool m_loadImpulseFlag = false, m_reverseFlag = false;
     double m_IRSampleRate = 0;
     int m_nChannelsInImpulse, m_durationSamps;
     juce::String m_samplePath, m_sampleName;

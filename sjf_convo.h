@@ -15,6 +15,7 @@
 #include "sjf_interpolators.h"
 #include "sjf_delayLine.h"
 #include "sjf_buffir2.h" // this uses Apple Accelerate framework
+#include "sjf_lpf.h"
 #include <JuceHeader.h>
 
 
@@ -29,7 +30,12 @@ class sjf_convo
 {
     
 public:
-    sjf_convo() { m_formatManager.registerBasicFormats(); };
+    sjf_convo()
+    {
+        m_formatManager.registerBasicFormats();
+        m_lpf.setCutoff( 0.999f );
+        m_hpf.setCutoff( 0.001f );
+    };
     ~sjf_convo() {};
    
     void prepare( double sampleRate, int samplesPerBlock )
@@ -126,9 +132,9 @@ public:
         setImpulseResponse();
     }
     
-    void transposeImpulse( float transpositionFactor )
+    void stretchImpulse( float stretchFactor )
     {
-        
+        // need to do this
     }
     
     
@@ -150,7 +156,7 @@ public:
             if ( indxC > indx ){ indx = indxC; }
         }
         if ( indx == 0 )
-        { return;   }
+        { return; }
         int newLen = indx + 1; // add one sample for safety
         m_impulseBuffer.setSize( m_nChannelsInImpulse, newLen );
         for ( int c = 0; c < m_nChannelsInImpulse; c++ )
@@ -177,6 +183,40 @@ public:
         }
     }
     
+    void setLPFCutoff( float cutoffCoefficient )
+    {
+        m_lpf.setCutoff( cutoffCoefficient );
+        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
+        {
+            m_impulseBuffer.copyFrom( c, 0, m_impulseBufferOriginal, c, 0, m_impulseBuffer.getNumChannels() );
+        }
+        setImpulseResponse();
+    }
+    
+    float setLPFCutoff( )
+    {
+        return m_lpf.getCutoff( );
+    }
+    
+    void setHPFCutoff( float cutoffCoefficient )
+    {
+        m_hpf.setCutoff( cutoffCoefficient );
+        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
+        {
+            m_impulseBuffer.copyFrom( c, 0, m_impulseBufferOriginal, c, 0, m_impulseBuffer.getNumChannels() );
+        }
+        setImpulseResponse();
+    }
+    
+    void getHPFCutoff( float cutoffCoefficient )
+    {
+        return m_hpf.getCutoff( );
+    }
+    
+    
+    
+    
+    
     juce::AudioBuffer< float >& getIRBuffer()
     {
         return m_impulseBuffer;
@@ -192,6 +232,18 @@ private:
         if ( !m_loadImpulseFlag ){ return; }
         
         auto nSamps = m_impulseBuffer.getNumSamples();
+        // filter buffer here
+        // havent checked to make sure this works
+        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
+        {
+            auto ptr = m_impulseBuffer.getWritePointer( c );
+            for ( int s = 0; s < nSamps; s++ )
+            {
+                m_lpf.filterInPlace( ptr[ s ] );
+                m_hpf.filterInPlaceHP( ptr[ s ] );
+            }
+        }
+        
         for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
             m_FIR[ c ].setKernel( m_impulseBuffer.getWritePointer( c % m_nChannelsInImpulse ) );
@@ -224,6 +276,7 @@ private:
     juce::String m_samplePath, m_sampleName;
     juce::AudioFormatManager m_formatManager;
     std::unique_ptr<juce::FileChooser> m_chooser;
+    sjf_lpf m_lpf, m_hpf;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_convo )
 };

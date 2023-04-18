@@ -14,4 +14,7 @@
 #include "sjf_label.h"
 #include "sjf_graph.h"
 #include "sjf_XYpad.h"
+#include "sjf_waveform.h"
+
+
 #endif /* sjf_widgets_h */

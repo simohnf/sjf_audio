@@ -21,7 +21,7 @@
 
 #include <vector>
 
-
+// need to check FFT reset position because occassionally it throws error in debug???
 //------------------------------------------------//------------------------------------------------
 //------------------------------------------------//------------------------------------------------
 //------------------------------------------------//------------------------------------------------
@@ -39,6 +39,10 @@ public:
             m_lpf[ c ].setCutoff( 0.999f );
             m_hpf[ c ].setCutoff( 0.001f );
         }
+        
+        m_env.resize( 2 ); // default envelope
+        m_env[ 0 ] = { 0, 1 };
+        m_env[ 1 ] = { 1, 1 };
     };
     //------------------------------------------------//------------------------------------------------
     ~sjf_convo() {};
@@ -236,6 +240,16 @@ public:
         setImpulseResponse();
     }
     //------------------------------------------------//------------------------------------------------
+    void setAmplitudeEnvelope( std::vector< std::array < float, 2 > >& envelope )
+    {
+        DBG( "Amp env set " );
+        if ( m_env.size() < 2 ){ return; }
+        m_env = envelope;
+        m_envelopeFlag = true;
+        m_impulseChangedFlag = true;
+        setImpulseResponse();
+    }
+    //------------------------------------------------//------------------------------------------------
     juce::AudioBuffer< float >& getIRBuffer()
     {
         return m_impulseBuffer;
@@ -265,7 +279,7 @@ private:
         if ( m_stretchFactor != 1 ){ stretchBuffer( m_impulseBuffer,  m_impulseBufferOriginal ); }
         if ( m_filterPosition == filterIR ) { filterBuffer( m_impulseBuffer ); }
         if ( m_reverseFlag ){ reverseBuffer( m_impulseBuffer ); }
-
+        if ( m_envelopeFlag ){ applyEnvelopeToBuffer( m_impulseBuffer ); }
         
         nSamps = m_impulseBuffer.getNumSamples();
         
@@ -286,18 +300,7 @@ private:
             trimmedIRBuffer.copyFrom( c, 0, m_impulseBuffer, c, start, newLen );
         }
         setFIRandFFT( trimmedIRBuffer );
-//        for ( int c = 0; c < NUM_CHANNELS; c++ )
-//        {
-//            m_FIR[ c ].setKernel( m_impulseBuffer.getWritePointer( c % nChannels ) );
-//        }
-//
-//        m_fftImpulseBuffer.setSize( NUM_CHANNELS, nSamps - FIR_BUFFER_SIZE );
-//        for ( int c = 0; c < NUM_CHANNELS; c++ )
-//        {
-//            m_fftImpulseBuffer.copyFrom( c, 0, m_impulseBuffer, c%nChannels, FIR_BUFFER_SIZE, nSamps - FIR_BUFFER_SIZE );
-//        }
-//        m_conv.loadImpulseResponse( juce::AudioBuffer< float >(m_fftImpulseBuffer), m_IRSampleRate, juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::no, juce::dsp::Convolution::Normalise::no );
-//
+
         m_impulseChangedFlag = false;
     }
     //------------------------------------------------//------------------------------------------------
@@ -376,7 +379,33 @@ private:
         }
     }
     //------------------------------------------------//------------------------------------------------
-    
+    void applyEnvelopeToBuffer( juce::AudioBuffer< float >& buffer )
+    {
+        auto nSamps = buffer.getNumSamples();
+        auto nChannels  = buffer.getNumChannels();
+        auto nPoints = m_env.size();
+        std::vector< std::array< float, 2 > > env = m_env;
+        for ( int i = 0; i < nPoints; i++ )
+        {
+            env[ i ][ 0 ] *= nSamps - 1; // scale normalised position to sample values
+        }
+        
+        for ( int i = 0; i < nPoints - 1; i++ )
+        {
+            DBG( env[ i ][ 0 ] << " " << env[ i ][ 1 ] );
+            auto startSamp = env[ i ][ 0 ];
+            auto startGain = env[ i ][ 1 ];
+            auto endSamp = env[ i + 1 ][ 0 ];
+            auto endGain = env[ i + 1 ][ 1 ];
+            auto rampLen = endSamp - startSamp;
+            rampLen = rampLen > 0 ? rampLen : 1;
+            if ( startSamp + rampLen < nSamps )
+            {
+                buffer.applyGainRamp( startSamp, rampLen, startGain, endGain);
+            }
+        }
+        DBG( env[ nPoints - 1 ][ 0 ] << " " << env[ nPoints - 1 ][ 1 ] );
+    }
     //------------------------------------------------//------------------------------------------------
     void setFIRandFFT( juce::AudioBuffer< float >& buffer )
     {
@@ -426,8 +455,8 @@ private:
     juce::AudioBuffer< float > m_impulseBuffer, m_impulseBufferOriginal, m_fftImpulseBuffer, m_FIRbuffer;
     
     // buffer flags
-    bool m_impulseChangedFlag = false, m_reverseFlag = false, m_trimFlag = false, m_fftFlag = false;
-    float m_stretchFactor = 1, m_startPoint = 0, m_endPoint = 1;
+    bool m_impulseChangedFlag = false, m_reverseFlag = false, m_trimFlag = false, m_fftFlag = false, m_envelopeFlag = false;
+    float m_stretchFactor = 1, m_startPoint = 0, m_endPoint = 1, attack = 0, decay = 0;
     
     int m_filterPosition = 1;
     double m_IRSampleRate = 0;
@@ -436,6 +465,7 @@ private:
     std::unique_ptr<juce::FileChooser> m_chooser;
     std::array< sjf_lpf< float >, NUM_CHANNELS > m_lpf, m_hpf;
     
+    std::vector< std::array< float, 2 > > m_env; // normalised amplitude envelope envPoint{ position0to1, amplitude0to1 }
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_convo )
 };
 

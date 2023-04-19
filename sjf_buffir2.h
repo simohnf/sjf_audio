@@ -19,10 +19,7 @@ class sjf_buffir
 public:
     sjf_buffir()
     {
-        for ( int i = 0; i < KERNEL_SIZE; i++ )
-        {
-            m_kernel[ i ] = m_delay[ i + KERNEL_SIZE ] = m_delay[ i ] = 0; // initialise everything to zero
-        }
+        clear();
     };
     ~sjf_buffir(){};
     
@@ -42,6 +39,30 @@ public:
         }
     }
     
+    void setKernel( float* kernel, int kernelSize )
+    {
+        for ( int i = 0; i < KERNEL_SIZE; i++ )
+        {
+            m_kernel[ i ] = i < kernelSize ? kernel[ i ] : 0;
+        }
+    }
+    
+    
+    void clear()
+    {
+        for ( int i = 0; i < KERNEL_SIZE; i++ )
+        {
+            m_kernel[ i ] = m_delay[ i + KERNEL_SIZE ] = m_delay[ i ] = 0; // clear everything to zero
+        }
+    }
+    
+    void clearDelays()
+    {
+        for ( int i = 0; i < KERNEL_SIZE; i++ )
+        {
+            m_delay[ i + KERNEL_SIZE ] = m_delay[ i ] = 0; // clear delayLines
+        }
+    }
     
     float filterInput( float samp )
     {

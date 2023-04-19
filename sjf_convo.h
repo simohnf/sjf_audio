@@ -12,7 +12,7 @@
 #ifndef sjf_convo_h
 #define sjf_convo_h
 #include "sjf_audioUtilities.h"
-#include "sjf_interpolators.h"
+#include "sjf_interpolationTypes.h"
 #include "sjf_delayLine.h"
 #include "sjf_buffir2.h" // this uses Apple Accelerate framework
 #include "sjf_lpf.h"
@@ -22,22 +22,27 @@
 #include <vector>
 
 
-//------------------------------------------------
-//------------------------------------------------
-//------------------------------------------------
+//------------------------------------------------//------------------------------------------------
+//------------------------------------------------//------------------------------------------------
+//------------------------------------------------//------------------------------------------------
 template< int NUM_CHANNELS, int FIR_BUFFER_SIZE >
 class sjf_convo
 {
     
 public:
-    sjf_convo()
+    sjf_convo( bool shouldTrimImpulse = false )
     {
+        m_trimFlag = shouldTrimImpulse;
         m_formatManager.registerBasicFormats();
-        m_lpf.setCutoff( 0.999f );
-        m_hpf.setCutoff( 0.001f );
+        for ( int c = 0; c < NUM_CHANNELS; c++ )
+        {
+            m_lpf[ c ].setCutoff( 0.999f );
+            m_hpf[ c ].setCutoff( 0.001f );
+        }
     };
+    //------------------------------------------------//------------------------------------------------
     ~sjf_convo() {};
-   
+   //------------------------------------------------//------------------------------------------------
     void prepare( double sampleRate, int samplesPerBlock )
     {
         juce::dsp::ProcessSpec spec;
@@ -51,9 +56,8 @@ public:
         {
             m_preDelay[ c ].initialise( sampleRate );
         }
-        
     }
-   
+   //------------------------------------------------//------------------------------------------------
     void loadImpulse()
     {
         m_chooser = std::make_unique<juce::FileChooser> ("Select a Wave/Aiff file to use as the impulse..." ,
@@ -68,23 +72,27 @@ public:
                                     std::unique_ptr<juce::AudioFormatReader> reader (m_formatManager.createReaderFor (file));
                                     if (reader.get() != nullptr)
                                     {
-                                        m_durationSamps = (int) reader->lengthInSamples;
-                                        m_nChannelsInImpulse = (int) reader->numChannels;
+                                        auto nSamps = (int) reader->lengthInSamples;
+                                        auto nChannels = (int) reader->numChannels;
                                         m_IRSampleRate = reader->sampleRate;
-                                        m_impulseBuffer.setSize( m_nChannelsInImpulse, m_durationSamps );
-                                        reader->read (&m_impulseBuffer, 0, (int) reader->lengthInSamples, 0, true, true);
-                                        m_impulseBufferOriginal.makeCopyOf( m_impulseBuffer ); // store for future editing
+                                        m_impulseBufferOriginal.setSize( nChannels, nSamps );
+                                        reader->read (&m_impulseBufferOriginal, 0, nSamps, 0, true, true);
                                         m_samplePath = file.getFullPathName();
                                         m_sampleName = file.getFileName();
-                                        m_loadImpulseFlag = true;
-                                        m_reverseFlag = false;
+                                        m_impulseChangedFlag = true;
+//                                        m_reverseFlag = false;
                                         setImpulseResponse();
                                     }
                                 });
     }
-    
+    //------------------------------------------------//------------------------------------------------
     void process( juce::AudioBuffer<float> &buffer )
     {
+        if ( m_impulseBuffer.getNumChannels() < 1 )
+        {
+//            DBG("NO IMPULSE");
+            return;
+        }
         auto bufferSize = buffer.getNumSamples();
         auto nBuffChannels = buffer.getNumChannels();
         
@@ -102,79 +110,39 @@ public:
                 }
             }
         }
-        
         for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
             m_FIRbuffer.copyFrom( c, 0, buffer, fastMod( c, nBuffChannels ), 0, bufferSize );
             m_FIR[ c ].filterInputBlock( m_FIRbuffer.getWritePointer( c ), bufferSize );
         }
         
-        juce::dsp::AudioBlock<float> block (buffer);
-        juce::dsp::ProcessContextReplacing<float> ctx (block);
-        m_conv.process( ctx );
+        if ( m_fftFlag )
+        {
+            juce::dsp::AudioBlock<float> block (buffer);
+            juce::dsp::ProcessContextReplacing<float> ctx (block);
+            m_conv.process( ctx );
+        }
         for ( int c = 0; c < nBuffChannels; c++ )
         {
             buffer.addFrom( c, 0, m_FIRbuffer, c, 0, bufferSize );
         }
-        DBG( "latency " << m_conv.getLatency() );
-        DBG( "IR Length Samps " << m_impulseBuffer.getNumSamples()<< " " << m_durationSamps );
+        if ( m_filterPosition == filterOutput )
+        {
+            filterBuffer( buffer );
+        }
+//        DBG( "latency " << m_conv.getLatency() );
+//        DBG( "IR Length Samps " << m_impulseBuffer.getNumSamples()<< " " << m_impulseBufferOriginal.getNumSamples() );
     }
-    
-    void reverseImpulse()
+    //------------------------------------------------//------------------------------------------------
+    void PANIC()
     {
-        auto nSamps = m_impulseBuffer.getNumSamples();
-        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
+        for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
-            m_impulseBuffer.reverse( c, 0, nSamps );
+            m_FIR[ c ].clearDelays();
         }
-        m_loadImpulseFlag = true;
-        m_reverseFlag = !m_reverseFlag;
-        setImpulseResponse();
+        m_conv.reset();
     }
-    
-    void stretchImpulse( float stretchFactor )
-    {
-        // need to do this
-    }
-    
-    
-    void trimImpulseEnd( )
-    {
-        int indx =0,  indxC = 0;
-        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
-        {
-            int s = m_durationSamps - 1;
-            auto db = 20*log10( abs(m_impulseBufferOriginal.getSample( c, s ) ) );
-            while (  (db < -1*80) && s > 0 )
-            {
-                indxC = s;
-                
-                
-                db = 20*log10( abs(m_impulseBufferOriginal.getSample( c, s ) ) );
-                s--;
-            }
-            if ( indxC > indx ){ indx = indxC; }
-        }
-        if ( indx == 0 )
-        { return; }
-        int newLen = indx + 1; // add one sample for safety
-        m_impulseBuffer.setSize( m_nChannelsInImpulse, newLen );
-        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
-        { 
-            m_impulseBuffer.copyFrom( c, 0, m_impulseBufferOriginal, c, 0, newLen );
-        }
-        if ( m_reverseFlag )
-        {
-            m_reverseFlag = !m_reverseFlag;
-            reverseImpulse();
-        }
-        else
-        {
-            setImpulseResponse();
-        }
-    }
-    
-    
+    //------------------------------------------------//------------------------------------------------
     void setPreDelay( int preDelayInSamps )
     {
         for ( int c = 0; c < NUM_CHANNELS; c++ )
@@ -182,83 +150,271 @@ public:
             m_preDelay[ c ].setDelayTimeSamps( preDelayInSamps );
         }
     }
-    
+    //------------------------------------------------//------------------------------------------------
+    void reverseImpulse( bool shouldReverseImpulse )
+    {
+        m_reverseFlag = shouldReverseImpulse;
+        m_impulseChangedFlag = true;
+        setImpulseResponse();
+    }
+    //------------------------------------------------//------------------------------------------------
+    void setStrecthFactor( float stretchFactor )
+    {
+        // need to do this
+        if ( stretchFactor <= 0 ){ return; }
+        m_stretchFactor = stretchFactor;
+        m_impulseChangedFlag = true;
+        setImpulseResponse();
+    }
+    //------------------------------------------------//------------------------------------------------
+    void trimImpulseEnd( bool shouldTrimEndOfImpulse )
+    {
+        m_trimFlag = shouldTrimEndOfImpulse;
+        m_impulseChangedFlag = true;
+        setImpulseResponse();
+    }
+   //------------------------------------------------//------------------------------------------------
+    void setImpulseStartAndEnd( float start0to1, float end0to1 )
+    {
+        // normalised to 0-->1
+        m_startPoint = start0to1;
+        m_endPoint = end0to1;
+        m_impulseChangedFlag = true;
+        setImpulseResponse();
+    }
+    //------------------------------------------------//------------------------------------------------
     void setLPFCutoff( float cutoffCoefficient )
     {
-        m_lpf.setCutoff( cutoffCoefficient );
-        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
+        for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
-            m_impulseBuffer.copyFrom( c, 0, m_impulseBufferOriginal, c, 0, m_impulseBuffer.getNumChannels() );
+            m_lpf[ c ].setCutoff( cutoffCoefficient );
         }
+        // buffer logic here
+        if( m_filterPosition != filterIR )
+        {
+            return;
+        }
+        m_impulseChangedFlag = true;
         setImpulseResponse();
     }
-    
-    float setLPFCutoff( )
+    //------------------------------------------------//------------------------------------------------
+    float getLPFCutoff( )
     {
-        return m_lpf.getCutoff( );
+        return m_lpf[ 0 ].getCutoff( );
     }
-    
+    //------------------------------------------------//------------------------------------------------
     void setHPFCutoff( float cutoffCoefficient )
     {
-        m_hpf.setCutoff( cutoffCoefficient );
-        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
+        for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
-            m_impulseBuffer.copyFrom( c, 0, m_impulseBufferOriginal, c, 0, m_impulseBuffer.getNumChannels() );
+            m_hpf[ c ].setCutoff( cutoffCoefficient );
         }
+        // buffer logic here
+        if( m_filterPosition != filterIR )
+        {
+            return;
+        }
+        m_impulseChangedFlag = true;
         setImpulseResponse();
     }
-    
+    //------------------------------------------------//------------------------------------------------
     void getHPFCutoff( float cutoffCoefficient )
     {
-        return m_hpf.getCutoff( );
+        return m_hpf[ 0 ].getCutoff( );
     }
-    
-    
-    
-    
-    
+    //------------------------------------------------//------------------------------------------------
+    void setFilterPosition( int filterPos )
+    {
+        if ( filterPos < filterOff || filterPos > filterOutput ){ return; }
+        if (filterPos != filterIR && m_filterPosition != filterIR )
+        {
+            m_filterPosition = filterPos;
+            return;
+        }
+        m_filterPosition = filterPos;
+        m_impulseChangedFlag = true;
+        setImpulseResponse();
+    }
+    //------------------------------------------------//------------------------------------------------
     juce::AudioBuffer< float >& getIRBuffer()
     {
         return m_impulseBuffer;
     }
-    
+    //------------------------------------------------//------------------------------------------------
     double getIRSampleRate()
     {
         return m_IRSampleRate;
     }
+    //------------------------------------------------//------------------------------------------------
+    enum filterPositions
+    {
+        filterOff = 1, filterIR, filterOutput
+    };
+    //------------------------------------------------//------------------------------------------------
 private:
     void setImpulseResponse()
     {
-        if ( !m_loadImpulseFlag ){ return; }
+        auto nSamps = m_impulseBufferOriginal.getNumSamples( );
+        auto nChannels = m_impulseBufferOriginal.getNumChannels( );
+        if ( !m_impulseChangedFlag || nChannels < 1 || nSamps < 1 )
+        { return; }
         
-        auto nSamps = m_impulseBuffer.getNumSamples();
-        // filter buffer here
-        // havent checked to make sure this works
-        for ( int c = 0; c < m_nChannelsInImpulse; c++ )
+        // process impulse before setting FIR and FFT
+        if ( m_trimFlag ){ trimSilenceAtEndOfBuffer( m_impulseBuffer,  m_impulseBufferOriginal ); }
+        else{ m_impulseBuffer = m_impulseBufferOriginal; }
+        if ( m_stretchFactor != 1 ){ stretchBuffer( m_impulseBuffer,  m_impulseBufferOriginal ); }
+        if ( m_filterPosition == filterIR ) { filterBuffer( m_impulseBuffer ); }
+        if ( m_reverseFlag ){ reverseBuffer( m_impulseBuffer ); }
+
+        
+        nSamps = m_impulseBuffer.getNumSamples();
+        
+        if ( m_startPoint == 0 && m_endPoint == 1 )
         {
-            auto ptr = m_impulseBuffer.getWritePointer( c );
-            for ( int s = 0; s < nSamps; s++ )
+            setFIRandFFT( m_impulseBuffer );
+            return;
+        }
+        
+        
+        int start = nSamps * m_startPoint;
+        int end = nSamps * m_endPoint;
+        auto newLen = end - start;
+        
+        juce::AudioBuffer< float > trimmedIRBuffer{ nChannels, newLen };
+        for ( int c = 0; c < nChannels; c++ )
+        {
+            trimmedIRBuffer.copyFrom( c, 0, m_impulseBuffer, c, start, newLen );
+        }
+        setFIRandFFT( trimmedIRBuffer );
+//        for ( int c = 0; c < NUM_CHANNELS; c++ )
+//        {
+//            m_FIR[ c ].setKernel( m_impulseBuffer.getWritePointer( c % nChannels ) );
+//        }
+//
+//        m_fftImpulseBuffer.setSize( NUM_CHANNELS, nSamps - FIR_BUFFER_SIZE );
+//        for ( int c = 0; c < NUM_CHANNELS; c++ )
+//        {
+//            m_fftImpulseBuffer.copyFrom( c, 0, m_impulseBuffer, c%nChannels, FIR_BUFFER_SIZE, nSamps - FIR_BUFFER_SIZE );
+//        }
+//        m_conv.loadImpulseResponse( juce::AudioBuffer< float >(m_fftImpulseBuffer), m_IRSampleRate, juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::no, juce::dsp::Convolution::Normalise::no );
+//
+        m_impulseChangedFlag = false;
+    }
+    //------------------------------------------------//------------------------------------------------
+    void trimSilenceAtEndOfBuffer( juce::AudioBuffer< float >& buffer, juce::AudioBuffer< float >& bufferOriginal )
+    {
+        auto nSamps = bufferOriginal.getNumSamples();
+        auto nChannels  = bufferOriginal.getNumChannels();
+        int indx = 0,  indxC = 0;
+        for ( int c = 0; c < nChannels; c++ )
+        {
+            auto rp = bufferOriginal.getReadPointer( c );
+            int s = nSamps - 1;
+            auto db = 20*log10( abs( rp [ s ] ) ); // not sure if I need this
+            while (  (db < -1*80) && s > 0 )
             {
-                m_lpf.filterInPlace( ptr[ s ] );
-                m_hpf.filterInPlaceHP( ptr[ s ] );
+                indxC = s;
+                db = 20*log10( abs( rp [ s ] ) );
+                s--;
+            }
+            if ( indxC > indx ){ indx = indxC; }
+        }
+        if ( indx == 0 ) { return; }
+        int newLen = indx + 1; // add one sample for safety
+        buffer.setSize( nChannels, newLen );
+        for ( int c = 0; c < nChannels; c++ )
+        {
+            buffer.copyFrom( c, 0, bufferOriginal, c, 0, newLen );
+        }
+    }
+    //------------------------------------------------//------------------------------------------------
+    void reverseBuffer( juce::AudioBuffer< float >& buffer )
+    {
+        auto nSamps = buffer.getNumSamples();
+        auto nChannels  = buffer.getNumChannels();
+        for ( int c = 0; c < nChannels; c++ )
+        {
+            buffer.reverse( c, 0, nSamps );
+        }
+    }
+    //------------------------------------------------//------------------------------------------------
+    void stretchBuffer( juce::AudioBuffer< float >& buffer, juce::AudioBuffer< float >& bufferOriginal )
+    {
+        auto nSamps = buffer.getNumSamples();
+        auto nChannels  = buffer.getNumChannels();
+        auto nSampsOriginal = bufferOriginal.getNumSamples();
+        auto nSampsStretched = (int) (nSamps * m_stretchFactor);
+        auto stride = 1.0f / m_stretchFactor;
+        buffer.setSize( nChannels, nSampsStretched );
+        
+        for ( int c = 0; c < nChannels; c++ )
+        {
+            auto rp = bufferOriginal.getReadPointer( c );
+            auto wp = buffer.getWritePointer( c );
+            
+            for ( int s = 0; s < nSampsStretched; s++ )
+            {
+                wp[ s ] = cubicInterpolateHermite( rp, s*stride, nSampsOriginal );
             }
         }
+    }
+    //------------------------------------------------//------------------------------------------------
+    void filterBuffer( juce::AudioBuffer< float >& buffer )
+    {
+        auto nSamps = buffer.getNumSamples();
+        auto nChannels  = buffer.getNumChannels();
+        // filter buffer here
+        // havent checked to make sure this works
+        for ( int c = 0; c < nChannels; c++ )
+        {
+            auto ptr = buffer.getWritePointer( c );
+            for ( int s = 0; s < nSamps; s++ )
+            {
+                m_lpf[ c ].filterInPlace( ptr[ s ] );
+                m_hpf[ c ].filterInPlaceHP( ptr[ s ] );
+            }
+        }
+    }
+    //------------------------------------------------//------------------------------------------------
+    
+    //------------------------------------------------//------------------------------------------------
+    void setFIRandFFT( juce::AudioBuffer< float >& buffer )
+    {
+        auto nSamps = buffer.getNumSamples();
+        auto nChannels  = buffer.getNumChannels();
+//        if ( nSamps < FIR_BUFFER_SIZE )
+//        {
+//            juce::AudioBuffer< float > temp{ nChannels, FIR_BUFFER_SIZE };
+//            for ( int c = 0; c < NUM_CHANNELS; c++ )
+//            {
+//                temp.copyFrom( c, 0, buffer, c, 0, nSamps );
+//            }
+//            buffer = temp;
+//        }
+        
         
         for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
-            m_FIR[ c ].setKernel( m_impulseBuffer.getWritePointer( c % m_nChannelsInImpulse ) );
+            m_FIR[ c ].clear();
+            m_FIR[ c ].setKernel( buffer.getWritePointer( c % nChannels, 0 ), nSamps );
         }
         
+        m_conv.reset();
+        if ( nSamps <= FIR_BUFFER_SIZE )
+        {
+            m_fftFlag = false;
+            return;
+        }
+        
+        m_fftFlag = true;
         m_fftImpulseBuffer.setSize( NUM_CHANNELS, nSamps - FIR_BUFFER_SIZE );
         for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
-            m_fftImpulseBuffer.copyFrom( c, 0, m_impulseBuffer, c%m_nChannelsInImpulse, FIR_BUFFER_SIZE, nSamps - FIR_BUFFER_SIZE );
+            m_fftImpulseBuffer.copyFrom( c, 0, buffer, c%nChannels, FIR_BUFFER_SIZE, nSamps - FIR_BUFFER_SIZE );
         }
         m_conv.loadImpulseResponse( juce::AudioBuffer< float >(m_fftImpulseBuffer), m_IRSampleRate, juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::no, juce::dsp::Convolution::Normalise::no );
-        
-        m_loadImpulseFlag = false;
     }
-    
+    //------------------------------------------------//------------------------------------------------
     
     std::array< sjf_delayLine< float >, NUM_CHANNELS > m_preDelay;
     std::array< sjf_buffir< FIR_BUFFER_SIZE >, NUM_CHANNELS > m_FIR;
@@ -267,41 +423,20 @@ private:
     
     juce::dsp::Convolution m_conv{juce::dsp::Convolution::NonUniform{ FIR_BUFFER_SIZE }, m_convBackgroundMessageQueue };
     
-    
     juce::AudioBuffer< float > m_impulseBuffer, m_impulseBufferOriginal, m_fftImpulseBuffer, m_FIRbuffer;
     
-    bool m_loadImpulseFlag = false, m_reverseFlag = false;
+    // buffer flags
+    bool m_impulseChangedFlag = false, m_reverseFlag = false, m_trimFlag = false, m_fftFlag = false;
+    float m_stretchFactor = 1, m_startPoint = 0, m_endPoint = 1;
+    
+    int m_filterPosition = 1;
     double m_IRSampleRate = 0;
-    int m_nChannelsInImpulse, m_durationSamps;
     juce::String m_samplePath, m_sampleName;
     juce::AudioFormatManager m_formatManager;
     std::unique_ptr<juce::FileChooser> m_chooser;
-    sjf_lpf m_lpf, m_hpf;
+    std::array< sjf_lpf< float >, NUM_CHANNELS > m_lpf, m_hpf;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_convo )
 };
-
-
-
-
-//inline float simdInnerProduct (float* in, float* kernel, int numSamples, float y = 0.0f)
-//{
-//    constexpr size_t simdN = dsp::SIMDRegister<float>::SIMDNumElements;
-//
-//    // compute SIMD products
-//    int idx = 0;
-//    for (; idx <= numSamples - simdN; idx += simdN)
-//    {
-//        auto simdIn = loadUnaligned (in + idx);
-//        auto simdKernel = dsp::SIMDRegister<float>::fromRawArray (kernel + idx);
-//        y += (simdIn * simdKernel).sum();
-//    }
-//
-//    // compute leftover samples
-//    y = std::inner_product (in + idx, in + numSamples, kernel + idx, y);
-//
-//    return y;
-//    }
-
 
 #endif /* sjf_convo_h */

@@ -279,7 +279,7 @@ private:
         if ( m_stretchFactor != 1 ){ stretchBuffer( m_impulseBuffer,  m_impulseBufferOriginal ); }
         if ( m_filterPosition == filterIR ) { filterBuffer( m_impulseBuffer ); }
         if ( m_reverseFlag ){ reverseBuffer( m_impulseBuffer ); }
-        if ( m_envelopeFlag ){ applyEnvelopeToBuffer( m_impulseBuffer ); }
+        if ( m_envelopeFlag ){ applyEnvelopeToBuffer( m_impulseBuffer, m_env ); }
         
         nSamps = m_impulseBuffer.getNumSamples();
         
@@ -378,34 +378,34 @@ private:
             }
         }
     }
-    //------------------------------------------------//------------------------------------------------
-    void applyEnvelopeToBuffer( juce::AudioBuffer< float >& buffer )
-    {
-        auto nSamps = buffer.getNumSamples();
-        auto nChannels  = buffer.getNumChannels();
-        auto nPoints = m_env.size();
-        std::vector< std::array< float, 2 > > env = m_env;
-        for ( int i = 0; i < nPoints; i++ )
-        {
-            env[ i ][ 0 ] *= nSamps - 1; // scale normalised position to sample values
-        }
-        
-        for ( int i = 0; i < nPoints - 1; i++ )
-        {
-            DBG( env[ i ][ 0 ] << " " << env[ i ][ 1 ] );
-            auto startSamp = env[ i ][ 0 ];
-            auto startGain = env[ i ][ 1 ];
-            auto endSamp = env[ i + 1 ][ 0 ];
-            auto endGain = env[ i + 1 ][ 1 ];
-            auto rampLen = endSamp - startSamp;
-            rampLen = rampLen > 0 ? rampLen : 1;
-            if ( startSamp + rampLen < nSamps )
-            {
-                buffer.applyGainRamp( startSamp, rampLen, startGain, endGain);
-            }
-        }
-        DBG( env[ nPoints - 1 ][ 0 ] << " " << env[ nPoints - 1 ][ 1 ] );
-    }
+//    //------------------------------------------------//------------------------------------------------
+//    void applyEnvelopeToBuffer( juce::AudioBuffer< float >& buffer )
+//    {
+//        auto nSamps = buffer.getNumSamples();
+//        auto nChannels  = buffer.getNumChannels();
+//        auto nPoints = m_env.size();
+//        std::vector< std::array< float, 2 > > env = m_env;
+//        for ( int i = 0; i < nPoints; i++ )
+//        {
+//            env[ i ][ 0 ] *= nSamps - 1; // scale normalised position to sample values
+//        }
+//
+//        for ( int i = 0; i < nPoints - 1; i++ )
+//        {
+//            DBG( env[ i ][ 0 ] << " " << env[ i ][ 1 ] );
+//            auto startSamp = env[ i ][ 0 ];
+//            auto startGain = env[ i ][ 1 ];
+//            auto endSamp = env[ i + 1 ][ 0 ];
+//            auto endGain = env[ i + 1 ][ 1 ];
+//            auto rampLen = endSamp - startSamp;
+//            rampLen = rampLen > 0 ? rampLen : 1;
+//            if ( startSamp + rampLen < nSamps )
+//            {
+//                buffer.applyGainRamp( startSamp, rampLen, startGain, endGain);
+//            }
+//        }
+//        DBG( env[ nPoints - 1 ][ 0 ] << " " << env[ nPoints - 1 ][ 1 ] );
+//    }
     //------------------------------------------------//------------------------------------------------
     void setFIRandFFT( juce::AudioBuffer< float >& buffer )
     {
@@ -442,6 +442,7 @@ private:
             m_fftImpulseBuffer.copyFrom( c, 0, buffer, c%nChannels, FIR_BUFFER_SIZE, nSamps - FIR_BUFFER_SIZE );
         }
         m_conv.loadImpulseResponse( juce::AudioBuffer< float >(m_fftImpulseBuffer), m_IRSampleRate, juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::no, juce::dsp::Convolution::Normalise::no );
+        m_conv.reset();
     }
     //------------------------------------------------//------------------------------------------------
     

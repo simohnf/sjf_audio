@@ -410,6 +410,40 @@ private:
 };
 
 
+//==============================================================================
+//==============================================================================
+// applies amplitude envelope of breakPoints to juce::AudioBuffer
+// envelope should be in the form std::vector< std::array< float, 2 > > where:
+//              env[ 0 ][ 0 ] is sample position normalised to 0(start)-->1(end)
+//              env[ 0 ][ 1 ] is amplitude
+inline void applyEnvelopeToBuffer( juce::AudioBuffer< float >& buffer, std::vector< std::array < float, 2 > > env )
+{
+    auto nSamps = buffer.getNumSamples();
+    auto nPoints = env.size();
+//    std::vector< std::array< float, 2 > > env = envelope;
+    for ( int i = 0; i < nPoints; i++ )
+    {
+        env[ i ][ 0 ] *= nSamps - 1; // scale normalised position to sample values
+    }
+    
+    for ( int i = 0; i < nPoints - 1; i++ )
+    {
+        DBG( env[ i ][ 0 ] << " " << env[ i ][ 1 ] );
+        auto startSamp = env[ i ][ 0 ];
+        auto startGain = env[ i ][ 1 ];
+        auto endSamp = env[ i + 1 ][ 0 ];
+        auto endGain = env[ i + 1 ][ 1 ];
+        auto rampLen = endSamp - startSamp;
+        rampLen = rampLen > 0 ? rampLen : 1;
+        if ( startSamp + rampLen < nSamps )
+        {
+            buffer.applyGainRamp( startSamp, rampLen, startGain, endGain);
+        }
+    }
+    DBG( env[ nPoints - 1 ][ 0 ] << " " << env[ nPoints - 1 ][ 1 ] );
+}
 
+//==============================================================================
+//==============================================================================
 
 #endif /* sjf_audioUtilities_h */

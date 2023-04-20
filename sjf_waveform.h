@@ -24,6 +24,7 @@ public:
     {
         setInterceptsMouseClicks(true, false);
         
+        m_env.resize( 3 );
         m_env[ 0 ] = juce::Point< float >(0, 0);
         m_env[ 1 ] = juce::Point< float >(0.5, 0);
         m_env[ 2 ] = juce::Point< float >(1, 0);
@@ -154,13 +155,9 @@ private:
         }
     }
     //==============================================================================
-    enum breakPoint
-    {
-        attack, decay, release
-    };
-    //==============================================================================
     void mouseDown (const juce::MouseEvent& e) override
     {
+        m_breakPointErased = false;
         m_touchBreakPoint = calculateTouchedBreakPoint(e);
 //        for ( int i = 0; i < m_env.size(); i++ )
 //        {
@@ -169,12 +166,67 @@ private:
 //            DBG("Point "<< i << " " << x << " " << y );
 //        }
         
-        if ( m_touchBreakPoint < 0 ){ return; }
+        if ( m_touchBreakPoint < 0 )
+        {
+            if ( e.mods.isShiftDown() )
+            {
+                m_touchBreakPoint = insertNewBreakPoint( e );
+            }
+            return;
+        }
+        
+        else if ( e.mods.isAltDown() && m_env.size() >= 0 )
+        {
+            m_env.erase( m_env.begin() + m_touchBreakPoint );
+            m_breakPointErased = true;
+        }
+        repaint();
+    }
+    //==============================================================================
+    int insertNewBreakPoint( const juce::MouseEvent& e )
+    {
+        auto x = e.position.getX()/getWidth();
+        x = std::fmax( std::fmin( x, 1 ), 0 );
+        auto y = e.position.getY()/getHeight();
+        y = std::fmax( std::fmin( y, 1 ), 0 );
+        int indx = -1;
+        if ( x <= m_env[ 0 ].getX() ){ indx = 0; }
+        else if ( x >= m_env[ m_env.size()-1 ].getX() ){ indx = m_env.size() + 1; }
+        else
+        {
+            for ( int i = 0; i < m_env.size() - 1; i++ )
+            {
+                if ( x >= m_env[ i-1].getX() && x <= m_env[ i ].getX() )
+                {
+                    indx = i;
+                }
+            }
+        }
+        if ( indx == 0 )
+        {
+            std::vector< juce::Point< float > >::iterator it;
+            
+            it = m_env.begin();
+            it = m_env.insert ( it , { x, y } );
+        }
+        else if ( indx == m_env.size() + 1 )
+        {
+            m_env.push_back ( { x, y } );
+        }
+        else
+        {
+            std::vector< juce::Point< float > >::iterator it;
+            
+            it = m_env.begin();
+            it = m_env.insert ( it + indx , { x, y } );
+        }
+        indx = indx >= 0 && indx < m_env.size() ? indx : -1;
+        return indx;
     }
     //==============================================================================
     void mouseDrag(const juce::MouseEvent& e) override
     {
-        if ( m_touchBreakPoint < 0 ){ return; }
+        if ( m_touchBreakPoint < 0 || m_breakPointErased ){ return; }
         auto x = e.position.getX()/getWidth();
         x = std::fmax( std::fmin( x, 1 ), 0 );
         if( m_touchBreakPoint > 0 )
@@ -214,9 +266,9 @@ private:
     }
     //==============================================================================
     juce::AudioBuffer< float >* m_ptrToBuffer = nullptr;
-    std::array< juce::Point< float >, 3 > m_env;  // m_env[ 0 ] --> attack; m_env[ 1 ] --> release;
+    std::vector< juce::Point< float > > m_env;  // m_env[ 0 ] --> attack; m_env[ 1 ] --> release;
     
-    bool m_normaliseFlag = false;
+    bool m_normaliseFlag = false, m_breakPointErased = false;
     
     int m_touchBreakPoint = -1;
     

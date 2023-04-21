@@ -158,12 +158,20 @@ private:
             normalise = 1.0f / normalise;
         }
         
+        DBG( "NORMALISE " << normalise );
         for ( int c = 0; c < nChans; c++ )
         {
             auto centre = c * chanHeight + hChanHeight;
             for ( int s = 0; s < getWidth(); s++ )
             {
-                auto lineSize = m_ptrToBuffer->getSample( c, s*stride ) * hChanHeight * normalise;
+                float lineSize = 0.0f;
+//                auto lineSize =
+                for ( int i = 0; i < stride; i++ )
+                {
+                    auto samp = m_ptrToBuffer->getSample( c, s*stride ) * hChanHeight * normalise;
+                    lineSize = abs( samp ) > abs( lineSize ) ? samp : lineSize;
+                }
+                
                 if ( lineSize >= 0 )
                 {
                     g.drawVerticalLine( s, centre-lineSize, centre );

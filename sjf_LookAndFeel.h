@@ -22,6 +22,8 @@ public:
     juce::Colour fontColour = juce::Colours::white;
     
     bool drawComboBoxTick = true;
+    
+    //====================================================================================
     sjf_lookAndFeel()
     {
         //        auto slCol = juce::Colours::darkred.withAlpha(0.5f);
@@ -41,8 +43,9 @@ public:
         setColour(juce::PopupMenu::backgroundColourId, backGroundColour.withAlpha(0.7f) );
         setColour(juce::ToggleButton::tickColourId, tickColour.withAlpha(0.5f) );
     }
+    //====================================================================================
     ~sjf_lookAndFeel() { /*DBG("DELETING LOOK ANd FEEL");*/ }
-    
+    //====================================================================================
     void drawToggleButton (juce::Graphics& g, juce::ToggleButton& button,
                            bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override
     {
@@ -63,7 +66,7 @@ public:
             g.setOpacity (0.5f);
         g.drawFittedText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred, 10);
     };
-    
+    //====================================================================================
     void drawTickBox (juce::Graphics& g, juce::Component& component,
                       float x, float y, float w, float h,
                       const bool ticked,
@@ -90,7 +93,7 @@ public:
         g.drawRect(tickBounds.getX(), tickBounds.getY(), tickBounds.getWidth(), tickBounds.getHeight());
 
     };
-    
+    //====================================================================================
     void drawComboBox (juce::Graphics& g, int width, int height, bool,
                        int, int, int, int, juce::ComboBox& box) override
     {
@@ -112,7 +115,7 @@ public:
         }
         
     }
-    
+    //====================================================================================
     void positionComboBoxText (juce::ComboBox& box, juce::Label& label) override
     {
         if ( drawComboBoxTick )
@@ -134,7 +137,7 @@ public:
         
     }
     
-    
+    //====================================================================================
     void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
                            const float rotaryStartAngle, const float rotaryEndAngle, juce::Slider& slider) override
     {
@@ -180,7 +183,7 @@ public:
             g.strokePath (valueArc, juce::PathStrokeType (lineW, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         }
     }
-    
+    //====================================================================================
     void drawLinearSlider (juce::Graphics& g, int x, int y, int width, int height,
                                            float sliderPos,
                                            float minSliderPos,
@@ -198,7 +201,8 @@ public:
             auto isTwoVal   = (style == juce::Slider::SliderStyle::TwoValueVertical   || style == juce::Slider::SliderStyle::TwoValueHorizontal);
             auto isThreeVal = (style == juce::Slider::SliderStyle::ThreeValueVertical || style == juce::Slider::SliderStyle::ThreeValueHorizontal);
             
-            auto trackWidth = juce::jmin (6.0f, slider.isHorizontal() ? (float) height * 0.25f : (float) width * 0.25f);
+            auto trackWidth = slider.isHorizontal() ? (float) height: (float) width;
+            
             
             juce::Point<float> startPoint (slider.isHorizontal() ? (float) x : (float) x + (float) width * 0.5f,
                                      slider.isHorizontal() ? (float) y + (float) height * 0.5f : (float) (height + y));
@@ -210,7 +214,9 @@ public:
             backgroundTrack.startNewSubPath (startPoint);
             backgroundTrack.lineTo (endPoint);
             g.setColour (slider.findColour (juce::Slider::backgroundColourId));
-            g.strokePath (backgroundTrack, { trackWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
+            g.strokePath (backgroundTrack, { trackWidth, juce::PathStrokeType::mitered, juce::PathStrokeType::square });
+            
+
             
             juce::Path valueTrack;
             juce::Point<float> minPoint, maxPoint, thumbPoint;
@@ -241,19 +247,20 @@ public:
             valueTrack.startNewSubPath (minPoint);
             valueTrack.lineTo (isThreeVal ? thumbPoint : maxPoint);
             g.setColour (slider.findColour (juce::Slider::trackColourId));
-            g.strokePath (valueTrack, { trackWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded });
+//            g.setColour (juce::Colours::purple);
+            g.strokePath (valueTrack, { trackWidth, juce::PathStrokeType::mitered, juce::PathStrokeType::square });
             
             if (! isTwoVal)
             {
                 g.setColour (slider.findColour (juce::Slider::thumbColourId));
                 g.fillRect (juce::Rectangle<float> (static_cast<float> (thumbWidth), static_cast<float> (thumbWidth)).withCentre (isThreeVal ? thumbPoint : maxPoint));
             }
-            
-            if (isTwoVal || isThreeVal)
-            {
-                auto sr = juce::jmin (trackWidth, (slider.isHorizontal() ? (float) height : (float) width) * 0.4f);
-                auto pointerColour = slider.findColour (juce::Slider::thumbColourId);
-                
+//              NO NEED FOR THE POINTERS... I'm not a massive fan of how they look
+//            if (isTwoVal || isThreeVal)
+//            {
+//                auto sr = juce::jmin (trackWidth, (slider.isHorizontal() ? (float) height : (float) width) * 0.4f);
+//                auto pointerColour = slider.findColour (juce::Slider::thumbColourId);
+//
 //                if (slider.isHorizontal())
 //                {
 //                    drawPointer (g, minSliderPos - sr,
@@ -273,10 +280,12 @@ public:
 //                    drawPointer (g, jmin ((float) (x + width) - trackWidth * 2.0f, (float) x + (float) width * 0.5f), maxSliderPos - sr,
 //                                 trackWidth * 2.0f, pointerColour, 3);
 //                }
-            }
+//            }
+            g.setColour( outlineColour );
+            g.drawRect( 0, 0, slider.getWidth(), slider.getHeight() );
         }
     }
-    
+    //====================================================================================
     juce::Slider::SliderLayout getSliderLayout (juce::Slider& slider) override
     {
         // 1. compute the actually visible textBox size from the slider textBox size and some additional constraints
@@ -345,7 +354,7 @@ public:
         return layout;
     }
     
-    
+    //====================================================================================
     void drawButtonBackground (juce::Graphics& g,
                                juce::Button& button,
                                const juce::Colour& backgroundColour,
@@ -395,7 +404,7 @@ public:
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_lookAndFeel)
 };
-
+//====================================================================================
 inline void sjf_drawBackgroundImage( juce::Graphics& g, const juce::Image& backGroundImage, const float& componentW, const float& componentH)
 {
     auto backColour = juce::Colours::grey;
@@ -435,7 +444,7 @@ inline void sjf_drawBackgroundImage( juce::Graphics& g, const juce::Image& backG
     g.drawImageAt ( temp, gcx - bcx,  gcy - bcy );
 }
 
-
+//====================================================================================
 template< int NUM_RAND_BOXES >
 inline void sjf_makeBackground (juce::Graphics& g, juce::Rectangle< int >& c )
 {
@@ -487,7 +496,7 @@ inline void sjf_makeBackground (juce::Graphics& g, juce::Rectangle< int >& c )
         g.fillPath( path );
     }
 }
-
+//====================================================================================
 template< int NUM_RAND_BOXES >
 inline void sjf_makeBackgroundNoFill (juce::Graphics& g, juce::Rectangle< int >& c )
 {
@@ -527,7 +536,7 @@ inline void sjf_makeBackgroundNoFill (juce::Graphics& g, juce::Rectangle< int >&
         g.fillPath(path, rotation );
     }
 }
-
+//====================================================================================
 inline void sjf_setTooltipLabel( juce::Component* mainComponent, const juce::String& MAIN_TOOLTIP, juce::Label& tooltipLabel  )
 {
     juce::Point mouseThisTopLeft = mainComponent->getMouseXYRelative();
@@ -544,4 +553,5 @@ inline void sjf_setTooltipLabel( juce::Component* mainComponent, const juce::Str
     }
 //    DBG("NO TOOLTIP");
 }
+//====================================================================================
 #endif /* sjf_lookAndFeel_h */

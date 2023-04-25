@@ -84,7 +84,7 @@ public:
                                         m_samplePath = file.getFullPathName();
                                         m_sampleName = file.getFileName();
                                         m_impulseChangedFlag = true;
-//                                        m_reverseFlag = false;
+                                        m_impulseLoadedFlag = true;
                                         setImpulseResponse();
                                     }
                                 });
@@ -268,6 +268,7 @@ public:
 private:
     void setImpulseResponse()
     {
+        if ( !m_impulseLoadedFlag ){ return; }
         auto nSamps = m_impulseBufferOriginal.getNumSamples( );
         auto nChannels = m_impulseBufferOriginal.getNumChannels( );
         if ( !m_impulseChangedFlag || nChannels < 1 || nSamps < 1 )
@@ -378,48 +379,11 @@ private:
             }
         }
     }
-//    //------------------------------------------------//------------------------------------------------
-//    void applyEnvelopeToBuffer( juce::AudioBuffer< float >& buffer )
-//    {
-//        auto nSamps = buffer.getNumSamples();
-//        auto nChannels  = buffer.getNumChannels();
-//        auto nPoints = m_env.size();
-//        std::vector< std::array< float, 2 > > env = m_env;
-//        for ( int i = 0; i < nPoints; i++ )
-//        {
-//            env[ i ][ 0 ] *= nSamps - 1; // scale normalised position to sample values
-//        }
-//
-//        for ( int i = 0; i < nPoints - 1; i++ )
-//        {
-//            DBG( env[ i ][ 0 ] << " " << env[ i ][ 1 ] );
-//            auto startSamp = env[ i ][ 0 ];
-//            auto startGain = env[ i ][ 1 ];
-//            auto endSamp = env[ i + 1 ][ 0 ];
-//            auto endGain = env[ i + 1 ][ 1 ];
-//            auto rampLen = endSamp - startSamp;
-//            rampLen = rampLen > 0 ? rampLen : 1;
-//            if ( startSamp + rampLen < nSamps )
-//            {
-//                buffer.applyGainRamp( startSamp, rampLen, startGain, endGain);
-//            }
-//        }
-//        DBG( env[ nPoints - 1 ][ 0 ] << " " << env[ nPoints - 1 ][ 1 ] );
-//    }
     //------------------------------------------------//------------------------------------------------
     void setFIRandFFT( juce::AudioBuffer< float >& buffer )
     {
         auto nSamps = buffer.getNumSamples();
         auto nChannels  = buffer.getNumChannels();
-//        if ( nSamps < FIR_BUFFER_SIZE )
-//        {
-//            juce::AudioBuffer< float > temp{ nChannels, FIR_BUFFER_SIZE };
-//            for ( int c = 0; c < NUM_CHANNELS; c++ )
-//            {
-//                temp.copyFrom( c, 0, buffer, c, 0, nSamps );
-//            }
-//            buffer = temp;
-//        }
         
         
         for ( int c = 0; c < NUM_CHANNELS; c++ )
@@ -456,7 +420,7 @@ private:
     juce::AudioBuffer< float > m_impulseBuffer, m_impulseBufferOriginal, m_fftImpulseBuffer, m_FIRbuffer;
     
     // buffer flags
-    bool m_impulseChangedFlag = false, m_reverseFlag = false, m_trimFlag = false, m_fftFlag = false, m_envelopeFlag = false;
+    bool m_impulseLoadedFlag = false, m_impulseChangedFlag = false, m_reverseFlag = false, m_trimFlag = false, m_fftFlag = false, m_envelopeFlag = false;
     float m_stretchFactor = 1, m_startPoint = 0, m_endPoint = 1, attack = 0, decay = 0;
     
     int m_filterPosition = 1;

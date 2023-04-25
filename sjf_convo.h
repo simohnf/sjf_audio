@@ -250,6 +250,11 @@ public:
         setImpulseResponse();
     }
     //------------------------------------------------//------------------------------------------------
+    std::vector< std::array < float, 2 > > getAmplitudeEnvelope( )
+    {
+        return m_env;
+    }
+    //------------------------------------------------//------------------------------------------------
     juce::AudioBuffer< float >& getIRBuffer()
     {
         return m_impulseBuffer;

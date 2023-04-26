@@ -188,13 +188,20 @@ public:
         return m_reverseFlag;
     }
     //------------------------------------------------//------------------------------------------------
-    void setStrecthFactor( float stretchFactor )
+    void setStretchFactor( float stretchFactor )
     {
         // need to do this
         if ( stretchFactor <= 0 || stretchFactor == m_stretchFactor ){ return; }
         m_stretchFactor = stretchFactor;
+        DBG( "STRETCH " << m_stretchFactor );
         m_impulseChangedFlag = true;
         setImpulseResponse();
+    }
+    //------------------------------------------------//------------------------------------------------
+    float getStretchFactor( )
+    {
+        DBG( "STRETCH RESTORED " << m_stretchFactor );
+        return m_stretchFactor;
     }
     //------------------------------------------------//------------------------------------------------
     void trimImpulseEnd( bool shouldTrimEndOfImpulse )
@@ -211,6 +218,8 @@ public:
         if ( start0to1 == m_startPoint && end0to1 == m_endPoint ) { return; }
         m_startPoint = ( start0to1 > 0 ) ? ( ( start0to1 < 1 ) ? start0to1 : 1 ) : 0;
         m_endPoint = ( end0to1 > 0 ) ? ( ( end0to1 < 1 ) ? end0to1 : 1 ) : 0;
+        
+        DBG("START " << m_startPoint << " END " << m_endPoint);
         m_impulseChangedFlag = true;
         setImpulseResponse();
     }
@@ -220,6 +229,8 @@ public:
         std::array< float, 2 > startEnd;
         startEnd[ 0 ] = m_startPoint;
         startEnd[ 1 ] = m_endPoint;
+        
+        DBG("RESTORED --- START " << m_startPoint << " END " << m_endPoint);
         return startEnd;
     }
     //------------------------------------------------//------------------------------------------------
@@ -430,6 +441,7 @@ private:
         for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
             m_FIR[ c ].clear();
+            if ( nSamps <= 0 ){ return; }
             m_FIR[ c ].setKernel( buffer.getWritePointer( c % nChannels, 0 ), nSamps );
         }
         

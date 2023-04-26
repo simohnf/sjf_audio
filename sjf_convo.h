@@ -61,7 +61,27 @@ public:
             m_preDelay[ c ].initialise( sampleRate );
         }
     }
-   //------------------------------------------------//------------------------------------------------
+    //==============================================================================
+    void loadSample( juce::Value path )
+    {
+        juce::File file( path.getValue().toString() );
+        if (file == juce::File{}) { return; }
+        std::unique_ptr<juce::AudioFormatReader> reader (m_formatManager.createReaderFor (file));
+        if (reader.get() != nullptr)
+        {
+            auto nSamps = (int) reader->lengthInSamples;
+            auto nChannels = (int) reader->numChannels;
+            m_IRSampleRate = reader->sampleRate;
+            m_impulseBufferOriginal.setSize( nChannels, nSamps );
+            reader->read (&m_impulseBufferOriginal, 0, nSamps, 0, true, true);
+            m_samplePath = file.getFullPathName();
+            m_sampleName = file.getFileName();
+            m_impulseChangedFlag = true;
+            m_impulseLoadedFlag = true;
+            setImpulseResponse();
+        }
+    }
+    //------------------------------------------------//------------------------------------------------
     void loadImpulse()
     {
         m_chooser = std::make_unique<juce::FileChooser> ("Select a Wave/Aiff file to use as the impulse..." ,
@@ -157,15 +177,21 @@ public:
     //------------------------------------------------//------------------------------------------------
     void reverseImpulse( bool shouldReverseImpulse )
     {
+        if ( m_reverseFlag == shouldReverseImpulse ){ return; }
         m_reverseFlag = shouldReverseImpulse;
         m_impulseChangedFlag = true;
         setImpulseResponse();
     }
     //------------------------------------------------//------------------------------------------------
+    bool getReverseState( )
+    {
+        return m_reverseFlag;
+    }
+    //------------------------------------------------//------------------------------------------------
     void setStrecthFactor( float stretchFactor )
     {
         // need to do this
-        if ( stretchFactor <= 0 ){ return; }
+        if ( stretchFactor <= 0 || stretchFactor == m_stretchFactor ){ return; }
         m_stretchFactor = stretchFactor;
         m_impulseChangedFlag = true;
         setImpulseResponse();
@@ -181,10 +207,20 @@ public:
     void setImpulseStartAndEnd( float start0to1, float end0to1 )
     {
         // normalised to 0-->1
-        m_startPoint = start0to1;
-        m_endPoint = end0to1;
+        m_impulseChangedFlag = false;
+        if ( start0to1 == m_startPoint && end0to1 == m_endPoint ) { return; }
+        m_startPoint = ( start0to1 > 0 ) ? ( ( start0to1 < 1 ) ? start0to1 : 1 ) : 0;
+        m_endPoint = ( end0to1 > 0 ) ? ( ( end0to1 < 1 ) ? end0to1 : 1 ) : 0;
         m_impulseChangedFlag = true;
         setImpulseResponse();
+    }
+    //------------------------------------------------//------------------------------------------------
+    std::array< float, 2 > getImpulseStartAndEnd()
+    {
+        std::array< float, 2 > startEnd;
+        startEnd[ 0 ] = m_startPoint;
+        startEnd[ 1 ] = m_endPoint;
+        return startEnd;
     }
     //------------------------------------------------//------------------------------------------------
     void setLPFCutoff( float cutoffCoefficient )
@@ -243,7 +279,7 @@ public:
     void setAmplitudeEnvelope( std::vector< std::array < float, 2 > >& envelope )
     {
         DBG( "Amp env set " );
-        if ( m_env.size() < 2 ){ return; }
+        if ( m_env.size() < 2 || envelope == m_env ){ return; }
         m_env = envelope;
         m_envelopeFlag = true;
         m_impulseChangedFlag = true;

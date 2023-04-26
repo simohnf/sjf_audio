@@ -446,4 +446,35 @@ inline void applyEnvelopeToBuffer( juce::AudioBuffer< float >& buffer, std::vect
 //==============================================================================
 //==============================================================================
 
+//inline bool loadAudioFile( juce::AudioBuffer< float >& buffer, juce::String& samplePath, juce::String& sampleName, double& fileSampleRate )
+//{
+//    juce::AudioFormatReader formatManager;
+//    formatManager.registerBasicFormats();
+//    auto chooser = std::make_unique<juce::FileChooser> ("Select a Wave/Aiff file to use..." , juce::File{}, "*.aif, *.wav");
+//    auto chooserFlags = juce::FileBrowserComponent::openMode
+//    | juce::FileBrowserComponent::canSelectFiles;
+//    bool loaded = false;
+//    chooser->launchAsync (chooserFlags, [this] (const juce::FileChooser& fc)
+//                            {
+//                                auto file = fc.getResult();
+//                                if (file == juce::File{}) { return; }
+//                                std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
+//                                if (reader.get() != nullptr)
+//                                {
+//                                    auto nSamps = (int) reader->lengthInSamples;
+//                                    auto nChannels = (int) reader->numChannels;
+//                                    fileSampleRate = reader->sampleRate;
+//                                    buffer.setSize( nChannels, nSamps );
+//                                    reader->read (&buffer, 0, nSamps, 0, true, true);
+//                                    samplePath = file.getFullPathName();
+//                                    sampleName = file.getFileName();
+//                                    loaded = true;
+//                                    return loaded;
+//                                }
+//                            });
+//    return loaded;
+//}
+
+
+
 #endif /* sjf_audioUtilities_h */

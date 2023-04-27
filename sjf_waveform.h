@@ -25,9 +25,9 @@ public:
         setInterceptsMouseClicks(true, false);
         
         m_env.resize( 3 );
-        m_env[ 0 ] = juce::Point< float >(0, 0);
-        m_env[ 1 ] = juce::Point< float >(0.5, 0);
-        m_env[ 2 ] = juce::Point< float >(1, 0);
+        m_env[ 0 ] = {0, 0};
+        m_env[ 1 ] = {0.5, 0};
+        m_env[ 2 ] = {1, 0};
         setSize (600, 400);
     }
     //==============================================================================
@@ -62,8 +62,8 @@ public:
         g.setColour( findColour( waveColourID ) );
         for ( int i = 0; i < nPoints; i++ )
         {
-            auto x = m_env[ i ].getX()*getWidth();
-            auto y = m_env[ i ].getY()*getHeight();
+            auto x = m_env[ i ][ 0 ]*getWidth();
+            auto y = m_env[ i ][ 1 ]*getHeight();
             env[ i + 1 ] = { x, y };
             juce::Rectangle<float> rect = {  x - m_pointRadius, y - m_pointRadius, (float)m_pointRadius*2, (float)m_pointRadius*2 };
             g.fillEllipse( rect );
@@ -103,8 +103,8 @@ public:
         env[ nPoints+1 ] = { 1, 0 };
         for ( int i = 0; i < nPoints; i++ )
         {
-            env[ i+1 ][ 0 ] = m_env[ i ].getX();
-            env[ i+1 ][ 1 ] = 1.0f - m_env[ i ].getY();
+            env[ i+1 ][ 0 ] = m_env[ i ][ 0 ];
+            env[ i+1 ][ 1 ] = 1.0f - m_env[ i ][ 1 ];
         }
         for ( int i = 0; i < env.size(); i++ )
         {
@@ -113,15 +113,34 @@ public:
         return env;
     }
     //==============================================================================
+    void setEnvelope( std::vector< std::array< float, 2 > >& env )
+    {
+        m_env = env;
+        if ( m_env[ 0 ][ 0 ] == 0 && m_env[ 0 ][ 1 ] == 0 )
+        {
+            m_env.erase( m_env.begin() );
+        }
+        auto last = m_env.size() -1;
+        if ( m_env[ last ][ 0 ] == 1 && m_env[ last ][ 1 ] == 0 )
+        {
+            m_env.pop_back();
+        }
+        
+        for ( int i = 0; i < m_env.size(); i++ )
+        {
+            m_env[ i ][ 1 ] = 1.0f - m_env[ i ][ 1 ];
+        }
+    }
+    //==============================================================================
     void reverseEnvelope()
     {
-        std::vector< juce::Point< float > > env = m_env;
+        std::vector< std::array< float, 2 > > env = m_env;
         
         auto size = m_env.size();
         for ( int i = 0; i < size; i++ )
         {
             m_env[ i ] = env[ size - 1 - i ];
-            m_env[ i ].setX( 1.0f - m_env[ i ].getX() );
+            m_env[ i ][ 0 ] =  1.0f - m_env[ i ][ 0 ] ;
         }
         repaint();
         if ( onMouseEvent != nullptr ){ onMouseEvent(); }
@@ -217,12 +236,12 @@ private:
         x = std::fmax( std::fmin( x, 1 ), 0 );
         if( m_touchBreakPoint > 0 )
         {
-            auto x1 = m_env[ m_touchBreakPoint - 1 ].getX();
+            auto x1 = m_env[ m_touchBreakPoint - 1 ][ 0 ];
             x = x > x1 ? x : x1;
         }
         if ( m_touchBreakPoint < m_env.size() - 1 )
         {
-            auto x1 = m_env[ m_touchBreakPoint + 1 ].getX();
+            auto x1 = m_env[ m_touchBreakPoint + 1 ][ 0 ];
             x = x < x1 ? x : x1;
         }
         auto y = e.position.getY()/getHeight();
@@ -246,11 +265,11 @@ private:
         y = std::fmax( std::fmin( y, 1 ), 0 );
         int indx = -1;
         int oldSize = m_env.size();
-        if ( x <= m_env[ 0 ].getX() )
+        if ( x <= m_env[ 0 ][ 0 ] )
         {
             indx = 0;
         }
-        else if ( x >= m_env[ oldSize - 1 ].getX() )
+        else if ( x >= m_env[ oldSize - 1 ][ 0 ] )
         {
             indx = oldSize + 1;
         }
@@ -258,8 +277,8 @@ private:
         {
             for ( int i = 1; i < oldSize; i++ )
             {
-                auto xBefore = m_env[ i-1 ].getX();
-                auto xAfter = m_env[ i ].getX();
+                auto xBefore = m_env[ i-1 ][ 0 ];
+                auto xAfter = m_env[ i ][ 0 ];
                 if ( x >= xBefore && x <= xAfter )
                 {
                     indx = i;
@@ -268,7 +287,7 @@ private:
         }
         if ( indx == 0 )
         {
-            std::vector< juce::Point< float > >::iterator it;
+            std::vector< std::array< float, 2 > >::iterator it;
             
             it = m_env.begin();
             it = m_env.insert ( it , { x, y } );
@@ -279,7 +298,7 @@ private:
         }
         else
         {
-            std::vector< juce::Point< float > >::iterator it;
+            std::vector< std::array< float, 2 > >::iterator it;
             
             it = m_env.begin();
             it = m_env.insert ( it + indx , { x, y } );
@@ -292,8 +311,8 @@ private:
     {
         for ( int i = 0; i < m_env.size(); i++ )
         {
-            auto x = m_env[ i ].getX()*getWidth();
-            auto y = m_env[ i ].getY()*getHeight();
+            auto x = m_env[ i ][ 0 ]*getWidth();
+            auto y = m_env[ i ][ 1 ]*getHeight();
             auto xDist = x - e.position.getX();
             auto yDist = y - e.position.getY();
             auto dist = std::sqrt( std::pow( xDist, 2 ) + std::pow( yDist, 2 ) );
@@ -307,7 +326,7 @@ private:
     }
     //==============================================================================
     juce::AudioBuffer< float >* m_ptrToBuffer = nullptr;
-    std::vector< juce::Point< float > > m_env;  // m_env[ 0 ] --> attack; m_env[ 1 ] --> release;
+    std::vector< std::array< float, 2 > > m_env;  // m_env[ 0 ] --> attack; m_env[ 1 ] --> release;
     
     bool m_normaliseFlag = false, m_breakPointErased = false, m_outputEnvOnMouseUp = false;
     

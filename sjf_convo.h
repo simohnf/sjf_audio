@@ -40,9 +40,11 @@ public:
             m_hpf[ c ].setCutoff( 0.001f );
         }
         
-        m_env.resize( 2 ); // default envelope
-        m_env[ 0 ] = { 0, 1 };
-        m_env[ 1 ] = { 1, 1 };
+        m_env.resize( 4 ); // default envelope
+        m_env[ 0 ] = { 0, 0 };
+        m_env[ 1 ] = { 0, 1 };
+        m_env[ 2 ] = { 1, 1 };
+        m_env[ 3 ] = { 1, 0 };
     };
     //------------------------------------------------//------------------------------------------------
     ~sjf_convo() {};
@@ -211,6 +213,16 @@ public:
         setImpulseResponse();
     }
    //------------------------------------------------//------------------------------------------------
+    juce::String& getFilePath()
+    {
+        return m_samplePath;
+    }
+    //==============================================================================
+    const juce::String getFileName()
+    {
+        return m_sampleName;
+    }
+    //------------------------------------------------//------------------------------------------------
     void setImpulseStartAndEnd( float start0to1, float end0to1 )
     {
         // normalised to 0-->1

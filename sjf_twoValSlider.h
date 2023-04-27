@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <JuceHeader.h>
+#include "sjf_audioUtilities.h"
 
 class sjf_twoValSlider : public juce::Component, public juce::SettableTooltipClient
 {
@@ -59,7 +60,17 @@ public:
     //==============================================================================
     void resized() override
     {
- 
+        repaint();
+    }
+    //==============================================================================
+    void setOutputOnMouseUpOnly( bool shouldOutputOnMouseUpOnly )
+    {
+        m_eventOnMouseUpOnlyFlag = shouldOutputOnMouseUpOnly;
+    }
+    //==============================================================================
+    bool getOutputOnMouseUpOnly( )
+    {
+        return m_eventOnMouseUpOnlyFlag;
     }
     //==============================================================================
     void setHorizontal(bool horizontal)
@@ -87,14 +98,21 @@ public:
     void setMinAndMaxValues( double min, double max )
     {
         auto mn = std::fmin( min, max );
+        sjf_scale< double >( mn, m_range[ 0 ], m_range[ 1 ], 0.0f, 1.0f );;
         auto mx = std::fmax( min, max );
-        m_vals[ 0 ] = mn > m_range[ 0 ] && mn < m_range[ 1 ] ? mn : m_range[ 0 ];
-        m_vals[ 1 ] = mx > m_range[ 0 ] && mx < m_range[ 1 ] ? mx : m_range[ 1 ];
+        sjf_scale< double >( mx, m_range[ 0 ], m_range[ 1 ], 0.0f, 1.0f );;
+        m_vals[ 0 ] = mn;
+        m_vals[ 1 ] = mx;
+        
+        repaint();
     }
     //==============================================================================
     std::array< double, 2 > getMinAndMaxValues()
     {
-        return m_vals;
+        std::array< double, 2 > output = m_vals;
+        sjf_scale< double >( output[ 0 ], 0.0f, 1.0f, m_range[ 0 ], m_range[ 1 ] );
+        sjf_scale< double >( output[ 1 ], 0.0f, 1.0f, m_range[ 0 ], m_range[ 1 ] );
+        return output;
     }
     //==============================================================================
     std::function<void()> onMouseEvent;
@@ -129,23 +147,23 @@ private:
 //        int theTouchedValue = minimumValue;
         double distFromMin, distFromMax;
         std::array< double, 2 > output;
-        if (!m_isHorizontalFlag)
+        if (m_isHorizontalFlag)
         {
             distFromMin = abs( m_vals[ 0 ]*getWidth() - x );
             distFromMax = abs( m_vals[ 1 ]*getWidth() - x );
-            output[ 1 ] = (float)x  / (float)getWidth();
+            output[ 1 ] = ( (float)x  / (float)getWidth() );
         }
         else
         {
             distFromMin = abs( m_vals[ 0 ]*getHeight() - y );
             distFromMax = abs( m_vals[ 1 ]*getHeight() - y );
-            output[ 1 ] = (float)y  / (float)getHeight();
+            output[ 1 ] = ( (float)y  / (float)getHeight() );
         }
         
         
         output[ 0 ] = ( ( distFromMin < distFromMax ) ? minimumValue : maximumValue ) ;
         output[ 1 ] = std::fmax( std::fmin( 1, output [ 1 ]), 0 );
-        DBG("two val slider " << output[ 0 ] << " " << output[ 1 ] );
+        DBG("two val slider " << output[ 0 ] << " " << output[ 1 ] << " x " << x << " y " << y);
         return output; // min/max normalised value
     }
     //==============================================================================
@@ -204,23 +222,28 @@ private:
     {
         calulateMousePosToSliderVal(e);
         repaint();
-        if ( onMouseEvent != nullptr ){ onMouseEvent(); }
+        if ( onMouseEvent != nullptr && !m_eventOnMouseUpOnlyFlag ){ onMouseEvent(); }
     }
     //==============================================================================
     void mouseDrag(const juce::MouseEvent& e) override
     {
         calulateMousePosToSliderVal(e);
         repaint();
-        if ( onMouseEvent != nullptr ){ onMouseEvent(); }
+        if ( onMouseEvent != nullptr && !m_eventOnMouseUpOnlyFlag){ onMouseEvent(); }
     }
     //==============================================================================
-private:
-    enum
+    void mouseUp(const juce::MouseEvent& e) override
     {
-      minimumValue, maximumValue
-    };
+        if ( onMouseEvent != nullptr ){ onMouseEvent(); }
+    }
+    
+    //==============================================================================
+    enum { minimumValue, maximumValue };
+    //==============================================================================
+private:
+
     std::array< double, 2 > m_vals, m_range;
-    bool m_isHorizontalFlag = false;
+    bool m_isHorizontalFlag = false, m_eventOnMouseUpOnlyFlag = true;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_twoValSlider)
 };

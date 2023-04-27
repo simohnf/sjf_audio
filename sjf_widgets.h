@@ -15,6 +15,6 @@
 #include "sjf_graph.h"
 #include "sjf_XYpad.h"
 #include "sjf_waveform.h"
-
+#include "sjf_twoValSlider.h"
 
 #endif /* sjf_widgets_h */

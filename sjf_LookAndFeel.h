@@ -8,7 +8,7 @@
 #define sjf_LookAndFeel_h
 
 #include <JuceHeader.h>
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_compileTimeRandom.h"
+#include "sjf_compileTimeRandom.h"
 
 class sjf_lookAndFeel : public juce::LookAndFeel_V4
 {

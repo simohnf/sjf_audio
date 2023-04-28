@@ -7,7 +7,7 @@
 #ifndef sjf_randOSC_h
 #define sjf_randOSC_h
 
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_audioUtilities.h"
+#include "sjf_audioUtilities.h"
 
 template< class floatType >
 class sjf_randOSC

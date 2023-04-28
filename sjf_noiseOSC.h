@@ -8,7 +8,7 @@
 #define sjf_noiseOSC_h
 #define PI 3.14159265
 
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_audioUtilities.h"
+#include "sjf_audioUtilities.h"
 
 class sjf_noiseOSC
 {

@@ -7,8 +7,8 @@
 #ifndef sjf_biquadWrapper_h
 #define sjf_biquadWrapper_h
 
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_biquadCalculator.h"
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_biquad.h"
+#include "sjf_biquadCalculator.h"
+#include "sjf_biquad.h"
 
 // wrapper for containing both biquad and coefficient calculator in one object
 //

@@ -7,9 +7,9 @@
 #ifndef sjf_lfoInterface_h
 #define sjf_lfoInterface_h
 
-#include "../../sjf_audio/sjf_numBox.h"
-#include "../../sjf_audio/sjf_LookAndFeel.h"
-#include "../../sjf_audio/sjf_numBox.h"
+#include "sjf_numBox.h"
+#include "sjf_LookAndFeel.h"
+#include "sjf_numBox.h"
 
 class sjf_lfoInterface: public juce::Component
 {

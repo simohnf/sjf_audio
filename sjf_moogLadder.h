@@ -10,7 +10,7 @@
 #ifndef sjf_moogLadder_h
 #define sjf_moogLadder_h
 
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_lpfFirst.h"
+#include "sjf_lpfFirst.h"
 
 class sjf_moogLadder
 {

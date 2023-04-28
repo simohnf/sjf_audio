@@ -8,11 +8,11 @@
 #define sjf_lfo_h
 #define PI 3.14159265
 
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_phaseRateMultiplier.h"
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_audioUtilities.h"
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_triangle.h"
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_noiseOSC.h"
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_lpfFirst.h"
+#include "sjf_phaseRateMultiplier.h"
+#include "sjf_audioUtilities.h"
+#include "sjf_triangle.h"
+#include "sjf_noiseOSC.h"
+#include "sjf_lpfFirst.h"
 
 class sjf_lfo
 {

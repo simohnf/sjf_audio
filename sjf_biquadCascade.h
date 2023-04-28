@@ -7,7 +7,7 @@
 #ifndef sjf_biquadCascade_h
 #define sjf_biquadCascade_h
 
-#include "/Users/simonfay/Programming_Stuff/sjf_audio/sjf_biquadWrapper.h"
+#include "sjf_biquadWrapper.h"
 
 // implementation of biquadCascade
 // maximum of 5 stages ==> 10th order

@@ -40,11 +40,11 @@ public:
             m_hpf[ c ].setCutoff( 0.001f );
         }
         
-        m_env.resize( 4 ); // default envelope
-        m_env[ 0 ] = { 0, 0 };
-        m_env[ 1 ] = { 0, 1 };
-        m_env[ 2 ] = { 1, 1 };
-        m_env[ 3 ] = { 1, 0 };
+//        m_env.resize( 4 ); // default envelope
+//        m_env[ 0 ] = { 0, 0 };
+//        m_env[ 1 ] = { 0, 1 };
+//        m_env[ 2 ] = { 1, 1 };
+//        m_env[ 3 ] = { 1, 0 };
     };
     //------------------------------------------------//------------------------------------------------
     ~sjf_convo() {};
@@ -116,7 +116,6 @@ public:
     {
         if ( m_impulseBuffer.getNumChannels() < 1 )
         {
-//            DBG("NO IMPULSE");
             return;
         }
         auto bufferSize = buffer.getNumSamples();
@@ -156,8 +155,6 @@ public:
         {
             filterBuffer( buffer );
         }
-//        DBG( "latency " << m_conv.getLatency() );
-//        DBG( "IR Length Samps " << m_impulseBuffer.getNumSamples()<< " " << m_impulseBufferOriginal.getNumSamples() );
     }
     //------------------------------------------------//------------------------------------------------
     void PANIC()
@@ -195,14 +192,12 @@ public:
         // need to do this
         if ( stretchFactor <= 0 || stretchFactor == m_stretchFactor ){ return; }
         m_stretchFactor = stretchFactor;
-        DBG( "STRETCH " << m_stretchFactor );
         m_impulseChangedFlag = true;
         setImpulseResponse();
     }
     //------------------------------------------------//------------------------------------------------
     float getStretchFactor( )
     {
-        DBG( "STRETCH RESTORED " << m_stretchFactor );
         return m_stretchFactor;
     }
     //------------------------------------------------//------------------------------------------------
@@ -230,8 +225,6 @@ public:
         if ( start0to1 == m_startPoint && end0to1 == m_endPoint ) { return; }
         m_startPoint = ( start0to1 > 0 ) ? ( ( start0to1 < 1 ) ? start0to1 : 1 ) : 0;
         m_endPoint = ( end0to1 > 0 ) ? ( ( end0to1 < 1 ) ? end0to1 : 1 ) : 0;
-        
-        DBG("START " << m_startPoint << " END " << m_endPoint);
         m_impulseChangedFlag = true;
         setImpulseResponse();
     }
@@ -242,7 +235,6 @@ public:
         startEnd[ 0 ] = m_startPoint;
         startEnd[ 1 ] = m_endPoint;
         
-        DBG("RESTORED --- START " << m_startPoint << " END " << m_endPoint);
         return startEnd;
     }
     //------------------------------------------------//------------------------------------------------
@@ -301,8 +293,7 @@ public:
     //------------------------------------------------//------------------------------------------------
     void setAmplitudeEnvelope( std::vector< std::array < float, 2 > >& envelope )
     {
-        DBG( "Amp env set " );
-        if ( m_env.size() < 2 || envelope == m_env ){ return; }
+        if ( envelope.size() < 2 || envelope == m_env ){ return; }
         m_env = envelope;
         m_envelopeFlag = true;
         m_impulseChangedFlag = true;
@@ -495,7 +486,7 @@ private:
     std::unique_ptr<juce::FileChooser> m_chooser;
     std::array< sjf_lpf< float >, NUM_CHANNELS > m_lpf, m_hpf;
     
-    std::vector< std::array< float, 2 > > m_env; // normalised amplitude envelope envPoint{ position0to1, amplitude0to1 }
+    std::vector< std::array< float, 2 > > m_env { {0,0}, {0,1}, {1,1}, {1,0} }; // normalised amplitude envelope envPoint{ position0to1, amplitude0to1 }
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_convo )
 };
 

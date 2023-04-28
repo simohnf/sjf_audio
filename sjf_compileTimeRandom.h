@@ -11,7 +11,7 @@
 
 #include <cstdint>
 #include <limits>
-#include "/Users/simonfay/Programming_Stuff/gcem/include/gcem.hpp"
+#include "../gcem/include/gcem.hpp"
 
 namespace sjf_compileTimeRandom
 {

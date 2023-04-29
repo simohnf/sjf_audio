@@ -187,6 +187,19 @@ public:
         return m_reverseFlag;
     }
     //------------------------------------------------//------------------------------------------------
+    void palindromeImpulse( bool shouldMakePalindromeOfImpulse )
+    {
+        if ( m_palindromeFlag == shouldMakePalindromeOfImpulse ){ return; }
+        m_palindromeFlag = shouldMakePalindromeOfImpulse;
+        m_impulseChangedFlag = true;
+        setImpulseResponse();
+    }
+    //------------------------------------------------//------------------------------------------------
+    bool getPalindromeState( )
+    {
+        return m_palindromeFlag;
+    }
+    //------------------------------------------------//------------------------------------------------
     void setStretchFactor( float stretchFactor )
     {
         // need to do this
@@ -323,6 +336,8 @@ public:
 private:
     void setImpulseResponse()
     {
+        // this involves a lot of copying buffers
+        // I'm sure there's a neater way, but this saved having to reread the file from disk each time
         if ( !m_impulseLoadedFlag ){ return; }
         auto nSamps = m_impulseBufferOriginal.getNumSamples( );
         auto nChannels = m_impulseBufferOriginal.getNumChannels( );
@@ -336,25 +351,9 @@ private:
         if ( m_filterPosition == filterIR ) { filterBuffer( m_impulseBuffer ); }
         if ( m_reverseFlag ){ reverseBuffer( m_impulseBuffer ); }
         if ( m_envelopeFlag ){ applyEnvelopeToBuffer( m_impulseBuffer, m_env ); }
-        
-        nSamps = m_impulseBuffer.getNumSamples();
-        
-        if ( m_startPoint == 0 && m_endPoint == 1 )
-        {
-            setFIRandFFT( m_impulseBuffer );
-            return;
-        }
-        
-        
-        int start = nSamps * m_startPoint;
-        int end = nSamps * m_endPoint;
-        auto newLen = end - start;
-        
-        juce::AudioBuffer< float > trimmedIRBuffer{ nChannels, newLen };
-        for ( int c = 0; c < nChannels; c++ )
-        {
-            trimmedIRBuffer.copyFrom( c, 0, m_impulseBuffer, c, start, newLen );
-        }
+        juce::AudioBuffer< float > trimmedIRBuffer;
+        trimBufferStartAndEnd( m_impulseBuffer, trimmedIRBuffer );
+        if ( m_palindromeFlag ) { makeImpulseAPalindrome( trimmedIRBuffer ); }
         setFIRandFFT( trimmedIRBuffer );
 
         m_impulseChangedFlag = false;
@@ -395,6 +394,43 @@ private:
         {
             buffer.reverse( c, 0, nSamps );
         }
+    }
+    //------------------------------------------------//------------------------------------------------
+    void makeImpulseAPalindrome( juce::AudioBuffer< float >& buffer )
+    {
+        auto nChans = buffer.getNumChannels();
+        auto nSamps = buffer.getNumSamples();
+        juce::AudioBuffer< float > temp{ nChans, nSamps * 2 };
+        for ( int c = 0; c < nChans; c++ )
+        {
+            temp.copyFrom( c, 0, buffer, c, 0, nSamps );
+            temp.copyFrom( c, nSamps, buffer, c, 0, nSamps );
+            temp.reverse( c, nSamps, nSamps );
+        }
+        buffer = temp;
+    }
+    //------------------------------------------------//------------------------------------------------
+    void trimBufferStartAndEnd( juce::AudioBuffer< float >& buffer, juce::AudioBuffer< float >& destination )
+    {
+        if ( m_startPoint == 0 && m_endPoint == 1 )
+        {
+            destination = buffer;
+            return;
+        }
+        
+        auto nChans = buffer.getNumChannels();
+        auto nSamps = m_impulseBuffer.getNumSamples();
+        int start = nSamps * m_startPoint;
+        int end = nSamps * m_endPoint;
+        auto newLen = end - start;
+        
+//        juce::AudioBuffer< float > trimmedIRBuffer{ nChannels, newLen };
+        destination.setSize( nChans, newLen );
+        for ( int c = 0; c < nChans; c++ )
+        {
+            destination.copyFrom( c, 0, m_impulseBuffer, c, start, newLen );
+        }
+            
     }
     //------------------------------------------------//------------------------------------------------
     void stretchBuffer( juce::AudioBuffer< float >& buffer, juce::AudioBuffer< float >& bufferOriginal )
@@ -476,7 +512,7 @@ private:
     juce::AudioBuffer< float > m_impulseBuffer, m_impulseBufferOriginal, m_fftImpulseBuffer, m_FIRbuffer;
     
     // buffer flags
-    bool m_impulseLoadedFlag = false, m_impulseChangedFlag = false, m_reverseFlag = false, m_trimFlag = false, m_fftFlag = false, m_envelopeFlag = false;
+    bool m_impulseLoadedFlag = false, m_impulseChangedFlag = false, m_reverseFlag = false, m_palindromeFlag = false, m_trimFlag = false, m_fftFlag = false, m_envelopeFlag = false;
     float m_stretchFactor = 1, m_startPoint = 0, m_endPoint = 1, attack = 0, decay = 0;
     
     int m_filterPosition = 1;

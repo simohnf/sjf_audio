@@ -11,7 +11,7 @@
 #include "sjf_multislider.h"
 #include "sjf_multitoggle.h"
 #include "sjf_numBox.h"
-#include "sjf_label.h"
+#include "sjf_Label.h"
 #include "sjf_graph.h"
 #include "sjf_XYpad.h"
 #include "sjf_waveform.h"

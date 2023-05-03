@@ -106,10 +106,10 @@ public:
             env[ i+1 ][ 0 ] = m_env[ i ][ 0 ];
             env[ i+1 ][ 1 ] = 1.0f - m_env[ i ][ 1 ];
         }
-        for ( int i = 0; i < env.size(); i++ )
-        {
-            DBG( "Env in Waveform " << env[ i ][ 0 ] << " " << env[ i ][ 1 ] );
-        }
+//        for ( int i = 0; i < env.size(); i++ )
+//        {
+//            DBG( "Env in Waveform " << env[ i ][ 0 ] << " " << env[ i ][ 1 ] );
+//        }
         return env;
     }
     //==============================================================================
@@ -177,7 +177,7 @@ private:
             normalise = 1.0f / normalise;
         }
         
-        DBG( "NORMALISE " << normalise );
+//        DBG( "NORMALISE " << normalise );
         for ( int c = 0; c < nChans; c++ )
         {
             auto centre = c * chanHeight + hChanHeight;

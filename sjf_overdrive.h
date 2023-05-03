@@ -15,7 +15,7 @@ struct sjf_drive
         return juce::dsp::FastMathApproximations::tanh( input * drive  ) / juce::dsp::FastMathApproximations::tanh( drive );
     }
     
-    static inline T driveInPlace( T& input, const T& drive )
+    static inline void driveInPlace( T& input, const T& drive )
     {
         input = juce::dsp::FastMathApproximations::tanh( input * drive  ) / juce::dsp::FastMathApproximations::tanh( drive );
     }

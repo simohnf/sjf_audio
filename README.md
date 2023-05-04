@@ -22,7 +22,7 @@ Much of the code could probably do with some refactoring... particularly some of
 
 
 
-TO DO
+#TO DO
 - refactor sampler... currently not the most logical way of doing things --> would be better to have a simpler basic sampler (with loading and playback etc), and then break out mangler specific code...
 - further develop drummachine
 - make some enums anytime I'm using switch cases

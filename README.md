@@ -10,7 +10,7 @@ Some of the classes also use the [gcem compile time math library](https://github
 
 ...The organisation and some of the code needs some improvement and some of the files just need to be removed...
 
-###OLD NOTES --------------------
+### OLD NOTES
 
                     SJF AUDIO
 This is a collection of classes and functions used in my VST projects

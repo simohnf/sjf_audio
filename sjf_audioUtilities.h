@@ -260,6 +260,15 @@ void fastMod3( type &input, const type &ceil )
     while ( input < 0 ) { input += ceil; }
     while ( input >= ceil ) { input -= ceil; }
 }
+////==============================================================================
+template < class type >
+type fastMod4( type input, const type &ceil )
+{
+    while ( input < 0 ) { input += ceil; }
+    while ( input >= ceil ) { input -= ceil; }
+    return input;
+    
+}
 //==============================================================================
 template< class T >
 T sjf_scale( const T& valueToScale, const T& inMin, const T& inMax, const T& outMin, const T& outMax )

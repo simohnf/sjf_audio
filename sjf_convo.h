@@ -137,7 +137,7 @@ public:
         }
         for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
-            m_FIRbuffer.copyFrom( c, 0, buffer, fastMod( c, nBuffChannels ), 0, bufferSize );
+            m_FIRbuffer.copyFrom( c, 0, buffer, (int)fastMod( c, nBuffChannels ), 0, bufferSize ); 
             m_FIR[ c ].filterInputBlock( m_FIRbuffer.getWritePointer( c ), bufferSize );
         }
         

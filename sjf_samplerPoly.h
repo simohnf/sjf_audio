@@ -109,7 +109,7 @@ public:
     
     const int getNumVoices()
     {
-        return m_AudioSample.size();
+        return (int)m_AudioSample.size(); 
     }
     //==============================================================================
     float getDuration( const int& voiceNumber ) { return m_durationSamps[ voiceNumber ]; };
@@ -122,33 +122,34 @@ public:
                                                          juce::File{}, "*.aif, *.wav");
         auto chooserFlags = juce::FileBrowserComponent::openMode
         | juce::FileBrowserComponent::canSelectFiles;
-        
-        m_chooser->launchAsync (chooserFlags, [this, voiceNumber] (const juce::FileChooser& fc)
+        bool sampleFlag = false;
+        m_chooser->launchAsync (chooserFlags, [this, voiceNumber, &sampleFlag] (const juce::FileChooser& fc)
                                 {
-                                    auto file = fc.getResult();
-                                    if (file == juce::File{}) { return false; }
-                                    std::unique_ptr<juce::AudioFormatReader> reader (m_formatManager.createReaderFor (file));
-                                    if (reader.get() != nullptr)
-                                    {
-                                        bool lastPlayState = m_canPlayFlag;
-                                        m_canPlayFlag = false;
-                                        m_tempBuffer.clear();
-                                        m_tempBuffer.setSize((int) reader->numChannels, (int) reader->lengthInSamples);
-                                        m_durationSamps[ voiceNumber ] = m_tempBuffer.getNumSamples();
-                                        reader->read (&m_tempBuffer, 0, (int) reader->lengthInSamples, 0, true, true);
-                                        //                                          m_AudioSample.clear();
-                                        m_AudioSample[ voiceNumber ].makeCopyOf(m_tempBuffer);
-                                        m_sliceLenSamps[ voiceNumber ] = m_durationSamps[ voiceNumber ]/(float)m_nSlices[ voiceNumber ];
-                                        //                                          setPatterns();
-                                        m_samplePath[ voiceNumber ] = file.getFullPathName();
-                                        m_sampleName[ voiceNumber ] = file.getFileName();
-                                        m_tempBuffer.setSize(0, 0);
-                                        m_sampleLoadedFlag[ voiceNumber ] = true;
-                                        m_canPlayFlag = lastPlayState;
-                                    }
-                                    else { return false; }
-                                });
-        return true;
+            auto file = fc.getResult();
+            if (file == juce::File{}) { return false; }
+            std::unique_ptr<juce::AudioFormatReader> reader (m_formatManager.createReaderFor (file));
+            if (reader.get() != nullptr)
+            {
+                bool lastPlayState = m_canPlayFlag;
+                m_canPlayFlag = false;
+                m_tempBuffer.clear();
+                m_tempBuffer.setSize((int) reader->numChannels, (int) reader->lengthInSamples);
+                m_durationSamps[ voiceNumber ] = m_tempBuffer.getNumSamples();
+                reader->read (&m_tempBuffer, 0, (int) reader->lengthInSamples, 0, true, true);
+                //                                          m_AudioSample.clear();
+                m_AudioSample[ voiceNumber ].makeCopyOf(m_tempBuffer);
+                m_sliceLenSamps[ voiceNumber ] = m_durationSamps[ voiceNumber ]/(float)m_nSlices[ voiceNumber ];
+                //                                          setPatterns();
+                m_samplePath[ voiceNumber ] = file.getFullPathName();
+                m_sampleName[ voiceNumber ] = file.getFileName();
+                m_tempBuffer.setSize(0, 0);
+                m_sampleLoadedFlag[ voiceNumber ] = true;
+                m_canPlayFlag = lastPlayState;
+                sampleFlag = true;
+            }
+        });
+        if (sampleFlag) {return true; }
+        else { return false; }
     };
     //==============================================================================
     bool loadSample(juce::Value path, const int& voiceNumber)

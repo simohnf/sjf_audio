@@ -764,9 +764,9 @@ float cubicInterpolateHermite( juce::AudioBuffer<float> &buffer, const int chann
     {
         y0 = buffer.getSample(channel, index - 1);
     }
-    y1 = buffer.getSample(channel, fastMod( index, bufferSize ) );
-    y2 = buffer.getSample(channel, fastMod( (index + 1), bufferSize ) );
-    y3 = buffer.getSample(channel, fastMod( (index + 2), bufferSize ) );
+    y1 = buffer.getSample(channel, fastMod4<int>( index, bufferSize ) ); 
+    y2 = buffer.getSample(channel, fastMod4<int>( (index + 1), bufferSize ) );
+    y3 = buffer.getSample(channel, fastMod4<int>( (index + 2), bufferSize ) );
     double a0,a1,a2,a3; //,mu2;
 //    mu2 = mu*mu; 
     
@@ -803,9 +803,9 @@ float cubicInterpolateGodot( juce::AudioBuffer<float> &buffer, const int channel
     {
         y0 = buffer.getSample(channel, index - 1);
     }
-    y1 = buffer.getSample(channel, fastMod( index, bufferSize ) );
-    y2 = buffer.getSample(channel, fastMod( (index + 1), bufferSize ) );
-    y3 = buffer.getSample(channel, fastMod( (index + 2), bufferSize ) );
+    y1 = buffer.getSample(channel, fastMod4<int>( index, bufferSize ) );
+    y2 = buffer.getSample(channel, fastMod4<int>( (index + 1), bufferSize ) );
+    y3 = buffer.getSample(channel, fastMod4<int>( (index + 2), bufferSize ) );
     double a0,a1,a2,a3,mu2;
     mu2 = mu*mu;
     
@@ -843,9 +843,9 @@ float fourPointFourthOrderOptimal( juce::AudioBuffer<float> &buffer, const int c
     {
         y0 = buffer.getSample(channel, index - 1);
     }
-    y1 = buffer.getSample(channel, fastMod( index, bufferSize ) );
-    y2 = buffer.getSample(channel, fastMod( (index + 1), bufferSize ) );
-    y3 = buffer.getSample(channel, fastMod( (index + 2), bufferSize ) );
+    y1 = buffer.getSample(channel, fastMod4<int>( index, bufferSize ) );
+    y2 = buffer.getSample(channel, fastMod4<int>( (index + 1), bufferSize ) );
+    y3 = buffer.getSample(channel, fastMod4<int>( (index + 2), bufferSize ) );
     
     
     // Optimal 2x (4-point, 4th-order) (z-form)
@@ -876,8 +876,8 @@ float linearInterpolate(juce::AudioBuffer<float> &buffer, const int channel, con
     int index = findex;
     mu = findex - index;
     
-    y1 = buffer.getSample(channel, fastMod( index, bufferSize ) );
-    y2 = buffer.getSample(channel, fastMod( (index + 1), bufferSize ) );
+    y1 = buffer.getSample(channel, fastMod4<int>( index, bufferSize ) );
+    y2 = buffer.getSample(channel, fastMod4<int>( (index + 1), bufferSize ) );
     
     return y1 + mu*(y2-y1) ;
 }
@@ -907,9 +907,9 @@ float fourPointInterpolatePD( juce::AudioBuffer<float> &buffer, const int channe
     {
         y0 = buffer.getSample(channel, index - 1);
     }
-    y1 = buffer.getSample(channel, fastMod( index, bufferSize ) );
-    y2 = buffer.getSample(channel, fastMod( (index + 1), bufferSize ) );
-    y3 = buffer.getSample(channel, fastMod( (index + 2), bufferSize ) );
+    y1 = buffer.getSample(channel, fastMod4<int>( index, bufferSize ) );
+    y2 = buffer.getSample(channel, fastMod4<int>( (index + 1), bufferSize ) );
+    y3 = buffer.getSample(channel, fastMod4<int>( (index + 2), bufferSize ) );
     
     auto y2minusy1 = y2-y1;
     return y1 + mu * (y2minusy1 - 0.1666667f * (1.0f - mu) * ( (y3 - y0 - 3.0f * y2minusy1) * mu + (y3 + 2.0f*y0 - 3.0f*y1) ) );
@@ -940,9 +940,9 @@ float cubicInterpolate(juce::AudioBuffer<float> &buffer, const int channel, cons
     {
         y0 = buffer.getSample(channel, index - 1);
     }
-    y1 = buffer.getSample(channel, fastMod( index, bufferSize ) );
-    y2 = buffer.getSample(channel, fastMod( (index + 1), bufferSize ) );
-    y3 = buffer.getSample(channel, fastMod( (index + 2), bufferSize ) );
+    y1 = buffer.getSample(channel, fastMod4<int>( index, bufferSize ) );
+    y2 = buffer.getSample(channel, fastMod4<int>( (index + 1), bufferSize ) );
+    y3 = buffer.getSample(channel, fastMod4<int>( (index + 2), bufferSize ) );
     double a0,a1,a2,a3,mu2;
     
     mu2 = mu*mu;

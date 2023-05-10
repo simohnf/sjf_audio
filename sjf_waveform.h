@@ -263,16 +263,12 @@ private:
         x = std::fmax( std::fmin( x, 1 ), 0 );
         auto y = e.position.getY()/getHeight();
         y = std::fmax( std::fmin( y, 1 ), 0 );
-        int indx = -1;
-        int oldSize = m_env.size();
+        auto indx = -1;
+        auto oldSize = m_env.size();
         if ( x <= m_env[ 0 ][ 0 ] )
-        {
-            indx = 0;
-        }
+        { indx = 0; }
         else if ( x >= m_env[ oldSize - 1 ][ 0 ] )
-        {
-            indx = oldSize + 1;
-        }
+        { indx = (int)oldSize + 1; }
         else
         {
             for ( int i = 1; i < oldSize; i++ )

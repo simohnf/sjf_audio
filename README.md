@@ -10,7 +10,8 @@ Some of the classes also use the [gcem compile time math library](https://github
 
 ...The organisation and some of the code needs some improvement and some of the files just need to be removed...
 
--------------------- OLD NOTES --------------------
+### OLD NOTES
+
                     SJF AUDIO
 This is a collection of classes and functions used in my VST projects
 As I often reuse the same classes in multiple projects I found that this was a convenient(ish) way of organising them
@@ -21,7 +22,7 @@ Much of the code could probably do with some refactoring... particularly some of
 
 
 
-TO DO
+## TO DO                    
 - refactor sampler... currently not the most logical way of doing things --> would be better to have a simpler basic sampler (with loading and playback etc), and then break out mangler specific code...
 - further develop drummachine
 - make some enums anytime I'm using switch cases

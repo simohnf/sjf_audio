@@ -9,7 +9,7 @@
 
 #include <JuceHeader.h>
 #include "sjf_compileTimeRandom.h"
-
+#include "sjf_audioUtilities.h"
 class sjf_lookAndFeel : public juce::LookAndFeel_V4
 {
 public:

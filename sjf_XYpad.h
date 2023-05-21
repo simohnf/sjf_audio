@@ -30,7 +30,7 @@ public:
         g.fillAll();
         
         g.setColour( findColour( outlineColourId ) );
-        juce::Rectangle<float> rect = { 0, 0, (float)getWidth(), (float)getHeight() };
+        juce::Rectangle<float> rect = { 0, 0, static_cast<float>( getWidth() ), static_cast<float>( getHeight() ) };
         g.drawRect( rect );
         
         if( m_drawCornerCirclesFlag ){ drawCirclesForCorners( g ); }
@@ -54,26 +54,26 @@ public:
     //==============================================================================
     const std::array< float, 2 > getNormalisedPosition()
     {
-        std::array< float, 2 > nPos = { m_pos[0] / (float)getWidth(), 1.0f - (m_pos[1] / (float)getHeight()) };
+        std::array< float, 2 > nPos = { m_pos[0] / static_cast<float>( getWidth() ), 1.0f - ( m_pos[1] / static_cast<float>( getHeight() ) ) };
         return nPos;
     }
     //==============================================================================
     void setNormalisedXposition( const float x )
     {
-        m_pos[ 0 ] = std::fmax(0, std::fmin( x, 1.0f ) ) * (float)getWidth();
+        m_pos[ 0 ] = std::fmax(0, std::fmin( x, 1.0f ) ) * static_cast<float>( getWidth() );
         repaint();
     }
     //==============================================================================
     void setNormalisedYposition( const float y )
     {
-        m_pos[ 1 ] = ( std::fmax(0, std::fmin( 1.0f - y, 1.0f ) ) ) * (float)getHeight();
+        m_pos[ 1 ] = ( std::fmax(0, std::fmin( 1.0f - y, 1.0f ) ) ) * static_cast<float>( getHeight() );
         repaint();
     }
     //==============================================================================
     void setNormalisedPosition( const std::array< float, 2 > pos )
     {
-        m_pos[ 0 ] = std::fmax(0, std::fmin( pos[0], 1.0f ) ) * (float)getWidth();
-        m_pos[ 1 ] = std::fmax(0, std::fmin( 1.0f - pos[1], 1.0f ) ) * (float)getHeight();
+        m_pos[ 0 ] = std::fmax(0, std::fmin( pos[0], 1.0f ) ) * static_cast<float>( getWidth() );
+        m_pos[ 1 ] = std::fmax(0, std::fmin( 1.0f - pos[1], 1.0f ) ) * static_cast<float>( getHeight() );
         repaint();
     }
     //==============================================================================

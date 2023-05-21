@@ -28,7 +28,7 @@ public:
     int getCurrentStep( double hostPosition )
     {
         if (!m_isOnFlag){ return -1; }
-        m_currentStep = (int)(hostPosition * m_div * m_tuplet) % m_nSteps;
+        m_currentStep = static_cast<int>(hostPosition * m_div * m_tuplet) % m_nSteps;
         return m_currentStep;
     }
     //==============================================================================
@@ -39,7 +39,7 @@ public:
     void setDivision( int rhythmicDivision )
     {
         rhythmicDivision -= 1;
-        m_div = pow(2, (float)rhythmicDivision);
+        m_div = pow(2, static_cast<float>(rhythmicDivision));
     }
     //==============================================================================
     // sets the current tuplet type

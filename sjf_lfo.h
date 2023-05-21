@@ -42,7 +42,7 @@ public:
             m_pos += m_increment; // increase position per sample
             if ( m_pos >= 1.0 )
             {
-                m_pos -= (int)m_pos; // make sure position is always betweeo 0 --> 1
+                m_pos -= static_cast<int>( m_pos ); // make sure position is always betweeo 0 --> 1
             }
         }
         m_count++; // if Hz based count is just simply increased by one sample
@@ -140,7 +140,7 @@ public:
         if( m_isSyncedToTempo )
         {
             pos *= m_syncFactor;  // longest possible length when synced is 32 quarter notes
-            m_pos = pos - (int)pos; // just get fractional part
+            m_pos = pos - static_cast<int>( pos ); // just get fractional part
 //            DBG( "m_pos " << m_pos );
         }
     }

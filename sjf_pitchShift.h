@@ -37,7 +37,7 @@ public:
         m_windowSize = sampleRate * 0.001f * windowSizeMS;
         DBG(" maxDelayInSamps " << m_windowSize );
         setTransopositionFactor( sampleRate, m_windowSize );
-        m_pitchShifter.initialise( (int)m_windowSize );
+        m_pitchShifter.initialise( static_cast<int>(m_windowSize) );
         m_pitchPhasor.initialise( sampleRate, 1.0f );
     }
     

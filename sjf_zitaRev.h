@@ -716,7 +716,7 @@ private:
         for ( int i = 0; i < NUM_REV_CHANNELS; i += nInChannels )
         {
             T val = flipped ? -1.0f : 1.0f;
-            int nSteps = std::min( (int)NUM_REV_CHANNELS, nInChannels );
+            int nSteps = std::min( static_cast<int>(NUM_REV_CHANNELS), nInChannels );
             for ( int j = 0; j < nSteps; j++ ) { m_flip[ i + j ] = val; }
             flipped = !flipped;
         }

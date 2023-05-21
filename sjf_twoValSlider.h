@@ -136,7 +136,7 @@ private:
 //        }
         else
         {
-            m_vals[ (int)minOrMaxAndValue[ 0 ] ] = minOrMaxAndValue[ 1 ];
+            m_vals[ static_cast<int>( minOrMaxAndValue[ 0 ] ) ] = minOrMaxAndValue[ 1 ];
         }
     }
     //==============================================================================
@@ -151,13 +151,13 @@ private:
         {
             distFromMin = abs( m_vals[ 0 ]*getWidth() - x );
             distFromMax = abs( m_vals[ 1 ]*getWidth() - x );
-            output[ 1 ] = ( (float)x  / (float)getWidth() );
+            output[ 1 ] = ( static_cast<float>(x)  / static_cast<float>( getWidth() ) );
         }
         else
         {
             distFromMin = abs( m_vals[ 0 ]*getHeight() - y );
             distFromMax = abs( m_vals[ 1 ]*getHeight() - y );
-            output[ 1 ] = ( (float)y  / (float)getHeight() );
+            output[ 1 ] = ( static_cast<float>(y)  / static_cast<float>( getHeight() ) );
         }
         
         
@@ -176,47 +176,6 @@ private:
             m_vals[ i ] = std::fmax( std::fmin( 1, m_vals[ i ] + dif ), 0 );
         }
     }
-//    //==============================================================================
-//    void mouseActionAndAltLogic( float val, int theTouchedSlider )
-//    {
-//
-//        for (int s = 0; s < m_sliders.size(); s++)
-//        {
-//            auto distance = abs(theTouchedSlider - s);
-//            if (distance == 0){ m_sliders[s]->setValue( val ); }
-//            else
-//            {
-//                auto range = val - m_sliders[s]->getMinimum();
-//                auto min = m_sliders[s]->getMinimum();
-//                /* auto newVal = range / pow(2, distance); */
-//                distance += 1;
-//                auto newVal = range * ( (m_sliders.size() - distance) / (float)m_sliders.size() );
-//                newVal += min;
-//                m_sliders[s]->setValue( newVal );
-//            }
-//        }
-//    }
-//    //==============================================================================
-//    void mouseActionAndAltAndShiftLogic( float val, int theTouchedSlider )
-//    {
-//
-//        for (int s = 0; s < m_sliders.size(); s++)
-//        {
-//            auto distance = abs(theTouchedSlider - s);
-//            if (distance == 0){ m_sliders[s]->setValue( val ); }
-//            else
-//            {
-//                auto max = m_sliders[s]->getMaximum();
-//                auto range = max - val;
-//
-//                //                auto newVal = range / pow(2, distance);
-//                distance += 1;
-//                auto newVal = range * ( (m_sliders.size() - distance) / (float)m_sliders.size() );
-//                newVal  = max - newVal;
-//                m_sliders[s]->setValue( newVal );
-//            }
-//        }
-//    }
     //==============================================================================
     void mouseDown (const juce::MouseEvent& e) override
     {

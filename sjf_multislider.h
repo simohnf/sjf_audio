@@ -49,13 +49,13 @@ public:
         {
             if (!m_isHorizontalFlag)
             {
-                auto sWidth = (float)this->getWidth() / (float)nSliders;
+                auto sWidth = static_cast<float>( this->getWidth() ) / static_cast<float>(nSliders);
                 m_sliders[s]->setSliderStyle(juce::Slider::LinearBarVertical);
                 m_sliders[s]->setBounds(sWidth*s, 0.0f, sWidth, getHeight());
             }
             else
             {
-                auto sHeight = (float)getHeight()/(float)nSliders;
+                auto sHeight = static_cast<float>( getHeight() ) / static_cast<float>(nSliders);
                 m_sliders[s]->setSliderStyle(juce::Slider::LinearBar);
                 m_sliders[s]->setBounds(0.0f, sHeight*s, getWidth(), sHeight);
             }
@@ -198,8 +198,8 @@ private:
     {
         auto x = e.position.getX();
         auto y = e.position.getY();
-        if (!m_isHorizontalFlag) { return ((float)getHeight()-y)/(float)getHeight(); }
-        else { return ( x / (float)getWidth() ) ; }
+        if (!m_isHorizontalFlag) { return ( static_cast<float>( getHeight() ) - y ) / static_cast<float>( getHeight() ); }
+        else { return ( x / static_cast<float>( getWidth() ) ) ; }
     }
     //==============================================================================
     void mouseActionAndShiftLogic( float val )
@@ -220,7 +220,7 @@ private:
                 auto min = m_sliders[s]->getMinimum();
                 /* auto newVal = range / pow(2, distance); */
                 distance += 1;
-                auto newVal = range * ( (m_sliders.size() - distance) / (float)m_sliders.size() );
+                auto newVal = range * ( (m_sliders.size() - distance) / static_cast<float>( m_sliders.size() ) );
                 newVal += min;
                 m_sliders[s]->setValue( newVal );
             }
@@ -241,7 +241,7 @@ private:
                 
                 //                auto newVal = range / pow(2, distance);
                 distance += 1;
-                auto newVal = range * ( (m_sliders.size() - distance) / (float)m_sliders.size() );
+                auto newVal = range * ( (m_sliders.size() - distance) / static_cast<float>( m_sliders.size() ) );
                 newVal  = max - newVal;
                 m_sliders[s]->setValue( newVal );
             }

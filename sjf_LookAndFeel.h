@@ -49,7 +49,7 @@ public:
     void drawToggleButton (juce::Graphics& g, juce::ToggleButton& button,
                            bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override
     {
-        auto fontSize = juce::jmin (15.0f, (float) button.getHeight() * 0.75f);
+        auto fontSize = juce::jmin (15.0f, static_cast<float>( button.getHeight() ) * 0.75f);
         auto offset = 0.0f;
         drawTickBox(g, button, offset, offset,
                     button.getBounds().getWidth() - offset, button.getBounds().getHeight() - offset,
@@ -106,9 +106,9 @@ public:
         {
             juce::Rectangle<int> arrowZone (width - width*.2, 0, width*.2, height);
             juce::Path path;
-            path.startNewSubPath ((float) arrowZone.getX() + 3.0f, (float) arrowZone.getCentreY() - 2.0f);
-            path.lineTo ((float) arrowZone.getCentreX(), (float) arrowZone.getCentreY() + 3.0f);
-            path.lineTo ((float) arrowZone.getRight() - 3.0f, (float) arrowZone.getCentreY() - 2.0f);
+            path.startNewSubPath ( static_cast<float>( arrowZone.getX() ) + 3.0f, static_cast<float>( arrowZone.getCentreY() ) - 2.0f);
+            path.lineTo ( static_cast<float>( arrowZone.getCentreX() ), static_cast<float>( arrowZone.getCentreY() ) + 3.0f);
+            path.lineTo ( static_cast<float>( arrowZone.getRight() ) - 3.0f, static_cast<float>( arrowZone.getCentreY() ) - 2.0f);
             
             g.setColour (box.findColour (juce::ComboBox::arrowColourId).withAlpha ((box.isEnabled() ? 0.9f : 0.2f)));
             g.strokePath (path, juce::PathStrokeType (2.0f));
@@ -193,22 +193,22 @@ public:
         if (slider.isBar())
         {
             g.setColour (slider.findColour (juce::Slider::trackColourId));
-            g.fillRect (slider.isHorizontal() ? juce::Rectangle<float> (static_cast<float> (x), (float) y + 0.5f, sliderPos - (float) x, (float) height - 1.0f)
-                        : juce::Rectangle<float> ((float) x + 0.5f, sliderPos, (float) width - 1.0f, (float) y + ((float) height - sliderPos)));
+            g.fillRect (slider.isHorizontal() ? juce::Rectangle<float> (static_cast<float> (x), static_cast<float>(y) + 0.5f, sliderPos - static_cast<float>(x), static_cast<float>(height) - 1.0f)
+                        : juce::Rectangle<float> (static_cast<float>(x) + 0.5f, sliderPos, static_cast<float>(width) - 1.0f, static_cast<float>(y) + (static_cast<float>(height) - sliderPos)));
         }
         else
         {
             auto isTwoVal   = (style == juce::Slider::SliderStyle::TwoValueVertical   || style == juce::Slider::SliderStyle::TwoValueHorizontal);
             auto isThreeVal = (style == juce::Slider::SliderStyle::ThreeValueVertical || style == juce::Slider::SliderStyle::ThreeValueHorizontal);
             
-            auto trackWidth = slider.isHorizontal() ? (float) height: (float) width;
+            auto trackWidth = slider.isHorizontal() ? static_cast<float>(height): static_cast<float>(width);
             
             
-            juce::Point<float> startPoint (slider.isHorizontal() ? (float) x : (float) x + (float) width * 0.5f,
-                                     slider.isHorizontal() ? (float) y + (float) height * 0.5f : (float) (height + y));
+            juce::Point<float> startPoint (slider.isHorizontal() ? static_cast<float>(x) : static_cast<float>(x) + static_cast<float>(width) * 0.5f,
+                                     slider.isHorizontal() ? static_cast<float>(y) + static_cast<float>(height) * 0.5f : static_cast<float>(height + y));
             
-            juce::Point<float> endPoint (slider.isHorizontal() ? (float) (width + x) : startPoint.x,
-                                   slider.isHorizontal() ? startPoint.y : (float) y);
+            juce::Point<float> endPoint (slider.isHorizontal() ? static_cast<float>(width + x) : startPoint.x,
+                                   slider.isHorizontal() ? startPoint.y : static_cast<float>(y) );
             
             juce::Path backgroundTrack;
             backgroundTrack.startNewSubPath (startPoint);
@@ -223,20 +223,20 @@ public:
             
             if (isTwoVal || isThreeVal)
             {
-                minPoint = { slider.isHorizontal() ? minSliderPos : (float) width * 0.5f,
-                    slider.isHorizontal() ? (float) height * 0.5f : minSliderPos };
+                minPoint = { slider.isHorizontal() ? minSliderPos : static_cast<float>(width) * 0.5f,
+                    slider.isHorizontal() ? static_cast<float>(height) * 0.5f : minSliderPos };
                 
                 if (isThreeVal)
-                    thumbPoint = { slider.isHorizontal() ? sliderPos : (float) width * 0.5f,
-                        slider.isHorizontal() ? (float) height * 0.5f : sliderPos };
+                    thumbPoint = { slider.isHorizontal() ? sliderPos : static_cast<float>(width) * 0.5f,
+                        slider.isHorizontal() ? static_cast<float>(height) * 0.5f : sliderPos };
                 
-                maxPoint = { slider.isHorizontal() ? maxSliderPos : (float) width * 0.5f,
-                    slider.isHorizontal() ? (float) height * 0.5f : maxSliderPos };
+                maxPoint = { slider.isHorizontal() ? maxSliderPos : static_cast<float>(width) * 0.5f,
+                    slider.isHorizontal() ? static_cast<float>(height) * 0.5f : maxSliderPos };
             }
             else
             {
-                auto kx = slider.isHorizontal() ? sliderPos : ((float) x + (float) width * 0.5f);
-                auto ky = slider.isHorizontal() ? ((float) y + (float) height * 0.5f) : sliderPos;
+                auto kx = slider.isHorizontal() ? sliderPos : ( static_cast<float>(x) + static_cast<float>(width) * 0.5f);
+                auto ky = slider.isHorizontal() ? ( static_cast<float>(y) + static_cast<float>(height) * 0.5f) : sliderPos;
                 
                 minPoint = startPoint;
                 maxPoint = { kx, ky };
@@ -255,7 +255,7 @@ public:
                 g.setColour (slider.findColour (juce::Slider::thumbColourId));
                 g.fillRect (juce::Rectangle<float> (static_cast<float> (thumbWidth), static_cast<float> (thumbWidth)).withCentre (isThreeVal ? thumbPoint : maxPoint));
             }
-//              NO NEED FOR THE POINTERS... I'm not a massive fan of how they look
+//              NO NEED FOR THE POINTERSOn The Sliders... I'm not a massive fan of how they look
 //            if (isTwoVal || isThreeVal)
 //            {
 //                auto sr = juce::jmin (trackWidth, (slider.isHorizontal() ? (float) height : (float) width) * 0.4f);

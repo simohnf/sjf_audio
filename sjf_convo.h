@@ -71,8 +71,8 @@ public:
         std::unique_ptr<juce::AudioFormatReader> reader (m_formatManager.createReaderFor (file));
         if (reader.get() != nullptr)
         {
-            auto nSamps = (int) reader->lengthInSamples;
-            auto nChannels = (int) reader->numChannels;
+            auto nSamps = static_cast<int>(reader->lengthInSamples);
+            auto nChannels = static_cast<int>(reader->numChannels);
             m_IRSampleRate = reader->sampleRate;
             m_impulseBufferOriginal.setSize( nChannels, nSamps );
             reader->read (&m_impulseBufferOriginal, 0, nSamps, 0, true, true);
@@ -98,8 +98,8 @@ public:
                                     std::unique_ptr<juce::AudioFormatReader> reader (m_formatManager.createReaderFor (file));
                                     if (reader.get() != nullptr)
                                     {
-                                        auto nSamps = (int) reader->lengthInSamples;
-                                        auto nChannels = (int) reader->numChannels;
+                                        auto nSamps = static_cast<int>(reader->lengthInSamples);
+                                        auto nChannels = static_cast<int>(reader->numChannels);
                                         m_IRSampleRate = reader->sampleRate;
                                         m_impulseBufferOriginal.setSize( nChannels, nSamps );
                                         reader->read (&m_impulseBufferOriginal, 0, nSamps, 0, true, true);
@@ -137,7 +137,7 @@ public:
         }
         for ( int c = 0; c < NUM_CHANNELS; c++ )
         {
-            m_FIRbuffer.copyFrom( c, 0, buffer, (int)fastMod( c, nBuffChannels ), 0, bufferSize ); 
+            m_FIRbuffer.copyFrom( c, 0, buffer, static_cast<int>( fastMod( c, nBuffChannels ) ), 0, bufferSize ); 
             m_FIR[ c ].filterInputBlock( m_FIRbuffer.getWritePointer( c ), bufferSize );
         }
         
@@ -438,7 +438,7 @@ private:
         auto nSamps = buffer.getNumSamples();
         auto nChannels  = buffer.getNumChannels();
         auto nSampsOriginal = bufferOriginal.getNumSamples();
-        auto nSampsStretched = (int) (nSamps * m_stretchFactor);
+        auto nSampsStretched = static_cast<int> (nSamps * m_stretchFactor);
         auto stride = 1.0f / m_stretchFactor;
         buffer.setSize( nChannels, nSampsStretched );
         

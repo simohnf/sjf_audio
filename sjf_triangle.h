@@ -17,10 +17,7 @@ public:
     ~sjf_triangle(){};
     
     float output ( float x )
-    {
-//        x += 0.25;
-//        x = x - (int)x;
-        
+    {   
         if ( x > m_duty )
         {
             x = ( 1.0f - x ) * m_inverseOneMinusDuty;

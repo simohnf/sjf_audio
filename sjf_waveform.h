@@ -46,7 +46,7 @@ public:
         g.fillAll();
         
         g.setColour( findColour( outlineColourId ) );
-        juce::Rectangle<float> rect = { 0, 0, (float)getWidth(), (float)getHeight() };
+        juce::Rectangle<float> rect = { 0, 0, static_cast<float>( getWidth() ), static_cast<float>( getHeight() ) };
         g.drawRect( rect );
         
         g.setColour( findColour( waveColourID ) );
@@ -57,15 +57,15 @@ public:
         std::vector< std::array < float, 2 > > env;
         env.resize( nPoints + 2 );
         env.resize( nPoints + 2 );
-        env[ 0 ] = {0, (float)getHeight()};
-        env[ nPoints + 1 ] = {(float)getWidth(), (float)getHeight()};
+        env[ 0 ] = {0, static_cast<float>( getHeight() ) };
+        env[ nPoints + 1 ] = { static_cast<float>( getWidth() ), static_cast<float>( getHeight() ) };
         g.setColour( findColour( waveColourID ) );
         for ( int i = 0; i < nPoints; i++ )
         {
             auto x = m_env[ i ][ 0 ]*getWidth();
             auto y = m_env[ i ][ 1 ]*getHeight();
             env[ i + 1 ] = { x, y };
-            juce::Rectangle<float> rect = {  x - m_pointRadius, y - m_pointRadius, (float)m_pointRadius*2, (float)m_pointRadius*2 };
+            juce::Rectangle<float> rect = {  x - m_pointRadius, y - m_pointRadius, static_cast<float>(m_pointRadius)*2, static_cast<float>(m_pointRadius)*2 };
             g.fillEllipse( rect );
             
         }
@@ -268,7 +268,7 @@ private:
         if ( x <= m_env[ 0 ][ 0 ] )
         { indx = 0; }
         else if ( x >= m_env[ oldSize - 1 ][ 0 ] )
-        { indx = (int)oldSize + 1; }
+        { indx = static_cast<int>(oldSize) + 1; }
         else
         {
             for ( int i = 1; i < oldSize; i++ )

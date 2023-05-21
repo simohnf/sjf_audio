@@ -20,7 +20,7 @@ public:
         //        DBG( "offset " << offset1 );
         for ( int i = 0; i < m_arraySize; i++ )
         {
-            float x = ( (float)i / (float)m_halfArraySize ) - 1.0f;
+            float x = ( static_cast<float>(i) / static_cast<float>(m_halfArraySize) ) - 1.0f;
             m_tanh [ i ] = tanh( 3.1415927 * x );
         }
     }

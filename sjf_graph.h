@@ -159,7 +159,7 @@ public:
         g.setColour ( findColour(pointColourID) );
         auto lineStart = 0;
         auto nVals = m_values.size();
-        auto sliderWidth =  (float)getWidth()  / (float)nVals;
+        auto sliderWidth =  static_cast<float>( getWidth() )  / static_cast<float>(nVals);
         auto height = getHeight();
         auto width = getWidth();
         for(int i = 0; i < nVals; i++)
@@ -216,7 +216,7 @@ public:
     void setNumPoints(int nPoints)
     {
         if ( nPoints < 1 ) { nPoints = 1; }
-        auto oldSize = (int)m_values.size();
+        auto oldSize = static_cast<int>( m_values.size() );
         m_values.resize(nPoints);
         if ( nPoints > oldSize )
         {
@@ -231,7 +231,7 @@ public:
     float outputValue(int indexToOutput)
     {
         if ( indexToOutput < 0 ){ indexToOutput = 0; }
-        if ( indexToOutput > (int)m_values.size()-1 ) { indexToOutput = (int)m_values.size()-1; }
+        if ( indexToOutput > static_cast<int>( m_values.size() ) - 1 ) { indexToOutput = static_cast<int>( m_values.size() ) - 1; }
         
         return 1.0f - m_values[indexToOutput];
     }
@@ -239,7 +239,7 @@ public:
     void setPoint(int indexOfPointToSet, float newValue)
     {
         if ( indexOfPointToSet < 0 ) { indexOfPointToSet = 0;}
-        if ( indexOfPointToSet > (int)m_values.size() ) { indexOfPointToSet = (int)m_values.size(); }
+        if ( indexOfPointToSet > static_cast<int>( m_values.size() ) ) { indexOfPointToSet = static_cast<int>( m_values.size() ); }
         if ( newValue < 0 ) { newValue = 0; }
         if ( newValue > 1 ) { newValue = 1; }
         m_values[indexOfPointToSet] = 1.0f - newValue;
@@ -248,7 +248,7 @@ public:
     //==============================================================================
     int getNumPoints()
     {
-        return (int)m_values.size();
+        return static_cast<int>( m_values.size() );
     }
     //==============================================================================
     enum ColourIds
@@ -358,7 +358,7 @@ public:
         offsetBox.setValue( m_offset, juce::dontSendNotification );
         m_jitter = pow(rand01(), 4);
         jitterBox.setValue( m_jitter, juce::dontSendNotification );
-        m_lastGraphChoice = 1+ rand01() * (float)graphChoiceBox.getNumItems();
+        m_lastGraphChoice = 1+ rand01() * static_cast<float>( graphChoiceBox.getNumItems() );
         graphChoiceBox.setSelectedId( m_lastGraphChoice , juce::dontSendNotification);
         drawGraph(m_lastGraphChoice);
         return getGraphAsVector();
@@ -402,7 +402,7 @@ public:
         auto nVals = m_graph.getNumPoints();
         for (int i = 0 ; i < nVals ; i++ )
         {
-            auto phase = (float)i / (float)nVals;
+            auto phase = static_cast<float>(i) / static_cast<float>(nVals);
             auto val = calculateValueUsingSetGraphTypes( phase, graphType );;
             val *= m_range; // constrain value
             val += m_offset; // offset value

@@ -42,7 +42,7 @@ public:
     float getSampleCalculated()
     {
         m_readPos += m_incrementT2;
-        m_readPos -= (int)m_readPos; // round readPosition
+        m_readPos -= static_cast<int>(m_readPos); // round readPosition
         return sin(2.0 * m_PI * m_incrementT2);
     }
     

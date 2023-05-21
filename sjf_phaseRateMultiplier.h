@@ -26,7 +26,7 @@ public:
         m_lastIn = x;
         x *= m_rate;
         x += ( m_accum * m_rate );
-        x -= (int)x;
+        x -= static_cast<int>(x);
         return x;
     }
     

@@ -101,7 +101,6 @@ public:
         else
         {
             m_nSlices.resize( nVoices );
-//            m_phaseRateMultiplier.resize( nVoices );
             m_sampleLoadedFlag.resize( nVoices );
             m_sampleChoiceProbabilities.resize( nVoices );
         }
@@ -109,12 +108,12 @@ public:
     
     const int getNumVoices()
     {
-        return (int)m_AudioSample.size(); 
+        return static_cast<int>( m_AudioSample.size() );
     }
     //==============================================================================
     float getDuration( const int& voiceNumber ) { return m_durationSamps[ voiceNumber ]; };
     //==============================================================================
-    float getDurationMS( const int& voiceNumber ) { return (float)m_durationSamps[ voiceNumber ] * 1000.0f / (float)m_SR; };
+    float getDurationMS( const int& voiceNumber ) { return static_cast<float>(m_durationSamps[ voiceNumber ]) * 1000.0f / static_cast<float>(m_SR); };
     //==============================================================================
     bool loadSample( const int& voiceNumber )
     {
@@ -133,12 +132,12 @@ public:
                 bool lastPlayState = m_canPlayFlag;
                 m_canPlayFlag = false;
                 m_tempBuffer.clear();
-                m_tempBuffer.setSize((int) reader->numChannels, (int) reader->lengthInSamples);
+                m_tempBuffer.setSize( static_cast<int>(reader->numChannels), static_cast<int>(reader->lengthInSamples) );
                 m_durationSamps[ voiceNumber ] = m_tempBuffer.getNumSamples();
-                reader->read (&m_tempBuffer, 0, (int) reader->lengthInSamples, 0, true, true);
+                reader->read (&m_tempBuffer, 0, static_cast<int>(reader->lengthInSamples), 0, true, true);
                 //                                          m_AudioSample.clear();
                 m_AudioSample[ voiceNumber ].makeCopyOf(m_tempBuffer);
-                m_sliceLenSamps[ voiceNumber ] = m_durationSamps[ voiceNumber ]/(float)m_nSlices[ voiceNumber ];
+                m_sliceLenSamps[ voiceNumber ] = m_durationSamps[ voiceNumber ] / static_cast<float>(m_nSlices[ voiceNumber ]);
                 //                                          setPatterns();
                 m_samplePath[ voiceNumber ] = file.getFullPathName();
                 m_sampleName[ voiceNumber ] = file.getFileName();
@@ -160,9 +159,9 @@ public:
         if (reader.get() != nullptr)
         {
             m_AudioSample[ voiceNumber ].clear();
-            m_AudioSample[ voiceNumber ].setSize((int) reader->numChannels, (int) reader->lengthInSamples);
+            m_AudioSample[ voiceNumber ].setSize( static_cast<int>(reader->numChannels), static_cast<int>(reader->lengthInSamples) );
             m_durationSamps[ voiceNumber ] = m_AudioSample[ voiceNumber ].getNumSamples();
-            reader->read (&m_AudioSample[ voiceNumber ], 0, (int) reader->lengthInSamples, 0, true, true);
+            reader->read (&m_AudioSample[ voiceNumber ], 0, static_cast<int>(reader->lengthInSamples), 0, true, true);
             m_sliceLenSamps[ voiceNumber ] = m_durationSamps[ voiceNumber ]/m_nSlices[ voiceNumber ];
             setPatterns();
             m_samplePath[ voiceNumber ] = file.getFullPathName();
@@ -284,10 +283,8 @@ public:
         auto bufferSize = buffer.getNumSamples();
         auto numChannels = buffer.getNumChannels();
         
-//        auto increment = m_phaseRateMultiplier[ m_voiceNumber ];
         auto increment = m_phaseRateMultiplier;
-//        auto envLen =(int)( m_phaseRateMultiplier[ m_voiceNumber ] * m_fadeInMs * m_SR / 1000 ) + 1;
-        auto envLen =(int)( m_phaseRateMultiplier * m_fadeInMs * m_SR / 1000 ) + 1;
+        auto envLen = static_cast<int>( m_phaseRateMultiplier * m_fadeInMs * m_SR / 1000 ) + 1;
         for (int index = 0; index < bufferSize; index++)
         {
             if ( checkForChangeOfBeat( m_stepCount ) )
@@ -307,20 +304,17 @@ public:
                     }
                     if ( !samples ){ return; }
                 }
-//                envLen = (int)( m_phaseRateMultiplier[ m_voiceNumber ] * m_fadeInMs * m_SR / 1000 ) + 1;
-                envLen = (int)( m_phaseRateMultiplier * m_fadeInMs * m_SR / 1000 ) + 1;
-//                increment = m_phaseRateMultiplier[ m_voiceNumber ];
+                envLen = static_cast<int>( m_phaseRateMultiplier * m_fadeInMs * m_SR / 1000 ) + 1;
                 increment = m_phaseRateMultiplier;
             }
             
-//            auto pos = calculateMangledReadPosition( m_readPos, 1, m_stepCount, m_voiceNumber );
             auto pos = m_readPos;
             auto subDiv = floor(m_subDivPat[m_stepCount] * 8.0f) + 1.0f ;
             auto subDivLenSamps = m_sliceLenSamps[ m_voiceNumber ] / subDiv ;
             auto subDivAmp = calculateSubDivAmp( m_stepCount, subDiv, int(pos / subDivLenSamps) );
             auto speedVal = calculateSpeedVal( m_stepCount, (m_readPos / m_sliceLenSamps[ m_voiceNumber ]) );
             while (pos >= subDivLenSamps){ pos -= subDivLenSamps; }
-            auto env = envelope( pos , (int)subDivLenSamps - 1, envLen ); // Check this out more
+            auto env = envelope( pos , static_cast<int>(subDivLenSamps) - 1, envLen ); // Check this out more
             auto amp = calculateAmpValue( m_stepCount );
             pos = calculateReverse( m_stepCount, pos, subDivLenSamps );
             pos *= speedVal;
@@ -365,7 +359,7 @@ public:
         auto hostSyncCompenstation =  calculateHostCompensation( bpm, m_voiceNumber );
         auto increment = m_phaseRateMultiplier * hostSyncCompenstation;
         auto hostPos = hostPosition * hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
-        m_stepCount = (int)( hostPos / m_sliceLenSamps[ m_voiceNumber ] );
+        m_stepCount = static_cast<int>( hostPos / m_sliceLenSamps[ m_voiceNumber ] );
         m_readPos = hostPos - m_stepCount*m_sliceLenSamps[ m_voiceNumber ];
         fastMod3< float > ( m_readPos, m_sliceLenSamps[ m_voiceNumber ] );
         fastMod3< int >( m_stepCount, m_nSteps );
@@ -392,7 +386,7 @@ public:
                 hostSyncCompenstation =  calculateHostCompensation( bpm, m_voiceNumber );
                 increment = m_phaseRateMultiplier * hostSyncCompenstation;
                 hostPos = (hostPosition * hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation) + index;
-                m_stepCount = (int)( hostPos / m_sliceLenSamps[ m_voiceNumber ] );
+                m_stepCount = static_cast<int>( hostPos / m_sliceLenSamps[ m_voiceNumber ] );
                 m_readPos = hostPos - m_stepCount*m_sliceLenSamps[ m_voiceNumber ];
                 fastMod3< float > ( m_readPos, m_sliceLenSamps[ m_voiceNumber ] );
                 fastMod3< int >( m_stepCount, m_nSteps );

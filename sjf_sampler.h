@@ -33,7 +33,7 @@ public:
     //==============================================================================
     float getDuration() { return m_durationSamps; };
     //==============================================================================
-    float getDurationMS() { return (float)m_durationSamps * 1000.0f / (float)m_SR; };
+    float getDurationMS() { return static_cast<float>(m_durationSamps) * 1000.0f / static_cast<float>(m_SR); };
     //==============================================================================
     void loadSample()
     {
@@ -52,12 +52,12 @@ public:
                                       bool lastPlayState = m_canPlayFlag;
                                       m_canPlayFlag = false;
                                       m_tempBuffer.clear();
-                                      m_tempBuffer.setSize((int) reader->numChannels, (int) reader->lengthInSamples);
+                                      m_tempBuffer.setSize( static_cast<int>(reader->numChannels), static_cast<int>(reader->lengthInSamples) );
                                       m_durationSamps = m_tempBuffer.getNumSamples();
-                                      reader->read (&m_tempBuffer, 0, (int) reader->lengthInSamples, 0, true, true);
+                                      reader->read (&m_tempBuffer, 0, static_cast<int>(reader->lengthInSamples), 0, true, true);
                                       //                                          m_AudioSample.clear();
                                       m_AudioSample.makeCopyOf(m_tempBuffer);
-                                      m_sliceLenSamps = m_durationSamps/(float)m_nSlices;
+                                      m_sliceLenSamps = m_durationSamps / static_cast<float>(m_nSlices);
                                       //                                          setPatterns();
                                       m_samplePath = file.getFullPathName();
                                       m_sampleName = file.getFileName();
@@ -76,9 +76,9 @@ public:
         if (reader.get() != nullptr)
         {
             m_AudioSample.clear();
-            m_AudioSample.setSize((int) reader->numChannels, (int) reader->lengthInSamples);
+            m_AudioSample.setSize( static_cast<int>(reader->numChannels), static_cast<int>(reader->lengthInSamples) );
             m_durationSamps = m_AudioSample.getNumSamples();
-            reader->read (&m_AudioSample, 0, (int) reader->lengthInSamples, 0, true, true);
+            reader->read (&m_AudioSample, 0, static_cast<int>(reader->lengthInSamples), 0, true, true);
             m_sliceLenSamps = m_durationSamps/m_nSlices;
             setPatterns();
             m_samplePath = file.getFullPathName();
@@ -160,7 +160,7 @@ public:
         if ( !m_canPlayFlag ){ return; }
         if (!m_sampleLoadedFlag) { return; }
         auto envLen = m_phaseRateMultiplier * m_fadeInMs * m_SR / 1000;
-        envLen = (int)envLen + 1 ;
+        envLen = static_cast<int>(envLen) + 1 ;
         
         auto bufferSize = buffer.getNumSamples();
         auto numChannels = buffer.getNumChannels();
@@ -173,10 +173,10 @@ public:
             auto pos = m_readPos;
             auto subDiv = floor(m_subDivPat[m_stepCount] * 8.0f) + 1.0f ;
             auto subDivLenSamps = m_sliceLenSamps / subDiv ;
-            auto subDivAmp = calculateSubDivAmp( m_stepCount, subDiv, int(pos / subDivLenSamps) );
+            auto subDivAmp = calculateSubDivAmp( m_stepCount, subDiv, static_cast<int>(pos / subDivLenSamps) );
             auto speedVal = calculateSpeedVal( m_stepCount, (m_readPos / m_sliceLenSamps) );
             while (pos >= subDivLenSamps){ pos -= subDivLenSamps; }
-            auto env = envelope( pos , (int)subDivLenSamps - 1, envLen ); // Check this out more
+            auto env = envelope( pos , static_cast<int>(subDivLenSamps) - 1, envLen ); // Check this out more
             auto amp = calculateAmpValue( m_stepCount );
             pos = calculateReverse( m_stepCount, pos, subDivLenSamps );
             pos *= speedVal;
@@ -210,7 +210,7 @@ public:
         
         auto hostSampQuarter = 60.0f*m_SR/bpm;
         hostPosition *= hostSampQuarter * m_phaseRateMultiplier * hostSyncCompenstation;
-        m_stepCount = (int)( hostPosition / m_sliceLenSamps );
+        m_stepCount = static_cast<int>( hostPosition / m_sliceLenSamps );
         
         m_readPos = hostPosition - m_stepCount*m_sliceLenSamps;
         fastMod3< float >( m_readPos, m_sliceLenSamps );

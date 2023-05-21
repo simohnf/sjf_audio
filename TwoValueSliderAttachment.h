@@ -225,12 +225,12 @@ private:
             {
                 setNewUnnormalisedValue (
                                          minParamID,
-                                         (float) s->getMinValue()
+                                         static_cast<float>(s->getMinValue())
                                          );
                 
                 setNewUnnormalisedValue (
                                          maxParamID,
-                                         (float) s->getMaxValue()
+                                         static_cast<float>(s->getMaxValue())
                                          );
             }
         }

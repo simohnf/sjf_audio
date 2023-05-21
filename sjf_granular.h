@@ -265,14 +265,14 @@ class sjf_grainEngine : public sjf_sampler
                 return;
             }
             m_reverbBuffer.makeCopyOf( buffer ); // I copy the empty buffer into the reverb buffer to ensure they are the same size...
-            auto cloudLengthSamps = m_cloudLengthMS * (float)m_SR * 0.001f;
-            auto deltaTimeSamps = m_deltaTimeMS * (float)m_SR * 0.001f;
+            auto cloudLengthSamps = m_cloudLengthMS * (static_cast<float>m_SR * 0.001f);
+            auto deltaTimeSamps = m_deltaTimeMS * (static_cast<float>m_SR * 0.001f);
             
             for ( int index = 0; index < buffer.getNumSamples(); index ++ )
             {
                 if (m_cloudPos >= m_nextTrigger && m_cloudPos <= (cloudLengthSamps - deltaTimeSamps))
                 {// only trigger a new grain if we're still within the cloud length
-                    auto phaseThroughCloud = (float)m_cloudPos / (float)cloudLengthSamps;
+                    auto phaseThroughCloud = static_cast<float>(m_cloudPos) / static_cast<float>(cloudLengthSamps);
                     // calculate time to next grain
                     m_deltaTimeMS = 1.0f + 99.0f * linearInterpolate( m_grainDeltaVector, m_grainDeltaVector.size() * phaseThroughCloud );
                     // calculate the time at which the next grain should be calculated
@@ -530,7 +530,7 @@ class sjf_grainEngine : public sjf_sampler
         //==============================================================================
         float getCurrentCloudPhase()
         {
-            return m_cloudPos / ( m_cloudLengthMS  * 0.001f * (float)m_SR );
+            return m_cloudPos / ( m_cloudLengthMS  * 0.001f * static_cast<float>(m_SR) );
         }
         //==============================================================================
         float getCloudLength()

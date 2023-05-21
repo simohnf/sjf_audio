@@ -24,7 +24,7 @@ class sjf_multitoggle : public juce::Component, public juce::SettableTooltipClie
         void drawToggleButton (juce::Graphics& g, juce::ToggleButton& button,
                                bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override
         {
-            auto fontSize = juce::jmin (15.0f, (float) button.getHeight() * 0.75f);
+            auto fontSize = juce::jmin (15.0f, static_cast<float>( button.getHeight() ) * 0.75f);
             auto offset = 0.0f;
             drawTickBox(g, button, offset, offset,
                         button.getBounds().getWidth() - offset, button.getBounds().getHeight() - offset,
@@ -102,8 +102,8 @@ public:
     //==============================================================================
     void resized() override
     {
-        auto bWidth = (float)this->getWidth() / (float)m_nColumns;
-        auto bHeight = (float)this->getHeight() / (float)m_nRows;
+        auto bWidth = static_cast<float>( this->getWidth() ) / static_cast<float>(m_nColumns);
+        auto bHeight = static_cast<float>( this->getHeight() ) / static_cast<float>(m_nRows);
         for (int r = 0; r < m_nRows; r++)
         {
             for (int c = 0; c < m_nColumns; c++)
@@ -288,8 +288,8 @@ private:
         auto pos = e.position;
         auto x = pos.getX();
         auto y = pos.getY();
-        auto bWidth = getWidth()/(float)m_nColumns;
-        auto bHeight = getHeight()/(float)m_nRows;
+        auto bWidth = getWidth() / static_cast<float>(m_nColumns);
+        auto bHeight = getHeight() / static_cast<float>(m_nRows);
         
         for (int r = 0; r < m_nRows; r++)
         {

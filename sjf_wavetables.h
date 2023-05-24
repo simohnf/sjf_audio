@@ -6,7 +6,7 @@
 #ifndef sjf_wavetables_h
 #define sjf_wavetables_h
 
-#include "../gcem/include/gcem.hpp"
+#include "gcem/include/gcem.hpp"
 template< typename T, int TABLE_SIZE >
 struct sinArray
 {

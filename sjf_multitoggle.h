@@ -210,7 +210,7 @@ public:
         std::vector<bool> temp;
         for (int c = 0; c < m_nColumns; c++)
         {
-            temp.push_back( m_buttons[ rowToGet + m_nRows*c ]->getToggleState() );
+            temp.push_back( m_buttons[ rowToGet*m_nColumns + c ]->getToggleState() );
         }
         return temp;
     }
@@ -220,7 +220,7 @@ public:
         std::vector<bool> temp;
         for (int r = 0; r < m_nRows; r++)
         {
-            temp.push_back( m_buttons[ columnToGet + m_nColumns*r ]->getToggleState() );
+            temp.push_back( m_buttons[ columnToGet*m_nRows + r ]->getToggleState() );
         }
         return temp;
     }

@@ -38,7 +38,7 @@ public:
         for (int s = 0; s < nSliders; s++)
         {
             m_sliders[s]->setColour( juce::Slider::textBoxOutlineColourId, juce::Colours::black.withAlpha(0.0f) ) ;
-            m_sliders[s]->setColour( juce::Slider::trackColourId, findColour( sliderColourID ) );
+            m_sliders[s]->setColour( juce::Slider::trackColourId, m_sliderColours[ s ] );
         }
     }
     //==============================================================================
@@ -73,9 +73,14 @@ public:
         
         createSliderArray(numSliders);
         
+        m_sliderColours.resize( numSliders );
         for(int s = 0; s < numSliders; s++)
         {
-            if(s < temp.size()) { m_sliders[s]->setValue(temp[s]); }
+            if(s < temp.size())
+            {
+                m_sliders[s]->setValue(temp[s]);
+            }
+            m_sliderColours[ s ] = findColour( sliderColourID );
         }
         resized();
     }
@@ -132,6 +137,14 @@ public:
     juce::Array<juce::Slider*> getSliderArray()
     {
         return m_sliders;
+    }
+    //==============================================================================
+    void setSliderColour( int sliderNumber, juce::Colour colour )
+    {
+        if( sliderNumber < 0 || sliderNumber >= m_sliderColours.size() )
+            return;
+        m_sliderColours[ sliderNumber ] = colour;
+        repaint();
     }
     //==============================================================================
     std::function<void()> onMouseEvent;
@@ -279,6 +292,7 @@ private:
     juce::Array<juce::Slider*> m_sliders;
     bool m_isHorizontalFlag = false;
     
+    std::vector< juce::Colour > m_sliderColours;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_multislider)
 };
 #endif /* sjf_multislider_h */

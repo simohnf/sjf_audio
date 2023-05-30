@@ -281,6 +281,14 @@ public:
     {
         return m_isRadioGroup;
     }
+    
+    void setAllToggles( bool stateToSet )
+    {
+        for (int b = 0; b < m_buttons.size(); b++)
+        {
+            m_buttons[b]->setToggleState( stateToSet, juce::dontSendNotification );
+        }
+    }
 private:
     //==============================================================================
     int calulateMousePosToToggleNumber(const juce::MouseEvent& e)
@@ -310,19 +318,21 @@ private:
 
         if( e.mods.isAltDown() && !m_isRadioGroup )
         {
-            for (int b = 0; b < m_buttons.size(); b++)
-            {
-                m_buttons[b]->setToggleState( false, juce::dontSendNotification );
-                m_lastMouseDownToggleState = false;
-            }
+//            for (int b = 0; b < m_buttons.size(); b++)
+//            {
+//                m_buttons[b]->setToggleState( false, juce::dontSendNotification );
+//            }
+            setAllToggles( false );
+            m_lastMouseDownToggleState = false;
         }
         else if( e.mods.isShiftDown() && !m_isRadioGroup  )
         {
-            for (int b = 0; b < m_buttons.size(); b++)
-            {
-                m_buttons[b]->setToggleState( true, juce::dontSendNotification );
-                m_lastMouseDownToggleState = false;
-            }
+//            for (int b = 0; b < m_buttons.size(); b++)
+//            {
+//                m_buttons[b]->setToggleState( true, juce::dontSendNotification );
+//            }
+            setAllToggles( true );
+            m_lastMouseDownToggleState = false;
         }
         else
         {

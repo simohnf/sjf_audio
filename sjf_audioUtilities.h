@@ -68,7 +68,7 @@ private:
     //----------------------------------------
     constexpr T random0to1( int count )
     {
-        return (T)sjf_compileTimeRandom::get_random( count ) / (T)RAND_MAX;
+        return static_cast<T>( sjf_compileTimeRandom::get_random( count ) ) / static_cast<T>(RAND_MAX);
     }
     //----------------------------------------
     T floatArray[ NUM_ROWS ][ NUM_COLUMNS ];

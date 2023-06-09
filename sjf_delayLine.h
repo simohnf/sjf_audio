@@ -381,7 +381,7 @@ public:
             m_writePos = m_delayLine.getWritePosition() - 1; // always read from behind write pointer
         auto index = m_writePos - m_revCount;
         fastMod3< int >( index, m_delayLine.size() );
-        T amp = phaseEnvelope< T >( (T)m_revCount * m_invDelInSamps, m_nRampSegments );
+        T amp = phaseEnvelope< T >( static_cast<T>(m_revCount) * m_invDelInSamps, m_nRampSegments );
         m_revCount++;
         if ( m_revCount >= m_delayInSamps )
             m_revCount = 0;

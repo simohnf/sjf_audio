@@ -338,7 +338,7 @@ public:
 template< typename T, int size >
 class Householder
 {
-    static constexpr T m_householderWeight = ( -2.0f / (T)size );
+    static constexpr T m_householderWeight = ( -2.0f / static_cast<T>(size) );
 public:
     static inline void mixInPlace( std::array< T, size >& data )
     {

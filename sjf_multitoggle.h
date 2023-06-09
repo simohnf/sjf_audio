@@ -264,10 +264,21 @@ public:
         }
     }
     //==============================================================================
+    void setRowColour( int rowNumber, juce::Colour newColour )
+    {
+        for ( int c = 0; c < m_nColumns; c++ )
+        {
+            auto tognum = rowNumber + m_nRows*c;
+            m_buttons[ tognum ]->setColour( tickDisabledColourId, newColour );
+            m_buttons[ tognum ]->setColour( tickColourId, newColour );
+        }
+    }
+    //==============================================================================
     void setToggleState( int row, int column, bool state )
     {
         auto toggleNumber = column + ( m_nColumns * row ); 
         m_buttons[ toggleNumber ]->setToggleState( state, juce::dontSendNotification );
+        m_pressedButton = toggleNumber;
     }
     
     std::function<void()> onMouseEvent;
@@ -280,6 +291,30 @@ public:
     bool getIsRadioGroup()
     {
         return m_isRadioGroup;
+    }
+    
+    void setAllToggles( bool stateToSet )
+    {
+        for (int b = 0; b < m_buttons.size(); b++)
+        {
+            m_buttons[b]->setToggleState( stateToSet, juce::dontSendNotification );
+        }
+    }
+    
+    //==============================================================================
+    int getPressedButton()
+    {
+        return m_pressedButton;
+    }
+    
+    void setCanDrag( bool allowDrag )
+    {
+        m_canDrag = allowDrag;
+    }
+    
+    bool getCanDrag()
+    {
+        return m_canDrag;
     }
 private:
     //==============================================================================
@@ -310,30 +345,30 @@ private:
 
         if( e.mods.isAltDown() && !m_isRadioGroup )
         {
-            for (int b = 0; b < m_buttons.size(); b++)
-            {
-                m_buttons[b]->setToggleState( false, juce::dontSendNotification );
-                m_lastMouseDownToggleState = false;
-            }
+            setAllToggles( false );
+            m_lastMouseDownToggleState = false;
         }
         else if( e.mods.isShiftDown() && !m_isRadioGroup  )
         {
-            for (int b = 0; b < m_buttons.size(); b++)
-            {
-                m_buttons[b]->setToggleState( true, juce::dontSendNotification );
-                m_lastMouseDownToggleState = false;
-            }
+            setAllToggles( true );
+            m_lastMouseDownToggleState = false;
         }
         else
         {
+            auto b = calulateMousePosToToggleNumber(e);
+            if ( b < 0 )
+                return;
             if ( m_isRadioGroup )
             {
-                for ( int b = 0; b < m_buttons.size(); b++ ) { m_buttons[b]->setToggleState( false, juce::dontSendNotification ); }
+                setAllToggles( false );
+                m_buttons[b]->setToggleState( true, juce::dontSendNotification );
+                m_pressedButton = b;
             }
-            auto b = calulateMousePosToToggleNumber(e);
-            if (b < 0) { return; }
-            m_buttons[b]->setToggleState(! m_buttons[b]->getToggleState(), juce::dontSendNotification );
-            m_lastMouseDownToggleState = m_buttons[b]->getToggleState();
+            else
+            {
+                m_buttons[b]->setToggleState( !m_buttons[b]->getToggleState(), juce::dontSendNotification );
+                m_lastMouseDownToggleState = m_buttons[b]->getToggleState();
+            }
         }
 
         if ( onMouseEvent != nullptr ){ onMouseEvent(); }
@@ -341,15 +376,15 @@ private:
     //==============================================================================
     void mouseDrag(const juce::MouseEvent& e) override
     {
+        if ( !m_canDrag )
+            return;
         auto b = calulateMousePosToToggleNumber(e);
         if (b < 0) { return; }
         if ( m_isRadioGroup )
         {
-            for ( int but = 0; but < m_buttons.size(); but++ )
-            {
-                m_buttons[but]->setToggleState( false, juce::dontSendNotification );
-            }
+            setAllToggles( false );
             m_buttons[b]->setToggleState( true, juce::dontSendNotification );
+            m_pressedButton = b;
         }
         else
         {
@@ -373,14 +408,15 @@ private:
             m_buttons.add(button);
         }
     }
-
+    
     //==============================================================================
 private:
     sjf_multitoggle_LookAndFeel m_landf;
     
     juce::Array<juce::ToggleButton*> m_buttons;
-    int m_nRows, m_nColumns;
-    bool m_lastMouseDownToggleState, m_isRadioGroup = false;
+    int m_nRows, m_nColumns, m_pressedButton = -1;
+    bool m_lastMouseDownToggleState, m_isRadioGroup = false, m_canDrag = true;;
+    
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_multitoggle)
 };

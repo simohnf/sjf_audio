@@ -383,8 +383,22 @@ public:
     //==============================================================================
     void setMix( const T &newMix )
     {
-        m_dry = sqrt( 1 - ( newMix * 0.01 ) );
-        m_wet = sqrt( newMix * 0.01 );
+        if ( newMix == 0 )
+        {
+            m_dry = 1;
+            m_wet = 0;
+        }
+        else if ( newMix == 100 )
+        {
+            m_dry = 0;
+            m_wet = 1;
+        }
+        else
+        {
+            m_dry = sqrt( 1 - ( newMix * 0.01 ) );
+            m_wet = sqrt( newMix * 0.01 );
+        }
+
     }
     //==============================================================================
     void setLrLPFCutoff( const T &newCutoff )

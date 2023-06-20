@@ -401,6 +401,15 @@ T calculateLPFCoefficient( const T& frequency, const T& sampleRate )
     return 1.0 - exp( -1.0*twoPiW );
 }
 
+//==============================================================================
+//==============================================================================
+//==============================================================================
+template< typename T >
+T midiToFrequency( T midiNote, T tuning = 440 )
+{
+    auto distanceFromA4 = midiNote - 69;
+    return tuning * std::pow( 2, distanceFromA4 / 12 );
+}
 
 
 

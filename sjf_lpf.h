@@ -57,8 +57,8 @@ public:
     ///////////////////////////////////////////////////
     void setCutoff( const T &newCutoff )
     {
-        if (newCutoff > 0.999999f) { m_b = 0.999999f; }
-        else if( newCutoff < 0 ) { m_b = 0.0f; }
+        if (newCutoff > 0.999999) { m_b = 0.999999; }
+        else if( newCutoff < 0.0 ) { m_b = 0.0; }
         else { m_b = newCutoff; }
     }
     ///////////////////////////////////////////////////
@@ -78,7 +78,7 @@ public:
     }
     ///////////////////////////////////////////////////
 private:
-    T m_y0 = 0.0f, m_y1 = 0.0f, m_b = 0.5;
+    T m_y0 = 0.0, m_y1 = 0.0, m_b = 0.5;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_lpf )
 };
 #endif /* sjf_lpf_h */

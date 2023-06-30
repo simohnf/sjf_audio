@@ -15,18 +15,32 @@ public:
     sjf_lpf(){};
     ~sjf_lpf(){};
     ///////////////////////////////////////////////////
-    T filterInput( const T &x )
+    T filterInput( const T x )
     {
         m_y0 += m_b * (x - m_y0);
 //        m_y1 = m_y0; // store in case user changes to second order
         return m_y0;
     }
     ///////////////////////////////////////////////////
-    T filterInputSecondOrder( const T &x )
+    T filterInputHP( const T x )
+    {
+        m_y0 += m_b * (x - m_y0);
+//        m_y1 = m_y0; // store in case user changes to second order
+        return (x - m_y0);
+    }
+    ///////////////////////////////////////////////////
+    T filterInputSecondOrder( const T x )
     {
         m_y0 += m_b * (x - m_y0);
         m_y1 += m_b * (m_y0 - m_y1);
         return m_y1;
+    }
+    ///////////////////////////////////////////////////
+    T filterInputSecondOrderHP( const T x )
+    {
+        m_y0 += m_b * (x - m_y0);
+        m_y1 += m_b * (m_y0 - m_y1);
+        return x - m_y1;
     }
     ///////////////////////////////////////////////////
     void filterInPlace( T& x )
@@ -41,21 +55,21 @@ public:
         x -= m_y0;
     }
     ///////////////////////////////////////////////////
-    void filterInPlaceSecondOrder( T& x )
+    void filterInPlaceSecondOrder( T x )
     {
         m_y0 += m_b * (x - m_y0);
         m_y1 += m_b * (m_y0 - m_y1);
         x = m_y1;
     }
     ///////////////////////////////////////////////////
-    void filterInPlaceSecondOrderHP( T& x )
+    void filterInPlaceSecondOrderHP( T x )
     {
         m_y0 += m_b * (x - m_y0);
         m_y1 += m_b * (m_y0 - m_y1);
         x -= m_y1;
     }
     ///////////////////////////////////////////////////
-    void setCutoff( const T &newCutoff )
+    void setCutoff( const T newCutoff )
     {
         if (newCutoff > 0.999999) { m_b = 0.999999; }
         else if( newCutoff < 0.0 ) { m_b = 0.0; }
@@ -77,6 +91,11 @@ public:
         return m_y1;
     }
     ///////////////////////////////////////////////////
+    void reset()
+    {
+        m_y0 = 0;
+        m_y1 = 0;
+    }
 private:
     T m_y0 = 0.0, m_y1 = 0.0, m_b = 0.5;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_lpf )

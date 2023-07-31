@@ -198,6 +198,50 @@ public:
         }
     }
     
+    
+    T tapDelayLine( const T delayInSamps )
+    {
+        T findex = m_writePos - delayInSamps;
+//        findex--; // offset at the begining so it only has to be done once
+        fastMod3< T >( findex, m_delayLineSize );
+        
+        T y0; // previous step value
+        T y1; // this step value
+        T y2; // next step value
+        T y3; // next next step value
+        T mu; // fractional part between step 1 & 2
+        
+        int index = findex;
+        mu = findex - index;
+        
+        y0 = ( index == 0 ) ? m_delayLine[ m_delayLineSize - 1 ] : m_delayLine[ index - 1 ];
+//        y0 = m_delayLine[ index ];
+//        fastMod3( ++index, m_delayLineSize );
+        y1 = m_delayLine[ index ];
+        fastMod3( ++index, m_delayLineSize );
+        y2 = m_delayLine[ index ];
+        fastMod3( ++index, m_delayLineSize );
+        y3 = m_delayLine[ index ];
+        
+        switch ( m_interpolationType )
+        {
+            case sjf_interpolators::interpolatorTypes::linear:
+                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
+            case sjf_interpolators::interpolatorTypes::cubic:
+                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::pureData:
+                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::fourthOrder:
+                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::godot:
+                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
+            case sjf_interpolators::interpolatorTypes::hermite:
+                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
+            default:
+                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
+        }
+    }
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_delayLine )
 };
 

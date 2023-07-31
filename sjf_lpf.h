@@ -24,7 +24,7 @@ public:
     ///////////////////////////////////////////////////
     T filterInputHP( const T x )
     {
-        m_y0 += m_b * (x - m_y0);
+        m_y0 = filterInput( x );
 //        m_y1 = m_y0; // store in case user changes to second order
         return (x - m_y0);
     }
@@ -38,8 +38,7 @@ public:
     ///////////////////////////////////////////////////
     T filterInputSecondOrderHP( const T x )
     {
-        m_y0 += m_b * (x - m_y0);
-        m_y1 += m_b * (m_y0 - m_y1);
+        m_y1 = filterInputSecondOrder( x );
         return x - m_y1;
     }
     ///////////////////////////////////////////////////
@@ -69,7 +68,15 @@ public:
         x -= m_y1;
     }
     ///////////////////////////////////////////////////
+    ///// this is poorly named so I need to change every other class that uses it...
     void setCutoff( const T newCutoff )
+    {
+        if (newCutoff > 0.999999) { m_b = 0.999999; }
+        else if( newCutoff < 0.0 ) { m_b = 0.0; }
+        else { m_b = newCutoff; }
+    }
+    ///////////////////////////////////////////////////
+    void setCoefficient( const T newCutoff )
     {
         if (newCutoff > 0.999999) { m_b = 0.999999; }
         else if( newCutoff < 0.0 ) { m_b = 0.0; }
@@ -90,12 +97,13 @@ public:
     {
         return m_y1;
     }
-    ///////////////////////////////////////////////////
+    //////////////////////////////////////////////////////
     void reset()
     {
         m_y0 = 0;
         m_y1 = 0;
     }
+    ///////////////////////////////////////////////////
 private:
     T m_y0 = 0.0, m_y1 = 0.0, m_b = 0.5;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_lpf )

@@ -11,42 +11,282 @@
 #include "sjf_delayLine.h"
 #include "sjf_audioUtilitiesC++.h"
 #include "sjf_lpf.h"
+#include "sjf_waveshapers.h"
+
+#include "gcem/include/gcem.hpp"
+
 #include <limits>
 
 #define MINIMUM_FREQUENCY 5.0
 #define MINIMUM_PERIOD 0.1 // minimum period before extending
-template< class T >
-class sjf_onepole
+
+//==============================================
+//==============================================
+//==============================================
+//==============================================
+
+template < class T >
+class sjf_twoZeroLP
 {
 public:
-    sjf_onepole(){}
-    ~sjf_onepole(){}
+    sjf_twoZeroLP(){}
+    ~sjf_twoZeroLP(){}
+    
+    void setCoefficient( T c )
+    {
+        m_a1 = (1+c)/2;
+        m_a2 = (1-c)/4;
+    }
     
     T process( T x )
     {
-        m_y0 += m_cf * ( x - m_y0 );
-        return m_y0;
-    }
-    
-    T processHp( T x )
-    {
-        m_y0 += m_cf * ( x - m_y0 );
-        return x - m_y0;
-    }
-    void clear()
-    {
-        m_y0 = 0;
-    }
-    
-    void setCutoff( T f, T sr )
-    {
-        m_cf = sin (2. * M_PI * f / sr );
+        auto output = (m_a1 * m_x1) + m_a2*( x + m_x2 ) ;
+        m_x2 = m_x1;
+        m_x1 = x;
+        return output;
     }
 private:
-    T m_y0 = 0, m_cf = 0.5;
-    
+    T m_x1 = 0, m_x2 = 0, m_a1, m_a2;
 };
 
+//==============================================
+//==============================================
+//==============================================
+//==============================================
+
+template < class T >
+class sjf_waveguideAllpass
+{
+public:
+    sjf_waveguideAllpass()
+    {
+        m_delayLine.initialise( 44100 / MINIMUM_FREQUENCY );
+        m_delayLine.setInterpolationType( sjf_interpolators::interpolatorTypes::pureData );
+    }
+    ~sjf_waveguideAllpass(){}
+    
+    void prepare( T sampleRate )
+    {
+        m_delayLine.initialise( sampleRate / MINIMUM_FREQUENCY );
+        clear();
+    }
+    
+    
+    void clear()
+    {
+        m_delayLine.clearDelayline();
+    }
+    
+    T process( T input )
+    {
+        auto dOut = m_delayLine.getSample2();
+        input += ( dOut * m_g );
+        m_delayLine.setSample2( input );
+        dOut -= ( input * m_g );
+        return dOut;
+    }
+    
+    T sensorOutput()
+    {
+        auto sensorOut = m_delayLine.tapDelayLine( m_sensorDelay );
+        return sensorOut;
+    }
+    
+    void setDelayInSamps( T totalDelayInSamps )
+    {
+        m_delayInSamps = totalDelayInSamps;
+        m_delayLine.setDelayTimeSamps( m_delayInSamps );
+        setSensorPosition( m_sensorPosition );
+    }
+    
+    void setSensorPosition( const T sensorPos )
+    {
+#ifndef NDEBUG
+        assert( sensorPos > 0 && sensorPos < 1 );
+#endif
+        m_sensorPosition = sensorPos;
+        m_sensorDelay = m_delayInSamps * m_sensorPosition;
+    }
+    
+    void setG( const T g )
+    {
+#ifndef NDEBUG
+        assert( g > -1 && g < 1 );
+#endif
+        m_g = g;
+    }
+    
+private:
+    sjf_delayLine< double > m_delayLine;
+    T m_delayInSamps = 4410, m_sensorPosition = 0.5 , /* m_pickPosition = 0.25, */ m_g = 0;
+    T m_sensorDelay = m_delayInSamps * m_sensorPosition;
+};
+
+//==============================================
+//==============================================
+//==============================================
+//==============================================
+template < class T >
+class sjf_pmExcitation
+{
+public:
+    sjf_pmExcitation()
+    {
+        m_exciteTable.resize( m_periodSamples );
+        m_envelopeTable.resize( 520 );
+        for ( auto& e : m_envelopeTable )
+            e = 0;
+        setEnvelope( 0.5, 1 );
+        m_lpf.setCoefficient( calculateLPFCoefficient( 1000, 44100 ) );
+    }
+    
+    ~sjf_pmExcitation(){}
+    
+    void setLPFCoef( T c )
+    {
+        m_lpf.setCoefficient( c );
+    }
+    
+    void triggerNewExcitation( const T periodSamples, const T amplitude, const T noiseBlend )
+    {
+//        m_lpf.reset();
+        m_periodSamples = static_cast< int > ( periodSamples );
+        m_exciteTable.resize( m_periodSamples );
+        std::vector< T > randomBits;
+        randomBits.resize( m_periodSamples );
+        // fill random table with 1 or minus 1
+        static constexpr auto longsize = sizeof( long ) * CHAR_BIT;
+        auto pos = 0;
+        std::bitset<  longsize  > randNum;
+        while ( pos < m_periodSamples )
+        {
+            randNum = std::rand();
+            for( auto i = 0; i < randNum.size(); i++ )
+            {
+                auto val = randNum[ i ] ? noiseBlend : -noiseBlend;
+                randomBits[ pos ] = val;
+                pos += 1;
+                if ( pos == m_periodSamples )
+                    break;
+            }
+        }
+        for ( auto i = 0; i < m_periodSamples; i++ )
+        {
+            auto ampfIndex = ( static_cast<T>( i ) / static_cast<T>( m_periodSamples ) ) * static_cast<T>( m_envelopeTable.size() - 1 );
+            auto ampIndex = static_cast<int>( ampfIndex );
+            auto ampMu = ampfIndex - ampIndex;
+            auto ampX1 = m_envelopeTable[ ampIndex ];
+            auto ampX2 = m_envelopeTable[ ampIndex + 1];
+            auto amp = sjf_interpolators::linearInterpolate( ampMu, ampX1, ampX2 ) * amplitude;
+            auto val = amp * ( (1 - noiseBlend) + randomBits[ i ] );
+            m_exciteTable[ i ] = m_lpf.filterInput( val ) ;
+        }
+        m_readPointer = 0;
+        m_attackFlag = true;
+    }
+    
+    T outputExcitation()
+    {
+        if ( !m_attackFlag )
+        {
+            return 0;
+        }
+        auto outSamp = m_exciteTable[ m_readPointer ];
+        m_readPointer += 1;
+        m_attackFlag = m_readPointer >= m_periodSamples ? false : true;
+        return outSamp;
+    }
+    
+    void setEnvelope( const T centrePoint, const T power )
+    {
+        // first sample in envelope and last samples in envelope are always zero so it always returns to zero
+        for ( auto i = 0; i < STEPS_IN_ENVELOPE; i++)
+        {
+            auto normalisedPos = static_cast<T>( i ) / static_cast<T>( STEPS_IN_ENVELOPE ) ;
+            m_envelopeTable[ i+1 ] =  ( normalisedPos < centrePoint ) ? ( normalisedPos / centrePoint ) : ( 1 - normalisedPos ) / ( 1 - centrePoint );
+            m_envelopeTable[ i+1 ] = std::pow( m_envelopeTable[ i+1 ], power );
+        }
+    }
+    
+    std::vector< T >& getEnvelope()
+    {
+        return m_envelopeTable;
+    }
+    
+private:
+    
+    
+    const size_t STEPS_IN_ENVELOPE = 512;
+    sjf_lpf< T > m_lpf;
+    T m_periodSamples = 100;
+    std::vector< T > m_exciteTable, m_envelopeTable;
+    bool m_attackFlag = false;
+    size_t m_readPointer = 0;
+};
+
+
+//==============================================
+//==============================================
+//==============================================
+//==============================================
+template < class T >
+class sjf_decayTable
+{
+public:
+    sjf_decayTable(){}
+    ~sjf_decayTable(){}
+    void prepare( T sampleRate )
+    {
+        createDecayTable( sampleRate );
+    }
+    
+    void reset()
+    {
+        m_decayEnvCount = 0;
+        m_finishedFlag = false;
+        m_isRunning = false;
+    }
+    
+    std::optional<T> outputEnvelope()
+    {
+        if( m_finishedFlag )
+            return {};
+        auto output = m_decayTable[ m_decayEnvCount ];
+        m_decayEnvCount += 1;
+        if ( m_decayEnvCount >= m_decayTable.size() )
+            m_finishedFlag = true;
+        return output;
+    }
+    
+    void startRunningEnvelope()
+    {
+        m_isRunning = true;
+    }
+    
+    bool getIsRunning()
+    {
+        return m_isRunning;
+    }
+    
+private:
+    void createDecayTable( T sampleRate )
+    {
+        auto decayLength = sampleRate / 10.0;
+        m_decayTable.resize( decayLength );
+        
+        for ( auto i = 0; i < m_decayTable.size(); i++ )
+            m_decayTable[ i ] = ( decayLength - i ) / decayLength;
+    }
+    
+    bool m_finishedFlag = false, m_isRunning = false;
+    size_t m_decayEnvCount = 0;
+    std::vector< T > m_decayTable;
+};
+
+//==============================================
+//==============================================
+//==============================================
+//==============================================
 template < class T >
 class sjf_threePointHighPass
 {
@@ -80,271 +320,430 @@ private:
     T m_a0 = 0.5, m_a1 = 0.5, m_b1 = 0.5;
 };
 
-class sjf_karplusStrongVoice
+//==============================================
+//==============================================
+//==============================================
+//==============================================
+
+
+class sjf_waveguide
 {
 public:
-    sjf_karplusStrongVoice()
+    sjf_waveguide()
     {
-        m_delay.initialise( m_SR / MINIMUM_FREQUENCY );
-        m_delay.setInterpolationType( sjf_interpolators::interpolatorTypes::linear );
-        m_dcBlock.setCutoff( 30.0, m_SR );
-        m_attackDamping.setCutoff( 10000.0, m_SR );
-        m_mediumDamping.setCutoff( 10000.0, m_SR );
-        setNoteOffReleaseTime( 50.0 * 0.001 * m_SR );
+        // min freq == 20hz; max period in seconds = 1/20; max period in samples = SR/20;
+        for ( auto& wg : m_waveguide )
+        {
+            wg.prepare( m_SR );
+        }
+        m_emb.initialise( m_SR / MINIMUM_FREQUENCY );
+        m_emb.setInterpolationType( sjf_interpolators::interpolatorTypes::pureData );
+        
+        m_excitation.setLPFCoef( calculateLPFCoefficient( 1000.0, m_SR ) );
+        
+        m_decayTable.prepare( m_SR );
         
     }
-    ~sjf_karplusStrongVoice(){}
+    ~sjf_waveguide(){}
     
     void prepare( double sampleRate )
     {
         m_SR = sampleRate;
-        m_delay.initialise( m_SR / MINIMUM_FREQUENCY );
-        m_delay.clearDelayline();
-        m_dcBlock.setCutoff( 30.0, m_SR );
-        m_attackDamping.setCutoff( 10000.0, m_SR );
-        m_mediumDamping.setCutoff( 10000.0, m_SR );
-        setNoteOffReleaseTime( 50.0 * 0.001 * m_SR );
-    }
-    
-    void triggerNewNote( int midiPitch, int midiVelocity )
-    {
-        m_busyFlag = true;
-        m_triggerRelease = false;
-        m_triggerAttack = true;
-        m_attackIndex = 0;
-        m_attackMin = abs(m_lastOutSamp);
-        
-        m_pitch = midiPitch;
-        auto fundamental = midiToFrequency< double >( m_pitch );
-//        auto periodS = 1.0 / fundamental;
-        m_period = m_SR /fundamental;
-        m_velocity = sjf_scale< double >( static_cast< double >( midiVelocity ) / 127.0, 0, 1, 0.3, 1 );
-        
-        m_attackDamping.setCutoff( m_attackBright * m_velocity, m_SR );
-        m_attackDamping.clear();
-        
-        auto mediumCutoff = std::fmin( 10000.0 , fundamental * ( ( m_mediumBright * 12.0 ) + 4.0 ) );
-        m_mediumDamping.setCutoff( mediumCutoff, m_SR );
-        
-        m_dcBlock.setCutoff( fundamental * 0.1, m_SR );
-        
-        m_delay.setDelayTimeSamps( m_period );
-        if ( m_extendHighFrequencies && m_period < m_SR * MINIMUM_PERIOD )
+        for ( auto& wg : m_waveguide )
         {
-            auto periodScale = 2;
-            while ( m_period * periodScale < m_SR * MINIMUM_PERIOD )
-                periodScale += 1;
-            initialise_table( m_SR, m_period, periodScale, m_velocity );
+            wg.prepare( m_SR );
+            wg.clear();
         }
-        else
-        {
-            auto periodScale = 1;
-            initialise_table( m_SR, m_period, periodScale, m_velocity );
-        }
+        m_emb.initialise( m_SR / MINIMUM_FREQUENCY );
+        m_emb.clearDelayline();
+        
+        m_excitation.setLPFCoef( calculateLPFCoefficient( 1000.0, m_SR ) );
+        
+        m_decayTable.prepare( m_SR );
     }
     
-    void slurNote( int midiPitch, int midiVelocity )
+    void triggerNewNote( double midiPitch, double midiVelocity )
     {
-        m_busyFlag = true;
-        m_triggerRelease = false;
-        
-        m_pitch = midiPitch;
-        auto fundamental = midiToFrequency< double >( m_pitch );
-        m_period = m_SR /fundamental;
-        m_velocity = sjf_scale< double >( static_cast< double >( midiVelocity ) / 127.0, 0, 1, 0.3, 1 );
-        
-        m_attackDamping.setCutoff( m_attackBright * m_velocity, m_SR );
-        
-        auto mediumCutoff = std::fmin( 10000.0 , fundamental * ( ( m_mediumBright * 12.0 ) + 4.0 ) );
-        m_mediumDamping.setCutoff( mediumCutoff, m_SR );
-        
-        m_dcBlock.setCutoff( fundamental * 0.1, m_SR );
-        
-        m_delay.setDelayTimeSamps( m_period );
+        newNote( midiPitch, midiVelocity, m_split, m_stiff, m_sensorPos, m_pickPos, m_decaySeconds, m_mediumBrightness, m_attackBrightness, m_attackCentre, m_attackExponent, m_exciteExtension, m_apNonLinAPos, m_apNonLinANeg, m_harmLevel, m_harmNumber );
     }
     
-    void setNoteOffReleaseTime( double releaseInMS )
+    void triggerNewNote( double midiPitch, double midiVelocity, double split, double stiff, double sensor, double pickPos, double decay, double medBright, double attackBright, double attCentre, double attExponent, double attExtension, double nonLinAPos, double nonLinANeg, double harmonicLevel, double harmonicNumber )
     {
-        m_releaseTime = releaseInMS * 0.001 * m_SR;
-    }
-    
-    void triggerNoteOff( )
-    {
-        if ( m_triggerRelease )
-            return;
-        m_triggerRelease = true;
-        m_triggerAttack = false;
-        m_releaseIndex = 0;
+        newNote( midiPitch, midiVelocity, split, stiff, sensor, pickPos, decay, medBright, attackBright, attCentre, attExponent, attExtension, nonLinAPos, nonLinANeg, harmonicLevel, harmonicNumber );
     }
     
     double processSample( int indexThroughCurrentBuffer )
     {
-        if ( m_triggerRelease  && m_releaseIndex > m_releaseTime )
+        if ( !m_isPlayingFlag )
+            return 0;
+        else
         {
-            m_busyFlag = false;
-            m_lastOutSamp = 0;
-            return m_lastOutSamp;
+            m_decayCount += 1;
+            if ( m_decayCount >= m_decayToSilenceSamps )
+                m_decayTable.startRunningEnvelope();
         }
+//        m_lastOutSamp *= -1;
+        m_emb.setSample2( m_lastOutSamp * m_harmBalance );
+        auto outputSamp = sjf_cubic< double >( m_excitation.outputExcitation() + ( m_emb.getSample2() ) );
         
-        m_lastOutSamp = m_delay.getSample2();
+        // apply nonlinearity
         
-        if ( m_blend != 1.0 )
+        m_lastOutSamp = applyNonlinearities( m_lastOutSamp*( 1.0 - m_harmBalance) + outputSamp );
+        if( m_decayTable.getIsRunning() )
         {
-            if ( m_blend == 0 )
-            {
-                m_lastOutSamp *= -1.0;
-            }
+            auto amp = m_decayTable.outputEnvelope();
+            if( amp.has_value() )
+                m_lastOutSamp *= amp.value();
             else
-                m_lastOutSamp *= rand01() > m_blend ? -1.0 : 1;
+            {
+                m_isPlayingFlag = false;
+                return 0;
+            }
         }
-        
-        
-        if ( m_triggerRelease  && m_releaseIndex <= m_releaseTime )
+        if ( m_onlyOneDirection )
         {
-            m_lastOutSamp *= static_cast<double>( m_releaseTime - m_releaseIndex ) / static_cast<double>( m_releaseTime );
-            m_releaseIndex += 1;
-            if ( m_releaseIndex > m_releaseTime )
-                m_busyFlag = false;
+            m_lastOutSamp = ( m_mediumDampers[ 0 ].filterInput( m_waveguide[ 0 ].process( m_lastOutSamp ) ) ) * m_fb;
+            outputSamp += m_lastOutSamp;
+            return outputSamp;
         }
-
-        m_lastOutSamp = m_drive > 0.0 ? std::tanh( m_lastOutSamp * m_drive ) * m_driveComp : m_lastOutSamp;
-        
-        m_lastOutSamp = m_mediumDamping.process( m_dcBlock.process( m_lastOutSamp) );
-        m_delay.setSample2( m_lastOutSamp );
-        
-        if ( m_triggerAttack )
+        for ( auto i = 0; i < m_waveguide.size(); i++ )
         {
-            auto amp = attackEnvelope();
-            m_lastOutSamp *= amp;
-            if ( m_attackIndex >= m_attackSamps )
-                m_triggerAttack = false;
+            m_lastOutSamp = ( m_mediumDampers[ i ].filterInput( m_waveguide[ i ].process( m_lastOutSamp ) ) ) * m_fb;
+            outputSamp += m_waveguide[ i ].sensorOutput();
         }
-        return m_lastOutSamp;
+        m_lastOutSamp = m_oddHarmonicsFlag ? -m_lastOutSamp : m_lastOutSamp;
+        return outputSamp;
     }
     
-    void setAttackTime( double attInSamps )
-    {
-        m_attackSamps = attInSamps;
-    }
-    
-    int getCurrentPitch()
-    {
-        return m_pitch;
-    }
-    
-    void setDrive( double drive )
+    // the split of total delay time between forward and backward travelling waves
+    void setSplit( double split )
     {
 #ifndef NDEBUG
-        assert( drive >= 0 && drive <= 100 );
+        assert( split > 0 && split < 1 );
 #endif
-        m_drive = std::abs( drive * 0.01 );
-        
-        m_driveComp = m_drive == 0 ? 0 : 1.0 / std::tanh( m_drive );
+        if ( m_split == split )
+            return;
+        m_split = split;
     }
     
+    double getSplit( )
+    {
+        return m_split;
+    }
+    
+    // the stiffness of the medium
+    void setStiffness( double stiff )
+    {
+#ifndef NDEBUG
+        assert( stiff > -1 && stiff < 1 );
+#endif
+        if ( m_stiff == stiff )
+            return;
+        m_stiff = stiff;
+    }
+    
+    double getStiffness( )
+    {
+        return m_stiff;
+    }
+    
+    // the position of the pickup
+    void setSensorPosition( double sensorPos )
+    {
+#ifndef NDEBUG
+        assert( sensorPos > 0 && sensorPos < 1 );
+#endif
+        if ( m_sensorPos == sensorPos )
+            return;
+        m_sensorPos = sensorPos;
+    }
+    
+    double getSensorPos( )
+    {
+        return m_sensorPos;
+    }
+    
+    // the decay by 60dB in seconds
+    void setDecay( double decay )
+    {
+#ifndef NDEBUG
+        assert( decay > 0 );
+#endif
+        if ( m_decaySeconds == decay )
+            return;
+        m_decaySeconds = decay;
+    }
+    
+    double getDecay( )
+    {
+        return m_decaySeconds;
+    }
+    
+    // the brighness of the medium
     void setMediumBrightness( double bright )
     {
 #ifndef NDEBUG
-        assert( bright >= 0 && bright <= 100 );
-        DBG( " ifndef " << bright );
+        assert( bright >= 0 && bright <= 1 );
 #endif
-        m_mediumBright = bright * 0.01;
-        DBG( " m_mediumBright " << m_mediumBright );
+        if ( m_mediumBrightness == bright )
+            return;
+        m_mediumBrightness = bright;
     }
     
-    void setAttackBrightness( double bright )
+    double getMediumBrightness( )
+    {
+        return m_mediumBrightness;
+    }
+    
+    // the pick position along the string
+    void setPickPosition( double pickPos )
     {
 #ifndef NDEBUG
-        assert( bright >= 0 && bright <= 100 );
-        DBG( "att bright ifndef " << bright );
+        assert( pickPos > 0 && pickPos < 1 );
 #endif
-        m_attackBright = std::fmin( 10000.0, 250.0 * std::pow( 2.0, bright * 0.01 * 6.322 ) );
-        DBG( "m_attackBright " << m_attackBright );
+        if ( m_pickPos == pickPos )
+            return;
+        m_pickPos = pickPos;
     }
     
-    void setBlend( double blend )
+    double getPickPosition( )
+    {
+        return m_pickPos;
+    }
+    
+    void setAttackBrightness( double attackBrightness )
     {
 #ifndef NDEBUG
-        assert( blend >= 0 && blend <= 100 );
-        DBG( "att bright ifndef " << blend );
+        assert( attackBrightness >= 0 && attackBrightness <= 1 );
 #endif
-        m_blend = blend * 0.01;
+        m_attackBrightness = attackBrightness;
     }
     
-    void shouldExtendHighFrequencies( bool trueIfExtendHighs )
+    double getAttackBrightness( )
     {
-        m_extendHighFrequencies = trueIfExtendHighs;
+        return m_attackBrightness;
     }
     
-    
-    void shouldRandomiseWavetable( bool trueIfRandomWavetable )
+    void setAttackParams( double centrePoint, double power )
     {
-        m_randomWavetable = trueIfRandomWavetable;
+#ifndef NDEBUG
+        assert( centrePoint >= 0 && centrePoint <= 1 );
+        assert( power > 0 );
+#endif
+        m_attackCentre = centrePoint;
+        m_attackExponent = power;
+        m_excitation.setEnvelope( m_attackCentre, m_attackExponent );
     }
     
+    double getAttackEnvelopeCentre( )
+    {
+        return m_attackCentre;
+    }
+    
+    double getAttackEnvelopeExponent( )
+    {
+        return m_attackExponent;
+    }
+    
+    
+    std::vector< double >& getAttackEnvelope()
+    {
+        return m_excitation.getEnvelope();
+    }
     
     bool isBusy()
     {
-        return m_busyFlag;
+        return m_isPlayingFlag;
     }
     
+    // extend excitation as factor of period
+    // usefule for "bowed" sounds
+    void setExcitationLengthFactor( double lengthFactor )
+    {
+#ifndef NDEBUG
+        assert( lengthFactor >= 1 );
+#endif
+        m_exciteExtension = lengthFactor;
+    }
+    
+    double getExcitationLengthFactor( )
+    {
+        return m_exciteExtension;
+    }
+    
+    void setNonLinearity( bool nonLin1ShouldBeOn, bool nonLin2ShouldBeOn, bool nonLin3ShouldBeOn )
+    {
+        m_nonLinFlag1 = nonLin1ShouldBeOn;
+        m_nonLinFlag2 = nonLin2ShouldBeOn;
+        m_nonLinFlag3 = nonLin3ShouldBeOn;
+    }
+    
+    void setNonLin1Factor( double a )
+    {
+#ifndef NDEBUG
+        assert( a >= 0 && a <= 0.9 );
+#endif
+        m_apNonLinANeg = a;
+        m_apNonLinAPos = -a;
+    }
+    
+    double getNonLin1Factor()
+    {
+        return abs( m_apNonLinANeg );
+    }
+    
+    void setHarmonic( double a, int harmNumber )
+    {
+#ifndef NDEBUG
+        assert( a >= 0 && a <= 1 );
+        assert( harmNumber > 1 );
+#endif
+        m_harmLevel = a;
+        m_harmNumber = harmNumber;
+    }
+
+    double getHarmonicLevel()
+    {
+        return m_harmLevel;
+    }
+    
+    void setExcitationCutoff( double f )
+    {
+        m_excitation.setLPFCoef( calculateLPFCoefficient( f, m_SR ) );
+    }
+    
+    void setOddHarmonicsOnly( bool shouldBeOn )
+    {
+        m_oddHarmonicsFlag = shouldBeOn;
+    }
     
 private:
-    double attackEnvelope( )
+    void newNote( double midiPitch, double midiVelocity, double split, double stiff, double sensor, double pickPos, double decay, double medBright, double attackBright, double attCentre, double attExponent, double attExtension, double nonLinAPos, double nonLinANeg, double harmonicLevel, double harmonicNumber )
     {
-        auto amp = (m_attackSamps > 0) && (m_attackIndex < m_attackSamps) ? (m_attackIndex / m_attackSamps) : 1;
-        m_attackIndex += 1;
-        return amp;
-    }
-    void initialise_table( double sampleRate, int period, int periodScale, double amplitude )
-    {
-        std::vector< double > bits;
-        bits.resize( period );
-        if ( m_randomWavetable )
+        
+        DBG( split );
+        auto amplitude = midiVelocity / 127.0;
+        auto fundamental = midiToFrequency< double >( midiPitch );
+        
+        // cutoff should be minimum of ((fundamental + 1/2octave) * medBright*4),
+        auto fCutOff = std::fmin(fundamental * std::pow( 2, ( medBright * 6.5 ) + 2 ), 20000 );
+//        fCutOff = sjf_scale< double >( fCutOff, fundamental * 2, fundamental * std::pow( 2, 6 ), fundamental * 2, 20000 );
+        medBright = calculateLPFCoefficient< double > ( fCutOff, m_SR );
+        for ( auto& lpf : m_mediumDampers )
+            lpf.setCoefficient( medBright );
+        auto adr = sjf_filterResponse< double >::calculateFilterResponse( fundamental, m_SR, { (medBright) }, { 1.0, medBright - 1.0 } );
+        auto delayCompensation = 2.0 * adr[ 2 ] ; // tuning compensation for delays and feedback sections --> need to calculate properly
+        if ( m_nonLinFlag1 )
         {
-            static constexpr auto longsize = sizeof( long ) * CHAR_BIT;
-            auto pos = 0;
-            std::bitset<  longsize  > randNum;
-            while ( pos < period )
+            adr = sjf_filterResponse< double >::calculateFilterResponse( fundamental, m_SR, { m_apNonLinANeg, 1.0 }, { 1.0, m_apNonLinANeg } );
+            delayCompensation += adr[ 2 ] * 0.5;
+            adr = sjf_filterResponse< double >::calculateFilterResponse( fundamental, m_SR, { m_apNonLinAPos, 1.0 }, { 1.0, m_apNonLinAPos } );
+            delayCompensation += adr[ 2 ] * 0.5;
+        }
+        auto periodSeconds = 1.0 / fundamental;
+        auto periodSamples = periodSeconds * m_SR;
+        auto decayComp = ( 1.0 - abs( stiff ) ) * 0.001; // at 0 stiffness decay is time in seconds for drop by 60dB ( i.e. *0.001 )
+        m_fb = -1.0 * std::pow( decayComp, ( periodSeconds/(decay*2)) );
+        m_periodSamples = periodSamples + delayCompensation;
+        auto p1 = m_periodSamples * split;
+        auto p2 = m_periodSamples * ( 1.0-split );
+        auto minPeriod = m_SR*0.0005;
+        m_onlyOneDirection = false;
+        if ( (p1 < minPeriod || p2 < minPeriod) )
+        {
+            if (  m_periodSamples < minPeriod )
             {
-                randNum = std::rand();
-                for( auto i = 0; i < randNum.size(); i++ )
+                m_onlyOneDirection = true;
+                m_waveguide[ 0 ].setDelayInSamps( m_periodSamples );
+                m_waveguide[ 0 ].setSensorPosition( 0.5 );
+                m_waveguide[ 0 ].setG( stiff );
+                m_fb = std::pow( decayComp, ( periodSeconds/(decay)) );
+            }
+            else if ( m_periodSamples * 0.5 < minPeriod )
+            {
+                for ( auto& wg : m_waveguide )
                 {
-                    auto val = randNum[ i ] ? amplitude : -amplitude;
-                    bits[ pos ] = val;
-                    pos += 1;
-                    if ( pos == period )
-                        break;
+                    wg.setDelayInSamps( m_periodSamples * 0.5 );
+                    wg.setSensorPosition( 0.5 );
+                    wg.setG( stiff );
                 }
             }
         }
+        else if ( p1 < minPeriod )
+        {
+            m_waveguide[ 0 ].setDelayInSamps( minPeriod );
+            m_waveguide[ 0 ].setSensorPosition( sensor );
+            m_waveguide[ 0 ].setG( stiff );
+            m_waveguide[ 1 ].setDelayInSamps( m_periodSamples - minPeriod );
+            m_waveguide[ 1 ].setSensorPosition( 1 - sensor );
+            m_waveguide[ 1 ].setG( stiff );
+        }
+        else if ( p2 < minPeriod )
+        {
+            m_waveguide[ 0 ].setDelayInSamps( m_periodSamples - minPeriod );
+            m_waveguide[ 0 ].setSensorPosition( sensor );
+            m_waveguide[ 0 ].setG( stiff );
+            m_waveguide[ 1 ].setDelayInSamps( minPeriod );
+            m_waveguide[ 1 ].setSensorPosition( 1 - sensor );
+            m_waveguide[ 1 ].setG( stiff );
+        }
         else
         {
-            for ( auto i = 0; i < bits.size(); i++ )
-                bits[ i ] = amplitude;
+            m_waveguide[ 0 ].setDelayInSamps( p1 );
+            m_waveguide[ 0 ].setSensorPosition( sensor );
+            m_waveguide[ 0 ].setG( stiff );
+            m_waveguide[ 1 ].setDelayInSamps( p2 );
+            m_waveguide[ 1 ].setSensorPosition( 1 - sensor );
+            m_waveguide[ 1 ].setG( stiff );
         }
+
+        m_emb.setDelayTimeSamps( m_periodSamples * ( 1 / harmonicNumber ) );
+        m_harmBalance = harmonicLevel;
         
-        for ( auto i = 0; i < period * periodScale; i++ )
-        {
-            auto val = m_attackDamping.process( bits[ fastMod( i, period ) ] );
-            m_delay.setSample( i, val );
-        }
-        m_delay.updateBufferPosition( period );
+        m_excitation.triggerNewExcitation( m_periodSamples * attExtension, amplitude, attackBright );
+        
+        m_apNonLin.setA( nonLinAPos, nonLinANeg );
+        
+        m_decayCount = 0;
+        m_decayToSilenceSamps = (decay * m_SR * 2);
+        m_isPlayingFlag = true;
+        
+        m_decayTable.reset();
+
     }
-
-    sjf_delayLine< double > m_delay;
-    sjf_onepole< double > m_attackDamping, m_mediumDamping;
-    sjf_threePointHighPass< double > m_dcBlock;
-    double m_SR = 44100, m_period = ( m_SR / 220 ), m_velocity = 0.7, m_sustain = 1, m_mediumBright = 1, m_attackBright = 20000.0;
-    double m_att = 0, m_dec = 1, m_sus = 0, m_rel = 0;
-    double m_attackSamps = 0, m_attackIndex = 0;
-    double m_lastOutSamp = 0, m_attackMin = 0;
-    double m_blend = 1;
-    double m_drive = 0, m_driveComp = 0;
-    int m_pitch = 0, m_releaseTime = m_SR, m_releaseIndex = 0;
     
-    bool m_triggerRelease = false, m_extendHighFrequencies = true, m_randomWavetable = true, m_triggerAttack = false, m_busyFlag = false;
-};
+    double applyNonlinearities( double x )
+    {
+        if ( m_nonLinFlag1 )
+        {
+            return sjf_softClip< double >( ( m_apNonLin.process( x ) ) );
+        }
+        if( m_nonLinFlag2 )
+            x = sjf_cubic< double >( x );
+        return x;
+    }
+    
+    std::array< sjf_waveguideAllpass< double >, 2 > m_waveguide ;
+    sjf_delayLine< double > m_emb;
 
+    std::array< sjf_lpf< double >, 2 > m_mediumDampers;
+    sjf_pmExcitation< double > m_excitation;
+    sjf_asymAllpass< double > m_apNonLin;
+    
+    double m_SR = 44100;
+    double m_split = 0.5, m_stiff = 0, m_sensorPos = 0.2, m_decaySeconds = 1, m_mediumBrightness = 0.7, m_pickPos = 0.1, m_attackBrightness = 1, m_attackCentre = 0.1, m_attackExponent = 1, m_apNonLinAPos = 0, m_apNonLinANeg = 0, m_harmLevel = 0, m_harmNumber = 2, m_harmBalance = 0;
+    bool m_oddHarmonicsFlag = false;
+    double m_fb = 0.99, m_periodSamples = 100, m_exciteExtension = 1, m_exciteCoef = 0.5;
+    double m_lastOutSamp = 0;
+    
+    int m_decayCount = 0, m_decayToSilenceSamps = (m_decaySeconds * m_SR * 2);
+    bool m_isPlayingFlag = false, m_onlyOneDirection = false;
+    bool m_nonLinFlag1 = false, m_nonLinFlag2 = false, m_nonLinFlag3 = false;
+    
+    sjf_decayTable< double > m_decayTable;
+
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_waveguide )
+};
 
 #endif /* sjf_karplusStrong_h */

@@ -411,6 +411,122 @@ T midiToFrequency( T midiNote, T tuning = 440 )
     return tuning * std::pow( 2, distanceFromA4 / 12 );
 }
 
+//==============================================================================
+//==============================================================================
+//==============================================================================
+template< typename T >
+T sjf_clip( T input, T outMin, T outMax )
+{
+    input = (input < outMin) ? ( outMin ) : ( (input > outMax) ? outMax : input );
+    return input;
+}
+
+//==============================================================================
+//==============================================================================
+//==============================================================================
+template< typename T >
+T sjf_fold( T input, T outMin, T outMax )
+{
+    while ( input < outMin || input > outMax )
+    {
+        input = (input < outMin) ? outMin + (outMin - input) : outMax - (input - outMax);
+    }
+    return input;
+}
+//==============================================================================
+//==============================================================================
+//==============================================================================
+template< typename T >
+T sjf_wrap( T input, T outMin, T outMax )
+{
+    while ( input < outMin || input > outMax )
+    {
+        input = (input < outMin) ? outMax - (outMin - input) : outMin + (input - outMax);
+    }
+    return input;
+}
+//==============================================================================
+//==============================================================================
+//==============================================================================
+template< typename T >
+class sjf_jitter
+{
+public:
+    static T addJitter( T input, T depth, T outMin, T outMax, int type )
+    {
+#ifndef NDEBUG
+        assert( depth >= 0 && depth <= 1 );
+        assert( type >= clip && type <= fold );
+#endif
+        auto r = abs( outMax - outMin ) * depth;
+        r *= ( ( ( rand01() ) * 2.0 ) - 1.0 );
+        input += r;
+        switch (type)
+        {
+            case clip:
+                input = (input < outMin) ? ( outMin ) : ( (input > outMax) ? outMax : input );
+                return input;
+            case wrap:
+                return sjf_wrap< T >( input, outMin, outMax );
+            case fold:
+                return sjf_fold< T >( input, outMin, outMax );
+            default:
+                input = (input < outMin) ? ( outMin ) : ( (input > outMax) ? outMax : input );
+                return input;
+        }
+        input = (input < outMin) ? ( outMin ) : ( (input > outMax) ? outMax : input );
+        return input;
+    }
+    
+//    static T addJitter( T input, T outMin, T outMax )
+//    {
+//        auto range = abs( outMax - outMin );
+//        auto r = ( ( ( rand01() ) * 2.0 ) - 1.0 ) * range;
+//        input += r;
+//    }
+    enum limitType {
+        clip = 0, wrap, fold
+    };
+};
+
+//==============================================================================
+//==============================================================================
+//==============================================================================
 
 
+//==============================================================================
+//==============================================================================
+//==============================================================================
+template < class T >
+class sjf_filterResponse
+{
+public:
+    static std::array< T, 3 > calculateFilterResponse( T f0, T sampleRate, const std::vector< T >& xCoefficients, const std::vector< T >& yCoefficients, T tolerance = M_PI )
+    {
+        std::array< T, 3 > apd; // amplitude, phase, delay(samples)
+        auto fNormal = f0 / sampleRate;
+        static constexpr float M_TWO_PI = 2.0 * M_PI;
+        auto w = M_TWO_PI * fNormal;
+        auto xComp = calculateRealAndImaginary( w, xCoefficients );
+        auto yComp = calculateRealAndImaginary( w, yCoefficients );
+        apd[ 0 ] = std::sqrt( xComp[ 0 ]*xComp[ 0 ] + xComp[ 1 ]*xComp[ 1 ] ) / std::sqrt( yComp[ 0 ]*yComp[ 0 ] + yComp[ 1 ]*yComp[ 1 ] );
+        apd[ 1 ] = std::atan2( xComp[ 1 ], xComp[ 0 ] ) - std::atan2( yComp[ 1 ], yComp[ 0 ] );
+        apd[ 2 ] = ( apd[ 1 ] / fNormal  ) / M_TWO_PI;
+        return apd;
+    }
+private:
+    static std::array< T, 2 > calculateRealAndImaginary( T w, const std::vector< T >& coefficients)
+    {
+        std::array< T, 2 > rAndI;
+        rAndI[ 0 ] = 0.0;
+        rAndI[ 1 ] = 0.0;
+        for ( auto i = 0; i < coefficients.size(); i++ )
+        {
+            auto a = -1 * i * w;
+            rAndI[ 0 ] += coefficients[ i ]*std::cos( a );
+            rAndI[ 1 ] += coefficients[ i ]*std::sin( a );
+        }
+        return rAndI;
+    }
+};
 #endif /* sjf_audioUtilitiesC++ */

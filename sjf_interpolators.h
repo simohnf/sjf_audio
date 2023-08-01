@@ -22,7 +22,7 @@ namespace sjf_interpolators
 {
     //==============================================================================
     enum interpolatorTypes : char
-    { linear = 1, cubic, pureData, fourthOrder, godot, hermite };
+    { linear = 1, cubic, pureData, fourthOrder, godot, hermite, allpass };
     //==============================================================================
     template <typename T>
     const T linearInterpolate ( const T &mu, const T &x1, const T &x2 )
@@ -103,6 +103,37 @@ namespace sjf_interpolators
         return 0.5f * ((a3 * mu + a2) * mu + a1) * mu + x1;
     }
     //==============================================================================
+    template <typename T>
+    class sjf_allpassInterpolator
+    {
+    public:
+        sjf_allpassInterpolator(){}
+        ~sjf_allpassInterpolator(){}
+        
+        T process( T x, T mu )
+        {
+            auto n = (1.0-mu) / (1.0+mu);
+            m_y1 = n*(x - m_y1) + m_x1;
+            m_x1 = x;
+            return m_y1;
+        }
+        
+        T process ( T x )
+        {
+            m_y1 = m_n*(x - m_y1) + m_x1;
+            m_x1 = x;
+            return m_y1;
+        }
+        
+        void setMu( T mu )
+        {
+            m_n = (1.0-mu) / (1.0+mu);
+        }
+        
+    private:
+        T m_x1 = 0, m_y1 = 0, m_n = 0;
+    };
+
 }
 
 

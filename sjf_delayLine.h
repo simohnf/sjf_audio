@@ -10,13 +10,13 @@
 //#include "sjf_interpolationTypes.h"
 #include "sjf_interpolators.h"
 #include <JuceHeader.h>
-
+#include <limits>
 #include <vector>
 
 //------------------------------------------------
 //------------------------------------------------
 //------------------------------------------------
-template< class T >
+template< class T, int NTAPS = 1 >
 class sjf_delayLine
 {
 protected:
@@ -25,6 +25,10 @@ protected:
     int m_writePos = 0, m_interpolationType = 1, m_delayLineSize = 0;
     bool m_clearFlag = true;
     
+//    static constexpr T m_min = std::is_floating_point_v
+private:
+    std::array< sjf_interpolators::sjf_allpassInterpolator< T >, NTAPS + 1 >  m_apInterp;
+    std::array< T, NTAPS > m_tapDelays;
 public:
     sjf_delayLine() { };
     ~sjf_delayLine() {};
@@ -43,6 +47,8 @@ public:
     void setDelayTimeSamps( const T &delayInSamps )
     {
         m_delayTimeInSamps = delayInSamps;
+        for ( auto& ap : m_apInterp )
+            ap.setMu( m_delayTimeInSamps - static_cast<int>(m_delayTimeInSamps) );
     }
     
     const T size()
@@ -54,43 +60,45 @@ public:
     const T getSample( const int &indexThroughCurrentBuffer )
     {
         T findex = m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps;
-        findex--; // offset at the begining so it only has to be done once
+//        findex--; // offset at the begining so it only has to be done once
         fastMod3< T >( findex, m_delayLineSize );
         
-        T y0; // previous step value
-        T y1; // this step value
-        T y2; // next step value
-        T y3; // next next step value
-        T mu; // fractional part between step 1 & 2
-        
         int index = findex;
-        mu = findex - index;
+        T mu = findex - index;  // fractional part between step 1 & 2
+        if ( mu <= std::numeric_limits<T>::min() )
+            return m_delayLine[ index ];
         
-        y0 = m_delayLine[ index ];
-        fastMod3( ++index, m_delayLineSize );
-        y1 = m_delayLine[ index ];
-        fastMod3( ++index, m_delayLineSize );
-        y2 = m_delayLine[ index ];
-        fastMod3( ++index, m_delayLineSize );
-        y3 = m_delayLine[ index ];
-        
-        switch ( m_interpolationType )
-        {
-            case sjf_interpolators::interpolatorTypes::linear:
-                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
-            case sjf_interpolators::interpolatorTypes::cubic:
-                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::pureData:
-                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::fourthOrder:
-                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::godot:
-                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::hermite:
-                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
-            default:
-                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
-        }
+        return getSampleValue( index, mu, 0 );
+//        T y0; // previous step value
+//        T y1; // this step value
+//        T y2; // next step value
+//        T y3; // next next step value
+//
+//        y0 = m_delayLine[ index ];
+//        fastMod3( ++index, m_delayLineSize );
+//        y1 = m_delayLine[ index ];
+//        fastMod3( ++index, m_delayLineSize );
+//        y2 = m_delayLine[ index ];
+//        fastMod3( ++index, m_delayLineSize );
+//        y3 = m_delayLine[ index ];
+//
+//        switch ( m_interpolationType )
+//        {
+//            case sjf_interpolators::interpolatorTypes::linear:
+//                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
+//            case sjf_interpolators::interpolatorTypes::cubic:
+//                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
+//            case sjf_interpolators::interpolatorTypes::pureData:
+//                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
+//            case sjf_interpolators::interpolatorTypes::fourthOrder:
+//                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
+//            case sjf_interpolators::interpolatorTypes::godot:
+//                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
+//            case sjf_interpolators::interpolatorTypes::hermite:
+//                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
+//            default:
+//                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
+//        }
     }
     
     const T getSample2( )
@@ -99,41 +107,44 @@ public:
 //        findex--; // offset at the begining so it only has to be done once
         fastMod3< T >( findex, m_delayLineSize );
         
-        T y0; // previous step value
-        T y1; // this step value
-        T y2; // next step value
-        T y3; // next next step value
-        T mu; // fractional part between step 1 & 2
-        
         int index = findex;
-        mu = findex - index;
+        T mu = findex - index;  // fractional part between step 1 & 2
+        if ( mu <= std::numeric_limits<T>::min() )
+            return m_delayLine[ index ];
         
-        y0 = ( index == 0 ) ? m_delayLine[ m_delayLineSize - 1 ] : m_delayLine[ index - 1 ];
-//        y0 = m_delayLine[ index ];
+        return getSampleValue( index, mu, 0 );
+//        T y0; // previous step value
+//        T y1; // this step value
+//        T y2; // next step value
+//        T y3; // next next step value
+//
+//
+//        y0 = ( index == 0 ) ? m_delayLine[ m_delayLineSize - 1 ] : m_delayLine[ index - 1 ];
+////        y0 = m_delayLine[ index ];
+////        fastMod3( ++index, m_delayLineSize );
+//        y1 = m_delayLine[ index ];
 //        fastMod3( ++index, m_delayLineSize );
-        y1 = m_delayLine[ index ];
-        fastMod3( ++index, m_delayLineSize );
-        y2 = m_delayLine[ index ];
-        fastMod3( ++index, m_delayLineSize );
-        y3 = m_delayLine[ index ];
-        
-        switch ( m_interpolationType )
-        {
-            case sjf_interpolators::interpolatorTypes::linear:
-                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
-            case sjf_interpolators::interpolatorTypes::cubic:
-                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::pureData:
-                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::fourthOrder:
-                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::godot:
-                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
-            case sjf_interpolators::interpolatorTypes::hermite:
-                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
-            default:
-                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
-        }
+//        y2 = m_delayLine[ index ];
+//        fastMod3( ++index, m_delayLineSize );
+//        y3 = m_delayLine[ index ];
+//
+//        switch ( m_interpolationType )
+//        {
+//            case sjf_interpolators::interpolatorTypes::linear:
+//                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
+//            case sjf_interpolators::interpolatorTypes::cubic:
+//                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
+//            case sjf_interpolators::interpolatorTypes::pureData:
+//                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
+//            case sjf_interpolators::interpolatorTypes::fourthOrder:
+//                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
+//            case sjf_interpolators::interpolatorTypes::godot:
+//                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
+//            case sjf_interpolators::interpolatorTypes::hermite:
+//                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
+//            default:
+//                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
+//        }
     }
     
     const T getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
@@ -199,20 +210,58 @@ public:
     }
     
     
-    T tapDelayLine( const T delayInSamps )
+    T tapDelayLine( const T delayInSamps, int tapNumber )
     {
         T findex = m_writePos - delayInSamps;
+        
 //        findex--; // offset at the begining so it only has to be done once
         fastMod3< T >( findex, m_delayLineSize );
+        int index = findex;
+        T mu = findex - index;  // fractional part between step 1 & 2
+        if ( mu <= std::numeric_limits<T>::min() )
+            return m_delayLine[ index ];
         
-        T y0; // previous step value
+        return getSampleValue( index, mu, tapNumber + 1 );
+    }
+    
+    T tapDelayLine( int tapNumber )
+    {
+        T findex = m_writePos - m_tapDelays[ tapNumber ];
+        
+//        findex--; // offset at the begining so it only has to be done once
+        fastMod3< T >( findex, m_delayLineSize );
+        int index = findex;
+        T mu = findex - index;  // fractional part between step 1 & 2
+        if ( mu <= std::numeric_limits<T>::min() )
+            return m_delayLine[ index ];
+        
+        return getSampleValue( index, mu, tapNumber + 1 );
+    }
+    
+    
+    void setTapTime( int tapNumber, const T delayInSamps )
+    {
+        m_apInterp[ tapNumber + 1 ].setMu( delayInSamps - static_cast< int >( delayInSamps ) );
+        m_tapDelays[ tapNumber ] = delayInSamps;
+    }
+private:
+    T getSampleValue( int index, T mu, int tapNumber  )
+    {
+        if ( m_interpolationType == sjf_interpolators::interpolatorTypes::allpass )
+        {
+            return m_apInterp[ tapNumber ].process( m_delayLine[ index ] );
+        }
         T y1; // this step value
         T y2; // next step value
+        if ( m_interpolationType == sjf_interpolators::interpolatorTypes::linear )
+        {
+            y1 = m_delayLine[ index ];
+            fastMod3( ++index, m_delayLineSize );
+            y2 = m_delayLine[ index ];
+            return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
+        }
+        T y0; // previous step value
         T y3; // next next step value
-        T mu; // fractional part between step 1 & 2
-        
-        int index = findex;
-        mu = findex - index;
         
         y0 = ( index == 0 ) ? m_delayLine[ m_delayLineSize - 1 ] : m_delayLine[ index - 1 ];
 //        y0 = m_delayLine[ index ];
@@ -241,7 +290,6 @@ public:
                 return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
         }
     }
-    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_delayLine )
 };
 

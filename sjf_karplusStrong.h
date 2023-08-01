@@ -61,7 +61,7 @@ public:
     sjf_waveguideAllpass()
     {
         m_delayLine.initialise( 44100 / MINIMUM_FREQUENCY );
-        m_delayLine.setInterpolationType( sjf_interpolators::interpolatorTypes::pureData );
+        m_delayLine.setInterpolationType( sjf_interpolators::interpolatorTypes::allpass );
     }
     ~sjf_waveguideAllpass(){}
     
@@ -88,7 +88,7 @@ public:
     
     T sensorOutput()
     {
-        auto sensorOut = m_delayLine.tapDelayLine( m_sensorDelay );
+        auto sensorOut = m_delayLine.tapDelayLine( m_tapNum );
         return sensorOut;
     }
     
@@ -106,6 +106,7 @@ public:
 #endif
         m_sensorPosition = sensorPos;
         m_sensorDelay = m_delayInSamps * m_sensorPosition;
+        m_delayLine.setTapTime( m_tapNum, m_sensorDelay );
     }
     
     void setG( const T g )
@@ -120,6 +121,8 @@ private:
     sjf_delayLine< double > m_delayLine;
     T m_delayInSamps = 4410, m_sensorPosition = 0.5 , /* m_pickPosition = 0.25, */ m_g = 0;
     T m_sensorDelay = m_delayInSamps * m_sensorPosition;
+    
+    static constexpr int m_tapNum = 0;
 };
 
 //==============================================
@@ -405,14 +408,17 @@ public:
             m_lastOutSamp = ( m_mediumDampers[ 0 ].filterInput( m_waveguide[ 0 ].process( m_lastOutSamp ) ) ) * m_fb;
             outputSamp += m_lastOutSamp;
             return outputSamp;
+//            return m_lastOutSamp;
         }
         for ( auto i = 0; i < m_waveguide.size(); i++ )
         {
             m_lastOutSamp = ( m_mediumDampers[ i ].filterInput( m_waveguide[ i ].process( m_lastOutSamp ) ) ) * m_fb;
-            outputSamp += m_waveguide[ i ].sensorOutput();
+            outputSamp += m_lastOutSamp;
+//            outputSamp += m_waveguide[ i ].sensorOutput();
         }
         m_lastOutSamp = m_oddHarmonicsFlag ? -m_lastOutSamp : m_lastOutSamp;
         return outputSamp;
+//        return m_lastOutSamp;
     }
     
     // the split of total delay time between forward and backward travelling waves
@@ -645,9 +651,9 @@ private:
         auto decayComp = ( 1.0 - abs( stiff ) ) * 0.001; // at 0 stiffness decay is time in seconds for drop by 60dB ( i.e. *0.001 )
         m_fb = -1.0 * std::pow( decayComp, ( periodSeconds/(decay*2)) );
         m_periodSamples = periodSamples + delayCompensation;
-        auto p1 = m_periodSamples * split;
-        auto p2 = m_periodSamples * ( 1.0-split );
-        auto minPeriod = m_SR*0.0005;
+        auto p1 = static_cast<int>(m_periodSamples * split); // try to minimise interpolation costs
+        auto p2 = m_periodSamples - p1;
+        auto minPeriod = static_cast< int >(m_SR*0.0005);
         m_onlyOneDirection = false;
         if ( (p1 < minPeriod || p2 < minPeriod) )
         {

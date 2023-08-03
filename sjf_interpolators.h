@@ -130,6 +130,20 @@ namespace sjf_interpolators
             m_n = (1.0-mu) / (1.0+mu);
         }
         
+        T getCoef( )
+        {
+            return m_n;
+        }
+        
+        void reset()
+        {
+            m_x1 = m_y1 = 0;
+        }
+        
+        static T calculateCoef( T mu )
+        {
+            return (1.0-mu) / (1.0+mu);
+        }
     private:
         T m_x1 = 0, m_y1 = 0, m_n = 0;
     };

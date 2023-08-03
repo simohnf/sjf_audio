@@ -455,7 +455,7 @@ public:
     static T addJitter( T input, T depth, T outMin, T outMax, int type )
     {
 #ifndef NDEBUG
-        assert( depth >= 0 && depth <= 1 );
+        assert( depth >= 0.0 && depth <= 1.0 );
         assert( type >= clip && type <= fold );
 #endif
         auto r = abs( outMax - outMin ) * depth;

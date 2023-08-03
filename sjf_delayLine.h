@@ -29,11 +29,12 @@ protected:
 private:
     std::array< sjf_interpolators::sjf_allpassInterpolator< T >, NTAPS + 1 >  m_apInterp;
     std::array< T, NTAPS > m_tapDelays;
+    static constexpr T MINIMUMVAL = std::numeric_limits<T>::min();
 public:
     sjf_delayLine() { };
     ~sjf_delayLine() {};
     
-    void initialise( const int &MaxDelayInSamps )
+    void initialise( const int MaxDelayInSamps )
     {
         if ( m_delayLineSize != MaxDelayInSamps )
         {
@@ -44,11 +45,15 @@ public:
         }
     }
     
-    void setDelayTimeSamps( const T &delayInSamps )
+    void setDelayTimeSamps( const T delayInSamps )
     {
+#ifndef NDEBUG
+        assert ( delayInSamps <= m_delayLineSize );
+#endif
         m_delayTimeInSamps = delayInSamps;
-        for ( auto& ap : m_apInterp )
-            ap.setMu( m_delayTimeInSamps - static_cast<int>(m_delayTimeInSamps) );
+        m_apInterp[ 0 ].setMu( m_delayTimeInSamps - static_cast<int>(m_delayTimeInSamps) );
+//        for ( auto& ap : m_apInterp )
+//            ap.setMu( m_delayTimeInSamps - static_cast<int>(m_delayTimeInSamps) );
     }
     
     const T size()
@@ -57,107 +62,47 @@ public:
     const T getDelayTimeSamps(  )
     { return m_delayTimeInSamps; }
     
-    const T getSample( const int &indexThroughCurrentBuffer )
+    const T getSample( const int indexThroughCurrentBuffer )
     {
         T findex = m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps;
-//        findex--; // offset at the begining so it only has to be done once
-        fastMod3< T >( findex, m_delayLineSize );
+        findex = findex < 0.0 ? findex + m_delayLineSize : findex;
+//        fastMod3< T >( findex, m_delayLineSize );
         
         int index = findex;
         T mu = findex - index;  // fractional part between step 1 & 2
-        if ( mu <= std::numeric_limits<T>::min() )
+        if ( mu <= MINIMUMVAL )
             return m_delayLine[ index ];
         
         return getSampleValue( index, mu, 0 );
-//        T y0; // previous step value
-//        T y1; // this step value
-//        T y2; // next step value
-//        T y3; // next next step value
-//
-//        y0 = m_delayLine[ index ];
-//        fastMod3( ++index, m_delayLineSize );
-//        y1 = m_delayLine[ index ];
-//        fastMod3( ++index, m_delayLineSize );
-//        y2 = m_delayLine[ index ];
-//        fastMod3( ++index, m_delayLineSize );
-//        y3 = m_delayLine[ index ];
-//
-//        switch ( m_interpolationType )
-//        {
-//            case sjf_interpolators::interpolatorTypes::linear:
-//                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
-//            case sjf_interpolators::interpolatorTypes::cubic:
-//                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
-//            case sjf_interpolators::interpolatorTypes::pureData:
-//                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
-//            case sjf_interpolators::interpolatorTypes::fourthOrder:
-//                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
-//            case sjf_interpolators::interpolatorTypes::godot:
-//                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
-//            case sjf_interpolators::interpolatorTypes::hermite:
-//                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
-//            default:
-//                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
-//        }
     }
     
     const T getSample2( )
     {
         T findex = m_writePos - m_delayTimeInSamps;
-//        findex--; // offset at the begining so it only has to be done once
-        fastMod3< T >( findex, m_delayLineSize );
+        findex = findex < 0.0 ? findex + m_delayLineSize : findex;
+//        fastMod3< T >( findex, m_delayLineSize );
         
         int index = findex;
         T mu = findex - index;  // fractional part between step 1 & 2
-        if ( mu <= std::numeric_limits<T>::min() )
+        if ( mu <= MINIMUMVAL )
             return m_delayLine[ index ];
         
         return getSampleValue( index, mu, 0 );
-//        T y0; // previous step value
-//        T y1; // this step value
-//        T y2; // next step value
-//        T y3; // next next step value
-//
-//
-//        y0 = ( index == 0 ) ? m_delayLine[ m_delayLineSize - 1 ] : m_delayLine[ index - 1 ];
-////        y0 = m_delayLine[ index ];
-////        fastMod3( ++index, m_delayLineSize );
-//        y1 = m_delayLine[ index ];
-//        fastMod3( ++index, m_delayLineSize );
-//        y2 = m_delayLine[ index ];
-//        fastMod3( ++index, m_delayLineSize );
-//        y3 = m_delayLine[ index ];
-//
-//        switch ( m_interpolationType )
-//        {
-//            case sjf_interpolators::interpolatorTypes::linear:
-//                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
-//            case sjf_interpolators::interpolatorTypes::cubic:
-//                return sjf_interpolators::cubicInterpolate< T >( mu, y0, y1, y2, y3 );
-//            case sjf_interpolators::interpolatorTypes::pureData:
-//                return sjf_interpolators::fourPointInterpolatePD< T >( mu, y0, y1, y2, y3 );
-//            case sjf_interpolators::interpolatorTypes::fourthOrder:
-//                return sjf_interpolators::fourPointFourthOrderOptimal< T >( mu, y0, y1, y2, y3 );
-//            case sjf_interpolators::interpolatorTypes::godot:
-//                return sjf_interpolators::cubicInterpolateGodot< T >( mu, y0, y1, y2, y3 );
-//            case sjf_interpolators::interpolatorTypes::hermite:
-//                return sjf_interpolators::cubicInterpolateHermite2< T >( mu, y0, y1, y2, y3 );
-//            default:
-//                return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
-//        }
     }
     
     const T getSampleRoundedIndex( const int &indexThroughCurrentBuffer )
     {
         int readPos =  m_writePos + indexThroughCurrentBuffer - m_delayTimeInSamps ;
-        fastMod3< int >( readPos, m_delayLineSize );
+        readPos = readPos < 0 ? readPos + m_delayLineSize : readPos;
+//        fastMod3< int >( readPos, m_delayLineSize );
         return m_delayLine[ readPos ];
     }
     
     const T getSampleRoundedIndex2( )
     {
         int readPos =  m_writePos - m_delayTimeInSamps ;
-        fastMod3< int >( readPos, m_delayLineSize );
+        readPos = readPos < 0 ? readPos + m_delayLineSize : readPos;
+//        fastMod3< int >( readPos, m_delayLineSize );
         return m_delayLine[ readPos ];
     }
     
@@ -175,8 +120,6 @@ public:
         fastMod3< int >( m_writePos, m_delayLineSize);
         m_delayLine[ m_writePos ]  = value;
         m_writePos++;
-        
-//        if ( ++m_writePos >= m_delayLineSize ) { m_writePos = 0; }
         if ( m_clearFlag ){ m_clearFlag = false; }
     }
     
@@ -205,45 +148,44 @@ public:
         if( !m_clearFlag )
         {
             std::fill(m_delayLine.begin(), m_delayLine.end(), 0);
+            for (auto& ap : m_apInterp )
+                ap.reset();
             m_clearFlag = true;
         }
     }
     
-    
     T tapDelayLine( const T delayInSamps, int tapNumber )
     {
         T findex = m_writePos - delayInSamps;
-        
-//        findex--; // offset at the begining so it only has to be done once
-        fastMod3< T >( findex, m_delayLineSize );
+        findex = findex < 0.0 ? findex + m_delayLineSize : findex;
+//        fastMod3< T >( findex, m_delayLineSize );
         int index = findex;
         T mu = findex - index;  // fractional part between step 1 & 2
-        if ( mu <= std::numeric_limits<T>::min() )
+        if ( mu <= MINIMUMVAL )
             return m_delayLine[ index ];
-        
+        setTapTime( tapNumber, delayInSamps );
         return getSampleValue( index, mu, tapNumber + 1 );
     }
     
     T tapDelayLine( int tapNumber )
     {
         T findex = m_writePos - m_tapDelays[ tapNumber ];
-        
-//        findex--; // offset at the begining so it only has to be done once
-        fastMod3< T >( findex, m_delayLineSize );
+        findex = findex < 0.0 ? findex + m_delayLineSize : findex;
+//        fastMod3< T >( findex, m_delayLineSize );
         int index = findex;
         T mu = findex - index;  // fractional part between step 1 & 2
-        if ( mu <= std::numeric_limits<T>::min() )
+        if ( mu <= MINIMUMVAL )
             return m_delayLine[ index ];
         
         return getSampleValue( index, mu, tapNumber + 1 );
     }
-    
     
     void setTapTime( int tapNumber, const T delayInSamps )
     {
         m_apInterp[ tapNumber + 1 ].setMu( delayInSamps - static_cast< int >( delayInSamps ) );
         m_tapDelays[ tapNumber ] = delayInSamps;
     }
+    
 private:
     T getSampleValue( int index, T mu, int tapNumber  )
     {
@@ -256,7 +198,9 @@ private:
         if ( m_interpolationType == sjf_interpolators::interpolatorTypes::linear )
         {
             y1 = m_delayLine[ index ];
-            fastMod3( ++index, m_delayLineSize );
+            index++;
+            index = index > m_delayLineSize ? index - m_delayLineSize : index;
+//            fastMod3( ++index, m_delayLineSize );
             y2 = m_delayLine[ index ];
             return sjf_interpolators::linearInterpolate< T >( mu, y1, y2 );
         }
@@ -267,9 +211,13 @@ private:
 //        y0 = m_delayLine[ index ];
 //        fastMod3( ++index, m_delayLineSize );
         y1 = m_delayLine[ index ];
-        fastMod3( ++index, m_delayLineSize );
+//        fastMod3( ++index, m_delayLineSize );
+        index++;
+        index = index > m_delayLineSize ? index - m_delayLineSize : index;
         y2 = m_delayLine[ index ];
-        fastMod3( ++index, m_delayLineSize );
+//        fastMod3( ++index, m_delayLineSize );
+        index++;
+        index = index > m_delayLineSize ? index - m_delayLineSize : index;
         y3 = m_delayLine[ index ];
         
         switch ( m_interpolationType )

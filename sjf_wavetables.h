@@ -11,14 +11,14 @@
 template< typename T, int TABLE_SIZE >
 struct sinArray
 {
-    constexpr sinArray() : table()
+    constexpr sinArray() : m_table()
     {
         for ( int i = 0; i < TABLE_SIZE; i++ )
         {
-            table[ i ] = gcem::sin( 2.0f * M_PI * static_cast< T >(i)/static_cast< T >(TABLE_SIZE) );
+            m_table[ i ] = gcem::sin( 2.0f * M_PI * static_cast< T >(i)/static_cast< T >(TABLE_SIZE) );
         }
     }
-    const T& operator[](std::size_t index) const { return table[ index ]; }
+    const T& operator[](std::size_t index) const { return m_table[ index ]; }
     const T getValue ( T findex ) const
     {
         T y1; // this step value
@@ -29,14 +29,14 @@ struct sinArray
         mu = findex - index;
         
         fastMod3( index, TABLE_SIZE );
-        y1 = table[ index ];
+        y1 = m_table[ index ];
         fastMod3( ++index, TABLE_SIZE );
-        y2 = table[ index ];
+        y2 = m_table[ index ];
         
         return y1 + mu*(y2-y1) ;
     }
 private:
-    T table[ TABLE_SIZE ];
+    T m_table[ TABLE_SIZE ];
 };
 
 
@@ -44,16 +44,18 @@ private:
 template< typename T, int TABLE_SIZE >
 struct sjf_hannArray
 {
-    constexpr sjf_hannArray() : table()
+    constexpr sjf_hannArray() : m_table()
     {
+        m_table[ 0 ] = 0;
+        m_table[ TABLE_SIZE + 1 ] = 0;
+        
         for ( int i = 0; i < TABLE_SIZE; i++ )
         {
-            auto val = 0.75 + static_cast< T >( i );
-            table[ i ] = 0.5 * gcem::sin( ( 2.0f * M_PI * val )/ ( static_cast< T >(TABLE_SIZE) ) );
+            m_table[ i + 1 ] = 0.5 - ( 0.5 * gcem::cos( 2.0 * M_PI * static_cast< T >( i ) / static_cast< T >( TABLE_SIZE - 1 ) ) );
         }
     }
     
-    const T& operator[](std::size_t index) const { return table[ index ]; }
+    const T& operator[](std::size_t index) const { return m_table[ index ]; }
     const T getValue ( T findex ) const
     {
         
@@ -65,14 +67,14 @@ struct sjf_hannArray
         mu = findex - index;
 
         fastMod3( index, TABLE_SIZE );
-        y1 = table[ index ];
+        y1 = m_table[ index ];
         fastMod3( ++index, TABLE_SIZE );
-        y2 = table[ index ];
+        y2 = m_table[ index ];
         
         return sjf_interpolators::linearInterpolate( mu, y1, y2 );
     }
 private:
-    T table[ TABLE_SIZE ];
+    T m_table[ TABLE_SIZE + 2 ]; // an extra 2 zeros, one at the beginning and one at the end of the envelope
 };
 
 #endif /* sjf_wavetables_h */

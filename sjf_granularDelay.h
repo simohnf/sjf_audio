@@ -47,20 +47,18 @@ public:
     
     void process( std::array< float, NCHANNELS >& samples, std::array< std::vector< float >, NCHANNELS >& buffers )
     {
-        if ( m_sampleCount >= m_grainSizeSamps )
-            return;
-        if ( !m_shouldPlayFlag )
+        if ( m_sampleCount >= m_grainSizeSamps || !m_shouldPlayFlag )
             return;
         
         auto grainPhase = static_cast< float >( m_sampleCount ) / static_cast< float >( m_grainSizeSamps );
         
-        auto readPos = 0.0f;
-        
+        auto readPos = m_writePos - m_delayTimeSamps;
+//        readPos += m_sampleCount;
         if ( m_reverseFlag )
-            readPos = ( ( m_writePos - m_delayTimeSamps ) + m_delayPitchCompensation ) - ( m_delayPitchCompensation * grainPhase );
+            readPos += m_delayPitchCompensation - ( m_delayPitchCompensation * grainPhase );
         else
-            readPos = ( ( m_writePos - m_delayTimeSamps ) +  ( m_delayPitchCompensation * grainPhase ) );
-        
+            readPos += ( m_delayPitchCompensation * grainPhase );
+//
         auto delBufferSize = buffers[ 0 ].size();
         fastMod3< float >( readPos, delBufferSize );
         auto win = m_win.getValue( m_windowSize * grainPhase );
@@ -99,25 +97,25 @@ private:
 //----------------------------------------------------------
 //----------------------------------------------------------
 
-template < int NCHANNELS, int NVOICES >
+template < int NVOICES >
 class sjf_granularDelay
 {
 public:
     sjf_granularDelay()
     {
+#ifndef NDEBUG
+        assert ( NVOICES % 2 == 0 ); // ensure that number of voices is a multiple of 2 for crossfading
+#endif
         initialise( m_SR );
-        for( auto & p : m_lastPhasePositions )
-            p = 0;
         
-        for (auto & samp : m_lastSamples )
-            samp = 0.0f;
+//        for (auto & samp : m_lastSamples )
+//            samp = 0.0f;
     }
     ~sjf_granularDelay(){}
     
     void initialise( double sampleRate )
     {
         m_SR = sampleRate;
-        m_phaseRamp.initialise( m_SR, m_rateHz );
         
         for ( auto & buf : m_buffers )
         {
@@ -125,81 +123,110 @@ public:
             for ( auto & s : buf )
                 s = 0;
         }
-        for (auto & samp : m_lastSamples )
-            samp = 0.0f;
+//        for (auto & samp : m_lastSamples )
+//            samp = 0.0f;
+        
+        m_sampleCount = 0;
+        
+        m_deltaTimeSamps = std::round( m_SR / m_rateHz );
     }
     
     
     void process( juce::AudioBuffer<float>& buffer )
     {
         
-        m_writePos = fastMod( m_writePos, m_buffers[ 0 ].size() );
-        auto blockSize = buffer.getNumSamples();
-        auto voicePhase = 0.0f;
-        std::array< float, NCHANNELS > samples;
 
+        auto numOutChannels = buffer.getNumChannels();
+        auto blockSize = buffer.getNumSamples();
+        
+        std::array< float, NCHANNELS > samples, samplesCross;
+
+//        auto voicePhase = 0.0f;
         for ( int indexThroughBuffer = 0; indexThroughBuffer < blockSize; indexThroughBuffer++ )
         {
+            m_writePos = fastMod( m_writePos, m_buffers[ 0 ].size() );
             for ( auto & s : samples )
                 s = 0;
-            auto phasePos = m_phaseRamp.output();
-            for ( auto v = 0; v < NVOICES; v++ )
+            if ( m_sampleCount >= m_deltaTimeSamps )
             {
-                // cheeck whether a new grain should be triggered
-                voicePhase = phasePos * NVOICES;
-                voicePhase -= static_cast< float >( v );
-                voicePhase = fastMod4< float >( voicePhase, static_cast< float >( NVOICES ) );
-                voicePhase *= 0.5;
-                if ( voicePhase >= 0 && voicePhase <= 1 && ( m_lastPhasePositions[ v ] < 0 || m_lastPhasePositions[ v ] > 1 ) )
-                {
-                    auto dt = m_delayTimeSamps + ( rand01() * m_delayTimeJitter );
-                    bool rev = rand01() < m_reverseChance ? true : false;
-                    auto pJit = ( rand01()* 2.0f - 1 ) * m_transpositionJitter;
-                    auto tr = std::pow( 2, m_transposition + pJit );
-                    bool shouldPlay = m_density >= rand01() ? true : false;
-                    auto grainSize = 2.0 * m_SR / ( m_rateHz / NVOICES ); // doubled grain size for crossfade
-                    m_delays[ v ].triggerNewGrain( m_writePos, rev, shouldPlay, dt, tr, grainSize );
-                }
-                
-                // run through each grain channel and add output to samples
-                m_delays[ v ].process( samples, m_buffers );
-                
-                m_lastPhasePositions[ v ] = voicePhase;
+                m_lastVoiceTriggered++;
+                m_lastVoiceTriggered = fastMod4< int >( m_lastVoiceTriggered, NVOICES );
+                auto dt = m_delayTimeSamps + ( m_delayTimeSamps * rand01() * m_delayTimeJitter );
+                bool rev = rand01() < m_reverseChance ? true : false;
+                auto pJit = ( rand01()* 2.0f - 1 ) * m_transpositionJitter;
+                auto tr = std::pow( 2, m_transposition + pJit );
+                bool shouldPlay = m_density >= rand01() ? true : false;
+                auto grainSize = m_deltaTimeSamps * 2.0;
+                DBG( "rate " << m_rateHz );
+                DBG( "grainSize " << grainSize );
+                DBG( "NVOICES " << NVOICES << " this voice " << m_lastVoiceTriggered );
+                DBG(" ");
+                m_delays[ m_lastVoiceTriggered ].triggerNewGrain( m_writePos, rev, shouldPlay, dt, tr, grainSize );
+                m_sampleCount = 0;
             }
+            
+            // run through each grain channel and add output to samples
+            for ( auto &  v : m_delays )
+                v.process( samples, m_buffers );
+            
             for ( auto & buf : m_buffers )
                 buf[ m_writePos ] = 0;
-            for ( auto c = 0; c < NCHANNELS; c++ )
-            {
-                auto inSamp = buffer.getSample( c, indexThroughBuffer );
-                m_buffers[ c ][ m_writePos ] += inSamp + ( samples[ c ] * m_feedback );
-                auto outSamp = ( samples[ c ] * m_wet ) + ( inSamp * m_dry );
-                buffer.setSample( c, indexThroughBuffer, outSamp );
-            }
             
+            if ( m_crosstalk > 0 )
+            {
+                samplesCross[ 0 ] = ( samples[ 0 ] * m_crossFadeLevels[ 0 ] ) + ( samples[ 1 ] * m_crossFadeLevels[ 1 ] );
+                samplesCross[ 1 ] = ( samples[ 1 ] * m_crossFadeLevels[ 0 ] ) + ( samples[ 0 ] * m_crossFadeLevels[ 1 ] );
+                for ( auto c = 0; c < NCHANNELS; c++ )
+                {
+                    auto bufChan = fastMod4< int >( c, numOutChannels );
+                    auto inSamp = buffer.getSample( bufChan, indexThroughBuffer );
+                    m_buffers[ c ][ m_writePos ] += inSamp + ( samplesCross[ c ] * m_feedback );
+                    auto outSamp = ( samples[ c ] * m_wet ) + ( inSamp * m_dry );
+                    buffer.setSample( bufChan, indexThroughBuffer, outSamp );
+                }
+            }
+            else
+            {
+                for ( auto c = 0; c < NCHANNELS; c++ )
+                {
+                    auto bufChan = fastMod4< int >( c, numOutChannels );
+                    auto inSamp = buffer.getSample( bufChan, indexThroughBuffer );
+                    m_buffers[ c ][ m_writePos ] += inSamp + ( samples[ c ] * m_feedback );
+                    auto outSamp = ( samples[ c ] * m_wet ) + ( inSamp * m_dry );
+                    buffer.setSample( bufChan, indexThroughBuffer, outSamp );
+                }
+            }
+
             m_writePos++;
             
+            m_sampleCount++;
         }
     }
     
     
     void setRate( float rate )
     {
-        m_rateHz = rate;
+        m_rateHz = rate; // / static_cast< float >( NVOICES );
+        m_deltaTimeSamps = std::round( m_SR / m_rateHz );
     }
     
-    void setFeedback( float fb )
+    void setFeedback( float fbPercentage )
     {
-        m_feedback = fb;
+        m_feedback = fbPercentage * 0.01f;
     }
     
     void setCrossTalk( float ct )
     {
-        m_crosstalk = ct;
+        m_crosstalk = ct * 0.01f;
+        
+        m_crossFadeLevels[ 0 ] = 0.5 + ( 0.5 * std::cos( m_crosstalk * M_PI ) );
+        m_crossFadeLevels[ 1 ] = 0.5 + ( 0.5 * std::cos( ( 1.0 - m_crosstalk ) * M_PI ) );
+        
     }
     
-    void setDensity( float density )
+    void setDensity( float densityPercentage )
     {
-        m_density = density;
+        m_density = densityPercentage * 0.01f;
     }
     
     void setDelayTimeSamps( float dt )
@@ -207,35 +234,36 @@ public:
         m_delayTimeSamps = dt;
     }
     
-    void setDelayTimeJitter( float dtJit )
+    void setDelayTimeJitter( float dtJitPercentage )
     {
-        m_delayTimeJitter = dtJit;
+        m_delayTimeJitter = dtJitPercentage * 0.01f;
     }
     
-    void setTransposition( float tr )
+    void setTransposition( float trSemitones )
     {
-        m_transposition = tr;
+        m_transposition = trSemitones / 12.0f;
     }
     
-    void setTranspositionJitter( float trJit )
+    void setTranspositionJitter( float trJitPercentage )
     {
-        m_transpositionJitter = trJit;
+        m_transpositionJitter = trJitPercentage * 0.01f;
     }
     
-    void setReverseChance( float rev )
+    void setReverseChance( float revPercentage )
     {
-        m_reverseChance = rev;
+        m_reverseChance = revPercentage * 0.01f;
     }
     
     void setMix( float wetPercentage )
     {
-        m_wet = std::sqrt( wetPercentage * 0.01 );
-        m_dry = std::sqrt( 1.0 - ( wetPercentage * 0.01 ) );
+        auto wet = wetPercentage * 0.01;
+        m_wet = wet > 0.0f ? std::sqrt( wet ) : 0;
+        auto dry = 1.0f - wet;
+        m_dry = dry > 0.0f ? std::sqrt( dry ) : 0;
     }
 private:
+    static constexpr int NCHANNELS = 2;
     
-    
-    sjf_phasor< float > m_phaseRamp;
     
     std::array< sjf_gdVoice< NCHANNELS >, NVOICES > m_delays;
     std::array< std::vector< float >, NCHANNELS > m_buffers;
@@ -243,9 +271,6 @@ private:
     size_t m_writePos = 0;
     
     
-    
-    std::array< float, NCHANNELS > m_lastSamples;
-    std::array< float, NVOICES > m_lastPhasePositions;
     
     float m_rateHz = 1; // num grains triggered per second
     float m_feedback = 0;
@@ -259,6 +284,13 @@ private:
     float m_dry = 0;
     float m_wet = 1;
     float m_SR = 44100;
+    
+    
+    std::array< float, NCHANNELS > m_crossFadeLevels;
+    
+    int m_lastVoiceTriggered = -1;
+    long long m_sampleCount = 0;
+    long long m_deltaTimeSamps = std::round( m_SR / m_rateHz );
 };
 
 #endif /* sjf_granularDelay_h */

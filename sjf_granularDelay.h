@@ -12,16 +12,16 @@
 #include "sjf_audioUtilities.h"
 #include "sjf_interpolators.h"
 #include "sjf_wavetables.h"
-#include "../sjf_audio/sjf_phasor.h"
 #include "../sjf_audio/sjf_audioUtilities.h"
+#include "sjf_bitCrusher.h"
 
-
 //----------------------------------------------------------
 //----------------------------------------------------------
 //----------------------------------------------------------
 //----------------------------------------------------------
 
-// Basic algorithm seems to work
+// ideas :
+//      repeat same grain over and over again
 
 
 class sjf_gdVoice
@@ -34,8 +34,9 @@ private:
     float m_delayTimeSamps = 11025;
     float m_transposition = 1;
     float m_grainSizeSamps = 11025;
-    float m_delayPitchCompensation = m_transposition * m_grainSizeSamps;
+    float m_transposedGrainSize = m_transposition * m_grainSizeSamps;
     int m_sampleCount = 0;
+    
     
     std::array< std::array< float, NCHANNELS >, NCHANNELS > m_mixMatrix;
     
@@ -44,6 +45,8 @@ private:
     
     std::array< float, NCHANNELS > m_samples;
     
+    std::array< sjf_bitCrusher< float >, NCHANNELS > m_bitCrush;
+    
 public:
     sjf_gdVoice()
     {
@@ -51,40 +54,52 @@ public:
     }
     ~sjf_gdVoice(){}
     
-    void triggerNewGrain( size_t writePos, bool rev, bool play, float dt, float transpos, float grainSize, float crosstalk )
+    void triggerNewGrain( size_t writePos, bool rev, bool play, float dt, float transpos, float grainSize, float crosstalk, size_t delBufSize, int bitDepth, int srDivider )
     {
         if ( m_shouldPlayFlag )
             return; // not the neatest solution but if grain is already playing don't trigger this grain
         m_writePos = writePos;
         m_reverseFlag = rev;
         m_shouldPlayFlag = play;
-        m_delayTimeSamps = dt;
+        m_delayTimeSamps = dt > 0 ? dt : 1;
         m_transposition = transpos;
         m_grainSizeSamps = grainSize;
-        m_delayPitchCompensation = m_transposition * m_grainSizeSamps;
+        m_transposedGrainSize = m_transposition * m_grainSizeSamps;
+        
+        // grain will play m_transposedGrainSize samples in length of m_grainSizeSamps
+        // if m_transposedGrainSize > m_grainSizeSamps
+        //      then we will run past the write pointer
+        //      --> make sure our write pointer is always far enough in the past to allow all samples to be read
+        if ( m_transposedGrainSize > m_grainSizeSamps )
+        {
+            auto dif = ( m_transposedGrainSize - m_grainSizeSamps ) + 1;
+            m_writePos = fastMod4< size_t > ( ( m_writePos + delBufSize - dif ), delBufSize );
+        }
+        
         m_sampleCount = 0;
         setCrossTalkLevels( crosstalk );
+        
+        for ( auto & bc : m_bitCrush )
+        {
+            bc.setNBits( bitDepth );
+            bc.setSRDivide( srDivider );
+        }
     }
     
     void process( std::array< float, NCHANNELS >& outSamples, std::array< std::vector< float >, NCHANNELS >& delayBuffers )
     {
-//        if ( m_sampleCount >= m_grainSizeSamps )
-//        {
-//            m_shouldPlayFlag = false;
-//            return;
-//        }
         
         auto grainPhase = static_cast< float >( m_sampleCount ) / static_cast< float >( m_grainSizeSamps );
         
         auto readPos = m_writePos - m_delayTimeSamps;
         
         if ( m_reverseFlag )
-            readPos += m_delayPitchCompensation - ( m_delayPitchCompensation * grainPhase );
+            readPos += m_transposedGrainSize - ( m_transposedGrainSize * grainPhase );
         else
-            readPos += ( m_delayPitchCompensation * grainPhase );
+            readPos += ( m_transposedGrainSize * grainPhase );
         
         auto delBufferSize = delayBuffers[ 0 ].size();
-        fastMod3< float >( readPos, delBufferSize );
+        readPos = fastMod4< float >( readPos, delBufferSize );
         auto win = m_win.getValue( m_windowSize * grainPhase );
         auto pos1 = static_cast< int >( readPos );
         auto mu = readPos - ( static_cast< float >( pos1 ) );
@@ -93,7 +108,7 @@ public:
         auto pos3 = fastMod4< int >( pos2 + 1, static_cast< int >( delBufferSize ) );
         
         for ( auto c = 0; c < NCHANNELS; c++ )
-            m_samples[ c ] = sjf_interpolators::fourPointInterpolatePD( mu, delayBuffers[ c ][ pos0 ], delayBuffers[ c ][ pos1 ], delayBuffers[ c ][ pos2 ], delayBuffers[ c ][ pos3 ]) * win;
+            m_samples[ c ] =  m_bitCrush[ c ].process( sjf_interpolators::fourPointInterpolatePD( mu, delayBuffers[ c ][ pos0 ], delayBuffers[ c ][ pos1 ], delayBuffers[ c ][ pos2 ], delayBuffers[ c ][ pos3 ]) ) * win;
         
         for ( auto i = 0; i < NCHANNELS; i++ )
         {
@@ -120,6 +135,8 @@ private:
              m_mixMatrix[ c ][ fastMod4( c + 1, NCHANNELS ) ] =  0.5 + ( 0.5 * std::cos( ( 1.0 - crosstalk ) * M_PI ) );
          }
     }
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_gdVoice )
 };
 
 
@@ -175,12 +192,13 @@ public:
         std::array< float, NCHANNELS > samples;
 
         float fbSmooth, drySmooth, wetSmooth;
+        auto delBufSize = m_buffers[ 0 ].size();
         for ( int indexThroughBuffer = 0; indexThroughBuffer < blockSize; indexThroughBuffer++ )
         {
             fbSmooth = m_fbSmoother.getNextValue();
             drySmooth = m_drySmoother.getNextValue();
             wetSmooth = m_wetSmoother.getNextValue();
-            m_writePos = fastMod( m_writePos, m_buffers[ 0 ].size() );
+            m_writePos = fastMod( m_writePos, delBufSize );
             for ( auto & s : samples )
                 s = 0;
             
@@ -188,7 +206,7 @@ public:
             {
                 for ( auto v = 0; v < NVOICES; v++ )
                 {
-                    if ( !m_delays[ v ].getIsPlaying() ) // choose the foirst available voice
+                    if ( !m_delays[ v ].getIsPlaying() ) // choose the first available voice
                     {
 //                        vNum = v;
                         auto dt = m_delayTimeSamps + ( m_delayTimeSamps * rand01() * m_delayTimeJitter );
@@ -197,8 +215,10 @@ public:
                         auto tr = std::pow( 2, m_transposition + pJit );
                         bool shouldPlay = m_density >= rand01() ? true : false;
                         auto grainSize = m_deltaTimeSamps * 2.0;
-                        m_delays[ v ].triggerNewGrain( m_writePos, rev, shouldPlay, dt, tr, grainSize, m_crosstalk );
+                        auto wp = rand01() < m_repeatChance ? m_lastwritePos : m_writePos;
+                        m_delays[ v ].triggerNewGrain( wp, rev, shouldPlay, dt, tr, grainSize, m_crosstalk, delBufSize, m_bitDepth, m_srDivider );
                         m_sampleCount = 0;
+                        m_lastwritePos = wp;
                         break;
                     }
                 }
@@ -231,6 +251,10 @@ public:
     
     void setRate( float rate )
     {
+#ifndef NDEBUG
+        assert ( rate > 0 );
+#endif
+
         m_rateHz = rate; // / static_cast< float >( NVOICES );
         m_deltaTimeSamps = std::round( m_SR / m_rateHz );
     }
@@ -261,10 +285,7 @@ public:
     
     void setDelayTimeSamps( float dtSamps )
     {
-#ifndef NDEBUG
-        assert ( dtSamps > 0 );
-#endif
-        m_delayTimeSamps = dtSamps;
+        m_delayTimeSamps = dtSamps > 0 ? dtSamps : 1;
     }
     
     void setDelayTimeJitter( float dtJitPercentage )
@@ -296,6 +317,32 @@ public:
         m_reverseChance = revPercentage * 0.01f;
     }
     
+    
+    void setRepeat( float repeatPercentage )
+    {
+#ifndef NDEBUG
+        assert ( repeatPercentage >= 0 && repeatPercentage <= 100 );
+#endif
+        m_repeatChance = repeatPercentage * 0.01f;
+    }
+    
+    void setBitDepth( int bitDepth )
+    {
+#ifndef NDEBUG
+        assert ( bitDepth >= 0 );
+#endif
+        m_bitDepth = bitDepth;
+    }
+    
+    void setSampleRateDivider( int srDivider )
+    {
+#ifndef NDEBUG
+        assert ( srDivider >= 1 );
+#endif
+        m_srDivider = srDivider;
+    }
+    
+    
     void setMix( float wetPercentage )
     {
 #ifndef NDEBUG
@@ -318,21 +365,27 @@ private:
     std::array< std::vector< float >, NCHANNELS > m_buffers;
     
     size_t m_writePos = 0;
-    
+    size_t m_lastwritePos = 0;
     float m_rateHz = 1; // num grains triggered per second
     float m_crosstalk = 0;
     float m_density = 1;
     float m_delayTimeSamps = 22050;
     float m_delayTimeJitter = 0;
     float m_reverseChance = 0.25;
+    float m_repeatChance = 0;
     float m_transposition = 0;
     float m_transpositionJitter = 0;
+    int m_bitDepth = 32;
+    int m_srDivider = 1;
     float m_SR = 44100;
+    
     
     long long m_sampleCount = 0;
     long long m_deltaTimeSamps = std::round( m_SR / m_rateHz );
     
     juce::SmoothedValue< float > m_fbSmoother, m_drySmoother, m_wetSmoother;
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_granularDelay )
 };
 
 #endif /* sjf_granularDelay_h */

@@ -54,13 +54,13 @@ public:
     }
     ~sjf_gdVoice(){}
     
-    void triggerNewGrain( size_t writePos, bool rev, bool play, float dt, float transpos, float grainSize, float crosstalk, size_t delBufSize, int bitDepth, int srDivider )
+    void triggerNewGrain( size_t writePos, bool rev, float dt, float transpos, float grainSize, float crosstalk, size_t delBufSize, int bitDepth, int srDivider )
     {
         if ( m_shouldPlayFlag )
             return; // not the neatest solution but if grain is already playing don't trigger this grain
         m_writePos = writePos;
         m_reverseFlag = rev;
-        m_shouldPlayFlag = play;
+        m_shouldPlayFlag = true;
         m_delayTimeSamps = dt > 0 ? dt : 1;
         m_transposition = transpos;
         m_grainSizeSamps = grainSize;
@@ -157,6 +157,17 @@ public:
         assert ( NVOICES % 2 == 0 ); // ensure that number of voices is a multiple of 2 for crossfading
 #endif
         initialise( m_SR );
+        
+        
+        m_gParams.m_wp = m_writePos;
+        m_gParams.m_dt = m_delayTimeSamps;
+        m_gParams.m_gs = m_deltaTimeSamps * 2.0;
+        m_gParams.m_ct = m_crosstalk;
+        m_gParams.m_tr = m_transposition;
+        m_gParams.m_bd = m_bitDepth;
+        m_gParams.m_srDiv = m_srDivider;
+        m_gParams.m_rev = false;
+        m_gParams.m_play = true;
     }
     
     ~sjf_granularDelay(){}
@@ -181,6 +192,7 @@ public:
         m_drySmoother.setCurrentAndTargetValue( 0 );
         m_wetSmoother.reset( m_SR, 0.1 );
         m_wetSmoother.setCurrentAndTargetValue( 1 );
+        
     }
     
     
@@ -191,8 +203,10 @@ public:
         
         std::array< float, NCHANNELS > samples;
 
-        float fbSmooth, drySmooth, wetSmooth;
+        float fbSmooth, drySmooth, wetSmooth, outSamp;
         auto delBufSize = m_buffers[ 0 ].size();
+        
+        bool activeVoices = false;
         for ( int indexThroughBuffer = 0; indexThroughBuffer < blockSize; indexThroughBuffer++ )
         {
             fbSmooth = m_fbSmoother.getNextValue();
@@ -209,37 +223,63 @@ public:
                     if ( !m_delays[ v ].getIsPlaying() ) // choose the first available voice
                     {
 //                        vNum = v;
-                        auto dt = m_delayTimeSamps + ( m_delayTimeSamps * rand01() * m_delayTimeJitter );
-                        bool rev = rand01() < m_reverseChance ? true : false;
-                        auto pJit = ( rand01()* 2.0f - 1 ) * m_transpositionJitter;
-                        auto tr = std::pow( 2, m_transposition + pJit );
-                        bool shouldPlay = m_density >= rand01() ? true : false;
-                        auto grainSize = m_deltaTimeSamps * 2.0;
-                        auto wp = rand01() < m_repeatChance ? m_lastwritePos : m_writePos;
-                        m_delays[ v ].triggerNewGrain( wp, rev, shouldPlay, dt, tr, grainSize, m_crosstalk, delBufSize, m_bitDepth, m_srDivider );
+//                        auto dt = m_delayTimeSamps + ( m_delayTimeSamps * rand01() * m_delayTimeJitter );
+//                        bool rev = rand01() < m_reverseChance ? true : false;
+//                        auto pJit = ( rand01()* 2.0f - 1 ) * m_transpositionJitter;
+//                        auto tr = std::pow( 2, m_transposition + pJit );
+//                        bool shouldPlay = m_density >= rand01() ? true : false;
+//                        auto grainSize = m_deltaTimeSamps * 2.0;
+//                        auto wp = rand01() < m_repeatChance ? m_lastwritePos : m_writePos;
+                        if ( rand01() >= m_repeatChance )
+                            randomiseAllGrainParameters();
+                        
+                        if ( m_gParams.m_play )
+                            m_delays[ v ].triggerNewGrain( m_gParams.m_wp, m_gParams.m_rev, m_gParams.m_dt, m_gParams.m_tr, m_gParams.m_gs, m_gParams.m_ct, delBufSize, m_gParams.m_bd, m_gParams.m_srDiv );
                         m_sampleCount = 0;
-                        m_lastwritePos = wp;
                         break;
                     }
                 }
             }
             
+            activeVoices = false;
             // run through each grain channel and add output to samples
             for ( auto &  v : m_delays )
             {
                 if ( v.getIsPlaying() )
+                {
+                    activeVoices = true;
                     v.process( samples, m_buffers );
+                }
             }
 
             for ( auto & buf : m_buffers )
                 buf[ m_writePos ] = 0;
             for ( auto c = 0; c < NCHANNELS; c++ )
             {
+                
                 auto bufChan = fastMod4< int >( c, numOutChannels );
                 auto inSamp = buffer.getSample( bufChan, indexThroughBuffer );
                 m_buffers[ c ][ m_writePos ] += inSamp + ( samples[ c ] * fbSmooth );
-                auto outSamp = ( samples[ c ] * wetSmooth ) + ( inSamp * drySmooth );
-                buffer.setSample( bufChan, indexThroughBuffer, outSamp );
+                
+                switch ( m_outMode )
+                {
+                    case outputModes::mix:
+                        outSamp = ( samples[ c ] * wetSmooth ) + ( inSamp * drySmooth );
+                        buffer.setSample( bufChan, indexThroughBuffer, outSamp );
+                        break;
+                    case outputModes::insert:
+                        if( activeVoices )
+                            buffer.setSample( bufChan, indexThroughBuffer, samples[ c ] );
+                        break;
+                    case outputModes::gate:
+                        buffer.setSample( bufChan, indexThroughBuffer, samples[ c ] );
+                        break;
+                    default:
+                        outSamp = ( samples[ c ] * wetSmooth ) + ( inSamp * drySmooth );
+                        buffer.setSample( bufChan, indexThroughBuffer, outSamp );
+                        break;
+                }
+                
             }
 
             m_writePos++;
@@ -357,9 +397,83 @@ public:
         m_wetSmoother.setTargetValue( wet );
     }
     
+
+    
+    void setJitterSync( bool jitterShouldBeSynced )
+    {
+        m_jitterSync = jitterShouldBeSynced;
+    }
+    
+    void setSyncedDelayJitterValues( float divisionSamps, int nDivisions )
+    {
+#ifndef NDEBUG
+        assert( divisionSamps > 0 );
+        assert( nDivisions >= 1 );
+#endif
+        
+        m_syncedJitterDivSamps = divisionSamps;
+        m_syncedJitterDivMax = nDivisions;
+    }
+    
+    void setOutputMode( int mode )
+    {
+        m_outMode = mode;
+    }
+    
+    enum outputModes
+    {
+        mix, insert, gate
+    };
+    
 private:
+    
+    struct granDelParameters
+    {
+        granDelParameters(){}
+        ~granDelParameters(){}
+
+        float m_wp, m_dt, m_gs, m_ct, m_tr;
+        int m_bd, m_srDiv;
+        bool m_rev, m_play;
+    };
+    
+    
+    void randomiseAllGrainParameters()
+    {
+        auto dt = m_delayTimeSamps;
+        auto dtJ = ( ( 2.0 * rand01() ) - 1.0 ) * m_delayTimeJitter;
+        if ( !m_jitterSync )
+        {
+            dt += ( m_delayTimeSamps * dtJ );
+        }
+        else
+        {
+            dtJ = std::round( dtJ * m_syncedJitterDivMax );
+            dt += m_syncedJitterDivSamps * dtJ;
+        }
+        dt = ( dt < 0 ) ? ( -1.0 * dt ) : ( ( dt == 0 ) ? 1 : dt );
+        bool rev = rand01() < m_reverseChance ? true : false;
+        auto trJit = ( rand01()* 2.0f - 1 ) * m_transpositionJitter;
+        auto tr = std::pow( 2, m_transposition + trJit );
+        bool shouldPlay = m_density >= rand01() ? true : false;
+        auto grainSize = m_deltaTimeSamps * 2.0;
+//        auto wp = rand01() < m_repeatChance ? m_lastwritePos : m_writePos;
+        
+        m_gParams.m_wp = m_writePos;
+        m_gParams.m_dt = dt;
+        m_gParams.m_gs = grainSize;
+        m_gParams.m_ct = m_crosstalk;
+        m_gParams.m_tr = tr;
+        m_gParams.m_bd = m_bitDepth;
+        m_gParams.m_srDiv = m_srDivider;
+        m_gParams.m_rev = rev;
+        m_gParams.m_play = shouldPlay;
+
+    }
+    
     static constexpr int NCHANNELS = 2;
     
+    granDelParameters m_gParams;
     
     std::array< sjf_gdVoice, NVOICES > m_delays;
     std::array< std::vector< float >, NCHANNELS > m_buffers;
@@ -377,8 +491,12 @@ private:
     float m_transpositionJitter = 0;
     int m_bitDepth = 32;
     int m_srDivider = 1;
+    int m_outMode = outputModes::mix;
     float m_SR = 44100;
     
+    bool m_jitterSync = false;
+    float m_syncedJitterDivSamps = m_delayTimeSamps / 8.0;
+    float m_syncedJitterDivMax = 8;
     
     long long m_sampleCount = 0;
     long long m_deltaTimeSamps = std::round( m_SR / m_rateHz );

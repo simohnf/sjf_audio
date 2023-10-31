@@ -53,6 +53,11 @@ public:
         m_rateDivide = SRDivide;
     }
     
+    void resetCount()
+    {
+        m_count = 0;
+    }
+    
 private:
     T m_nQuantizeVals = gcem::pow( 2.0, 32.0 );
     T m_nQuantizeValsInv = ( 1.0 / m_nQuantizeVals );

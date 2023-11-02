@@ -529,4 +529,87 @@ private:
         return rAndI;
     }
 };
+
+
+
+
+
+//==============================================================================
+//==============================================================================
+//==============================================================================
+template< int LEVELS >
+struct sjf_divNames
+{
+private:
+    static constexpr int NDIVTYPES = 5;
+    std::array< std::string, NDIVTYPES >  m_divTypes =  { "nd", "n", "nq", "nt", "ns" };
+    std::array< std::string, LEVELS * NDIVTYPES > m_table;
+public:
+    sjf_divNames() : m_table()
+    {
+//        DBG("building divNames");
+        for ( auto d = 0; d < LEVELS; d++ )
+        {
+            int i = 1;
+            for ( auto j = 0; j < d; j++ )
+                i *= 2;
+            auto iStr = std::to_string( i );
+            for ( auto dt = 0; dt < NDIVTYPES; dt++ )
+            {
+//                DBG( d*NDIVTYPES + dt << " " << "/" + iStr  + m_divTypes[ dt ] );
+                m_table[ d*NDIVTYPES + dt ] =  "/" + iStr  + m_divTypes[ dt ];
+            }
+        }
+//        DBG("finished building divNames");
+//        DBG( NDIVTYPES << " " << LEVELS << " " << m_table.size() );
+    }
+    ~sjf_divNames(){}
+    
+    std::array< std::string, LEVELS*NDIVTYPES > getAllNames()
+    {
+        return m_table;
+    }
+    
+    std::string getName(std::size_t index)
+    {
+        return m_table[ index ];
+    }
+
+    std::array< int, 2 > getNumberAndDivision( std::size_t index )
+    {
+        std::array< int, 2 > output{ 0, 0 };
+        auto type = static_cast< int >(index % NDIVTYPES);
+        auto base = static_cast< int >(index / NDIVTYPES);
+        switch( type )
+        {
+            case 0 :
+                output = { 3, 2 };
+                break;
+            case 1 :
+                output = { 1, 1 };
+                break;
+            case 2 :
+                output = { 4, 5 };
+                break;
+            case 3 :
+                output = { 2, 3 };
+                break;
+            case 4 :
+                output = { 4, 7 };
+                break;
+        }
+        output[ 1 ] *= ( std::pow( 2, base ) );
+        return output;
+    }
+
+    float getMultiplier( std::size_t index )
+    {
+        auto numAndDiv = getNumberAndDivision( index );
+        return ( static_cast<float >( numAndDiv[ 0 ] ) / static_cast< float >( numAndDiv [ 1 ] ) );
+    }
+    
+    int getNDIVTYPES(){ return NDIVTYPES; }
+
+};
+
 #endif /* sjf_audioUtilitiesC++ */

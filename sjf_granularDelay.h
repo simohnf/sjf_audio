@@ -319,6 +319,7 @@ public:
             newTrigger = false;
             if ( m_sampleCount >= m_deltaTimeSamps )
             {
+                m_deltaTimeSamps = std::round( m_SR / m_rateHz );
                 newTrigger = true;
                 if ( rand01() >= m_repeatChance )
                     randomiseAllGrainParameters();
@@ -360,7 +361,7 @@ public:
         assert ( rate > 0 );
 #endif
         m_rateHz = rate; // / static_cast< float >( NVOICES );
-        m_deltaTimeSamps = std::round( m_SR / m_rateHz );
+        
     }
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------

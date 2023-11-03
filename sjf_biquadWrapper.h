@@ -22,25 +22,50 @@ public:
     void initialise( T sampleRate )
     {
         m_calculator.initialise( sampleRate );
+        m_biquad.setCoefficients( m_calculator.getCoefficients() );
     }
     
     void setFrequency( T f )
     {
-        m_calculator.setFrequency( f );
-        m_biquad.setCoefficients( m_calculator.getCoefficients() );
+        if ( m_calculator.getFrequency() != f )
+        {
+            m_calculator.setFrequency( f );
+            m_biquad.setCoefficients( m_calculator.getCoefficients() );
+        }
+    }
+    
+    T getFrequency()
+    {
+        return m_calculator.getFrequency();
     }
     
     void setQFactor( T q )
     {
-        m_calculator.setQFactor( q );
-        m_biquad.setCoefficients( m_calculator.getCoefficients() );
+        if ( m_calculator.getQFactor() != q )
+        {
+            m_calculator.setQFactor( q );
+            m_biquad.setCoefficients( m_calculator.getCoefficients() );
+        }
 //        DBG("q " << q);
+    }
+    
+    T getQ()
+    {
+        return m_calculator.getQFactor();
     }
     
     void setOrder( bool isFirstOrder )
     {
-        m_calculator.setOrder ( isFirstOrder );
-        m_biquad.setCoefficients( m_calculator.getCoefficients() );
+        if ( m_calculator.isFirstOrder() != isFirstOrder )
+        {
+            m_calculator.setOrder ( isFirstOrder );
+            m_biquad.setCoefficients( m_calculator.getCoefficients() );
+        }
+    }
+    
+    bool isFirstOrder()
+    {
+        return m_calculator.m_isFirstOrder;
     }
     
     void setFilterType( int type )
@@ -58,7 +83,7 @@ public:
         return m_calculator.getCoefficients();
     }
     
-    const T filterInput( T input )
+    T filterInput( T input )
     {
         return m_biquad.filterInput( input );
     }
@@ -67,6 +92,7 @@ public:
     {
         m_biquad.clear();
     }
+    
 private:
     sjf_biquad< T > m_biquad;
     sjf_biquadCalculator< T > m_calculator;

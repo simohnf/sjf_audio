@@ -14,7 +14,7 @@
 #include "sjf_wavetables.h"
 #include "../sjf_audio/sjf_audioUtilities.h"
 #include "sjf_bitCrusher.h"
-
+#include "sjf_biquadWrapper.h"
 //----------------------------------------------------------
 //----------------------------------------------------------
 //----------------------------------------------------------
@@ -293,6 +293,15 @@ public:
         m_drySmoother.setCurrentAndTargetValue( 0 );
         m_wetSmoother.reset( m_SR, 0.1 );
         m_wetSmoother.setCurrentAndTargetValue( 1 );
+        
+        m_outLevelSmoother.reset( m_SR, 0.1 );
+        m_outLevelSmoother.setCurrentAndTargetValue( 1 );
+        
+        for ( auto & f : m_filter )
+        {
+            f.clear();
+            f.initialise( m_SR );
+        }
     }
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
@@ -303,7 +312,7 @@ public:
         
         std::array< float, NCHANNELS > samples;
 
-        float fbSmooth, drySmooth, wetSmooth;
+        float fbSmooth, drySmooth, wetSmooth, outSmooth;
         auto delBufSize = m_buffers[ 0 ].size();
         
         auto newTrigger = false;
@@ -313,6 +322,7 @@ public:
             fbSmooth = m_fbSmoother.getNextValue();
             drySmooth = m_drySmoother.getNextValue();
             wetSmooth = m_wetSmoother.getNextValue();
+            outSmooth = m_outLevelSmoother.getNextValue();
             m_writePos = fastMod( m_writePos, delBufSize );
             for ( auto & s : samples )
                 s = 0;
@@ -338,6 +348,11 @@ public:
             for ( auto & buf : m_buffers )
                 buf[ m_writePos ] = 0;
             auto dryInsertEnv = m_dryGainInsertEnv.getValue();
+            if ( m_filterFlag )
+            {
+                for ( auto c = 0; c < NCHANNELS; c++ )
+                    samples[ c ] = m_filter[ c ].filterInput( samples[ c ] );
+            }
             for ( auto c = 0; c < NCHANNELS; c++ )
             {
                 auto bufChan = fastMod4< int >( c, numOutChannels );
@@ -347,7 +362,7 @@ public:
                 else
                     m_buffers[ c ][ m_writePos ] += inSamp + ( samples[ c ] * fbSmooth );
                 
-                writeOutputToBuffer( buffer, indexThroughBuffer, bufChan, samples[ c ], inSamp, wetSmooth, drySmooth, dryInsertEnv );
+                writeOutputToBuffer( buffer, indexThroughBuffer, bufChan, samples[ c ], inSamp, wetSmooth, drySmooth, dryInsertEnv, outSmooth );
             }
             m_writePos++;
             m_sampleCount++;
@@ -530,6 +545,26 @@ public:
     
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
+    void setFilter( float freq, float q, int type, bool trueIfFirstOrder, bool filterIsActive )
+    {
+        for ( auto & f : m_filter )
+        {
+            f.setOrder( trueIfFirstOrder );
+            f.setFrequency( freq );
+            f.setQFactor( q );
+            f.setFilterType( type );
+        }
+        m_filterFlag = filterIsActive;
+    }
+    
+    
+    //-----------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------
+    void setOutputLevel( float outLevelDB )
+    {
+        auto gain = std::pow( 10.0, outLevelDB / 20.0 );
+        m_outLevelSmoother.setTargetValue( gain );
+    }
 private:
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
@@ -690,39 +725,32 @@ private:
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
-    void writeOutputToBuffer( juce::AudioBuffer<float>& buffer, int indexThroughBuffer, int bufChan, float wetSample, float inSamp, float wetSmooth, float drySmooth, float dryInsertEnv  )
+    void writeOutputToBuffer( juce::AudioBuffer<float>& buffer, int indexThroughBuffer, int bufChan, float wetSample, float inSamp, float wetSmooth, float drySmooth, float dryInsertEnv, float outSmooth  )
     {
         switch ( m_outMode )
         {
             case outputModes::mix:
             {
-                buffer.setSample( bufChan, indexThroughBuffer, ( wetSample * wetSmooth ) + ( inSamp * drySmooth ) );
+                buffer.setSample( bufChan, indexThroughBuffer, ( ( wetSample * wetSmooth ) + ( inSamp * drySmooth ) ) * outSmooth);
                 break;
             }
             case outputModes::insert:
             {
-                buffer.setSample( bufChan, indexThroughBuffer, wetSample + ( inSamp * dryInsertEnv ) );
+                buffer.setSample( bufChan, indexThroughBuffer, (wetSample + ( inSamp * dryInsertEnv ))*outSmooth );
                 break;
             }
             case outputModes::gate:
             {
-                buffer.setSample( bufChan, indexThroughBuffer, wetSample );
+                buffer.setSample( bufChan, indexThroughBuffer, wetSample * outSmooth);
                 break;
             }
             default:
             {
-                buffer.setSample( bufChan, indexThroughBuffer, ( wetSample * wetSmooth ) + ( inSamp * drySmooth ) );
+                buffer.setSample( bufChan, indexThroughBuffer, (( wetSample * wetSmooth ) + ( inSamp * drySmooth ))*outSmooth );
                 break;
             }
         }
     }
-    //-----------------------------------------------------------------------------------
-    //-----------------------------------------------------------------------------------
-    //-----------------------------------------------------------------------------------
-    enum insertStates
-    {
-        rampUp, rampDown, wetOnly, dryOnly
-    };
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
@@ -764,13 +792,14 @@ private:
     long long m_deltaTimeSamps = std::round( m_SR / m_rateHz );
     
     int m_interpType = sjf_interpolators::interpolatorTypes::pureData;
-    char m_insertState = insertStates::wetOnly;
     int m_insertStateCount = 0;
     
-    juce::SmoothedValue< float > m_fbSmoother, m_drySmoother, m_wetSmoother;
+    juce::SmoothedValue< float > m_fbSmoother, m_drySmoother, m_wetSmoother, m_outLevelSmoother;
     
     insertDryGrainEnv m_dryGainInsertEnv;
     
+    std::array< sjf_biquadWrapper< float >, NCHANNELS > m_filter;
+    bool m_filterFlag = false;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_granularDelay )
 };
 

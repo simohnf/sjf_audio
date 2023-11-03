@@ -32,14 +32,22 @@ public:
     {
         m_SR = sampleRate;
         m_angFreqFactor = m_pi / m_SR;
+        m_K = tan( m_f0 * m_angFreqFactor );
+        m_V0 = pow(10, (m_dBGain/20) );
     }
     
     void setFrequency( T fr )
     {
         m_f0 = fr;
-        m_K = tan( fr * m_angFreqFactor );
+        m_K = tan( m_f0 * m_angFreqFactor );
 //        calculateIntermediateValues();
     }
+    
+    T getFrequency()
+    {
+        return m_f0;
+    }
+    
     
     void setQFactor( T Q )
     {
@@ -47,10 +55,15 @@ public:
 //        calculateIntermediateValues();
     }
     
+    T getQFactor()
+    {
+        return m_Q;
+    }
+    
     void setdBGain( T gain )
     {
         m_dBGain = gain;
-        m_V0 = pow(10, (gain/20) );
+        m_V0 = pow(10, (m_dBGain/20) );
 //        calculateIntermediateValues();
     }
     
@@ -99,6 +112,11 @@ public:
     void setOrder( bool isFirstOrder )
     {
         m_isFirstOrder = isFirstOrder;
+    }
+    
+    bool isFirstOrder()
+    {
+        return m_isFirstOrder;
     }
     
    enum filterType
@@ -347,9 +365,8 @@ private:
     // parameters
     T m_pi = atan(1)*4; // pi
     
-    T m_f0 = 1000, m_Q = 1, m_SR = 44100, m_dBGain; // user variables
-    T m_K, m_V0;
-    T m_angFreqFactor; // other calculation Variables
+    T m_f0 = 1000, m_Q = 1, m_SR = 44100, m_dBGain = 0; // user variables
+    T m_angFreqFactor = m_pi / m_SR, m_K = tan( m_f0 * m_angFreqFactor ), m_V0 = pow(10, (m_dBGain/20) );// other calculation Variables
     bool m_isFirstOrder = false;
     int m_type = 1;
     std::vector < T > m_coeffs;

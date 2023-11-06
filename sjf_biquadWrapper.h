@@ -83,6 +83,36 @@ public:
         return m_calculator.getCoefficients();
     }
     
+    void setParameters( T f, T q, int type, bool isFirstOrder )
+    {
+        bool paramsChanged = false;
+        if ( m_calculator.isFirstOrder() != isFirstOrder )
+        {
+            m_calculator.setOrder ( isFirstOrder );
+            paramsChanged = true;
+        }
+        if ( m_calculator.getFilterType() != type )
+        {
+            m_calculator.setFilterType( type );
+            paramsChanged = true;
+        }
+        if ( m_calculator.getQFactor() != q )
+        {
+            m_calculator.setQFactor( q );
+            paramsChanged = true;
+        }
+        if ( m_calculator.getFrequency() != f )
+        {
+            m_calculator.setFrequency( f );
+            paramsChanged = true;
+        }
+        if ( paramsChanged )
+        {
+            m_biquad.clear();
+            m_biquad.setCoefficients( m_calculator.getCoefficients() );
+        }
+    }
+    
     T filterInput( T input )
     {
         return m_biquad.filterInput( input );

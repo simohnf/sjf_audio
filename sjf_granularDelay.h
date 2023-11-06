@@ -28,6 +28,10 @@ struct sjf_granDelParameters
     float m_wp, m_dt, m_gs, m_ct, m_tr, m_amp;
     int m_bd, m_srDiv, m_interpolation;
     bool m_rev, m_play, m_crush;
+    
+    float m_filterF, m_filterQ;
+    bool m_filterActive;
+    int m_filterType;
 };
 
 //----------------------------------------------------------
@@ -63,6 +67,9 @@ private:
     
     std::array< sjf_interpolators::sjf_allpassInterpolator<float>, NCHANNELS > m_apInterps;
     
+    std::array< sjf_biquadWrapper< float >, NCHANNELS > m_filter;
+    bool m_filterFlag = false;
+    
 public:
     sjf_gdVoice()
     {
@@ -71,6 +78,14 @@ public:
     ~sjf_gdVoice(){}
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
+    void initialise( double sampleRate )
+    {
+        for ( auto & f : m_filter )
+        {
+            f.clear();
+            f.initialise( sampleRate );
+        }
+    }
     void triggerNewGrain( sjf_granDelParameters& gParams, size_t delBufSize )
     {
         if ( m_shouldPlayFlag )
@@ -113,6 +128,13 @@ public:
         }
         
         m_amp = gParams.m_amp;
+        
+        for ( auto & f : m_filter )
+        {
+            f.setParameters( gParams.m_filterF, gParams.m_filterQ, gParams.m_filterType, false );
+            f.clear();
+        }
+        m_filterFlag = gParams.m_filterActive;
     }
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
@@ -131,7 +153,10 @@ public:
         if ( m_bitCrushFlag )
             for ( auto c = 0; c < NCHANNELS; c++ )
                 m_samples[ c ] = m_bitCrush[ c ].process( m_samples[ c ] );
-
+        if ( m_filterFlag )
+            for ( auto c = 0; c < NCHANNELS; c++ )
+                m_samples[ c ] = m_filter[ c ].filterInput( m_samples[ c ] );
+        
         for ( auto & s : m_samples )
             s *= win;
         
@@ -264,7 +289,8 @@ public:
         srand (time(NULL));
         
         initialise( m_SR );
-        setGrainParams( m_gParams, m_writePos, m_delayTimeSamps, m_deltaTimeSamps * 2.0, m_crosstalk, m_transposition, m_bitDepth, m_srDivider, false, true, m_shouldCrushBits, m_interpType, 1.0 );
+//        setGrainParams( m_gParams, m_writePos, m_delayTimeSamps, m_deltaTimeSamps * 2.0, m_crosstalk, m_transposition, m_bitDepth, m_srDivider, false, true, m_shouldCrushBits, m_interpType, 1.0 );
+        setGrainParams( m_gParams, m_writePos, m_delayTimeSamps, m_deltaTimeSamps * 2.0, m_crosstalk, m_transposition, m_bitDepth, m_srDivider, false, true, m_shouldCrushBits, m_interpType, 1.0, m_filterF, m_filterQ, m_filterType, m_filterFlag );
         m_harmParams[ 0 ].setParams( true, 0 );
         m_dryGainInsertEnv.reset();
     }
@@ -297,11 +323,9 @@ public:
         m_outLevelSmoother.reset( m_SR, 0.1 );
         m_outLevelSmoother.setCurrentAndTargetValue( 1 );
         
-        for ( auto & f : m_filter )
-        {
-            f.clear();
-            f.initialise( m_SR );
-        }
+        for ( auto & g : m_delays )
+            g.initialise( m_SR );
+        
     }
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
@@ -348,11 +372,7 @@ public:
             for ( auto & buf : m_buffers )
                 buf[ m_writePos ] = 0;
             auto dryInsertEnv = m_dryGainInsertEnv.getValue();
-            if ( m_filterFlag )
-            {
-                for ( auto c = 0; c < NCHANNELS; c++ )
-                    samples[ c ] = m_filter[ c ].filterInput( samples[ c ] );
-            }
+
             for ( auto c = 0; c < NCHANNELS; c++ )
             {
                 auto bufChan = fastMod4< int >( c, numOutChannels );
@@ -547,13 +567,9 @@ public:
     //-----------------------------------------------------------------------------------
     void setFilter( float freq, float q, int type, bool trueIfFirstOrder, bool filterIsActive )
     {
-        for ( auto & f : m_filter )
-        {
-            f.setOrder( trueIfFirstOrder );
-            f.setFrequency( freq );
-            f.setQFactor( q );
-            f.setFilterType( type );
-        }
+        m_filterF = freq;
+        m_filterQ = q;
+        m_filterType = type;
         m_filterFlag = filterIsActive;
     }
     
@@ -658,7 +674,7 @@ private:
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
-    void setGrainParams( sjf_granDelParameters& param, float wp, float dt, float gs, float ct, float tr, int bd, int srDiv, bool rev, bool play, bool crush, int interp, float amp )
+    void setGrainParams( sjf_granDelParameters& param, float wp, float dt, float gs, float ct, float tr, int bd, int srDiv, bool rev, bool play, bool crush, int interp, float amp, float filterF, float filterQ, int filterType, bool filterActive )
     {
         param.m_wp = wp;
         param.m_dt = dt;
@@ -672,6 +688,10 @@ private:
         param.m_crush = crush;
         param.m_interpolation = interp;
         param.m_amp = amp;
+        param.m_filterF = filterF;
+        param.m_filterQ = m_filterQ;
+        param.m_filterType = filterType;
+        param.m_filterActive = filterActive;
     }
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
@@ -697,7 +717,7 @@ private:
         for ( auto & h : m_harmParams )
             vCount += h.isActive() ? 1 : 0;
         auto amp = std::sqrt( 1.0 / vCount );
-        setGrainParams( m_gParams, m_writePos, dt, grainSize, m_crosstalk, tr, m_bitDepth, m_srDivider, rev, shouldPlay, m_shouldCrushBits, m_interpType, amp );
+        setGrainParams( m_gParams, m_writePos, dt, grainSize, m_crosstalk, tr, m_bitDepth, m_srDivider, rev, shouldPlay, m_shouldCrushBits, m_interpType, amp,  m_filterF, m_filterQ, m_filterType, m_filterFlag );
     }
     //-----------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------
@@ -798,8 +818,11 @@ private:
     
     insertDryGrainEnv m_dryGainInsertEnv;
     
-    std::array< sjf_biquadWrapper< float >, NCHANNELS > m_filter;
     bool m_filterFlag = false;
+    float m_filterF = 1000;
+    float m_filterQ = 1;
+    int m_filterType = sjf_biquadCalculator<float>::filterType::lowpass;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_granularDelay )
 };
 

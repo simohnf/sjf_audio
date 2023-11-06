@@ -62,6 +62,7 @@ private:
     std::array< sjf_bitCrusher< float >, NCHANNELS > m_bitCrush;
     
     std::array< sjf_interpolators::sjf_allpassInterpolator<float>, NCHANNELS > m_apInterps;
+    
 public:
     sjf_gdVoice()
     {
@@ -264,7 +265,6 @@ public:
         
         initialise( m_SR );
         setGrainParams( m_gParams, m_writePos, m_delayTimeSamps, m_deltaTimeSamps * 2.0, m_crosstalk, m_transposition, m_bitDepth, m_srDivider, false, true, m_shouldCrushBits, m_interpType, 1.0 );
-//        setGrainParams( m_defaultGParams, m_writePos, 0, m_deltaTimeSamps * 2.0, 0, 1, 16, 1, false, true, false, -1 );
         m_harmParams[ 0 ].setParams( true, 0 );
         m_dryGainInsertEnv.reset();
     }
@@ -758,7 +758,7 @@ private:
     
     static constexpr int NCHANNELS = 2;
     
-    sjf_granDelParameters m_gParams;//, m_defaultGParams;
+    sjf_granDelParameters m_gParams;
     
     std::array< sjf_gdVoice, NVOICES > m_delays;
     std::array< std::vector< float >, NCHANNELS > m_buffers;

@@ -612,4 +612,14 @@ public:
 
 };
 
+
+template< typename T >
+T sjf_findClosestMultiple( T value, T base )
+{
+    double mu = static_cast< double > ( value ) / static_cast< double > ( base );
+    int mult = mu;
+    mu -= mult;
+    mult = mu >= 0.5 ? mult + 1 : mult;
+    return mult * base;
+};
 #endif /* sjf_audioUtilitiesC++ */

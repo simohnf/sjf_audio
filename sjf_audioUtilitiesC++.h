@@ -622,4 +622,47 @@ T sjf_findClosestMultiple( T value, T base )
     mult = mu >= 0.5 ? mult + 1 : mult;
     return mult * base;
 };
+
+
+
+
+//============================================================
+//============================================================
+//================= TIME STRETCH ALGORITHM STUFF =============
+
+template < typename T >
+T crossCorrelation( const T* val1, const T* val2, const size_t nSteps, const T norm = 1 )
+{
+    T sum = 0;
+    for ( auto i = 0; i < nSteps; i++ )
+    {
+        sum += val1[ i ] * val2[ i ];
+    }
+    return sum * norm;
+}
+
+//==========================================================
+
+template < typename T >
+auto crossCorrelationMaxTimeLag( const T* val1, const T* val2, const size_t nVals )
+{
+    T norm = 1.0 / static_cast< T > (nVals);
+    auto maxIndex = 0;
+    auto maxVal = crossCorrelation( val1, val2, nVals ) * norm;
+    for ( auto i = 1; i < nVals; i++ )
+    {
+        auto newVal = crossCorrelation( val1, &val2[ i ], nVals-i ) * norm;
+        if ( newVal > maxVal )
+        {
+            maxIndex = i;
+            maxVal = newVal;
+        }
+    }
+    std::cout << maxVal << std::endl;
+    return maxIndex;
+}
+
+//==========================================================
+
+
 #endif /* sjf_audioUtilitiesC++ */

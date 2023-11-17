@@ -631,7 +631,7 @@ T sjf_findClosestMultiple( T value, T base )
 //================= TIME STRETCH ALGORITHM STUFF =============
 
 template < typename T >
-T crossCorrelation( const T* val1, const T* val2, const size_t nSteps, const T norm = 1 )
+T sjf_crossCorrelation( const T* val1, const T* val2, const size_t nSteps, const T norm = 1 )
 {
     T sum = 0;
     for ( auto i = 0; i < nSteps; i++ )
@@ -644,7 +644,7 @@ T crossCorrelation( const T* val1, const T* val2, const size_t nSteps, const T n
 //==========================================================
 
 template < typename T >
-auto crossCorrelationMaxTimeLag( const T* val1, const T* val2, const size_t nVals )
+auto sjf_crossCorrelationMaxTimeLag( const T* val1, const T* val2, const size_t nVals )
 {
     T norm = 1.0 / static_cast< T > (nVals);
     auto maxIndex = 0;

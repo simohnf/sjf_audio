@@ -8,83 +8,65 @@
 #define sjf_phasor_h
 #include <JuceHeader.h>
 
-template< class floatType >
+template< typename T >
 class sjf_phasor{
     
-    floatType m_frequency = 440;
-    floatType m_SR = 44100;
-    floatType m_increment;
-    floatType m_position = 0.0f;
+    T m_frequency = 440;
+    T m_SR = 44100;
+    T m_increment;
+    T m_position = 0.0f;
     bool m_negFreqFlag = false;
 public:
     sjf_phasor()
     {
         calculateIncrement() ;
     };
-    sjf_phasor(const floatType & sample_rate, const floatType & f)
+    sjf_phasor(const T sample_rate, const T f)
     {
         initialise(sample_rate, f);
     };
     
     ~sjf_phasor() {};
     
-    void initialise(const floatType & sample_rate, const floatType & f)
+    void initialise(const T sample_rate, const T f)
     {
         m_SR = sample_rate;
         setFrequency( f );
     }
     
-    void setSampleRate( const floatType & sample_rate)
+    void setSampleRate( const T sample_rate)
     {
         m_SR = sample_rate;
         calculateIncrement();
     }
     
-    void setFrequency(const floatType & f)
+    void setFrequency(const T  f)
     {
         m_frequency = f;
-        
-        if (m_frequency >= 0)
-        {
-            m_negFreqFlag = false;
-            m_increment = m_frequency / m_SR ;
-        }
-        else
-        {
-            m_negFreqFlag = true;
-            m_increment = -1.0f * m_frequency / m_SR ;
-        }
+        calculateIncrement();
     }
     
-    floatType getFrequency(){ return m_frequency ;}
+    T getFrequency(){ return m_frequency;}
     
-    floatType output()
+    T output()
     {
-        floatType p = m_position;
+        T p = m_position;
         m_position += m_increment;
-        if (m_position >= 1.0f){ m_position -= 1.0f; }
-        if (!m_negFreqFlag)
-        {
-            return p;
-        }
-        else
-        {
-            return 1 - p;
-        }
+        m_position = (m_position >= 1) ? m_position - 1.0f : ( (m_position < 0.0f) ? m_position + 1.0f : m_position);
+        return p;
     }
     
-    void setPhase(const floatType &p)
+    void setPhase(const T p)
     {
         if (p < 0.0f) { p = 0.0f; }
         else if (p > 1.0f){ p = 1.0f; }
         m_position = p;
     }
     
-    floatType getPhase()
+    T getPhase()
     {
         return m_position;
     }
-    
 private:
     void calculateIncrement()
     {

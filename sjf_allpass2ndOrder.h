@@ -10,11 +10,11 @@
 #define sjf_allpass_h
 
 template < typename T >
-class sjf_allpass
+class sjf_allpass2ndOrder
 {
 public:
-    sjf_allpass(){}
-    ~sjf_allpass(){}
+    sjf_allpass2ndOrder(){}
+    ~sjf_allpass2ndOrder(){}
     
     T process( T x )
     {

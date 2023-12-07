@@ -7,10 +7,12 @@
 #ifndef sjf_audioUtilitiesCplusplus_h
 #define sjf_audioUtilitiesCplusplus_h
 
+#include <math.h>
 
-#ifndef PI
-#define PI 3.14159265
-#endif
+
+//#ifndef PI
+//#define PI M_PI
+//#endif
 
 template< typename T >
 void clipInPlace( T& value, const T& min, const T& max )
@@ -36,7 +38,7 @@ float phaseEnv( float phase, float period, float envLen){
     else if (rampDown < 0) {rampDown = 0;}
     rampDown *= -1;
     //    return rampUp+rampDown; // this would give linear fade
-    return sin( PI* (rampUp+rampDown)/2 ); // this gives a smooth sinewave based fade
+    return sin( M_PI* (rampUp+rampDown)/2 ); // this gives a smooth sinewave based fade
 }
 
 //==============================================================================
@@ -71,7 +73,7 @@ float pan2( float pan, int channel){
         pan += 0.5;
     }
     
-    return sin( PI* pan ); // this gives a smooth sinewave based fade
+    return sin( M_PI* pan ); // this gives a smooth sinewave based fade
 }
 
 
@@ -381,7 +383,7 @@ template< typename T >
 T calculateLPFCoefficient( const T& frequency, const T& sampleRate )
 {
     T w = ( frequency / sampleRate );
-    T twoPiW = ( 2 * PI * w );
+    T twoPiW = ( 2 * M_PI * w );
     // MAKE SURE FREQUENCY IS IN A LOGICAL RANGE
 //    T coef = sin(  twoPiW );
 //    DBG( "1 - sin f " << frequency << " coef " << coef );
@@ -663,6 +665,32 @@ auto sjf_crossCorrelationMaxTimeLag( const T* val1, const T* val2, const size_t 
 }
 
 //==========================================================
+// check if an integer is a prime number
+inline bool sjf_isPrime( int number )
+{
+    auto max = std::floor( std::sqrt( number ) );
+    if ( number <= 2 )
+        return false;
+    for ( auto i = 2; i < ( max + 1 ); i ++ )
+    {
+        auto f = static_cast< float >( number ) / static_cast< float >( i );
+        if ( ( f - static_cast< int >( f ) ) == 0 )
+            return false;
+    }
+    return true;
+}
 
+//==========================================================
+// find the nearest power of a base above value
+inline unsigned long sjf_nearestPowerAbove( unsigned long val, unsigned long base )
+{
+    return std::pow( 2, std::ceil( std::log( val )/ std::log( base ) ) );
+}
+//==========================================================
+// find the nearest power of a base below value
+inline unsigned long sjf_nearestPowerBelow( unsigned long val, unsigned long base )
+{
+    return std::pow( 2, std::floor( std::log( val )/ std::log( base ) ) );
+}
 
 #endif /* sjf_audioUtilitiesC++ */

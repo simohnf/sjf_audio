@@ -76,11 +76,12 @@ public:
         else { m_b = newCutoff; }
     }
     ///////////////////////////////////////////////////
-    void setCoefficient( const T newCutoff )
+    void setCoefficient( const T newCoef)
     {
-        if (newCutoff > 0.999999) { m_b = 0.999999; }
-        else if( newCutoff < 0.0 ) { m_b = 0.0; }
-        else { m_b = newCutoff; }
+        m_b = newCoef < 0 ? 0 : ( newCoef > 0.999999 ? 0.999999 : newCoef );
+//        if ( newCoef > 0.999999) { m_b = 0.999999; }
+//        else if( newCoef < 0.0 ) { m_b = 0.0; }
+//        else { m_b = newCoef; }
     }
     ///////////////////////////////////////////////////
     T getCutoff()

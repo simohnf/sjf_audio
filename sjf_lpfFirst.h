@@ -7,10 +7,11 @@
 #ifndef sjf_lpfFirst_h
 #define sjf_lpfFirst_h
 
+#include <math.h>
 inline
 float calculateOnePoleFilterCoefficient( float f, float sampleRate)
 {
-    return ( sin( f * 2 * 3.141593 / sampleRate ) );
+    return ( sin( f * 2 * M_PI / sampleRate ) );
 }
 
 class sjf_lpfFirst

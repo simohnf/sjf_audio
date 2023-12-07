@@ -10,7 +10,7 @@
 #define sjf_hilbert_h
 
 
-#include "sjf_allpass.h"
+#include "sjf_allpass2ndOrder.h"
 
 // based on the hilbert transform abstraction contained in pure data
 
@@ -52,7 +52,7 @@ public:
 private:
     static constexpr int NAPs = 2;
     static constexpr int DEPTH = 2;
-    std::array< std::array< sjf_allpass< T >, NAPs >, DEPTH > m_aps;
+    std::array< std::array< sjf_allpass2ndOrder< T >, NAPs >, DEPTH > m_aps;
     std::array< std::array< std::array< T, 2 >, NAPs >, DEPTH > m_coeffs =
     { { { { { -0.260502, 0.02569 }, { 0.870686, -1.8685 } } }, { { { 0.94657, -1.94632 }, { 0.06338, -0.83774 } } } } };
 };

@@ -98,7 +98,7 @@ public:
 
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-// One multiply allpass as per Moorer
+// One multiply allpass as per Moorer - "about this reverberation business"
 
 template< typename T >
 class sjf_allpass

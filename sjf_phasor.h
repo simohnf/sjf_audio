@@ -13,9 +13,8 @@ class sjf_phasor{
     
     T m_frequency = 440;
     T m_SR = 44100;
-    T m_increment;
-    T m_position = 0.0f;
-    bool m_negFreqFlag = false;
+    T m_increment = m_frequency / m_SR;
+    T m_phase = 0.0f;
 public:
     sjf_phasor()
     {
@@ -42,6 +41,8 @@ public:
     
     void setFrequency(const T  f)
     {
+        if ( m_frequency == f )
+            return;
         m_frequency = f;
         calculateIncrement();
     }
@@ -50,9 +51,9 @@ public:
     
     T output()
     {
-        T p = m_position;
-        m_position += m_increment;
-        m_position = (m_position >= 1) ? m_position - 1.0f : ( (m_position < 0.0f) ? m_position + 1.0f : m_position);
+        T p = m_phase;
+        m_phase += m_increment;
+        m_phase = (m_phase >= 1) ? m_phase - 1.0f : ( (m_phase < 0.0f) ? m_phase + 1.0f : m_phase);
         return p;
     }
     
@@ -60,12 +61,12 @@ public:
     {
         if (p < 0.0f) { p = 0.0f; }
         else if (p > 1.0f){ p = 1.0f; }
-        m_position = p;
+        m_phase = p;
     }
     
     T getPhase()
     {
-        return m_position;
+        return m_phase;
     }
 private:
     void calculateIncrement()

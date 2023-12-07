@@ -17,6 +17,7 @@
 template < typename T >
 class sjf_hilbert
 {
+    
 public:
     sjf_hilbert()
     {

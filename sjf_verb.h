@@ -313,7 +313,7 @@ private:
      } } ;
     
     sjf_PQR< 10 > m_pqrList;
-    std::vector< int > m_pqrIndices;
+    std::array< std::vector< int >, 7 > m_pqrIndices;
     static constexpr std::array< std::array< float, 3 >, N_LATE_REFLECT > m_roomModePQR =
     { {
         { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }, // axial modes
@@ -328,12 +328,7 @@ private:
 public:
     sjf_verb()
     {
-//        m_pqrIndices.reserve( m_pqrList.getSize() );
-//        for ( auto i = 0; i < m_pqrList.getSize(); i++ )
-//        {
-//            
-//        }
-        
+        initialisePQRIndices();
         fillPrimeNumberVector( PRIME_MAX );
         setRoomVolume( m_volume );
         DBG( "INITIALISE SJF_VERB");
@@ -449,6 +444,30 @@ public:
         m_fdn.setShouldMix( trueIfShouldixLate );
     }
 private:
+    void initialisePQRIndices()
+    {
+        for ( auto & i : m_pqrIndices )
+            i.resize( m_pqrList.getSize() );
+        std::vector< float > modes, mSorted;
+        modes.resize( m_pqrList.getSize() );
+        mSorted.resize( m_pqrList.getSize() );
+        for ( auto room = 0; room < m_roomRatios[0].size(); room ++ )
+        {
+            for ( auto i = 0; i < m_pqrList.getSize(); i++ )
+            {
+                auto pqr = m_pqrList[ i ];
+                auto f = sjf_calculateRoomMode<float>( m_roomRatios[0][room], m_roomRatios[1][room], 1, pqr[0], pqr[1], pqr[2] );
+                mSorted[i] = modes[i] = f;
+            }
+            std::sort(mSorted.begin(), mSorted.end());
+
+            for ( auto i = 0; i < m_pqrList.getSize(); i++ )
+            {
+                auto it = find(modes.begin(), modes.end(), mSorted[ i ] );
+                m_pqrIndices[room][ i ] = static_cast<int>( it - modes.begin() );
+            }
+        }
+    }
     
     void fillPrimeNumberVector( int primeMax )
     {
@@ -478,9 +497,10 @@ private:
         L = H * ratioX;
         for ( auto i = 0; i < N_LATE_REFLECT; i++ )
         {
-            auto P = m_roomModePQR[ i ][ 0 ];
-            auto Q = m_roomModePQR[ i ][ 1 ];
-            auto R = m_roomModePQR[ i ][ 2 ];
+            auto pqrIndex = m_pqrIndices[m_roomType][ i ];
+            auto P = m_pqrList[ pqrIndex ][ 0 ];
+            auto Q = m_pqrList[ pqrIndex ][ 1 ];
+            auto R = m_pqrList[ pqrIndex ][ 2 ];
             auto f = sjf_calculateRoomMode( L, W, H, P, Q, R );
             auto T = 1.0 / f;
             roomModesInSamps[ i ] = T * m_SR;

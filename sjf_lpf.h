@@ -8,6 +8,7 @@
 #ifndef sjf_lpf_h
 #define sjf_lpf_h
 
+#include <limits>
 template < class T >
 class sjf_lpf
 {
@@ -109,5 +110,34 @@ private:
     T m_y0 = 0.0, m_y1 = 0.0, m_b = 0.5;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_lpf )
 };
+
+template< typename T >
+class sjf_lpf2
+{
+private:
+    T m_y1 = 0, m_g = 0;
+    static constexpr T m_maxG = 1.0 - std::numeric_limits< T >::epsilon();
+public:
+    sjf_lpf2(){}
+    ~sjf_lpf2(){}
+    
+    void setCoefficient( T g )
+    {
+        m_g = g<0 ? 0 : g >= 1 ? m_maxG : g;
+    }
+    
+    T filterInput( T input )
+    {
+        m_y1 = input + m_g * ( m_y1 - input );
+        return m_y1;
+    }
+    
+    void clear()
+    {
+        m_y1 = 0;
+    }
+    
+};
+
 #endif /* sjf_lpf_h */
 

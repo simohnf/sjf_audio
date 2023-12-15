@@ -669,8 +669,10 @@ auto sjf_crossCorrelationMaxTimeLag( const T* val1, const T* val2, const size_t 
 inline bool sjf_isPrime( int number )
 {
     auto max = std::floor( std::sqrt( number ) );
-    if ( number <= 2 )
+    if ( number < 2 )
         return false;
+    if ( number == 2 )
+        return true;
     for ( auto i = 2; i < ( max + 1 ); i ++ )
     {
         auto f = static_cast< float >( number ) / static_cast< float >( i );
@@ -692,5 +694,110 @@ inline unsigned long sjf_nearestPowerBelow( unsigned long val, unsigned long bas
 {
     return std::pow( 2, std::floor( std::log( val )/ std::log( base ) ) );
 }
+//==========================================================
+// calculate room mode
+template< typename T >
+T sjf_calculateRoomMode( T length_meters, T width_meters, T height_meters, int P, int Q, int R , T speedOfSound = 344 )
+{
+    T PoL = static_cast<T>( P ) / length_meters;
+    T QoW = static_cast<T>( Q ) / width_meters;
+    T RoH = static_cast<T>( R ) / height_meters;
+    return ( speedOfSound*0.5 ) * std::sqrt( PoL*PoL + QoW*QoW + RoH*RoH );
+}
+//==========================================================
+// calculate room mode
+inline int GCD( int* values, int nValues )
+{
+    int max = 0;
+    for ( auto i = 0; i < nValues; i++ )
+        max = values[ i ] > max ? values[ i ] : max;
+    for ( auto i = max; i > 1; i-- )
+    {
+        auto sum = 0;
+        for ( auto j = 0; j < nValues; j++ )
+            if ( values[ j ] % i != 0 )
+                sum += 1;
+        if ( sum == 0 )
+            return i;
+    }
+    return 1;
+}
+
+//==========================================================
+// calculate room mode
+template< int STEPS >
+struct sjf_PQR
+{
+
+private:
+    static constexpr int NAXIAL = 3;
+    static constexpr int NTANGENTIAL = STEPS*3;
+    static constexpr int NOBLIQUE = STEPS*3 + 1;
+    static constexpr int SIZE = NAXIAL + NTANGENTIAL + NOBLIQUE;
+    int m_finalSize = SIZE;
+    int m_table[ SIZE ][ 3 ];
+
+public:
+    constexpr sjf_PQR() : m_table()
+    {
+        int tempTable[ SIZE ][ 3 ];
+        for ( int i = 0; i < 3; i++ )
+        {
+            tempTable[ i ][ 0 ] = tempTable[ i ][ 1 ] = tempTable[ i ][ 2 ] = 0;
+            tempTable[ i ][ i ] += 1;
+        }
+        for ( int i = 0; i < STEPS*3; i++ )
+        {
+            int pqr[ 3 ] = { tempTable[ i ][ 0 ], tempTable[ i ][ 1 ], tempTable[ i ][ 2 ] };
+            if ( pqr[ i % 3 ] > pqr[ (i + 1) % 3 ] )
+                pqr[ (i + 1) % 3 ] +=1;
+            else
+                pqr[ i % 3 ] +=1;
+            for ( auto j = 0; j < 3; j++ )
+                tempTable[ i + 3 ][ j ] = pqr[ j ];
+        }
+        auto count = STEPS*3 + 3;
+        tempTable[ count ][ 0 ] = tempTable[ count ][ 1 ] = tempTable[ count ][ 2 ] = 1;
+        auto stop = count + STEPS;
+        for ( int i = count; i < stop; i++ )
+            for ( auto j = 0; j < 3; j++ )
+            {
+                int pqr[ 3 ] = { tempTable[ i ][ 0 ], tempTable[ i ][ 1 ], tempTable[ i ][ 2 ] };
+                pqr[ j ] += 1;
+                count += 1;
+                for ( auto k = 0; k < 3; k++ )
+                    tempTable[ count ][ k ] = pqr[ k ];
+            }
+        count = 0;
+        for ( auto i = 0; i < SIZE; i++ )
+        {
+            int pqr[ 3 ] = { tempTable[ i ][ 0 ], tempTable[ i ][ 1 ], tempTable[ i ][ 2 ] };
+            auto isUnique = true;
+            for ( auto j = 0; j < i; j++ )
+            {
+                if ( (pqr[0]==tempTable[j][0]) && (pqr[1]==tempTable[j][1]) && (pqr[2]==tempTable[j][2]) )
+                {
+                    isUnique = false;
+                    break;
+                }
+            }
+            if ( isUnique && GCD( pqr, 3 ) == 1 )
+            {
+                m_table[count][0] = pqr[0];
+                m_table[count][1] = pqr[1];
+                m_table[count][2] = pqr[2];
+                count ++;
+            }
+        }
+        m_finalSize = count;
+    }
+
+    ~sjf_PQR(){}
+
+    const size_t getSize(){ return m_finalSize; }
+    const int getValue(std::size_t index, std::size_t index2) const { return m_table[ index ][ index2 ]; }
+    const int* operator[](std::size_t index) const { return m_table[ index ]; }
+};
+
 
 #endif /* sjf_audioUtilitiesC++ */

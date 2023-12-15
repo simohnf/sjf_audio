@@ -33,9 +33,9 @@ private:
     //==============================================================================
     //==============================================================================
     template< int NUM_CHANNELS, int NUM_TAPS, int totalLengthMS >
-    struct velveltDelays
+    struct velvetDelays
     {
-        constexpr velveltDelays( ) : dtArray()
+        constexpr velvetDelays( ) : dtArray()
         {
             int count = 1;
             T frac = 1.0f / NUM_TAPS; // fraction of total length for first stage
@@ -749,7 +749,7 @@ private:
             }
             const T sampsPerMS = m_SR * 0.001;
 //            static constexpr std::array< glVelvetDelayTimes< 1, NUM_TAPS, MAX_ER_TIME >, NUM_REV_CHANNELS > multiTapTimes;
-            static constexpr auto multiTapTimes = velveltDelays< NUM_REV_CHANNELS, NUM_TAPS, MAX_ER_TIME / 2 >();
+            static constexpr auto multiTapTimes = velvetDelays< NUM_REV_CHANNELS, NUM_TAPS, MAX_ER_TIME / 2 >();
             for ( int t = 0; t < NUM_TAPS; t ++ )
             {
                 m_multitapERDelayTimesSamps[ i ][ t ] = multiTapTimes.getValue( i, t ) * sampsPerMS * sizeFactor;

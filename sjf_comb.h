@@ -7,7 +7,7 @@
 #ifndef sjf_comb_h
 #define sjf_comb_h
 
-
+#include <limits>
 #include "sjf_delayLine.h"
 #include "sjf_circularBuffer.h"
 #include "sjf_lpf.h"
@@ -258,7 +258,7 @@ public:
         m_delayLine.initialise( MaxDelayInSamps );
     }
     
-    T filterInput( const T input )
+    T filterInput( T input )
     {
         T delayed = m_shouldFilter ? m_lpf.filterInput( m_delayLine.getSample( m_delayInSamps ) ) : m_delayLine.getSample( m_delayInSamps );
         input += ( delayed * m_feedback );
@@ -273,7 +273,7 @@ public:
         m_delayLine.setSample( input );
     }
     
-    T filterInputRoundedIndex( const T& input )
+    T filterInputRoundedIndex( T input )
     {
         
         T delayed = m_shouldFilter ? m_lpf.filterInput( m_delayLine.getSample( m_roundedDelay ) ): m_delayLine.getSample( m_roundedDelay );
@@ -305,7 +305,7 @@ public:
         return delayed;
     }
     
-    void setDelayTimeSamps( const T& delayInSamps )
+    void setDelayTimeSamps( const T delayInSamps )
     {
         m_delayInSamps = delayInSamps;
         m_roundedDelay = static_cast< size_t >( std::round( m_delayInSamps ) );
@@ -316,7 +316,7 @@ public:
         return m_delayInSamps;
     }
     
-    void setCoefficients( const T blend, const T feedforward, const T feedback )
+    void setCoefficient( const T feedback )
     {
         m_feedback = feedback;
     }
@@ -349,7 +349,118 @@ public:
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR ( sjf_fbComb )
 };
+// nested allpass as per moorer - about this reverberation business
 
+
+// nested allpass as per moorer - about this reverberation business
+//template< typename T, int NUMSTAGES >
+//class sjf_nestedAllPass
+//{
+//private:
+//    static constexpr int NSTAGES = std::max( NUMSTAGES, 2 );
+//
+//
+//    bool m_shouldFilter = false;
+//    std::array< sjf_circularBuffer< T >, NSTAGES > m_apStages;
+//    std::array< sjf_lpf< T >,  NSTAGES > m_lpf;
+//    std::array< T,  NSTAGES > m_gains = { 0.6, 0.6 };
+//    std::array< T,  NSTAGES > m_delaysInSamps = { 1, 1 };
+//    std::array< size_t, NSTAGES > m_roundedDelays = { 1, 1 };
+//    std::array< T, NSTAGES > m_delayedSamples;
+//    std::array< T, NSTAGES > m_xhns;
+//public:
+//    sjf_nestedAllPass()
+//    {
+//        for ( auto i = 0; i < NSTAGES; i++ )
+//        {
+//            setCoefficient( 0.5, i );
+//            setDelayTimeSamps( 10, i );
+//            m_delayedSamples[ i ] = m_xhns[ i ] = 0;
+//        }
+//    }
+//    ~sjf_nestedAllPass(){}
+//
+//    void initialise( const int MaxDelayInSamps )
+//    {
+//        for ( auto & ap : m_apStages )
+//            ap.initialise( MaxDelayInSamps );
+//    }
+//
+//
+//    T process( T input, bool delayTimeIsFractional )
+//    {
+//        auto finalStage = NSTAGES - 1;
+//
+//        for ( auto i = 0; i < NSTAGES-1; i++ )
+//        {
+//            // get delayed signal at this stage
+//            m_delayedSamples[ i ] = delayTimeIsFractional ? m_apStages[ i ].getSample( m_delaysInSamps[ i ] ) : m_apStages[ i ].getSample( m_roundedDelays[ i ] );
+//            // to filter or not to filter
+//            m_delayedSamples[ i ] = m_shouldFilter ? m_lpf[ i ].filterInput( m_delayedSamples[ i ] ) : m_delayedSamples[ i ];
+//            // one multiply value
+//            m_xhns[ i ] = ( input - m_delayedSamples[ i ] ) * m_gains[ i ];
+//            input += m_xhns[ i ];
+//        }
+//
+//        // final stage is a normal allpass
+//        m_delayedSamples[ finalStage ] = delayTimeIsFractional ? m_apStages[ finalStage ].getSample( m_delaysInSamps[ finalStage ] ) : m_apStages[ finalStage ].getSample( m_roundedDelays[ finalStage ] );
+//        m_delayedSamples[ finalStage ] = m_shouldFilter ? m_lpf[ finalStage ].filterInput( m_delayedSamples[ finalStage ] ) : m_delayedSamples[ finalStage ];
+//        m_xhns[ finalStage ] = ( input - m_delayedSamples[ finalStage ] ) * m_gains[ finalStage ];
+//        m_apStages[ finalStage ].setSample( input + m_xhns[ finalStage ] );
+//        input = m_delayedSamples[ finalStage ] + m_xhns[ finalStage ];
+//
+//        // then go backwards
+//        for ( auto i = NSTAGES-1; i >= 0; i-- )
+//        {
+//            // set value in circular buffer
+//            m_apStages[ i ].setSample( input );
+//            // calculate input to previous stage
+//            input = m_delayedSamples[ i ] + m_xhns[ i ];
+//        }
+//        return input;
+//    }
+//
+//
+//
+//
+//
+//
+//    void setDelayTimeSamps( const T delayInSamps, size_t voice )
+//    {
+//        m_delaysInSamps[ voice ] = delayInSamps;
+//        m_roundedDelays[ voice ] = static_cast< size_t >( std::round( delayInSamps ) );
+//    }
+//
+//
+//    void setCoefficient( const T gain, size_t voice )
+//    {
+//        m_gains[ voice ] = gain;
+//    }
+//
+//    void clearDelaylines( )
+//    {
+//        for ( auto & lpf : m_lpf )
+//            lpf.reset();
+//        for ( auto & ap : m_apStages )
+//            ap.clear();
+//    }
+//
+//    void setInterpolationType( const int &interpolationType )
+//    {
+//        for ( auto & ap : m_apStages )
+//            ap.setInterpolationType( interpolationType );
+//    }
+//
+//    void setShouldFilter( bool trueIfFilterOn )
+//    {
+//        m_shouldFilter = trueIfFilterOn;
+//    }
+//
+//    void setLPFCoefficient( T coef, size_t voice )
+//    {
+//        m_lpf[ voice ].setCoefficient( coef );
+//    }
+//};
 
 
 

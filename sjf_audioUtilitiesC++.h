@@ -705,7 +705,7 @@ T sjf_calculateRoomMode( T length_meters, T width_meters, T height_meters, int P
     return ( speedOfSound*0.5 ) * std::sqrt( PoL*PoL + QoW*QoW + RoH*RoH );
 }
 //==========================================================
-// calculate greatest common denominator of a list of values
+// calculate room mode
 inline int GCD( int* values, int nValues )
 {
     int max = 0;
@@ -724,7 +724,7 @@ inline int GCD( int* values, int nValues )
 }
 
 //==========================================================
-// generate list of PQR values for room mode calculation
+// calculate room mode
 template< int STEPS >
 struct sjf_PQR
 {
@@ -798,22 +798,6 @@ public:
     const int getValue(std::size_t index, std::size_t index2) const { return m_table[ index ][ index2 ]; }
     const int* operator[](std::size_t index) const { return m_table[ index ]; }
 };
-//==========================
-template< typename T >
-inline void sjf_oneMultiplyScatterJuntion( T& val1, T& val2, T gain )
-{
-    auto xhn = (val1 - val2)* gain;
-    val1 += xhn;
-    val2 += xhn;
-}
 
 
-//==========================
-// find approximation of sqrt using newton's method
-template < typename T >
-T sjf_sqrt( T number, T tol = 0.00001, T guess = 1 )
-{
-    T root = 0.5 * ( guess + ( number / guess ) );
-    return std::abs( guess - root ) < tol ? root : sjf_sqrt< T > ( number, tol, root );
-}
 #endif /* sjf_audioUtilitiesC++ */

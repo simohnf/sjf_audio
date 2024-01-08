@@ -12,131 +12,67 @@
 #include "sjf_circularBuffer.h"
 
 
-template < typename T, int NVOICES >
-class sjf_nestedAllpass
+// add different early reflection types
+// add modulation
+// stereo processing
+
+//=================================================
+//=================================================
+//=================================================
+
+template < typename T >
+class sjf_nestedAP
 {
 private:
-    sjf_multiVoiceCircularBuffer< T, NVOICES > m_circBuff;
-    std::array< sjf_lpf2< T >, NVOICES > m_lpfs;
-    std::array< T, NVOICES > m_delayTimesSamps, m_delayedSamples, m_xhns, m_gains;
-    std::array< size_t, NVOICES > m_roundedDelays;
-    T m_gain = 0.5, m_parallelInputScale, m_damp = 0.1;
+    sjf_multiVoiceCircularBuffer< T, 2 > m_circBuff;
+    std::array< sjf_lpf2< T >, 2 > m_lpfs;
+    std::array< T, 2 > m_delayTimesSamps, m_delayedSamples, m_xhns, m_gains;
+    std::array< size_t, 2 > m_delayTimesSampsRounded;
+    T m_gain = 0.5, m_damp = 0.1;
     int m_nStages = 0; // this determines the number nested steps
-    std::vector< int > m_stages;
     bool m_shouldFilter = false;
 public:
-    sjf_nestedAllpass()
+    sjf_nestedAP()
     {
         initialise( 44100 );
-        setNumNestedStages( NVOICES / 2 );
         setAllCoefficients( 0.7, true );
     }
-    ~sjf_nestedAllpass(){}
+    ~sjf_nestedAP(){}
     
     void initialise( T maxLengthPerVoiceInSamps )
     {
         m_circBuff.initialise( maxLengthPerVoiceInSamps );
     }
-      
+    
     T process( T input, bool delayTimeIsFractional = false )
     {
-        size_t voiceCount = 0;
-        for ( auto j = 0; j < m_nStages; j++ )
+        std::array< T, 2 > delTaps;
+        for ( auto i = 0; i < 2; i++ )
         {
-            for ( auto i = 0; i < m_stages[ j ] - 1; i++ )
-            {
-                // get delayed signal at this stage
-                m_delayedSamples[ voiceCount ] = delayTimeIsFractional ? m_circBuff.getSample( m_delayTimesSamps[ voiceCount ], voiceCount ) : m_circBuff.getSample( m_roundedDelays[ voiceCount ], voiceCount );
-                // to filter or not to filter
-                m_delayedSamples[ voiceCount ] = m_shouldFilter ? m_lpfs[ voiceCount ].filterInput( m_delayedSamples[ voiceCount ] ) : m_delayedSamples[ voiceCount ];
-                // one multiply value
-                m_xhns[ voiceCount ] = ( input - m_delayedSamples[ voiceCount ] ) * m_gains[ voiceCount ];
-                input += m_xhns[ voiceCount ];
-                voiceCount += 1;
-            }
-            m_delayedSamples[ voiceCount ] = delayTimeIsFractional ? m_circBuff.getSample( m_delayTimesSamps[ voiceCount ], voiceCount ) : m_circBuff.getSample( m_roundedDelays[ voiceCount ], voiceCount );
-            m_delayedSamples[ voiceCount ] = m_shouldFilter ? m_lpfs[ voiceCount ].filterInput( m_delayedSamples[ voiceCount ] ) : m_delayedSamples[ voiceCount ];
-            m_xhns[ voiceCount ] = ( input - m_delayedSamples[ voiceCount ] ) * m_gains[ voiceCount ];
-            m_circBuff.setSample( input + m_xhns[ voiceCount ], voiceCount );
-            input = m_delayedSamples[ voiceCount ] + m_xhns[ voiceCount ];
-            // then go backwards
-            for ( auto i = 0; i < m_stages[ j ] - 1; i++ )
-            {
-                voiceCount -= 1;
-                // set value in circular buffer
-                m_circBuff.setSample( input + m_xhns[ voiceCount ], voiceCount );
-                // calculate input to previous stage
-                input = m_delayedSamples[ voiceCount  ] + m_xhns[ voiceCount ];
-            }
-            voiceCount += m_stages[ j ];
+            auto dt = delayTimeIsFractional ? m_delayTimesSamps[ i ] : m_delayTimesSampsRounded[ i ];
+            delTaps[ i ] = m_shouldFilter ? m_lpfs[ i ].filterInput( m_circBuff.getSample( dt, i )  ) : m_circBuff.getSample( dt, i ) ;
         }
+
+        sjf_oneMultiplyScatterJuntion< T >( input, delTaps[ 0 ], m_gains[ 0 ] );
+        sjf_oneMultiplyScatterJuntion< T >( input, delTaps[ 1 ], m_gains[ 1 ] );
+        
+        m_circBuff.setSample( input, 1 );
+        m_circBuff.setSample( delTaps[ 1 ], 0 );
+        
         m_circBuff.updateWritePosition();
-        return input;
+        return delTaps[ 0 ];
+        
     }
     
-    T processParallel( T input, bool delayTimeIsFractional = false )
-    {
-        size_t voiceCount = 0;
-        T value = 0;
-        input *= m_parallelInputScale;
-        for ( auto j = 0; j < m_nStages; j++ )
-        {
-            T inSamp = input;
-            for ( auto i = 0; i < m_stages[ j ] - 1; i++ )
-            {
-                // get delayed signal at this stage
-                m_delayedSamples[ voiceCount ] = delayTimeIsFractional ? m_circBuff.getSample( m_delayTimesSamps[ voiceCount ], voiceCount ) : m_circBuff.getSample( m_roundedDelays[ voiceCount ], voiceCount );
-                // to filter or not to filter
-                m_delayedSamples[ voiceCount ] = m_shouldFilter ? m_lpfs[ voiceCount ].filterInput( m_delayedSamples[ voiceCount ] ) : m_delayedSamples[ voiceCount ];
-                // one multiply value
-                m_xhns[ voiceCount ] = ( inSamp - m_delayedSamples[ voiceCount ] ) * m_gains[ voiceCount ];
-                inSamp += m_xhns[ voiceCount ];
-                voiceCount += 1;
-            }
-            m_delayedSamples[ voiceCount ] = delayTimeIsFractional ? m_circBuff.getSample( m_delayTimesSamps[ voiceCount ], voiceCount ) : m_circBuff.getSample( m_roundedDelays[ voiceCount ], voiceCount );
-            m_delayedSamples[ voiceCount ] = m_shouldFilter ? m_lpfs[ voiceCount ].filterInput( m_delayedSamples[ voiceCount ] ) : m_delayedSamples[ voiceCount ];
-            m_xhns[ voiceCount ] = ( inSamp - m_delayedSamples[ voiceCount ] ) * m_gains[ voiceCount ];
-            m_circBuff.setSample( inSamp + m_xhns[ voiceCount ], voiceCount );
-            inSamp = m_delayedSamples[ voiceCount ] + m_xhns[ voiceCount ];
-            // then go backwards
-            for ( auto i = 0; i < m_stages[ j ] - 1; i++ )
-            {
-                voiceCount -= 1;
-                m_circBuff.setSample( inSamp, voiceCount ); // set value in circular buffer
-                inSamp = m_delayedSamples[ voiceCount  ] + m_xhns[ voiceCount ]; // calculate input to previous stage
-            }
-            value += inSamp;
-            voiceCount += m_stages[ j ];
-        }
-        m_circBuff.updateWritePosition();
-        return value;
-    }
     
     void setDelayTimeSamps( T delayTimeSamps, int voiceNum )
     {
 #ifndef NDEBUG
         assert( voiceNum >= 0 );
-        assert( voiceNum < NVOICES );
+        assert( voiceNum <= 1 );
 #endif
         m_delayTimesSamps[ voiceNum ] = delayTimeSamps;
-        m_roundedDelays[ voiceNum ] = delayTimeSamps;
-    }
-    
-    void setNumNestedStages( int nStages )
-    {
-#ifndef NDEBUG
-        assert( nStages > 0 );
-        assert( nStages <= NVOICES );
-#endif
-        if ( m_nStages == nStages )
-            return;
-        m_nStages = nStages < 2 ? 2 : nStages > NVOICES ? NVOICES : nStages;
-        m_stages.resize( m_nStages );
-        int stageSize = NVOICES  / m_nStages;
-        auto dif = NVOICES - ( stageSize * m_nStages );
-        std::fill( std::begin( m_stages ), std::end( m_stages ) - dif,  stageSize );
-        std::fill( std::end( m_stages ) - dif, std::end( m_stages ),  stageSize + 1 );
-        m_parallelInputScale = 1.0 / std::pow( 2, ( log( m_nStages )/log( 2 ) ) / 2.0 );
+        m_delayTimesSampsRounded[ voiceNum ] = delayTimeSamps;
     }
     
     void setInterpolationType( int interpType )
@@ -148,20 +84,16 @@ public:
     void setAllCoefficients( T gain, bool shouldAlternatePolarity )
     {
         m_gain = gain;
-        
-        auto voice = 0;
         if ( !shouldAlternatePolarity )
-            std::fill( std::begin( m_gains ), std::end( m_gains ),  m_gain ); return;
-        for ( auto s = 0; s < m_nStages; s++ )
         {
-            auto g = m_gain;
-            for ( auto i = 0; i < m_stages[ s ]; i++ )
-            {
-                m_gains[ voice ] = g;
-                g *= -1.0;
-                voice += 1;
-            }
+            std::fill( std::begin( m_gains ), std::end( m_gains ),  m_gain );
         }
+        else
+        {
+            m_gains[ 0 ] = m_gain;
+            m_gains[ 1 ] = -1*m_gain;
+        }
+
         setAllLPFCoefficients( m_damp );
     }
     
@@ -170,27 +102,93 @@ public:
         m_shouldFilter = trueIfFilterIsOn;
     }
     
-
+    
     void setAllLPFCoefficients( T lpfCoef )
     {
         m_damp = lpfCoef;
-        for ( auto v = 0; v < NVOICES; v++ )
-                m_lpfs[ v ].setCoefficient( lpfCoef * ( 1.0 - m_gains[ v ]) );
-//        for ( auto & f : m_lpfs )
-//            f.setCoefficient( LPFCoef );
+        for ( auto v = 0; v < m_lpfs.size(); v++ )
+            m_lpfs[ v ].setCoefficient( m_damp );
     }
 };
+
+//=================================================
+//=================================================
+//=================================================
 
 // diffusion a la geraint luff https://signalsmith-audio.co.uk/writing/2021/lets-write-a-reverb/
 template < typename T, int NVOICES, int NSTAGES >
 class sjf_glDiffuser
 {
 private:
-    std::array< std::array< sjf_circularBuffer< T >, NVOICES >, NSTAGES > m_buffers;
-    
+    sjf_multiVoiceCircularBuffer< T, NVOICES * NSTAGES > m_circBuff;
+    std::array< std::array< T, NVOICES >, NSTAGES > m_delayTimesSamps;
+    std::array< std::array< size_t, NVOICES >, NSTAGES > m_delayTimesSampsRounded;
+    std::array< std::array< sjf_lpf2< T >, NVOICES >, NSTAGES > m_lpfs;
+    std::array< T, NVOICES > m_samps;
+    T m_damp = 0;
+    bool m_shouldFilter = false;
 public:
     sjf_glDiffuser(){}
     ~sjf_glDiffuser(){}
+    
+    void initialise( size_t maxDelayTimeInSamples )
+    {
+        m_circBuff.initialise( maxDelayTimeInSamples );
+    }
+    
+    void processInPlace( T* input, bool delayTimeIsFractional = false )
+    {
+        for ( auto i = 0; i < NSTAGES; i++ )
+        {
+            for ( auto j = 0; j < NVOICES; j++ )
+            {
+                auto buffVoice = j + ( i * NSTAGES );
+                m_circBuff.setSample( input[ j ], buffVoice );
+                auto dt = delayTimeIsFractional ? m_delayTimesSamps[ i ][ j ] : m_delayTimesSampsRounded[ i ][ j ];
+                input[ j ] = m_shouldFilter ? m_lpfs[ i ][ j ].filterInput( m_circBuff.getSample( dt, buffVoice ) ) : m_circBuff.getSample( dt, buffVoice );
+            }
+            Hadamard< T, NVOICES >::inPlace( input );
+        }
+        m_circBuff.updateWritePosition();
+    }
+    
+    T process( T input, bool delayTimeIsFractional = false )
+    {
+        std::fill( m_samps.begin(), m_samps.end(), input );
+        for ( auto i = 0; i < NSTAGES; i++ )
+        {
+            for ( auto j = 0; j < NVOICES; j++ )
+            {
+                auto buffVoice = j + ( i * NSTAGES );
+                m_circBuff.setSample( m_samps[ j ], buffVoice );
+                auto dt = delayTimeIsFractional ? m_delayTimesSamps[ i ][ j ] : m_delayTimesSampsRounded[ i ][ j ];
+                m_samps[ j ] = m_shouldFilter ? m_lpfs[ i ][ j ].filterInput( m_circBuff.getSample( dt, buffVoice ) ) : m_circBuff.getSample( dt, buffVoice );
+            }
+            Hadamard< T, NVOICES >::inPlace( m_samps.data() );
+        }
+        m_circBuff.updateWritePosition();
+        return m_samps[ 0 ];
+    }
+    
+    void setDelayTimeSamps( T delayTimeSamps, int voiceNum, int stage )
+    {
+        m_delayTimesSamps[ stage ][ voiceNum ] = delayTimeSamps;
+        m_delayTimesSampsRounded[ stage ][ voiceNum ] = static_cast< size_t >( delayTimeSamps );
+    }
+    
+    void setAllLPFCoefficients( T lpfCoef )
+    {
+        m_damp = lpfCoef;
+        for ( auto & lpfStage : m_lpfs )
+            for ( auto & lpf : lpfStage )
+                lpf.setCoefficient( m_damp );
+    }
+    
+    void setShouldFilter( bool trueIfFilterShouldBeOn )
+    {
+        m_shouldFilter = trueIfFilterShouldBeOn;
+    }
+    
 private:
 };
 
@@ -205,7 +203,7 @@ private:
     std::array< sjf_lpf2< T >, NVOICES > m_lpfs;
     T m_damp = 0.1;
     std::array< T, NVOICES > m_delayTimesSamps, m_gains;
-    std::array< size_t, NVOICES > m_roundedDelays;
+    std::array< size_t, NVOICES > m_delayTimesSampsRounded;
     bool m_shouldFilter = false;
     bool m_shouldMix = false;
     static constexpr T m_eps = std::numeric_limits<T>::epsilon();
@@ -227,8 +225,8 @@ public:
         std::array< T, NVOICES > delayedSamps;
         for ( auto v = 0; v < NVOICES; v++ )
         {
-            delayedSamps[ v ] = delayTimeIsFractional ? m_circBuff.getSample( m_roundedDelays[ v ], v ) : m_circBuff.getSample( m_delayTimesSamps[ v ], v );
-            delayedSamps[ v ] = m_shouldFilter ? m_lpfs[ v ].filterInput( delayedSamps[ v ] ) : delayedSamps[ v ];
+            auto dt = delayTimeIsFractional ? m_delayTimesSamps[ v ] : m_delayTimesSampsRounded[ v ];
+            delayedSamps[ v ] = m_shouldFilter ? m_lpfs[ v ].filterInput( m_circBuff.getSample( dt, v ) ) : m_circBuff.getSample( dt, v );
         }
         auto output = std::accumulate( delayedSamps.begin(), delayedSamps.end(), 0.0 );
         output *= m_outScale;
@@ -245,7 +243,7 @@ public:
     void setDelayTimeSamps( T delayTimeSamps, int voiceNum )
     {
         m_delayTimesSamps[ voiceNum ] = delayTimeSamps;
-        m_roundedDelays[ voiceNum ] = static_cast< size_t >( delayTimeSamps );
+        m_delayTimesSampsRounded[ voiceNum ] = static_cast< size_t >( delayTimeSamps );
     }
     
     T getDelayTimeSamps( int voiceNum )
@@ -256,7 +254,6 @@ public:
     void setFeedbackGain( T fb, int voiceNum )
     {
         m_gains[ voiceNum ] = fb;
-//        m_lpfs[ voiceNum ].setCoefficient( m_damp * ( 1.0 - m_gains[ voiceNum ]) );
     }
     
     void setInterpolationType( int interpType )
@@ -268,10 +265,7 @@ public:
     {
         m_damp = lpfCoef;
         for ( auto v = 0; v < NVOICES; v++ )
-//            m_lpfs[ v ].setCoefficient( m_damp * ( 1.0 - m_gains[ v ]) );
             m_lpfs[ v ].setCoefficient( m_damp );
-//        for ( auto & filt : m_lpfs )
-//            filt.setCoefficient( lpfCoef );
     }
     
     void setShouldFilter( bool trueIfFilterShouldBeOn )
@@ -292,12 +286,17 @@ public:
 class sjf_verb
 {
 private:
-    static constexpr int N_LATE_REFLECT = 8;
-    static constexpr int N_NESTED_AP = 8;
+    static constexpr int N_LATE_REFLECT = 16;
+    static constexpr int N_EARLY_VOICES = 8;
+    static constexpr int N_GL_STAGES = 4;
     static constexpr int PRIME_MAX = 5000;
     
     sjf_FDN< float, N_LATE_REFLECT > m_fdn;
-    sjf_nestedAllpass< float, N_NESTED_AP > m_early;
+    
+    
+    int m_earlyType = earlyTypes::nestedAP;
+    std::array< sjf_nestedAP<float>, (N_EARLY_VOICES / 2) > m_early;
+    sjf_glDiffuser< float, N_EARLY_VOICES, N_GL_STAGES > m_early2;
     std::vector< int > m_primeNumbers;
     size_t m_roomType = 0;
     float m_volume = 100000; // m^3
@@ -333,9 +332,11 @@ public:
         setRoomVolume( m_volume );
         DBG( "INITIALISE SJF_VERB");
         
-        m_early.setAllCoefficients( 0.5, true );
-        setERLPFCoef( 0.186 );
-        m_early.setShouldFilter( true );
+        for ( auto i = 0; i < (N_EARLY_VOICES / 2); i++ )
+        {
+            m_early[ i ].setAllCoefficients( 0.7, false );
+            m_early[ i ].setShouldFilter( true );
+        }
         
         m_fdn.setShouldFilter( true );
         setLRLPFCoef( 0.186 );
@@ -348,13 +349,31 @@ public:
             return;
         m_SR = sampleRate;
         
-        m_early.initialise( m_SR * 0.25 );
+        
+        for ( auto & er : m_early )
+            er.initialise( m_SR * 0.25 );
+        m_early2.initialise( m_SR * 0.25 );
         m_fdn.initialise( m_SR * 0.5 );
     }
     
     float process( float input )
     {
-        auto er = m_erParallel ? m_early.processParallel( input, true ) : m_early.process( input, true );
+        auto er = input;
+        switch ( m_earlyType )
+        {
+            case earlyTypes::nestedAP :
+                for ( auto & early : m_early )
+                    er = early.process( er );
+                break;
+            case earlyTypes::geraintLuff :
+                er = m_early2.process( er );
+                break;
+            default:
+                for ( auto & early : m_early )
+                    er = early.process( er );
+                break;
+        }
+
         auto toLate = ( input * m_dryToL ) + ( er * m_erToL );
         float lr = m_fdn.process( toLate, true );
         return ( lr * m_lateOutLevel ) + ( er * m_erOutLevel );
@@ -391,7 +410,8 @@ public:
 
     void setERLPFCoef( float ERLPFCoef )
     {
-        m_early.setAllLPFCoefficients( ERLPFCoef );
+        for ( auto & early : m_early )
+            early.setAllLPFCoefficients( ERLPFCoef );
     }
     
     
@@ -400,14 +420,9 @@ public:
         return m_roomRatios[ 0 ].size();
     }
     
-    void setEarlyType( int nStages )
-    {
-        m_early.setNumNestedStages( nStages );
-    }
-    
     void setEarlyToLate( float earlyToLatePercentage )
     {
-#ifndef NDEBUG
+#ifndef NDEBUGl
         assert( earlyToLatePercentage >= 0 );
         assert( earlyToLatePercentage <= 100 );
 #endif
@@ -443,6 +458,18 @@ public:
     {
         m_fdn.setShouldMix( trueIfShouldixLate );
     }
+    
+    void setEarlyType( int earlyType )
+    {
+        if ( m_earlyType != earlyType )
+        {
+            m_earlyType = earlyType;
+            calculateDelayTimes();
+        }
+    }
+    
+    enum earlyTypes { nestedAP, geraintLuff };
+    
 private:
     void initialisePQRIndices()
     {
@@ -456,7 +483,9 @@ private:
             for ( auto i = 0; i < m_pqrList.getSize(); i++ )
             {
                 auto pqr = m_pqrList[ i ];
-                auto f = sjf_calculateRoomMode<float>( m_roomRatios[0][room], m_roomRatios[1][room], 1, pqr[0], pqr[1], pqr[2] );
+                auto L = m_roomRatios[ 0 ][ room ];
+                auto W = m_roomRatios[ 1 ][ room ];
+                auto f = sjf_calculateRoomMode<float>( L, W, 1.0, pqr[ 0 ], pqr[ 1 ], pqr[ 2 ] );
                 mSorted[i] = modes[i] = f;
             }
             std::sort(mSorted.begin(), mSorted.end());
@@ -464,7 +493,7 @@ private:
             for ( auto i = 0; i < m_pqrList.getSize(); i++ )
             {
                 auto it = find(modes.begin(), modes.end(), mSorted[ i ] );
-                m_pqrIndices[room][ i ] = static_cast<int>( it - modes.begin() );
+                m_pqrIndices[room][i] = static_cast<int>( it - modes.begin() );
             }
         }
     }
@@ -482,7 +511,6 @@ private:
     
     void calculateDelayTimes()
     {
-        
         auto nPrimes = m_primeNumbers.size();
         std::vector< bool > primeList; // use this to keep track of which primeNumbers have been used
         primeList.resize( nPrimes, true ); // keep a rtack of which primeNumbers are available
@@ -506,7 +534,17 @@ private:
             roomModesInSamps[ i ] = T * m_SR;
         }
         
-        calculateNestedAPDelays( roomModesInSamps[ N_LATE_REFLECT - 1 ], primeList );
+        switch ( m_earlyType ) {
+            case earlyTypes::nestedAP :
+                calculateNestedAPDelays( roomModesInSamps[ N_LATE_REFLECT - 1 ], primeList );
+                break;
+            case earlyTypes::geraintLuff :
+                calculateGLDelays( roomModesInSamps[ N_LATE_REFLECT - 1 ], primeList );
+            default:
+                calculateNestedAPDelays( roomModesInSamps[ N_LATE_REFLECT - 1 ], primeList );
+                break;
+        }
+        
         
         for ( auto i = N_LATE_REFLECT-1 ; i >= 0; i-- )
         {
@@ -528,14 +566,54 @@ private:
     
     void calculateNestedAPDelays( float modePersiodSamples, std::vector< bool >& primeList )
     {
-        auto baseAPDelay = pow( modePersiodSamples, 0.9 ) / static_cast<float>( N_NESTED_AP );
+        DBG("modePersiodSamples " << modePersiodSamples );
+        auto maxERAllowed = (m_SR * 0.1) * 1.2;
+//        auto minER = std::round(m_SR * 0.001);
+        while ( modePersiodSamples > maxERAllowed )
+            modePersiodSamples = std::pow( modePersiodSamples, 0.95 );
         //    calculate nested allpass delays
-        for ( auto i = 0; i < N_NESTED_AP; i++ )
+//        auto baseDelay = modePersiodSamples / static_cast< float >( N_EARLY_VOICES );
+//        for ( int i = N_EARLY_VOICES - 1; i >= 0; i-- )
+//        {
+//            int desiredDelay = std::round( modePersiodSamples / static_cast< float >( std::pow( 3.0, i ) ) );
+//            int delay = findNearestPrimeDelay( desiredDelay, primeList );
+//            auto v = static_cast<int>(i / 2);
+//            auto a = 1 - (i%2);
+//            DBG( v << " " << a << " " << delay << " " << desiredDelay );
+//            m_early[ v ].setDelayTimeSamps( delay, a );
+//        }
+
+        for ( int i = 0; i < N_EARLY_VOICES; i++ )
         {
-            int desiredDelay = baseAPDelay * i;
-            desiredDelay += baseAPDelay * ( N_NESTED_AP - i ) / N_NESTED_AP; // just so delays aren't evenly spread
+//            int desiredDelay = (baseDelay * i) + (baseDelay * static_cast< float >( (N_EARLY_VOICES-i) / static_cast< float >( N_EARLY_VOICES ) ) );
+            int desiredDelay = 2 + std::pow( modePersiodSamples, static_cast< float >(i+1) / static_cast< float >( N_EARLY_VOICES ) );
             int delay = findNearestPrimeDelay( desiredDelay, primeList );
-            m_early.setDelayTimeSamps( delay, i );
+            auto v = static_cast<int>(i / 2);
+            auto a = i % 2;
+            DBG( v << " " << a << " " << delay << " " << desiredDelay );
+            m_early[ v ].setDelayTimeSamps( delay, a );
+        }
+    }
+    
+    void calculateGLDelays( float modePersiodSamples, std::vector< bool >& primeList )
+    {
+        // each stage should be twice the length of the last
+        // ==> need to divide the total length by 2^NVOICES - 1
+        static constexpr float divisor = 1.0 / ( gcem::pow( 2.0, N_EARLY_VOICES ) - 1 );
+        auto stageLength = modePersiodSamples * divisor;
+        for ( int s = 0; s < N_GL_STAGES; s++ )
+        {
+            stageLength *= s == 0 ? 1 : 2;
+            for ( int i = 0; i < N_EARLY_VOICES; i++ )
+            {
+                int desiredDelay = 2 + std::pow( stageLength, static_cast< float >( i+1 ) / static_cast< float >( N_EARLY_VOICES ) );
+                int delay = findNearestPrimeDelay( desiredDelay, primeList );
+                
+                auto voice = i + ( N_GL_STAGES - s);
+                voice %= N_EARLY_VOICES;
+                DBG( "gl " << stageLength<< " " << desiredDelay << " " << delay << " " << voice << " " << s );
+                m_early2.setDelayTimeSamps( delay, i, s );
+            }
         }
         
     }

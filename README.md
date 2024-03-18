@@ -27,3 +27,11 @@ Much of the code could probably do with some refactoring... particularly some of
 - further develop drummachine
 - make some enums anytime I'm using switch cases
 
+
+# To Clone
+git clone https://github.com/simohnf/sjf_audio
+
+cd sjf_audio
+
+git submodule update --init --recursive
+

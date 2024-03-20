@@ -8,7 +8,7 @@
 #define sjf_audioUtilitiesCplusplus_h
 
 #include <math.h>
-
+#include <algorithm>
 
 //#ifndef PI
 //#define PI M_PI
@@ -17,6 +17,7 @@
 template< typename T >
 void clipInPlace( T& value, const T& min, const T& max )
 {
+//    std::swap( min, max );
     if ( value < min )
         value = min;
     else if ( value > max )

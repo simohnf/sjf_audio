@@ -402,7 +402,7 @@ public:
     
     void setEarlyType( int nStages )
     {
-        m_early.setNumNestedStages( nStages );
+        m_early.setNumNestedStages( std::max( nStages, 1 ) );
     }
     
     void setEarlyToLate( float earlyToLatePercentage )

@@ -36,6 +36,22 @@ public:
         m_writePos &= m_wrapMask;
     }
     
+    void setSample( T samp, unsigned long wp )
+    {
+        m_buffer[ wp ] = samp;
+    }
+    
+    auto getWritePos()
+    {
+        return m_writePos;
+    }
+    
+    void updateWritePos( unsigned long wp )
+    {
+        m_writePos = ( wp & m_wrapMask );
+    }
+    
+    
     T getSample( T delayInSamps )
     {
         T findex = m_writePos - delayInSamps;
@@ -104,6 +120,12 @@ private:
     unsigned long m_wrapMask = m_size - 1;
     int m_interpType = sjf_interpolators::interpolatorTypes::pureData;
 };
+
+// ====================================================================================
+// ====================================================================================
+// ====================================================================================
+// ====================================================================================
+
 
 // multivoice circular buffer
 // each voice is the same length and stored in one vector

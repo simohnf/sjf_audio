@@ -8,7 +8,7 @@
 #define sjf_audioUtilitiesCplusplus_h
 
 #include <math.h>
-
+#include "gcem/include/gcem.hpp"
 
 //#ifndef PI
 //#define PI M_PI
@@ -668,7 +668,7 @@ auto sjf_crossCorrelationMaxTimeLag( const T* val1, const T* val2, const size_t 
 // check if an integer is a prime number
 inline bool sjf_isPrime( int number )
 {
-    auto max = std::floor( std::sqrt( number ) );
+    auto max = gcem::floor( gcem::sqrt( number ) );
     if ( number < 2 )
         return false;
     if ( number == 2 )

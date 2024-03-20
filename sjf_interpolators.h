@@ -6,7 +6,7 @@
 
 #ifndef sjf_interpolators_h
 #define sjf_interpolators_h
-#include "sjf_audioUtilities.h"
+#include "sjf_audioUtilitiesC++.h"
 //#include <immintrin.h>
 
 //==============================================================================

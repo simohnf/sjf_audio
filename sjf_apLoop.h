@@ -12,6 +12,7 @@
 #include "sjf_audioUtilitiesC++.h"
 #include "gcem/include/gcem.hpp"
 #
+
 template < typename T, int NSTAGES, int AP_PERSTAGE >
 class sjf_apLoop
 {
@@ -22,10 +23,10 @@ public:
         // just ensure that delaytimes are set to begin with
         for ( auto s = 0; s < NSTAGES; s++ )
             for ( auto d = 0; d < AP_PERSTAGE+1; d++ )
-                setDelayTimeSamples(rand01() * 4410 + 4410, s, d );
-        std::fill( m_lpfs.begin(), m_lpfs.end(), 0 );
+                setDelayTimeSamples( std::round(rand01() * 4410 + 4410), s, d );
+//        std::fill( m_lpfs.begin(), m_lpfs.end(), 0 );
         setDecay( 5000 );
-        setDiffusion( 0.6 );
+        setDiffusion( 0.5 );
     }
     ~sjf_apLoop(){}
 
@@ -33,6 +34,13 @@ public:
     {
         m_SR = sampleRate;
         m_size = sjf_nearestPowerAbove( m_SR * 2, 2 );
+        auto delSize = sjf_nearestPowerAbove( m_SR / 2, 2 );
+        for ( auto s = 0; s < NSTAGES; s++ )
+        {
+            for ( auto a = 0; a < AP_PERSTAGE; a++ )
+                m_aps[ s ][ a ].initialise( delSize );
+            m_delays[ s ].initialise( delSize );
+        }
         m_wrapMask = m_size - 1;
         m_buffer.resize( m_size );
     }
@@ -65,28 +73,22 @@ public:
         // input signal into loop
 //        auto samp = m_buffer[ (m_writePos - m_totalDelayTimeSamps) & m_wrapMask ]; // start of loop
         auto samp = m_lastSamp;
-        auto output = 0.0, readPos = 0.0;
-        T writePos = m_writePos;
+//        DBG( input << " " << samp );
+        auto output = 0.0;
         for ( auto s = 0; s < NSTAGES; s ++ )
         {
             samp +=  input;
             for ( auto a = 0; a < AP_PERSTAGE; a++ )
             {
-                // do all pass stuff
-                readPos = getPosition( writePos - m_delayTimes[ s ][ a ] );
-                samp = doAllpass( samp, m_diffusions[ s ][ a ], readPos, writePos );
-                writePos = readPos;
+                samp = m_aps[ s ][ a ].process( samp, m_delayTimes[ s ][ a ], m_diffusions[ s ][ a ] );
             }
             
-            // read last delay
-            writePos = getPosition( writePos - m_delayTimes[ s ][ AP_PERSTAGE ] );
-            // apply lpf
-            m_lpfs[ s ] = doDamping( m_buffer[ writePos ], m_lpfs[ s ], m_damping );
-            samp = m_lpfs[ s ];
-//            samp = m_dampers[ s ].process( m_buffer[ writePos ], m_damping );
-            output += samp; // add to rev output
-            samp *= m_gain[ s ]; // decay factor
-            m_buffer[ writePos ] = samp;
+            samp = m_dampers[ s ].process( samp, m_damping );
+            output += samp;
+            
+//            samp *= m_gain[ s ];
+            m_delays[ s ].setSample( samp * m_gain[ s ] );
+            samp = m_delays[ s ].getSample( m_delayTimes[ s ][ AP_PERSTAGE ] );
         }
         m_lastSamp = samp;
         m_writePos += 1;
@@ -124,6 +126,85 @@ private:
     //=======//=======//=======//=======//=======//=======//=======//=======//=======
     //=======//=======//=======//=======//=======//=======//=======//=======//=======
     //=======//=======//=======//=======//=======//=======//=======//=======//=======
+    class delay
+    {
+    public:
+        delay(){}
+        ~delay(){}
+        
+        void initialise( int sizeInSamps_pow2 )
+        {
+            m_buffer.resize( sizeInSamps_pow2, 0 );
+            m_wrapMask = sizeInSamps_pow2 - 1;
+        }
+        
+        T getSample( T delay )
+        {
+            auto rp = getPosition( ( m_writePos - delay ) );
+            return m_buffer[ rp ];
+        }
+        
+        void setSample( T x )
+        {
+            m_buffer[ m_writePos ] = x;
+            m_writePos += 1;
+            m_writePos &= m_wrapMask;
+        }
+        
+    private:
+        
+        T getPosition( T pos )
+        {
+            int p = pos;
+            T mu = pos - p;
+            p &= m_wrapMask;
+            return ( static_cast< T >( p ) + mu );
+        }
+
+        std::vector< T > m_buffer;
+        int m_writePos = 0, m_wrapMask;
+    };
+
+    
+    
+    class oneMultAP
+    {
+    public:
+        oneMultAP(){}
+        ~oneMultAP(){}
+        
+        void initialise( int sizeInSamps_pow2 )
+        {
+            m_del.initialise( sizeInSamps_pow2 );
+        }
+        
+        T process( T x, T delay, T coef )
+        {
+            auto delayed = m_del.getSample( delay );
+            auto xhn = ( x - delayed ) * coef;
+            m_del.setSample( x + xhn );
+            return delayed + xhn;
+        }
+        
+    private:
+        delay m_del;
+    };
+    
+    class damper
+    {
+    public:
+        damper(){}
+        ~damper(){}
+        
+        T process( T x, T coef )
+        {
+            m_lastOut = x + coef*( m_lastOut - x );
+            return m_lastOut;
+        }
+    private:
+        T m_lastOut = 0;
+    };
+    
     
     void fillPrimes()
     {
@@ -135,40 +216,15 @@ private:
         m_primes.shrink_to_fit();
     }
     
-    
-    inline T getPosition( T pos )
-    {
-        int p = pos;
-        T mu = pos - p;
-        p &= m_wrapMask;
-        return ( static_cast< T >( p ) + mu );
-    }
-    
-    
-    inline T doAllpass( T input, T coef, T readPos, T writePos )
-    {
-        // #define DoAllPass(N) { int j=(i+N)&MASK;float delayed=buf[j];buf[i]=x-=delayed*mu;x=x*mu+delayed; i=j; }
-        // one multiply as per moorer
-        auto delayed = m_buffer[ readPos ];
-//        input -= delayed * coef;
-//        m_buffer[ writePos ] = input;
-//        return input*coef + delayed;
-        auto xhn = ( input - delayed ) * coef;
-        m_buffer[ writePos ] = input + xhn;
-        return delayed + xhn;
-    }
-    
-    inline T doDamping( T x, T lastOut, T coef )
-    {
-        x = x + coef*( lastOut - x );
-        return x;
-    }
-    
-    std::array< T, NSTAGES > m_gain, m_lpfs;
+    std::array< T, NSTAGES > m_gain;
     std::array< std::array< T, AP_PERSTAGE + 1 >, NSTAGES > m_delayTimes;
     std::array< std::array< T, AP_PERSTAGE >, NSTAGES > m_diffusions;
-//    std::array< T, NSTAGES > m_dtPerStage;
-//    std::array< sjf_damping, NSTAGES > m_damp;
+    
+    
+    std::array< std::array< oneMultAP, AP_PERSTAGE >, NSTAGES > m_aps;
+    std::array< delay, NSTAGES > m_delays;
+    std::array< damper, NSTAGES > m_dampers;
+    
     std::vector< int > m_primes;
     
     T m_lastSamp = 0;

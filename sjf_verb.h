@@ -10,7 +10,7 @@
 #include "sjf_comb.h"
 #include "sjf_audioUtilitiesC++.h"
 #include "sjf_circularBuffer.h"
-#include "sjf_apLoop.h"
+#include "sjf_rev.h"
 
 template < typename T, int NVOICES >
 class sjf_nestedAllpass

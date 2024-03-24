@@ -10,6 +10,7 @@
 #define sjf_rev_h
 
 #include "sjf_audioUtilitiesC++.h"
+#include "sjf_interpolators.h"
 #include "gcem/include/gcem.hpp"
 namespace sjf_rev
 {

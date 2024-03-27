@@ -15,7 +15,7 @@
 #include "sjf_reverb/sjf_seriesAP.h"
 #include "sjf_reverb/sjf_multitap.h"
 #include "sjf_reverb/sjf_apLoop.h"
-
+#include "sjf_reverb/sjf_fdn.h"
 #endif /* sjf_rev_h */
 
 

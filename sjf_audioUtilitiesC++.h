@@ -801,4 +801,15 @@ public:
 };
 
 
+//========//========//========//========//========//========//========
+//========//========//========//========//========//========//========
+//========//========//========//========//========//========//========
+template< typename T >
+T calculateFeedbackGain( T delayTime, T desiredDecayTime )
+{
+    return gcem::pow( 10.0, -3.0 * delayTime / desiredDecayTime );
+}
+
+//m_gain[ s ] = std::pow( 10.0, -3.0 * del / m_decayInMS );
+
 #endif /* sjf_audioUtilitiesC++ */

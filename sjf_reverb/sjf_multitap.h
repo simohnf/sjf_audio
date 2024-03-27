@@ -4,6 +4,7 @@
 #include "../sjf_audioUtilitiesC++.h"
 #include "../sjf_interpolators.h"
 #include "../gcem/include/gcem.hpp"
+#include "sjf_delay.h"
 
 
 

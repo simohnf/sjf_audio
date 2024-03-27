@@ -1,3 +1,9 @@
+//
+//  sjf_delay.h
+//
+//  Created by Simon Fay on 27/03/2024.
+//
+
 #ifndef sjf_rev_delay_h
 #define sjf_rev_delay_h
 
@@ -15,6 +21,7 @@ namespace sjf::rev
     private:
         std::vector< T > m_buffer;
         int m_writePos = 0, m_wrapMask;
+        
     public:
         delay(){}
         ~delay(){}

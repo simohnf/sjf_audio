@@ -1,9 +1,19 @@
+//
+//  sjf_apLoop.h
+//
+//  Created by Simon Fay on 27/03/2024.
+//
+
+
 #ifndef sjf_rev_apLoop_h
 #define sjf_rev_apLoop_h
 
 #include "../sjf_audioUtilitiesC++.h"
 #include "../sjf_interpolators.h"
 #include "../gcem/include/gcem.hpp"
+#include "sjf_oneMultAP.h"
+#include "sjf_delay.h"
+#include "sjf_damper.h"
 
 namespace sjf::rev
 {

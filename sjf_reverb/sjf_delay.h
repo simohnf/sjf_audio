@@ -15,6 +15,9 @@
 
 namespace sjf::rev
 {
+    /**
+     basic circular buffer based delay line
+     */
     template < typename  T >
     class delay
     {
@@ -26,12 +29,21 @@ namespace sjf::rev
         delay(){}
         ~delay(){}
         
+        /**
+         This must be called before first use in order to set basic information such as maximum delay lengths and sample rate
+         */
         void initialise( int sizeInSamps_pow2 )
         {
             m_buffer.resize( sizeInSamps_pow2, 0 );
             m_wrapMask = sizeInSamps_pow2 - 1;
         }
         
+        /**
+         This retrieves a sample from a previous point in the buffer
+         Input is:
+            the number of samples in the past to read from
+            the interpolation type see @sjf_interpolators
+         */
         T getSample( T delay, int interpType = 1 )
         {
             auto rp = getPosition( ( m_writePos - delay ) );
@@ -55,6 +67,9 @@ namespace sjf::rev
             return m_buffer[ rp ];
         }
         
+        /**
+         This sets the cvalue of the sample at the current write position and automatically updates the write pointer
+         */
         void setSample( T x )
         {
             m_buffer[ m_writePos ] = x;

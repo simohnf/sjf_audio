@@ -805,7 +805,7 @@ public:
 //========//========//========//========//========//========//========
 //========//========//========//========//========//========//========
 template< typename T >
-T calculateFeedbackGain( T delayTime, T desiredDecayTime )
+T sjf_calculateFeedbackGain( T delayTime, T desiredDecayTime )
 {
     return gcem::pow( 10.0, -3.0 * delayTime / desiredDecayTime );
 }

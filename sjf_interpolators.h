@@ -24,10 +24,24 @@ namespace sjf_interpolators
     enum interpolatorTypes : char
     { linear = 1, cubic, pureData, fourthOrder, godot, hermite, allpass };
     //==============================================================================
+    /**
+     Basic linear interpolation between 2 points
+     mu - distance between points one and two ( must be between 0 --> 1 )
+     x1 - value of first point
+     x2 - value of second point
+     */
     template <typename T>
     const T linearInterpolate ( const T &mu, const T &x1, const T &x2 )
     { return x1 + mu*(x2-x1); }
     //==============================================================================
+    /**
+     Basic cubic interpolation using 4 points
+     mu - distance between points one and two ( must be between 0 --> 1 )
+     x0 - value of previous point
+     x1 - value of first point
+     x2 - value of second point
+     x3 - value of point after next
+     */
     template <typename T>
     const T cubicInterpolate ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
     {
@@ -41,6 +55,14 @@ namespace sjf_interpolators
         return (a0*mu*mu2 + a1*mu2 + a2*mu + x1);
     }
     //==============================================================================
+    /**
+    Four point interpolation copied from PureData source code
+     mu - distance between points one and two ( must be between 0 --> 1 )
+     x0 - value of previous point
+     x1 - value of first point
+     x2 - value of second point
+     x3 - value of point after next
+     */
     template <typename T>
     const T fourPointInterpolatePD ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
     {
@@ -49,6 +71,14 @@ namespace sjf_interpolators
     }
     
     //==============================================================================
+    /**
+     Four point fourth order interpolation copied from Olli Niemitalo - Polynomial Interpolators for High-Quality Resampling of Oversampled Audio
+     mu - distance between points one and two ( must be between 0 --> 1 )
+     x0 - value of previous point
+     x1 - value of first point
+     x2 - value of second point
+     x3 - value of point after next
+     */
     template <typename T>
     const T fourPointFourthOrderOptimal  ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
     {
@@ -66,6 +96,14 @@ namespace sjf_interpolators
     }
     
     //==============================================================================
+    /**
+     Four point interpolation copied from from Godot https://stackoverflow.com/questions/1125666/how-do-you-do-bicubic-or-other-non-linear-interpolation-of-re-sampled-audio-da
+     mu - distance between points one and two ( must be between 0 --> 1 )
+     x0 - value of previous point
+     x1 - value of first point
+     x2 - value of second point
+     x3 - value of point after next
+     */
     template <typename T>
     const T cubicInterpolateGodot ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
     {
@@ -81,6 +119,14 @@ namespace sjf_interpolators
         return (a0 * mu * mu2 + a1 * mu2 + a2 * mu + a3) * 0.5f;
     }
     //==============================================================================
+    /**
+     Four point Hermite interpolation copied from from Godot https://stackoverflow.com/questions/1125666/how-do-you-do-bicubic-or-other-non-linear-interpolation-of-re-sampled-audio-da
+     mu - distance between points one and two ( must be between 0 --> 1 )
+     x0 - value of previous point
+     x1 - value of first point
+     x2 - value of second point
+     x3 - value of point after next
+     */
     template <typename T>
     const T cubicInterpolateHermite ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
     {
@@ -93,6 +139,14 @@ namespace sjf_interpolators
     }
     
     //==============================================================================
+    /**
+     Four point Hermite interpolation copied from from Godot https://stackoverflow.com/questions/1125666/how-do-you-do-bicubic-or-other-non-linear-interpolation-of-re-sampled-audio-da
+     mu - distance between points one and two ( must be between 0 --> 1 )
+     x0 - value of previous point
+     x1 - value of first point
+     x2 - value of second point
+     x3 - value of point after next
+     */
     template <typename T>
     const T cubicInterpolateHermite2 ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
     {
@@ -103,6 +157,10 @@ namespace sjf_interpolators
         return 0.5f * ((a3 * mu + a2) * mu + a1) * mu + x1;
     }
     //==============================================================================
+    /**
+     Allpass filter based interpolator copied from https://ccrma.stanford.edu/~jos/pasp/First_Order_Allpass_Interpolation.html
+     Not suited for random access interpolation!!!
+     */
     template <typename T>
     class sjf_allpassInterpolator
     {
@@ -110,6 +168,9 @@ namespace sjf_interpolators
         sjf_allpassInterpolator(){}
         ~sjf_allpassInterpolator(){}
         
+        /**
+         This can be used to caluclate with arbitrary/changing mu values without having to keep reseting stored Mu
+         */
         T process( T x, T mu )
         {
             auto n = (1.0-mu) / (1.0+mu);
@@ -118,6 +179,9 @@ namespace sjf_interpolators
             return m_y1;
         }
         
+        /**
+         This can be used to caluclate with internally stored Mu value
+         */
         T process ( T x )
         {
             m_y1 = m_n*(x - m_y1) + m_x1;
@@ -125,21 +189,33 @@ namespace sjf_interpolators
             return m_y1;
         }
         
+        /**
+         This allows you to set the amount of intersample delay
+         */
         void setMu( T mu )
         {
             m_n = (1.0-mu) / (1.0+mu);
         }
         
+        /**
+         This returns the currently stored coefficient
+         */
         T getCoef( )
         {
             return m_n;
         }
         
+        /**
+         this resets the internally stored values
+         */
         void reset()
         {
             m_x1 = m_y1 = 0;
         }
         
+        /**
+         Calculate the coefficient for a given intersample delay amount
+         */
         static T calculateCoef( T mu )
         {
             return (1.0-mu) / (1.0+mu);

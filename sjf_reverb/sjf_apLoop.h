@@ -15,8 +15,15 @@
 #include "sjf_delay.h"
 #include "sjf_damper.h"
 
+
 namespace sjf::rev
 {
+    /**
+     A basic allpass loop in the style of Keith Barrhttp://www.spinsemi.com/knowledge_base/effects.html#Reverberation
+     The architecture can have any number of stages and any number of allpass loops per stage
+     Each stage is separated by a further delay and then a lowpass filter
+     This version does not use a single loop
+     */
     template < typename T, int NSTAGES, int AP_PERSTAGE >
     class allpassLoop
     {
@@ -33,6 +40,9 @@ namespace sjf::rev
         }
         ~allpassLoop(){}
         
+        /**
+         This must be called before first use in order to set basic information such as maximum delay lengths and sample rate
+         */
         void initialise( T sampleRate )
         {
             m_SR = sampleRate;
@@ -45,6 +55,9 @@ namespace sjf::rev
             }
         }
         
+        /**
+         This allows you to set all of the delay times
+         */
         void setDelayTimesSamples( std::array< std::array < T, AP_PERSTAGE + 1 >, NSTAGES > delayTimes)
         {
             for ( auto s = 0; s < NSTAGES; s++ )
@@ -53,6 +66,10 @@ namespace sjf::rev
             setDecay( m_decayInMS );
         }
         
+        /**
+         This sets the amount of diffusion
+         i.e. the allpass coefficient ( keep -1 < diff < 1 for safety )
+         */
         void setDiffusion( T diff )
         {
             diff = diff <= 0.9 ? (diff >= -0.9 ? diff : -0.9 ) : 0.9;
@@ -61,12 +78,18 @@ namespace sjf::rev
                     m_diffusions[ s ][ d ] = diff;
         }
         
+        /**
+         This allows you to set a single the delay time
+         */
         void setDelayTimeSamples( T dt, int stage, int delayNumber )
         {
             m_delayTimes[ stage ][ delayNumber ] = dt;
             setDecay( m_decayInMS );
         }
         
+        /**
+         This sets the desired decay time in milliseconds
+         */
         void setDecay( T decayInMS )
         {
             m_decayInMS = decayInMS;
@@ -76,17 +99,33 @@ namespace sjf::rev
                 for ( auto d = 0; d < AP_PERSTAGE + 1; d++ )
                     del += m_delayTimes[ s ][ d ];
                 del  /= ( m_SR * 0.001 );
-                m_gain[ s ] = std::pow( 10.0, -3.0 * del / m_decayInMS );
+                m_gain[ s ] = sjf_calculateFeedbackGain<T>( del, m_decayInMS );
+//                m_gain[ s ] = std::pow( 10.0, -3.0 * del / m_decayInMS );
             }
         }
         
+        /**
+         This sets the amount of damping applied between each section of the loop ( must be >= 0 and <= 1 )
+         */
         void setDamping( T dampCoef )
         {
             m_damping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999;
         }
         
-        
-        T process( T input )
+        /**
+         This should be called for every sample in the block
+         The input is:
+         the sample to input into the loop
+         the interpolation type
+         0 = None
+         1 = linear
+         2 = cubic
+         3 = four point (pure data)
+         4 = fourth order
+         5 = godot
+         6 = hermite
+         */
+        T process( T input, int interpType = 1 )
         {
             auto samp = m_lastSamp;
             auto output = 0.0;
@@ -95,7 +134,7 @@ namespace sjf::rev
                 samp +=  input;
                 for ( auto a = 0; a < AP_PERSTAGE; a++ )
                 {
-                    samp = m_aps[ s ][ a ].process( samp, m_delayTimes[ s ][ a ], m_diffusions[ s ][ a ] );
+                    samp = m_aps[ s ][ a ].process( samp, m_delayTimes[ s ][ a ], m_diffusions[ s ][ a ], interpType );
                 }
                 samp = m_dampers[ s ].process( samp, m_damping );
                 output += samp;

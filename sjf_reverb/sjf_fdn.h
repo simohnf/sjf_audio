@@ -107,7 +107,7 @@ namespace sjf::rev
             for ( auto c = 0; c < NCHANNELS; c++ )
             {
                 dt = ( m_delayTimesSamps[ c ] +  m_apDelayTimesSamps[ c ] ) * m_SR * 0.001;
-                m_fbGains[ c ] = calculateFeedbackGain< T >( dt, m_decayInMS );
+                m_fbGains[ c ] = sjf_calculateFeedbackGain< T >( dt, m_decayInMS );
             }
         }
         

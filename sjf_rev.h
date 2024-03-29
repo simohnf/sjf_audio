@@ -16,6 +16,11 @@
 #include "sjf_reverb/sjf_multitap.h"
 #include "sjf_reverb/sjf_apLoop.h"
 #include "sjf_reverb/sjf_fdn.h"
+#include "sjf_reverb/sjf_umss.h"
+/**
+ A collection of basic building block for reverb design
+ */
+
 #endif /* sjf_rev_h */
 
 

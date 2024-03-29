@@ -1,5 +1,12 @@
-#ifndef sjf_rev_APLoop_h
-#define sjf_rev_APLoop_h
+//
+//  sjf_seriesAP.h
+//
+//  Created by Simon Fay on 27/03/2024.
+//
+
+
+#ifndef sjf_rev_seriesAllpass_h
+#define sjf_rev_seriesAllpass_h
 
 #include "../sjf_audioUtilitiesC++.h"
 #include "../sjf_interpolators.h"

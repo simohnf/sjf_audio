@@ -1,3 +1,10 @@
+//
+//  sjf_oneMultAP.h
+//
+//  Created by Simon Fay on 27/03/2024.
+//
+
+
 #ifndef sjf_rev_oneMultAP_h
 #define sjf_rev_oneMultAP_h
 
@@ -23,9 +30,9 @@ namespace sjf::rev
             m_del.initialise( sizeInSamps_pow2 );
         }
         
-        T process( T x, T delay, T coef )
+        T process( T x, T delay, T coef, int interpType = 1 )
         {
-            auto delayed = m_del.getSample( delay );
+            auto delayed = m_del.getSample( delay, interpType );
             auto xhn = ( x - delayed ) * coef;
             m_del.setSample( x + xhn );
             return delayed + xhn;

@@ -14,14 +14,23 @@
 #include "sjf_delay.h"
 #include "sjf_damper.h"
 
+#include "sjf_rev_consts.h"
+
 namespace sjf::rev
 {
     /**
-     umss a rough implementation of Christopher Moore’s ursa major space station style multitap delay/reverb effect
+     umss a basic implementation of Christopher Moore’s ursa major space station style multitap delay/reverb effect
      */
     template< typename T, int NFBLOOPS, int NOUTTAPS >
     class umss
     {
+    private:
+        delay< T > m_delayLine;
+        damper< T > m_damper;
+        std::array < T, NFBLOOPS > m_fbDelayTimesSamps;
+        std::array < int, NOUTTAPS > m_outTapDelayTimesSamps;
+        std::array < T, NOUTTAPS > m_outTapGains;
+        T m_feedback = 0.5, m_SR = 44100, m_damping = 0.4;
     public:
         umss(){}
         ~umss(){}
@@ -39,10 +48,10 @@ namespace sjf::rev
         This should be called once for every sample in the block
          input is:
             the sample to be processed
-            interpolation type see @sjf_interpolators
+            interpolation type ( optional, defaults to linear,  see @sjf_interpolators )
          output is the processed sample
          */
-        T process( T x, int interpType = 1 )
+        T process( T x, int interpType = DEFAULT_INTERP )
         {
             T fbLoop = 0.0f, outTaps = 0.0f;
             // we should add modulation to fb delayTaps
@@ -72,12 +81,34 @@ namespace sjf::rev
             m_feedback = feedback;
         }
         
-    private:
-        delay< T > m_delayLine;
-        damper< T > m_damper;
-        std::array < T, NFBLOOPS > m_fbDelayTimesSamps;
-        std::array < T, NOUTTAPS > m_outTapDelayTimesSamps, m_outTapGains;
-        T m_feedback = 0.5, m_SR = 44100, m_damping = 0.4;
+        
+        /**
+         Set the delay time for all of the taps that feedback into the delay loop
+         */
+        void setFeedbackDelayTimes( const std::array < T, NFBLOOPS > fbDelayTimesSamps )
+        {
+            m_fbDelayTimesSamps = fbDelayTimesSamps;
+        }
+            
+        
+        /**
+         Set the delay time for all of the taps that feedback into the delay loop
+         */
+        void setOutTapDelayTimes( const std::array < int, NOUTTAPS > outTapDelayTimesSamps )
+        {
+            m_outTapDelayTimesSamps = outTapDelayTimesSamps;
+        }
+        
+        /**
+         Set the output levels for all of the output taps from the delayline
+         */
+        void setOutTapGains( const std::array < T, NOUTTAPS > outTapGains )
+        {
+            m_outTapGains = outTapGains;
+        }
+        
+        
+
     };
 }
 

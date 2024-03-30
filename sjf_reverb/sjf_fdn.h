@@ -14,6 +14,7 @@
 #include "sjf_delay.h"
 #include "sjf_damper.h"
 #include "sjf_oneMultAP.h"
+#include "sjf_rev_consts.h"
 
 namespace sjf::rev
 {
@@ -25,6 +26,12 @@ namespace sjf::rev
     template< typename T, int NCHANNELS >
     class fdn
     {
+    private:
+        std::array< delay< T >, NCHANNELS > m_delays;
+        std::array< damper< T >, NCHANNELS > m_dampers;
+        std::array< oneMultAP< T >, NCHANNELS > m_diffusers;
+        std::array< T, NCHANNELS > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
+        T m_decayInMS = 1000, m_SR = 44100, m_damping = 0.2, m_diffusion = 0.5;
     public:
         fdn()
         {
@@ -47,7 +54,7 @@ namespace sjf::rev
         ~fdn(){}
         
         /**
-         This must be called in prepare to play in order to set basic information such as maximum delay lengths and sample rate
+         This must be called before first use in order to set basic information such as maximum delay lengths and sample rate
          */
         void initialise( int maxSizePerChannelSamps, T sampleRate )
         {
@@ -117,16 +124,9 @@ namespace sjf::rev
          The input is:
             array of samples, one for each channel in the delay network (up & downmixing must be done outside the loop
             the desired mixing type within the loop ( see @mixers )
-            the interpolation type
-                0 = None
-                1 = linear
-                2 = cubic
-                3 = four point (pure data)
-                4 = fourth order
-                5 = godot
-                6 = hermite
+            the interpolation type ( optional, defaults to linear, see @sjf_interpolators )
          */
-        void processInPlace( std::array< T, NCHANNELS  >& samples, int mixType = mixers::hadamard, int interpType = 1 )
+        void processInPlace( std::array< T, NCHANNELS  >& samples, int mixType = mixers::hadamard, int interpType = DEFAULT_INTERP )
         {
             std::array< T, NCHANNELS  > delayed;
             for ( auto c = 0; c < NCHANNELS; c++ )
@@ -167,12 +167,7 @@ namespace sjf::rev
         {
             none, hadamard, householder
         };
-    private:
-        std::array< delay< T >, NCHANNELS > m_delays;
-        std::array< damper< T >, NCHANNELS > m_dampers;
-        std::array< oneMultAP< T >, NCHANNELS > m_diffusers;
-        std::array< T, NCHANNELS > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
-        T m_decayInMS = 1000, m_SR = 44100, m_damping = 0.2, m_diffusion = 0.5;
+
     };
 }
 

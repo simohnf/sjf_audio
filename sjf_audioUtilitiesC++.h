@@ -666,7 +666,7 @@ auto sjf_crossCorrelationMaxTimeLag( const T* val1, const T* val2, const size_t 
 }
 
 //==========================================================
-// check if an integer is a prime number
+/** check if an integer is a prime number */
 inline bool sjf_isPrime( int number )
 {
     auto max = gcem::floor( gcem::sqrt( number ) );
@@ -682,21 +682,32 @@ inline bool sjf_isPrime( int number )
     }
     return true;
 }
+//==========================================================
+/** check whether a number is a power of another number */
+inline bool sjf_isPowerOf( unsigned long val, unsigned long baseToCheck )
+{
+    auto powerOf = false;
+    auto v = static_cast< double >( val );
+    auto b = 1.0 / static_cast< double >( baseToCheck );
+    while ( v > baseToCheck )
+        v *= b;
+    return ( b == baseToCheck );
+}
 
 //==========================================================
-// find the nearest power of a base above value
+/** find the nearest power of a base above value */
 inline unsigned long sjf_nearestPowerAbove( unsigned long val, unsigned long base )
 {
     return std::pow( 2, std::ceil( std::log( val )/ std::log( base ) ) );
 }
 //==========================================================
-// find the nearest power of a base below value
+/** find the nearest power of a base below value */
 inline unsigned long sjf_nearestPowerBelow( unsigned long val, unsigned long base )
 {
     return std::pow( 2, std::floor( std::log( val )/ std::log( base ) ) );
 }
 //==========================================================
-// calculate room mode
+/** calculate room mode */
 template< typename T >
 T sjf_calculateRoomMode( T length_meters, T width_meters, T height_meters, int P, int Q, int R , T speedOfSound = 344 )
 {
@@ -706,7 +717,7 @@ T sjf_calculateRoomMode( T length_meters, T width_meters, T height_meters, int P
     return ( speedOfSound*0.5 ) * std::sqrt( PoL*PoL + QoW*QoW + RoH*RoH );
 }
 //==========================================================
-// calculate room mode
+/** calculate greatest common denominator */
 inline int GCD( int* values, int nValues )
 {
     int max = 0;
@@ -804,6 +815,7 @@ public:
 //========//========//========//========//========//========//========
 //========//========//========//========//========//========//========
 //========//========//========//========//========//========//========
+//** Calculate the feedback gain necessary to achieve a desired decay time given a specific delay time */
 template< typename T >
 T sjf_calculateFeedbackGain( T delayTime, T desiredDecayTime )
 {

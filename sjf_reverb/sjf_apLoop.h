@@ -14,7 +14,7 @@
 #include "sjf_oneMultAP.h"
 #include "sjf_delay.h"
 #include "sjf_damper.h"
-
+#include "sjf_rev_consts.h"
 
 namespace sjf::rev
 {
@@ -27,6 +27,18 @@ namespace sjf::rev
     template < typename T, int NSTAGES, int AP_PERSTAGE >
     class allpassLoop
     {
+    private:
+        std::array< std::array< oneMultAP < T >, AP_PERSTAGE >, NSTAGES > m_aps;
+        std::array< delay < T >, NSTAGES > m_delays;
+        std::array< damper < T >, NSTAGES > m_dampers;
+        
+        std::array< T, NSTAGES > m_gain;
+        std::array< std::array< T, AP_PERSTAGE + 1 >, NSTAGES > m_delayTimes;
+        std::array< std::array< T, AP_PERSTAGE >, NSTAGES > m_diffusions;
+        
+        T m_lastSamp = 0;
+        T m_SR = 44100, m_decayInMS = 100;
+        T m_damping = 0.999;
     public:
         allpassLoop()
         {
@@ -116,16 +128,9 @@ namespace sjf::rev
          This should be called for every sample in the block
          The input is:
          the sample to input into the loop
-         the interpolation type
-         0 = None
-         1 = linear
-         2 = cubic
-         3 = four point (pure data)
-         4 = fourth order
-         5 = godot
-         6 = hermite
+         the interpolation type (optional, defaults to linear, see @sjf_interpolators)
          */
-        T process( T input, int interpType = 1 )
+        T process( T input, int interpType = DEFAULT_INTERP )
         {
             auto samp = m_lastSamp;
             auto output = 0.0;
@@ -145,32 +150,6 @@ namespace sjf::rev
             return output;
         }
         
-    private:
-        //
-        //        void fillPrimes()
-        //        {
-        //            static constexpr auto MAXNPRIMES = 10000;
-        //            m_primes.reserve( MAXNPRIMES );
-        //            for ( auto i = 2; i < MAXNPRIMES; i++ )
-        //                if( sjf_isPrime( i ) )
-        //                    m_primes.emplace_back( i );
-        //            m_primes.shrink_to_fit();
-        //        }
-        
-        std::array< T, NSTAGES > m_gain;
-        std::array< std::array< T, AP_PERSTAGE + 1 >, NSTAGES > m_delayTimes;
-        std::array< std::array< T, AP_PERSTAGE >, NSTAGES > m_diffusions;
-        
-        
-        std::array< std::array< oneMultAP < T >, AP_PERSTAGE >, NSTAGES > m_aps;
-        std::array< delay < T >, NSTAGES > m_delays;
-        std::array< damper < T >, NSTAGES > m_dampers;
-        
-        std::vector< int > m_primes;
-        
-        T m_lastSamp = 0;
-        T m_SR = 44100, m_decayInMS = 100;
-        T m_damping = 0.999;
     };
 }
 

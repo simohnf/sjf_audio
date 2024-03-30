@@ -17,9 +17,12 @@
 #include "sjf_reverb/sjf_apLoop.h"
 #include "sjf_reverb/sjf_fdn.h"
 #include "sjf_reverb/sjf_umss.h"
+#include "sjf_reverb/sjf_rev_consts.h"
+
 /**
- A collection of basic building block for reverb design
+ A collection of basic building blocks for reverb design
  */
+
 
 #endif /* sjf_rev_h */
 

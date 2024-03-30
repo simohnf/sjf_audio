@@ -11,6 +11,7 @@
 #include "../sjf_interpolators.h"
 #include "../gcem/include/gcem.hpp"
 
+#include "sjf_rev_consts.h"
 
 
 namespace sjf::rev
@@ -31,9 +32,12 @@ namespace sjf::rev
         
         /**
          This must be called before first use in order to set basic information such as maximum delay lengths and sample rate
+         Size should be a power of 2
          */
         void initialise( int sizeInSamps_pow2 )
         {
+            if (!sjf_isPowerOf( sizeInSamps_pow2, 2 ) )
+                sizeInSamps_pow2 = sjf_nearestPowerAbove( sizeInSamps_pow2, 2 );
             m_buffer.resize( sizeInSamps_pow2, 0 );
             m_wrapMask = sizeInSamps_pow2 - 1;
         }
@@ -44,7 +48,7 @@ namespace sjf::rev
             the number of samples in the past to read from
             the interpolation type see @sjf_interpolators
          */
-        T getSample( T delay, int interpType = 1 )
+        T getSample( T delay, int interpType = DEFAULT_INTERP )
         {
             auto rp = getPosition( ( m_writePos - delay ) );
             switch( interpType )

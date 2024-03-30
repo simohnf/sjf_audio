@@ -13,17 +13,32 @@
 #include "../gcem/include/gcem.hpp"
 #include "sjf_oneMultAP.h"
 
+#include "sjf_rev_consts.h"
 
 namespace sjf::rev
 {
-    
+    /**
+     An array of one multiply allpass filters connected in series
+     input signal is passed through each all pass filter in turn
+     */
     template < typename T, int NSTAGES >
     class seriesAllpass
     {
+    private:
+        std::array< oneMultAP< T >, NSTAGES > m_aps;
+        std::array< T, NSTAGES > m_coefs, m_delayTimes;
+        
     public:
-        seriesAllpass(){}
+        seriesAllpass()
+        {
+            initialise( 44100 ); // default sample rate
+            setCoefs( 0.7 ); // default coefficient
+        }
         ~seriesAllpass(){}
         
+        /**
+         This must be called before first use in order to set basic information such as maximum delay lengths and sampel rate
+         */
         void initialise( T sampleRate )
         {
             auto size = sjf_nearestPowerAbove( sampleRate * 0.1, 2 );
@@ -31,29 +46,41 @@ namespace sjf::rev
                 a.initialise( size );
         }
         
+        /**
+         This sets all of the allpass coefficients to the give value
+         */
         void setCoefs( T coef )
         {
             for ( auto a = 0; a < NSTAGES; a++ )
                 m_coefs[ a ] = coef;
         }
         
+        /**
+         Set all of the delayTimes
+         */
         void setDelayTimes( const std::array< T, NSTAGES >& dt )
         {
             for ( auto d = 0; d < NSTAGES; d++ )
                 m_delayTimes[ d ] = dt[ d ];
         }
         
-        T process( T x )
+        /**
+         This processes a single delay, it should be called once for every sample in the block
+         Input:
+            sample to process
+            interpolation type ( optional, defaults to linear, see @sjf_interpolators )
+         output:
+            Processed sample
+         */
+        T process( T x, int interpType = DEFAULT_INTERP )
         {
             for ( auto a = 0; a < NSTAGES; a++ )
             {
-                x = m_aps[ a ].process( x, m_delayTimes[ a ], m_coefs[ a ] );
+                x = m_aps[ a ].process( x, m_delayTimes[ a ], m_coefs[ a ], interpType );
             }
             return x;
         }
-    private:
-        std::array< oneMultAP< T >, NSTAGES > m_aps;
-        std::array< T, NSTAGES > m_coefs, m_delayTimes;
+
     };
     
     //============//============//============//============//============//============

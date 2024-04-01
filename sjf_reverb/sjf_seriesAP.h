@@ -8,12 +8,14 @@
 #ifndef sjf_rev_seriesAllpass_h
 #define sjf_rev_seriesAllpass_h
 
-#include "../sjf_audioUtilitiesC++.h"
-#include "../sjf_interpolators.h"
-#include "../gcem/include/gcem.hpp"
-#include "sjf_oneMultAP.h"
+//#include "../sjf_audioUtilitiesC++.h"
+//#include "../sjf_interpolators.h"
+//#include "../gcem/include/gcem.hpp"
+//#include "sjf_oneMultAP.h"
+//
+//#include "sjf_rev_consts.h"
 
-#include "sjf_rev_consts.h"
+#include "../sjf_rev.h"
 
 namespace sjf::rev
 {
@@ -26,13 +28,19 @@ namespace sjf::rev
     {
     private:
         std::array< oneMultAP< T >, NSTAGES > m_aps;
-        std::array< T, NSTAGES > m_coefs, m_delayTimes;
+        std::array< T, NSTAGES > m_coefs, m_delayTimesSamps, m_damping;
         
     public:
         seriesAllpass()
         {
             initialise( 44100 ); // default sample rate
             setCoefs( 0.7 ); // default coefficient
+            for ( auto s = 0; s < NSTAGES; s++ )
+            {
+                m_delayTimesSamps[ s ] = ( rand01()*2048 ) + 1024; // random delay times just so it's initialised
+                m_coefs[ s ] = 0;
+                m_damping[ s ] = 0;
+            }
         }
         ~seriesAllpass(){}
         
@@ -55,14 +63,34 @@ namespace sjf::rev
                 m_coefs[ a ] = coef;
         }
         
+        
+        /**
+         This sets all of the allpass coefficients
+         */
+        void setCoefs( const std::array< T, NSTAGES >& coefs )
+        {
+            for ( auto a = 0; a < NSTAGES; a++ )
+                m_coefs[ a ] = coefs[ a ];
+        }
+        
         /**
          Set all of the delayTimes
          */
         void setDelayTimes( const std::array< T, NSTAGES >& dt )
         {
             for ( auto d = 0; d < NSTAGES; d++ )
-                m_delayTimes[ d ] = dt[ d ];
+                m_delayTimesSamps[ d ] = dt[ d ];
         }
+        
+        /**
+         Set all of the damping coefficients
+         */
+        void setDamping( const std::array< T, NSTAGES >& damp )
+        {
+            for ( auto d = 0; d < NSTAGES; d++ )
+                m_damping[ d ] = damp[ d ];
+        }
+        
         
         /**
          This processes a single delay, it should be called once for every sample in the block
@@ -76,7 +104,7 @@ namespace sjf::rev
         {
             for ( auto a = 0; a < NSTAGES; a++ )
             {
-                x = m_aps[ a ].process( x, m_delayTimes[ a ], m_coefs[ a ], interpType );
+                x = m_aps[ a ].process( x, m_delayTimesSamps[ a ], m_coefs[ a ], interpType, m_damping[ a ] );
             }
             return x;
         }

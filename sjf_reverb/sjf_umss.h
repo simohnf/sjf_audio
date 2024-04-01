@@ -8,13 +8,15 @@
 #ifndef sjf_rev_umss_h
 #define sjf_rev_umss_h
 
-#include "../sjf_audioUtilitiesC++.h"
-#include "../sjf_interpolators.h"
-#include "../gcem/include/gcem.hpp"
-#include "sjf_delay.h"
-#include "sjf_damper.h"
+//#include "../sjf_audioUtilitiesC++.h"
+//#include "../sjf_interpolators.h"
+//#include "../gcem/include/gcem.hpp"
+//#include "sjf_delay.h"
+//#include "sjf_damper.h"
+//
+//#include "sjf_rev_consts.h"
 
-#include "sjf_rev_consts.h"
+#include "../sjf_rev.h"
 
 namespace sjf::rev
 {
@@ -31,8 +33,20 @@ namespace sjf::rev
         std::array < int, NOUTTAPS > m_outTapDelayTimesSamps;
         std::array < T, NOUTTAPS > m_outTapGains;
         T m_feedback = 0.5, m_SR = 44100, m_damping = 0.4;
+        
     public:
-        umss(){}
+        umss()
+        {
+            initialise( 44100, 44100 );
+            for ( auto f = 0; f < NFBLOOPS; f++ )
+                m_fbDelayTimesSamps[ f ] = ( rand01()*22050.0 ) + 4410;
+            auto oLevel = 1.0 / NOUTTAPS;
+            for ( auto o = 0; o < NOUTTAPS; o++ )
+            {
+                m_outTapDelayTimesSamps[ o ] = ( rand01()*22050.0 ) + 4410;
+                m_outTapGains[ o ] = oLevel;
+            }
+        }
         ~umss(){}
         
         /**

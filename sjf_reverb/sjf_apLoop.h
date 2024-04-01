@@ -8,14 +8,15 @@
 #ifndef sjf_rev_apLoop_h
 #define sjf_rev_apLoop_h
 
-#include "../sjf_audioUtilitiesC++.h"
-#include "../sjf_interpolators.h"
-#include "../gcem/include/gcem.hpp"
-#include "sjf_oneMultAP.h"
-#include "sjf_delay.h"
-#include "sjf_damper.h"
-#include "sjf_rev_consts.h"
+//#include "../sjf_audioUtilitiesC++.h"
+//#include "../sjf_interpolators.h"
+//#include "../gcem/include/gcem.hpp"
+//#include "sjf_oneMultAP.h"
+//#include "sjf_delay.h"
+//#include "sjf_damper.h"
+//#include "sjf_rev_consts.h"
 
+#include "../sjf_rev.h"
 namespace sjf::rev
 {
     /**
@@ -32,7 +33,7 @@ namespace sjf::rev
         std::array< delay < T >, NSTAGES > m_delays;
         std::array< damper < T >, NSTAGES > m_dampers;
         
-        std::array< T, NSTAGES > m_gain;
+        std::array< T, NSTAGES > m_gains;
         std::array< std::array< T, AP_PERSTAGE + 1 >, NSTAGES > m_delayTimes;
         std::array< std::array< T, AP_PERSTAGE >, NSTAGES > m_diffusions;
         
@@ -42,11 +43,11 @@ namespace sjf::rev
     public:
         allpassLoop()
         {
-            //            fillPrimes();
             // just ensure that delaytimes are set to begin with
             for ( auto s = 0; s < NSTAGES; s++ )
                 for ( auto d = 0; d < AP_PERSTAGE+1; d++ )
                     setDelayTimeSamples( std::round(rand01() * 4410 + 4410), s, d );
+            
             setDecay( 5000 );
             setDiffusion( 0.5 );
         }
@@ -111,8 +112,8 @@ namespace sjf::rev
                 for ( auto d = 0; d < AP_PERSTAGE + 1; d++ )
                     del += m_delayTimes[ s ][ d ];
                 del  /= ( m_SR * 0.001 );
-                m_gain[ s ] = sjf_calculateFeedbackGain<T>( del, m_decayInMS );
-//                m_gain[ s ] = std::pow( 10.0, -3.0 * del / m_decayInMS );
+                m_gains[ s ] = sjf_calculateFeedbackGain<T>( del, m_decayInMS );
+//                m_gains[ s ] = std::pow( 10.0, -3.0 * del / m_decayInMS );
             }
         }
         
@@ -143,7 +144,7 @@ namespace sjf::rev
                 }
                 samp = m_dampers[ s ].process( samp, m_damping );
                 output += samp;
-                m_delays[ s ].setSample( samp * m_gain[ s ] );
+                m_delays[ s ].setSample( samp * m_gains[ s ] );
                 samp = m_delays[ s ].getSample( m_delayTimes[ s ][ AP_PERSTAGE ] );
             }
             m_lastSamp = samp;

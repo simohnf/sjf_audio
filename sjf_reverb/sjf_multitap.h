@@ -8,14 +8,7 @@
 #ifndef sjf_rev_multitap_h
 #define sjf_rev_multitap_h
 
-#include "../sjf_audioUtilitiesC++.h"
-#include "../sjf_interpolators.h"
-#include "../gcem/include/gcem.hpp"
-#include "sjf_delay.h"
-
-
-
-
+#include "../sjf_rev.h"
 
 namespace sjf::rev
 {
@@ -31,7 +24,11 @@ namespace sjf::rev
         int m_nTaps = MAXNTAPS;
         delay< T > m_delay;
     public:
-        multiTap(){}
+        multiTap()
+        {
+            for ( auto i = 0; i < MAXNTAPS; i++ )
+                m_delayTimes[ i ] = m_gains[ i ] = 0;
+        }
         ~multiTap(){}
         
         

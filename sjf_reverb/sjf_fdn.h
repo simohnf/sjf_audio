@@ -7,14 +7,16 @@
 #ifndef sjf_rev_fdn_h
 #define sjf_rev_fdn_h
 
-#include "../sjf_audioUtilitiesC++.h"
-#include "../sjf_interpolators.h"
-#include "../gcem/include/gcem.hpp"
+//#include "../sjf_audioUtilitiesC++.h"
+//#include "../sjf_interpolators.h"
+//#include "../gcem/include/gcem.hpp"
+//
+//#include "sjf_delay.h"
+//#include "sjf_damper.h"
+//#include "sjf_oneMultAP.h"
+//#include "sjf_rev_consts.h"
 
-#include "sjf_delay.h"
-#include "sjf_damper.h"
-#include "sjf_oneMultAP.h"
-#include "sjf_rev_consts.h"
+#include "../sjf_rev.h"
 
 namespace sjf::rev
 {
@@ -49,7 +51,7 @@ namespace sjf::rev
             for ( auto & d : rDT )
                 d = m_SR * ( 0.01 + ( rand01() * 0.14 ) );
             setAPTimes( rDT );
-            
+//            setDecayInMS( m_decayInMS ); called within delay time calls above
         }
         ~fdn(){}
         
@@ -153,7 +155,7 @@ namespace sjf::rev
                 for ( auto c = 0; c < NCHANNELS; c++ )
                     m_delays[ c ].setSample(
                                             m_diffusers[ c ].process(
-                                                                     samples[ c ] + delayed[ c ], m_apDelayTimesSamps[ c ], m_diffusion
+                                                                     samples[ c ] + delayed[ c ], m_apDelayTimesSamps[ c ], m_diffusion, interpType
                                                                      )
                                             );
             samples = delayed;

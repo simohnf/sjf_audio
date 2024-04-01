@@ -7,9 +7,11 @@
 #ifndef sjf_rev_damper_h
 #define sjf_rev_damper_h
 
-#include "../sjf_audioUtilitiesC++.h"
-#include "../sjf_interpolators.h"
-#include "../gcem/include/gcem.hpp"
+//#include "../sjf_audioUtilitiesC++.h"
+//#include "../sjf_interpolators.h"
+//#include "../gcem/include/gcem.hpp"
+
+#include "../sjf_rev.h"
 
 namespace sjf::rev
 {

@@ -25,30 +25,45 @@ namespace sjf::rev
      Each stage is separated by a further delay and then a lowpass filter
      This version does not use a single loop
      */
-    template < typename T, int NSTAGES, int AP_PERSTAGE >
+    template < typename T >
     class allpassLoop
     {
     private:
-        std::array< std::array< oneMultAP < T >, AP_PERSTAGE >, NSTAGES > m_aps;
-        std::array< delay < T >, NSTAGES > m_delays;
-        std::array< damper < T >, NSTAGES > m_dampers;
+        const int NSTAGES, NAP_PERSTAGE;
+        std::vector< std::vector< oneMultAP < T > > > m_aps;
+        std::vector< delay < T > > m_delays;
+        std::vector< damper < T > > m_dampers;
         
-        std::array< T, NSTAGES > m_gains;
-        std::array< std::array< T, AP_PERSTAGE + 1 >, NSTAGES > m_delayTimes;
-        std::array< std::array< T, AP_PERSTAGE >, NSTAGES > m_diffusions;
+        std::vector< T > m_gains;
+        std::vector< std::vector< T > > m_delayTimes;
+        std::vector< std::vector< T > > m_diffusions;
         
         T m_lastSamp = 0;
         T m_SR = 44100, m_decayInMS = 100;
         T m_damping = 0.999;
     public:
-        allpassLoop()
+        allpassLoop( int stages, int apPerStage ): NSTAGES( stages ), NAP_PERSTAGE( apPerStage )
         {
+            m_aps.resize( NSTAGES );
+            for ( auto & s : m_aps )
+                s.resize( NAP_PERSTAGE );
+            m_delays.resize( NSTAGES );
+            m_dampers.resize( NSTAGES );
+            m_gains.resize( NSTAGES );
+            
+            m_delayTimes.resize( NSTAGES );
+            for ( auto & s : m_delayTimes )
+                s.resize( NAP_PERSTAGE + 1 );
+            
+            m_diffusions.resize( NSTAGES );
+            for ( auto & s: m_diffusions )
+                s.resize( NAP_PERSTAGE );
             // just ensure that delaytimes are set to begin with
             for ( auto s = 0; s < NSTAGES; s++ )
-                for ( auto d = 0; d < AP_PERSTAGE+1; d++ )
+                for ( auto d = 0; d < NAP_PERSTAGE+1; d++ )
                     setDelayTimeSamples( std::round(rand01() * 4410 + 4410), s, d );
             
-            setDecay( 5000 );
+            setDecay( m_decayInMS );
             setDiffusion( 0.5 );
         }
         ~allpassLoop(){}
@@ -62,7 +77,7 @@ namespace sjf::rev
             auto delSize = sjf_nearestPowerAbove( m_SR / 2, 2 );
             for ( auto s = 0; s < NSTAGES; s++ )
             {
-                for ( auto a = 0; a < AP_PERSTAGE; a++ )
+                for ( auto a = 0; a < NAP_PERSTAGE; a++ )
                     m_aps[ s ][ a ].initialise( delSize );
                 m_delays[ s ].initialise( delSize );
             }
@@ -71,12 +86,12 @@ namespace sjf::rev
         /**
          This allows you to set all of the delay times
          */
-        void setDelayTimesSamples( std::array< std::array < T, AP_PERSTAGE + 1 >, NSTAGES > delayTimes)
+        void setDelayTimesSamples( std::vector< std::vector < T > > delayTimes)
         {
             for ( auto s = 0; s < NSTAGES; s++ )
-                for ( auto d = 0; d < AP_PERSTAGE+1; d++ )
+                for ( auto d = 0; d < NAP_PERSTAGE+1; d++ )
                     m_delayTimes[ s ][ d ] = delayTimes[ d ][ s ];
-            setDecay( m_decayInMS );
+//            setDecay( m_decayInMS );
         }
         
         /**
@@ -87,7 +102,7 @@ namespace sjf::rev
         {
             diff = diff <= 0.9 ? (diff >= -0.9 ? diff : -0.9 ) : 0.9;
             for ( auto s = 0; s < NSTAGES; s++ )
-                for ( auto d = 0; d < AP_PERSTAGE; d++ )
+                for ( auto d = 0; d < NAP_PERSTAGE; d++ )
                     m_diffusions[ s ][ d ] = diff;
         }
         
@@ -97,7 +112,7 @@ namespace sjf::rev
         void setDelayTimeSamples( T dt, int stage, int delayNumber )
         {
             m_delayTimes[ stage ][ delayNumber ] = dt;
-            setDecay( m_decayInMS );
+//            setDecay( m_decayInMS );
         }
         
         /**
@@ -109,7 +124,7 @@ namespace sjf::rev
             for ( auto s = 0; s < NSTAGES; s++ )
             {
                 auto del = 0.0;
-                for ( auto d = 0; d < AP_PERSTAGE + 1; d++ )
+                for ( auto d = 0; d < NAP_PERSTAGE + 1; d++ )
                     del += m_delayTimes[ s ][ d ];
                 del  /= ( m_SR * 0.001 );
                 m_gains[ s ] = sjf_calculateFeedbackGain<T>( del, m_decayInMS );
@@ -118,11 +133,35 @@ namespace sjf::rev
         }
         
         /**
+         Get the current decay time in ms
+         */
+        auto getDecayInMs()
+        {
+            return m_decayInMS;
+        }
+        
+        /**
          This sets the amount of damping applied between each section of the loop ( must be >= 0 and <= 1 )
          */
         void setDamping( T dampCoef )
         {
             m_damping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999;
+        }
+        
+        /**
+         return the number of stages in the loop
+         */
+        auto getNStages( )
+        {
+            return NSTAGES;
+        }
+        
+        /**
+         return the number of allpass filter in each stage of the loop
+         */
+        auto getNApPerStage( )
+        {
+            return NAP_PERSTAGE;
         }
         
         /**
@@ -138,14 +177,14 @@ namespace sjf::rev
             for ( auto s = 0; s < NSTAGES; s ++ )
             {
                 samp +=  input;
-                for ( auto a = 0; a < AP_PERSTAGE; a++ )
+                for ( auto a = 0; a < NAP_PERSTAGE; a++ )
                 {
                     samp = m_aps[ s ][ a ].process( samp, m_delayTimes[ s ][ a ], m_diffusions[ s ][ a ], interpType );
                 }
                 samp = m_dampers[ s ].process( samp, m_damping );
                 output += samp;
                 m_delays[ s ].setSample( samp * m_gains[ s ] );
-                samp = m_delays[ s ].getSample( m_delayTimes[ s ][ AP_PERSTAGE ] );
+                samp = m_delays[ s ].getSample( m_delayTimes[ s ][ NAP_PERSTAGE ] );
             }
             m_lastSamp = samp;
             return output;

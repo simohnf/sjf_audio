@@ -38,6 +38,14 @@ namespace sjf::rev
             m_lastOut = x + coef*( m_lastOut - x );
             return m_lastOut;
         }
+        
+        /**
+         Reset the currently stored value. Can be used to clear delay line to 0 or to set to an initial value
+         */
+        void reset( T val )
+        {
+            m_lastOut = val;
+        }
     };
 }
 

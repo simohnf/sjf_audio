@@ -35,7 +35,7 @@ namespace sjf::rev
         std::vector< damper < T > > m_dampers;
         
         std::vector< T > m_gains;
-        std::vector< std::vector< T > > m_delayTimes;
+        std::vector< std::vector< T > > m_delayTimesSamps;
         std::vector< std::vector< T > > m_diffusions;
         
         T m_lastSamp = 0;
@@ -51,8 +51,8 @@ namespace sjf::rev
             m_dampers.resize( NSTAGES );
             m_gains.resize( NSTAGES );
             
-            m_delayTimes.resize( NSTAGES );
-            for ( auto & s : m_delayTimes )
+            m_delayTimesSamps.resize( NSTAGES );
+            for ( auto & s : m_delayTimesSamps )
                 s.resize( NAP_PERSTAGE + 1 );
             
             m_diffusions.resize( NSTAGES );
@@ -86,11 +86,11 @@ namespace sjf::rev
         /**
          This allows you to set all of the delay times
          */
-        void setDelayTimesSamples( std::vector< std::vector < T > > delayTimes)
+        void setDelayTimesSamples( std::vector< std::vector < T > > delayTimesSamps)
         {
             for ( auto s = 0; s < NSTAGES; s++ )
                 for ( auto d = 0; d < NAP_PERSTAGE+1; d++ )
-                    m_delayTimes[ s ][ d ] = delayTimes[ d ][ s ];
+                    m_delayTimesSamps[ s ][ d ] = delayTimesSamps[ d ][ s ];
 //            setDecay( m_decayInMS );
         }
         
@@ -111,7 +111,7 @@ namespace sjf::rev
          */
         void setDelayTimeSamples( T dt, int stage, int delayNumber )
         {
-            m_delayTimes[ stage ][ delayNumber ] = dt;
+            m_delayTimesSamps[ stage ][ delayNumber ] = dt;
 //            setDecay( m_decayInMS );
         }
         
@@ -125,7 +125,7 @@ namespace sjf::rev
             {
                 auto del = 0.0;
                 for ( auto d = 0; d < NAP_PERSTAGE + 1; d++ )
-                    del += m_delayTimes[ s ][ d ];
+                    del += m_delayTimesSamps[ s ][ d ];
                 del  /= ( m_SR * 0.001 );
                 m_gains[ s ] = sjf_calculateFeedbackGain<T>( del, m_decayInMS );
 //                m_gains[ s ] = std::pow( 10.0, -3.0 * del / m_decayInMS );
@@ -179,15 +179,47 @@ namespace sjf::rev
                 samp +=  input;
                 for ( auto a = 0; a < NAP_PERSTAGE; a++ )
                 {
-                    samp = m_aps[ s ][ a ].process( samp, m_delayTimes[ s ][ a ], m_diffusions[ s ][ a ], interpType );
+                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], interpType );
                 }
                 samp = m_dampers[ s ].process( samp, m_damping );
                 output += samp;
                 m_delays[ s ].setSample( samp * m_gains[ s ] );
-                samp = m_delays[ s ].getSample( m_delayTimes[ s ][ NAP_PERSTAGE ] );
+                samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
             }
             m_lastSamp = samp;
             return output;
+        }
+        
+        /**
+         Stereo processing In place
+         This should be called for every sample in the block
+         The input is:
+         the sample to input into the loop
+         the interpolation type (optional, defaults to linear, see @sjf_interpolators)
+         */
+        void processInPlaceLR( T& inputL, T& inputR, int interpType = DEFAULT_INTERP )
+        {
+            auto samp = m_lastSamp;
+            auto outputL = 0.0, outputR = 0.0;
+            bool chR = false;
+            for ( auto s = 0; s < NSTAGES; s ++ )
+            {
+                samp += chR ?  inputR : inputL;
+                for ( auto a = 0; a < NAP_PERSTAGE; a++ )
+                {
+                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], interpType );
+                }
+                samp = m_dampers[ s ].process( samp, m_damping );
+                outputL += chR ? 0 : samp;
+                outputR += chR ? samp : 0;
+                m_delays[ s ].setSample( samp * m_gains[ s ] );
+                samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
+                chR = !chR;
+            }
+            m_lastSamp = samp;
+            inputL = outputL;
+            inputR = outputR;
+            return;
         }
         
     };

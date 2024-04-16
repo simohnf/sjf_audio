@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <limits>
 #include "gcem/include/gcem.hpp"
-
+#include "_compileTimeUnixTime.h"
 namespace sjf_compileTimeRandom
 {
     constexpr auto seed()
@@ -76,4 +76,67 @@ namespace sjf_compileTimeRandom
     
 
 }
+
+namespace sjf::ctr
+{
+
+    /**
+     xorshift random function for creating random numbers at compile time
+     */
+    constexpr unsigned long xorshift( unsigned long seed )
+    {
+        seed ^= (seed << 9);
+        seed ^= (seed >> 7);
+        seed ^= (seed << 13);
+        return seed;
+    }
+    
+    template< typename T, size_t NVALS, unsigned long SEED >
+    constexpr void shuffle( std::array< T, NVALS >& arr )
+    {
+        T temp = 0;
+        auto s = SEED;
+        for ( auto i = NVALS - 1; i > 1; i-- )
+        {
+            s = xorshift( SEED );
+            auto j = ( s % i );
+            temp = arr[ i ];
+            arr[ i ] = arr[ j ];
+            arr[ j ] = temp;
+        }
+    }
+    /**
+     A compile time array of random values between 0 and 1.
+     */
+    template < typename T, size_t NVALS, unsigned long SEED >
+    class rArray
+    {
+    public:
+        constexpr rArray() : m_arr(), m_arr2()
+        {
+            
+            size_t s = ( SEED & RAND_MAX );
+            T inv = 1.0 / T( RAND_MAX );
+            for ( auto i = 0; i < NVALS; i++ )
+            {
+                s = xorshift( s );
+                m_arr[ i ] = ( ( s & RAND_MAX ) * inv );
+            }
+            
+        }
+        
+        const T& operator[] ( size_t index ) const { return m_arr[ index ]; }
+        
+        const unsigned long getSEED() const { return SEED; }
+        
+        const T& getVal ( size_t index ) const { return m_arr2[ index ]; }
+        
+    private:
+        T m_arr[ NVALS ], m_arr2[ NVALS ];
+    };
+
+
+}
+
+
 #endif  /* sjf_compileTimeRandom_h */

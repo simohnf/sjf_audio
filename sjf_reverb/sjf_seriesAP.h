@@ -23,16 +23,22 @@ namespace sjf::rev
      An array of one multiply allpass filters connected in series
      input signal is passed through each all pass filter in turn
      */
-    template < typename T, int NSTAGES >
+    template < typename T >
     class seriesAllpass
     {
     private:
-        std::array< oneMultAP< T >, NSTAGES > m_aps;
-        std::array< T, NSTAGES > m_coefs, m_delayTimesSamps, m_damping;
+        const int NSTAGES;
+        std::vector< oneMultAP< T > > m_aps;
+        std::vector< T > m_coefs, m_delayTimesSamps, m_damping;
         
     public:
-        seriesAllpass()
+        seriesAllpass( int nstages ) : NSTAGES( nstages )
         {
+            m_aps.resize( NSTAGES );
+            m_coefs.resize( NSTAGES );
+            m_delayTimesSamps.resize( NSTAGES );
+            m_damping.resize( NSTAGES );
+            
             initialise( 44100 ); // default sample rate
             setCoefs( 0.7 ); // default coefficient
             for ( auto s = 0; s < NSTAGES; s++ )
@@ -45,13 +51,23 @@ namespace sjf::rev
         ~seriesAllpass(){}
         
         /**
-         This must be called before first use in order to set basic information such as maximum delay lengths and sampel rate
+         This must be called before first use in order to set basic information such as maximum delay length and sample rate
          */
         void initialise( T sampleRate )
         {
             auto size = sjf_nearestPowerAbove( sampleRate * 0.1, 2 );
             for ( auto & a : m_aps )
                 a.initialise( size );
+        }
+        /**
+         This must be called before first use in order to set basic information such as maximum delay length
+         */
+        void initialise( int maxDelayInSamples )
+        {
+            if ( !sjf_isPowerOf( maxDelayInSamples, 2 ) )
+                maxDelayInSamples  = sjf_nearestPowerAbove( maxDelayInSamples, 2 );
+            for ( auto & a : m_aps )
+                a.initialise( maxDelayInSamples );
         }
         
         /**
@@ -63,32 +79,66 @@ namespace sjf::rev
                 m_coefs[ a ] = coef;
         }
         
-        
         /**
          This sets all of the allpass coefficients
          */
-        void setCoefs( const std::array< T, NSTAGES >& coefs )
+        void setCoefs( const std::vector< T >& coefs )
         {
             for ( auto a = 0; a < NSTAGES; a++ )
                 m_coefs[ a ] = coefs[ a ];
         }
         
         /**
+         This sets the coefficient for an inndividual allpass to the give value
+         */
+        void setCoef( T coef, int apNum )
+        {
+            m_coefs[ apNum ] = coef;
+        }
+        
+        
+        
+        /**
          Set all of the delayTimes
          */
-        void setDelayTimes( const std::array< T, NSTAGES >& dt )
+        void setDelayTimes( const std::vector< T >& dt )
         {
             for ( auto d = 0; d < NSTAGES; d++ )
                 m_delayTimesSamps[ d ] = dt[ d ];
         }
         
         /**
+         Set all of the delayTime of an individual allpass
+         */
+        void setDelayTime( T dt, int apNum )
+        {
+            m_delayTimesSamps[ apNum ] = dt;
+        }
+        
+        /**
          Set all of the damping coefficients
          */
-        void setDamping( const std::array< T, NSTAGES >& damp )
+        void setDamping( const std::vector< T >& damp )
         {
             for ( auto d = 0; d < NSTAGES; d++ )
                 m_damping[ d ] = damp[ d ];
+        }
+        
+        /**
+         Set  the damping coefficient for an individual allpass
+         */
+        void setDamping( T damp, int apNum )
+        {
+            m_damping[ apNum ] = damp;
+        }
+        
+        /**
+         Set  all of the damping coefficients to the same value
+         */
+        void setDamping( T damp )
+        {
+            for ( auto d = 0; d < NSTAGES; d++ )
+                m_damping[ d ] = damp;
         }
         
         

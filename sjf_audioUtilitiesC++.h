@@ -824,4 +824,19 @@ T sjf_calculateFeedbackGain( T delayTime, T desiredDecayTime )
 
 //m_gain[ s ] = std::pow( 10.0, -3.0 * del / m_decayInMS );
 
+/** Generate a series of random values. The maximum value is divided into n bands, and each random value will be placed within one of these bands */
+template< typename T >
+void genVelvetNoise( T max, std::vector< T >& storage  )
+{
+    auto nVals = storage.size();
+    auto bw = max / static_cast< T >( nVals );
+    for ( auto v = 0; v < nVals; v++ )
+    {
+        auto low = bw * v;
+        storage[ v ] = low + bw * rand01();
+    }
+}
+
+
+
 #endif /* sjf_audioUtilitiesC++ */

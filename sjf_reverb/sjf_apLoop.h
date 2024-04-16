@@ -8,14 +8,6 @@
 #ifndef sjf_rev_apLoop_h
 #define sjf_rev_apLoop_h
 
-//#include "../sjf_audioUtilitiesC++.h"
-//#include "../sjf_interpolators.h"
-//#include "../gcem/include/gcem.hpp"
-//#include "sjf_oneMultAP.h"
-//#include "sjf_delay.h"
-//#include "sjf_damper.h"
-//#include "sjf_rev_consts.h"
-
 #include "../sjf_rev.h"
 namespace sjf::rev
 {
@@ -28,19 +20,6 @@ namespace sjf::rev
     template < typename T >
     class allpassLoop
     {
-    private:
-        const int NSTAGES, NAP_PERSTAGE;
-        std::vector< std::vector< oneMultAP < T > > > m_aps;
-        std::vector< delay < T > > m_delays;
-        std::vector< damper < T > > m_dampers;
-        
-        std::vector< T > m_gains;
-        std::vector< std::vector< T > > m_delayTimesSamps;
-        std::vector< std::vector< T > > m_diffusions;
-        
-        T m_lastSamp = 0;
-        T m_SR = 44100, m_decayInMS = 100;
-        T m_damping = 0.999;
     public:
         allpassLoop( int stages, int apPerStage ): NSTAGES( stages ), NAP_PERSTAGE( apPerStage )
         {
@@ -91,7 +70,6 @@ namespace sjf::rev
             for ( auto s = 0; s < NSTAGES; s++ )
                 for ( auto d = 0; d < NAP_PERSTAGE+1; d++ )
                     m_delayTimesSamps[ s ][ d ] = delayTimesSamps[ d ][ s ];
-//            setDecay( m_decayInMS );
         }
         
         /**
@@ -112,7 +90,6 @@ namespace sjf::rev
         void setDelayTimeSamples( T dt, int stage, int delayNumber )
         {
             m_delayTimesSamps[ stage ][ delayNumber ] = dt;
-//            setDecay( m_decayInMS );
         }
         
         /**
@@ -128,7 +105,6 @@ namespace sjf::rev
                     del += m_delayTimesSamps[ s ][ d ];
                 del  /= ( m_SR * 0.001 );
                 m_gains[ s ] = sjf_calculateFeedbackGain<T>( del, m_decayInMS );
-//                m_gains[ s ] = std::pow( 10.0, -3.0 * del / m_decayInMS );
             }
         }
         
@@ -221,7 +197,19 @@ namespace sjf::rev
             inputR = outputR;
             return;
         }
+    private:
+        const int NSTAGES, NAP_PERSTAGE;
+        std::vector< std::vector< oneMultAP < T > > > m_aps;
+        std::vector< delay < T > > m_delays;
+        std::vector< damper < T > > m_dampers;
         
+        std::vector< T > m_gains;
+        std::vector< std::vector< T > > m_delayTimesSamps;
+        std::vector< std::vector< T > > m_diffusions;
+        
+        T m_lastSamp = 0;
+        T m_SR = 44100, m_decayInMS = 100;
+        T m_damping = 0.999;
     };
 }
 

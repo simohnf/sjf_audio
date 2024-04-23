@@ -56,6 +56,7 @@ namespace sjf::rev
          */
         void setDelayTimesSamps( const std::vector< T >& dt )
         {
+            assert( dt.size() == MAXNTAPS );
             for ( auto d = 0; d < MAXNTAPS; d++ )
                 m_delayTimesSamps[ d ] = dt[ d ];
         }
@@ -73,6 +74,7 @@ namespace sjf::rev
          */
         void setGains( const std::vector< T >& gains )
         {
+            assert( gains.size() == MAXNTAPS );
             for ( auto  g = 0; g < MAXNTAPS; g++ )
                 m_gains[ g ] = gains[ g ];
         }

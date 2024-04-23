@@ -84,6 +84,7 @@ namespace sjf::rev
          */
         void setCoefs( const std::vector< T >& coefs )
         {
+            assert( coefs.size() == NSTAGES );
             for ( auto a = 0; a < NSTAGES; a++ )
                 m_coefs[ a ] = coefs[ a ];
         }
@@ -103,6 +104,7 @@ namespace sjf::rev
          */
         void setDelayTimes( const std::vector< T >& dt )
         {
+            assert( dt.size() == NSTAGES );
             for ( auto d = 0; d < NSTAGES; d++ )
                 m_delayTimesSamps[ d ] = dt[ d ];
         }
@@ -110,7 +112,7 @@ namespace sjf::rev
         /**
          Set all of the delayTime of an individual allpass
          */
-        void setDelayTime( T dt, int apNum )
+        void setDelayTime( T dt, size_t apNum )
         {
             m_delayTimesSamps[ apNum ] = dt;
         }
@@ -120,6 +122,7 @@ namespace sjf::rev
          */
         void setDamping( const std::vector< T >& damp )
         {
+            assert( damp.size() == NSTAGES );
             for ( auto d = 0; d < NSTAGES; d++ )
                 m_damping[ d ] = damp[ d ];
         }
@@ -127,7 +130,7 @@ namespace sjf::rev
         /**
          Set  the damping coefficient for an individual allpass
          */
-        void setDamping( T damp, int apNum )
+        void setDamping( T damp, size_t apNum )
         {
             m_damping[ apNum ] = damp;
         }

@@ -7,15 +7,6 @@
 #ifndef sjf_rev_fdn_h
 #define sjf_rev_fdn_h
 
-//#include "../sjf_audioUtilitiesC++.h"
-//#include "../sjf_interpolators.h"
-//#include "../gcem/include/gcem.hpp"
-//
-//#include "sjf_delay.h"
-//#include "sjf_damper.h"
-//#include "sjf_oneMultAP.h"
-//#include "sjf_rev_consts.h"
-
 #include "../sjf_rev.h"
 
 namespace sjf::rev
@@ -25,66 +16,105 @@ namespace sjf::rev
      */
     
     // NCHANNELS should be a power of 2!!!
-    template< typename T, int NCHANNELS >
+    template< typename T >
     class fdn
     {
     private:
-        std::array< delay< T >, NCHANNELS > m_delays;
-        std::array< damper< T >, NCHANNELS > m_dampers;
-        std::array< oneMultAP< T >, NCHANNELS > m_diffusers;
-        std::array< T, NCHANNELS > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
+        const int NCHANNELS;
+        
+        std::vector< delay< T > > m_delays;
+        std::vector< damper< T > > m_dampers;
+        std::vector< oneMultAP< T > > m_diffusers;
+        std::vector< T > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
         T m_decayInMS = 1000, m_SR = 44100, m_damping = 0.2, m_diffusion = 0.5;
     public:
-        fdn()
+        fdn( int nchannels ) : NCHANNELS( nchannels )
         {
+            m_delays.resize( NCHANNELS );
+            m_dampers.resize( NCHANNELS );
+            m_diffusers.resize( NCHANNELS );
+            m_delayTimesSamps.resize( NCHANNELS, 0 );
+            m_apDelayTimesSamps.resize( NCHANNELS, 0 );
+            m_fbGains.resize( NCHANNELS, 0 );
+            
+            
             for ( auto & d : m_delays )
-                d.initialise( sjf_nearestPowerAbove( m_SR, 2 ) );
+                d.initialise( m_SR );
             for ( auto & ap : m_diffusers )
-                ap.initialise( sjf_nearestPowerAbove( m_SR * 0.25, 2 ) );
+                ap.initialise( m_SR * 0.25 );
             
             // ensure delaytimes are initialised
-            std::array< T, NCHANNELS > rDT;
-            for ( auto & d : rDT )
-                d = m_SR * ( 0.1 + ( rand01() * 0.4 ) );
-            setDelayTimes( rDT );
-            
-            for ( auto & d : rDT )
-                d = m_SR * ( 0.01 + ( rand01() * 0.14 ) );
-            setAPTimes( rDT );
-//            setDecayInMS( m_decayInMS ); called within delay time calls above
+//            for ( auto d = 0; d < NCHANNELS; d++ )
+//            {
+//                setDelayTime( m_SR * ( 0.1 + ( rand01() * 0.4 ) ), d );
+//                setAPTime( m_SR * ( 0.01 + ( rand01() * 0.14 ) ), d );
+//            }
+            setDecayInMS( m_decayInMS );
         }
         ~fdn(){}
         
         /**
          This must be called before first use in order to set basic information such as maximum delay lengths and sample rate
          */
-        void initialise( int maxSizePerChannelSamps, T sampleRate )
+        void initialise( int maxSizePerChannelSamps, int maxSizePerAPChannelSamps, T sampleRate )
         {
             m_SR = sampleRate;
             for ( auto & d : m_delays )
-                d.initialise( sjf_nearestPowerAbove( maxSizePerChannelSamps, 2 ) );
+                d.initialise( maxSizePerChannelSamps );
             for ( auto & ap : m_diffusers )
-                ap.initialise( sjf_nearestPowerAbove( maxSizePerChannelSamps * 0.25, 2 ) );
+                ap.initialise( maxSizePerAPChannelSamps );
+            
+            setDecayInMS( m_decayInMS );
         }
+        
+        
+        /**
+         The different possible mixers that can be used within the loop
+         */
+        enum class mixers
+        {
+            none, hadamard, householder
+        };
+        
         
         /**
          This allows you to set all of the delay times
          */
-        void setDelayTimes( const std::array< T, NCHANNELS >& dt )
+        void setDelayTimes( const std::vector< T >& dt )
         {
+            assert( dt.size() == NCHANNELS );
             for ( auto c = 0; c < NCHANNELS; c ++ )
                 m_delayTimesSamps[ c ] = dt[ c ];
             setDecayInMS( m_decayInMS );
         }
         
         /**
-         This allows you to set all of the delay times used by the allpass filters for diffusion
+         This allows you to set one of the delay times, this does not reset the decay time calculation so you will need to reset that using setDecayInMS()!!!
          */
-        void setAPTimes( const std::array< T, NCHANNELS >& dt )
+        void setDelayTime( const T dt, const int delayNumber )
         {
+            assert( delayNumber < NCHANNELS );
+            m_delayTimesSamps[ delayNumber ] = dt;
+        }
+        
+        /**
+         This allows you to set all of the delay times used by the allpass filters for diffusion.
+         */
+        void setAPTimes( const std::vector< T >& dt )
+        {
+            assert( dt.size() == NCHANNELS );
             for ( auto c = 0; c < NCHANNELS; c ++ )
                 m_apDelayTimesSamps[ c ] = dt[ c ];
             setDecayInMS( m_decayInMS );
+        }
+        
+        /**
+         This allows you to set one of the delay times used by the allpass filters for diffusion,  this does not reset the decay time calculation so you will need to reset that using setDecayInMS()!!! 
+         */
+        void setAPTime( const T dt, const int delayNumber )
+        {
+            assert( delayNumber < NCHANNELS );
+            m_apDelayTimesSamps[ delayNumber ] = dt;
         }
         
         
@@ -115,7 +145,7 @@ namespace sjf::rev
             auto dt = 0.0;
             for ( auto c = 0; c < NCHANNELS; c++ )
             {
-                dt = ( m_delayTimesSamps[ c ] +  m_apDelayTimesSamps[ c ] ) * m_SR * 0.001;
+                dt = ( m_delayTimesSamps[ c ] +  m_apDelayTimesSamps[ c ] ) * 1000.0 / m_SR;
                 m_fbGains[ c ] = sjf_calculateFeedbackGain< T >( dt, m_decayInMS );
             }
         }
@@ -128,9 +158,10 @@ namespace sjf::rev
             the desired mixing type within the loop ( see @mixers )
             the interpolation type ( optional, defaults to linear, see @sjf_interpolators )
          */
-        void processInPlace( std::array< T, NCHANNELS  >& samples, int mixType = mixers::hadamard, int interpType = DEFAULT_INTERP )
+        void processInPlace( std::vector< T >& samples, fdn< T >::mixers mixType = mixers::hadamard, int interpType = DEFAULT_INTERP )
         {
-            std::array< T, NCHANNELS  > delayed;
+            assert( samples.size() == NCHANNELS );
+            std::vector< T > delayed( NCHANNELS, 0 );
             for ( auto c = 0; c < NCHANNELS; c++ )
             {
                 delayed[ c ] = m_delays[ c ].getSample( m_delayTimesSamps[ c ], interpType );
@@ -142,34 +173,25 @@ namespace sjf::rev
                 case mixers::none :
                     break;
                 case mixers::hadamard :
-                    Hadamard< T, NCHANNELS >::inPlace( delayed );
+                    sjf::mixers::Hadamard< T >::inPlace( delayed.data(), NCHANNELS );
                 case mixers::householder :
-                    Householder< T, NCHANNELS >::mixInPlace( delayed );
+                    sjf::mixers::Householder< T >::mixInPlace( delayed.data(), NCHANNELS );
             }
         
             
             if ( m_diffusion == 0.0 )
                 for ( auto c = 0; c < NCHANNELS; c++ )
-                    m_delays[ c ].setSample( samples[ c ] + delayed[ c ] );
+                    m_delays[ c ].setSample( samples[ c ] + delayed[ c ]*m_fbGains[ c ] );
             else
                 for ( auto c = 0; c < NCHANNELS; c++ )
                     m_delays[ c ].setSample(
                                             m_diffusers[ c ].process(
-                                                                     samples[ c ] + delayed[ c ], m_apDelayTimesSamps[ c ], m_diffusion, interpType
+                                                                     samples[ c ] + delayed[ c ]*m_fbGains[ c ], m_apDelayTimesSamps[ c ], m_diffusion, interpType
                                                                      )
                                             );
             samples = delayed;
             return;
         }
-        
-        /**
-         The different possible mixers that can be used within the loop
-         */
-        enum mixers
-        {
-            none, hadamard, householder
-        };
-
     };
 }
 

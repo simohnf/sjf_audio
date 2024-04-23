@@ -67,6 +67,8 @@ namespace sjf::rev
          */
         void setDelayTimesSamples( std::vector< std::vector < T > > delayTimesSamps)
         {
+            assert( delayTimesSamps.size() == NSTAGES );
+            assert( delayTimesSamps[ 0 ].size() == NAP_PERSTAGE+1 );
             for ( auto s = 0; s < NSTAGES; s++ )
                 for ( auto d = 0; d < NAP_PERSTAGE+1; d++ )
                     m_delayTimesSamps[ s ][ d ] = delayTimesSamps[ d ][ s ];

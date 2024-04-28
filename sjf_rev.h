@@ -23,6 +23,7 @@
 #include "sjf_reverb/sjf_fdn.h"
 #include "sjf_reverb/sjf_umss.h"
 #include "sjf_reverb/sjf_nestedAP.h"
+#include "sjf_reverb/sjf_rotDelDif.h"
 
 
 /**

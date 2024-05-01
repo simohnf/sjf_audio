@@ -17,7 +17,7 @@
 //#include "sjf_rev_consts.h"
 
 #include "../sjf_rev.h"
-
+#include "../sjf_dcBlock.h"
 namespace sjf::rev
 {
     /**
@@ -30,14 +30,15 @@ namespace sjf::rev
         const int NFBLOOPS, NOUTTAPS;
         const T FBSCALE;
         delay< T > m_delayLine;
-        damper< T > m_damper, m_dcBlock;
+        damper< T > m_damper;
+        sjf::filters::dcBlock< T > m_dcBlock;
         std::vector < T > m_fbDelayTimesSamps;
         std::vector < int > m_outTapDelayTimesSamps;
         std::vector < T > m_outTapGains;
-        T m_feedback = 0.125, m_SR = 44100, m_damping = 0.4, m_dcDamp = 0.9999;
+        T m_feedback = 1.0, m_SR = 44100, m_damping = 0.4;
         
     public:
-        umss( int nFbLoops, int nOutTaps ) : NFBLOOPS( nFbLoops ), NOUTTAPS( nOutTaps ),  FBSCALE( 1.0 / std::pow( static_cast<T>(nFbLoops), 0.85 ) )
+        umss( int nFbLoops, int nOutTaps ) : NFBLOOPS( nFbLoops ), NOUTTAPS( nOutTaps ),  FBSCALE( 1.0 / static_cast<T>( nFbLoops ) )
         {
             m_fbDelayTimesSamps.resize( NFBLOOPS, 0 );
             m_outTapDelayTimesSamps.resize( NOUTTAPS, 0 );
@@ -45,7 +46,7 @@ namespace sjf::rev
             initialise( 44100, 44100 );
             for ( auto f = 0; f < NFBLOOPS; f++ )
                 m_fbDelayTimesSamps[ f ] = ( rand01()*22050.0 ) + 4410;
-            auto oLevel = 1.0 / NOUTTAPS;
+            auto oLevel = 1.0 / std::sqrt(NOUTTAPS);
             for ( auto o = 0; o < NOUTTAPS; o++ )
             {
                 m_outTapDelayTimesSamps[ o ] = ( rand01()*22050.0 ) + 4410;
@@ -79,7 +80,7 @@ namespace sjf::rev
             for ( auto i = 0; i < NFBLOOPS; i++ )
                 fbLoop += m_delayLine.getSample( m_fbDelayTimesSamps[ i ], interpType );
             fbLoop *= m_feedback * FBSCALE;
-            fbLoop = fbLoop  - m_dcBlock.process( fbLoop, m_dcDamp );
+            fbLoop = m_dcBlock.process( fbLoop );
             auto outChan = 0;
             // no modulation for output taps
             for ( auto i = 0; i < NOUTTAPS; i++ )

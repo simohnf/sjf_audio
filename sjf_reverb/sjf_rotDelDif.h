@@ -18,12 +18,6 @@ namespace sjf::rev
     template< typename T >
     class rotDelDif
     {
-//        std::vector< std::vector< delay< T >, NCHANNELS >, NSTAGES > m_delays;
-//        std::array< std::array< damper< T >, NCHANNELS >, NSTAGES > m_dampers;
-//        std::array< std::array< T, NCHANNELS >, NSTAGES > m_delayTimesSamps, m_damping;
-//
-//        std::array< std::array< bool, NCHANNELS >, NSTAGES > m_polFlip;
-//        std::array< std::array< int,  NCHANNELS >, NSTAGES > m_rotationMatrix;
     public:
         rotDelDif( int nChannels, int nStages) : NCHANNELS( nChannels), NSTAGES( nStages )
         {
@@ -42,16 +36,6 @@ namespace sjf::rev
                 m_rotationMatrix[ s ].resize( NCHANNELS, 0 );
                 m_polFlip[ s ].resize( NCHANNELS, false );
             }
-            
-//            for ( auto s = 0; s < NSTAGES; s++ )
-//            {
-//                for ( auto d = 0; d < NCHANNELS; d++ )
-//                    {
-//                        m_delayTimesSamps[ s ][ d ] = ( rand01() * 4410 ) + 2205; // random delay times just so something is set
-//                        m_polFlip[ s ][ d ] = ( rand01() > 0.5 );
-//                        m_rotationMatrix[ s ][ d ] = ( d - s ) & NCHANNELS;
-//                    }
-//            }
         }
         ~rotDelDif(){}
         
@@ -171,7 +155,7 @@ namespace sjf::rev
          Output:
             None - Samples are processed in place and any down mixing is left to the user
          */
-        void processInPlace( std::vector< T >& samps, int interpType = 0 )
+        void processInPlace( std::vector< T >& samps, int interpType = DEFAULT_INTERP )
         {
             int rCh = 0;
             assert( samps.size() == NCHANNELS );

@@ -156,9 +156,7 @@ namespace sjf::rev
         T process( T x, int interpType = DEFAULT_INTERP )
         {
             for ( auto a = 0; a < NSTAGES; a++ )
-            {
                 x = m_aps[ a ].process( x, m_delayTimesSamps[ a ], m_coefs[ a ], interpType, m_damping[ a ] );
-            }
             return x;
         }
 
@@ -168,34 +166,6 @@ namespace sjf::rev
     //============//============//============//============//============//============
     //============//============//============//============//============//============
     //============//============//============//============//============//============
-    
-//    
-//    template< typename T, int NSTAGES >
-//    class seriesAP
-//    {
-//    public:
-//        seriesAP()
-//        {
-//            
-//        }
-//        ~seriesAP(){}
-//        
-//        void initialise( T sampleRate )
-//        {
-//            m_SR = sampleRate;
-//            auto size = sjf_nearestPowerAbove( sampleRate, 2 );
-//            m_buffer.resize( size );
-//            m_wrapMask = size - 1;
-//        }
-//        
-//    private:
-//        std::vector< T > m_buffer;
-//        int m_wrapMask = 0;
-//        T coef = 0.7, m_SR = 44100;
-//        std::array< T, NSTAGES > m_delayTimes;
-//    };
-//
-//    
 }
 
 #endif /* sjf_rev_APLoop_h */

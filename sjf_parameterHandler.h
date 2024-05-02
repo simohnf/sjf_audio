@@ -17,7 +17,11 @@ namespace sjf::parameterHandler {
     public:
         paramHandlerVector(){} // default constructor so that you could add only the parameters desired using method below
         
-        ~paramHandlerVector( ){}
+        ~paramHandlerVector( )
+        {
+            m_list.clear();
+            m_params.clear();
+        }
         
         void addParameter( juce::AudioProcessorValueTreeState& vts, juce::AudioProcessorParameter* parameterPtr, std::function< void(float) > audioThreadCallback )
         {

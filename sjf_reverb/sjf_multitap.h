@@ -110,7 +110,7 @@ namespace sjf::rev
          Output:
             combination of all of the taps
          */
-        T process( T x, int interpType = 0 )
+        T process( T x, int interpType = DEFAULT_INTERP )
         {
             T output = 0.0;
             for ( auto t = 0; t < m_nTaps; t++ )

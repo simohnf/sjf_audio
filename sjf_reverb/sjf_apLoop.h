@@ -184,9 +184,7 @@ namespace sjf::rev
             {
                 samp += chR ?  inputR : inputL;
                 for ( auto a = 0; a < NAP_PERSTAGE; a++ )
-                {
                     samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], interpType );
-                }
                 samp = m_dampers[ s ].process( samp, m_damping );
                 outputL += chR ? 0 : samp;
                 outputR += chR ? samp : 0;
@@ -197,6 +195,31 @@ namespace sjf::rev
             m_lastSamp = samp;
             inputL = outputL;
             inputR = outputR;
+            return;
+        }
+        
+        
+        void processInPlace( std::vector<T>& input, int interpType = DEFAULT_INTERP )
+        {
+            auto nChannels = input.size();
+            std::vector<T> output( nChannels, 0 );
+            auto chanCount = 0;
+            auto samp = m_lastSamp;
+//            auto outputL = 0.0, outputR = 0.0;
+//            bool chR = false;
+            for ( auto s = 0; s < NSTAGES; s ++ )
+            {
+                samp += input[ chanCount ];
+                for ( auto a = 0; a < NAP_PERSTAGE; a++ )
+                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], interpType );
+                samp = m_dampers[ s ].process( samp, m_damping );
+                output[ chanCount ] += samp;
+                m_delays[ s ].setSample( samp * m_gains[ s ] );
+                samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
+                chanCount = ( ++chanCount == nChannels ) ? 0 : chanCount;
+            }
+            m_lastSamp = samp;
+            input = output;
             return;
         }
     private:

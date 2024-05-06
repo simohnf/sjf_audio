@@ -9,6 +9,7 @@
 #define sjf_rev_apLoop_h
 
 #include "../sjf_rev.h"
+
 namespace sjf::rev
 {
     /**
@@ -18,7 +19,7 @@ namespace sjf::rev
      This version does not use a single loop
      */
     template < typename T >
-    class allpassLoop
+    class allpassLoop /* : public sjf::multiChannelEffect< T > */
     {
     public:
         allpassLoop( int stages, int apPerStage ): NSTAGES( stages ), NAP_PERSTAGE( apPerStage )
@@ -222,6 +223,32 @@ namespace sjf::rev
             input = output;
             return;
         }
+        
+        
+//        void inPlace( std::vector<T>& input ) override
+//        {
+//            auto nChannels = input.size();
+//            std::vector<T> output( nChannels, 0 );
+//            auto chanCount = 0;
+//            auto samp = m_lastSamp;
+////            auto outputL = 0.0, outputR = 0.0;
+////            bool chR = false;
+//            for ( auto s = 0; s < NSTAGES; s ++ )
+//            {
+//                samp += input[ chanCount ];
+//                for ( auto a = 0; a < NAP_PERSTAGE; a++ )
+//                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], m_interpType );
+//                samp = m_dampers[ s ].process( samp, m_damping );
+//                output[ chanCount ] += samp;
+//                m_delays[ s ].setSample( samp * m_gains[ s ] );
+//                samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
+//                chanCount = ( ++chanCount == nChannels ) ? 0 : chanCount;
+//            }
+//            m_lastSamp = samp;
+//            input = output;
+//            return;
+//        }
+//        
     private:
         const int NSTAGES, NAP_PERSTAGE;
         std::vector< std::vector< oneMultAP < T > > > m_aps;
@@ -235,6 +262,8 @@ namespace sjf::rev
         T m_lastSamp = 0;
         T m_SR = 44100, m_decayInMS = 100;
         T m_damping = 0.999;
+        
+        int m_interpType = DEFAULT_INTERP;
     };
 }
 

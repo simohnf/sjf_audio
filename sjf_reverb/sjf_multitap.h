@@ -61,10 +61,18 @@ namespace sjf::rev
                 m_delayTimesSamps[ d ] = dt[ d ];
         }
         
+//        /**
+//         Set the delayTime in samples for a single tap
+//         */
+//        void setDelayTimeSamps( int tapNum, T dt )
+//        {
+//            m_delayTimesSamps[ tapNum ] = dt;
+//        }
+        
         /**
          Set the delayTime in samples for a single tap
          */
-        void setDelayTimeSamps( int tapNum, T dt )
+        void setDelayTimeSamps( T dt, size_t tapNum )
         {
             m_delayTimesSamps[ tapNum ] = dt;
         }
@@ -79,10 +87,18 @@ namespace sjf::rev
                 m_gains[ g ] = gains[ g ];
         }
         
+//        /**
+//         Set the gain for an individual tap
+//         */
+//        void setGain( int tapNum, T gain )
+//        {
+//            m_gains[ tapNum ] = gain;
+//        }
+        
         /**
          Set the gain for an individual tap
          */
-        void setGain( int tapNum, T gain )
+        void setGain( T gain, size_t tapNum )
         {
             m_gains[ tapNum ] = gain;
         }
@@ -127,7 +143,7 @@ namespace sjf::rev
          output:
             Output of delay tap
          */
-        inline T getSample( int tapNum, int interpType = 0 )
+        inline T getSample( int tapNum, int interpType = DEFAULT_INTERP )
         {
             return m_delay.getSample( m_delayTimesSamps[ tapNum ], interpType ) * m_gains[ tapNum ];
         }

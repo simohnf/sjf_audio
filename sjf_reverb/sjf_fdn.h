@@ -17,16 +17,8 @@ namespace sjf::rev
     
     // NCHANNELS should be a power of 2!!!
     template< typename T >
-    class fdn
+    class fdn /* : sjf::multiChannelEffect< T > */
     {
-    private:
-        const int NCHANNELS;
-        
-        std::vector< delay< T > > m_delays;
-        std::vector< damper< T > > m_dampers;
-        std::vector< oneMultAP< T > > m_diffusers;
-        std::vector< T > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
-        T m_decayInMS = 1000, m_SR = 44100, m_damping = 0.2, m_diffusion = 0.5;
     public:
         fdn( int nchannels ) : NCHANNELS( nchannels )
         {
@@ -192,6 +184,54 @@ namespace sjf::rev
             samples = delayed;
             return;
         }
+        
+        
+//        void inPlace( std::vector< T >& samples ) override
+//        {
+//            assert( samples.size() == NCHANNELS );
+//            std::vector< T > delayed( NCHANNELS, 0 );
+//            for ( auto c = 0; c < NCHANNELS; c++ )
+//            {
+//                delayed[ c ] = m_delays[ c ].getSample( m_delayTimesSamps[ c ], m_interpType );
+//                delayed[ c ] = m_dampers[ c ].process( delayed[ c ], m_damping ); // lp filter
+//            }
+//
+//            switch( m_mixType )
+//            {
+//                case mixers::none :
+//                    break;
+//                case mixers::hadamard :
+//                    sjf::mixers::Hadamard< T >::inPlace( delayed.data(), NCHANNELS );
+//                case mixers::householder :
+//                    sjf::mixers::Householder< T >::mixInPlace( delayed.data(), NCHANNELS );
+//            }
+//
+//
+//            if ( m_diffusion == 0.0 )
+//                for ( auto c = 0; c < NCHANNELS; c++ )
+//                    m_delays[ c ].setSample( samples[ c ] + delayed[ c ]*m_fbGains[ c ] );
+//            else
+//                for ( auto c = 0; c < NCHANNELS; c++ )
+//                    m_delays[ c ].setSample(
+//                                            m_diffusers[ c ].process(
+//                                                                     samples[ c ] + delayed[ c ]*m_fbGains[ c ], m_apDelayTimesSamps[ c ], m_diffusion, m_interpType
+//                                                                     )
+//                                            );
+//            samples = delayed;
+//            return;
+//        }
+        
+    private:
+        const int NCHANNELS;
+        
+        std::vector< delay< T > > m_delays;
+        std::vector< damper< T > > m_dampers;
+        std::vector< oneMultAP< T > > m_diffusers;
+        std::vector< T > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
+        T m_decayInMS = 1000, m_SR = 44100, m_damping = 0.2, m_diffusion = 0.5;
+        
+        fdn< T >::mixers m_mixType = mixers::hadamard;
+        int m_interpType = DEFAULT_INTERP;
     };
 }
 

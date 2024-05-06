@@ -48,7 +48,7 @@ namespace sjf::rev
                 m_damping[ s ] = 0;
             }
         }
-        ~seriesAllpass(){}
+        ~seriesAllpass(){} 
         
         /**
          This must be called before first use in order to set basic information such as maximum delay length and sample rate

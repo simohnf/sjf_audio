@@ -32,7 +32,7 @@ namespace sjf::parameterHandler {
         }
         
         /** Call this on the audio thread to trigger all of the pending parameter updates */
-        void triggerCallbacks()
+        inline void triggerCallbacks()
         {
             if( m_list.isBusy.test_and_set() ){ DBG( "LIST WAS BUSY!!!! Parameters will be set next time it is free"); return; } // Don't WAIT, do everything next block
             auto n = m_list.popNode();

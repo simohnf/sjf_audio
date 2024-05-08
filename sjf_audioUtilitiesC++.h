@@ -893,5 +893,33 @@ void genVelvetNoise( T max, std::vector< T >& storage  )
 }
 
 
+namespace sjf::utilities
+{
+    /** class to hold and call member functions of other classes ( e.g. instead of having big switch/if statements etc */
+template< typename classType, typename returnType, typename... arguments >
+    class classMemberFunctionPointer
+    {
+        typedef returnType ( classType::*memberPtr )( arguments... args );
+    public:
+        classMemberFunctionPointer( classType* parent ) noexcept : PARENT( parent ) {}
+        classMemberFunctionPointer( classType* parent, memberPtr memFunc ) : funcPtr( memFunc ), PARENT( parent ) {}
+
+        classMemberFunctionPointer( const classMemberFunctionPointer& cmfp ) = delete;
+        void operator=( const classMemberFunctionPointer& cmfp ) = delete;
+        
+        ~classMemberFunctionPointer(){}
+        
+        returnType operator() ( arguments... args ){ return ( PARENT->*funcPtr )( args... ); }
+
+        void operator=( memberPtr func ){ funcPtr = func; }
+
+    private:
+
+        memberPtr funcPtr{ nullptr };
+        classType* PARENT;
+    };
+
+}
+
 
 #endif /* sjf_audioUtilitiesC++ */

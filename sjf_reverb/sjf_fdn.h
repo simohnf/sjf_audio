@@ -20,7 +20,7 @@ namespace sjf::rev
     class fdn /* : sjf::multiChannelEffect< T > */
     {
     public:
-        fdn( int nchannels ) : NCHANNELS( nchannels )
+        fdn( int nchannels ) noexcept : NCHANNELS( nchannels )
         {
             m_delays.resize( NCHANNELS );
             m_dampers.resize( NCHANNELS );
@@ -133,6 +133,7 @@ namespace sjf::rev
          */
         void setDecayInMS( T decayInMS )
         {
+            if ( m_decayInMS == decayInMS ){ return; }
             m_decayInMS = decayInMS;
             auto dt = 0.0;
             for ( auto c = 0; c < NCHANNELS; c++ )

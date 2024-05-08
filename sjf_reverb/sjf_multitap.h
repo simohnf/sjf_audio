@@ -21,7 +21,7 @@ namespace sjf::rev
     {
 
     public:
-        multiTap( int maxNTaps) : MAXNTAPS( maxNTaps )
+        multiTap( int maxNTaps) noexcept : MAXNTAPS( maxNTaps )
         {
             m_delayTimesSamps.resize( MAXNTAPS );
             m_gains.resize( MAXNTAPS );

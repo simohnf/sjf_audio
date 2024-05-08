@@ -52,13 +52,13 @@ namespace sjf::rev
             the number of samples in the past to read from
             the interpolation type see @sjf_interpolators
          */
-        T getSample( T delay, int interpType = DEFAULT_INTERP )
+        inline T getSample( T delay, int interpType = DEFAULT_INTERP )
         {
             auto rp = getPosition( ( m_writePos - delay ) );
             switch( interpType )
             {
                 case 0:
-                    return m_buffer[ rp ];
+                    return m_buffer[ static_cast< int >(rp) ];
                 case sjf_interpolators::interpolatorTypes::linear:
                     return linInterp( rp );
                 case sjf_interpolators::interpolatorTypes::cubic:

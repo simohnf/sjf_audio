@@ -100,6 +100,7 @@ namespace sjf::rev
          */
         void setDecay( T decayInMS )
         {
+            if( m_decayInMS == decayInMS ){ return; }
             m_decayInMS = decayInMS;
             for ( auto s = 0; s < NSTAGES; s++ )
             {

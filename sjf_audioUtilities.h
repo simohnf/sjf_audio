@@ -74,5 +74,13 @@ private:
     T floatArray[ NUM_ROWS ][ NUM_COLUMNS ];
 };
 
-
+namespace sjf::juceStuff
+{
+    /** gets unnormalised value from juce parameter */
+    template < typename T, typename parameterType >
+    T getUnNormalisedParameterValue( parameterType* p )
+    {
+        return static_cast< juce::RangedAudioParameter* >( p )->convertFrom0to1( p->getValue() );
+    }
+}
 #endif /* sjf_audioUtilities_h */

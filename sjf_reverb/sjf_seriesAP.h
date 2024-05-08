@@ -26,13 +26,8 @@ namespace sjf::rev
     template < typename T >
     class seriesAllpass
     {
-    private:
-        const int NSTAGES;
-        std::vector< oneMultAP< T > > m_aps;
-        std::vector< T > m_coefs, m_delayTimesSamps, m_damping;
-        
     public:
-        seriesAllpass( int nstages ) : NSTAGES( nstages )
+        seriesAllpass( int nstages ) noexcept : NSTAGES( nstages )
         {
             m_aps.resize( NSTAGES );
             m_coefs.resize( NSTAGES );
@@ -159,7 +154,11 @@ namespace sjf::rev
                 x = m_aps[ a ].process( x, m_delayTimesSamps[ a ], m_coefs[ a ], interpType, m_damping[ a ] );
             return x;
         }
-
+        
+    private:
+        const int NSTAGES;
+        std::vector< oneMultAP< T > > m_aps;
+        std::vector< T > m_coefs, m_delayTimesSamps, m_damping;
     };
     
     //============//============//============//============//============//============

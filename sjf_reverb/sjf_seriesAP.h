@@ -50,7 +50,8 @@ namespace sjf::rev
          */
         void initialise( T sampleRate )
         {
-            auto size = sjf_nearestPowerAbove( sampleRate * 0.1, 2 );
+//            auto size = sjf_nearestPowerAbove( sampleRate * 0.1, 2 );
+            auto size = sampleRate / 10;
             for ( auto & a : m_aps )
                 a.initialise( size );
         }
@@ -148,11 +149,18 @@ namespace sjf::rev
          output:
             Processed sample
          */
-        T process( T x, int interpType = DEFAULT_INTERP )
+        T process( T x )
         {
             for ( auto a = 0; a < NSTAGES; a++ )
-                x = m_aps[ a ].process( x, m_delayTimesSamps[ a ], m_coefs[ a ], interpType, m_damping[ a ] );
+                x = m_aps[ a ].process( x, m_delayTimesSamps[ a ], m_coefs[ a ], m_damping[ a ] );
             return x;
+        }
+        
+        
+        void setInterpolationType( sjf_interpolators::interpolatorTypes type )
+        {
+            for ( auto & a : m_aps )
+                a.setInterpolationType( type );
         }
         
     private:

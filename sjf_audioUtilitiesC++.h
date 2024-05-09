@@ -751,7 +751,8 @@ inline bool sjf_isPowerOf( unsigned long val, unsigned long baseToCheck )
 
 //==========================================================
 /** find the nearest power of a base above value */
-inline unsigned long sjf_nearestPowerAbove( unsigned long val, unsigned long base )
+template< typename T >
+inline T sjf_nearestPowerAbove( T val, T base )
 {
     return std::pow( 2, std::ceil( std::log( val )/ std::log( base ) ) );
 }
@@ -904,8 +905,12 @@ template< typename classType, typename returnType, typename... arguments >
         classMemberFunctionPointer( classType* parent ) noexcept : PARENT( parent ) {}
         classMemberFunctionPointer( classType* parent, memberPtr memFunc ) : funcPtr( memFunc ), PARENT( parent ) {}
 
-        classMemberFunctionPointer( const classMemberFunctionPointer& cmfp ) = delete;
-        void operator=( const classMemberFunctionPointer& cmfp ) = delete;
+        classMemberFunctionPointer( const classMemberFunctionPointer& ) noexcept = delete;
+        classMemberFunctionPointer& operator=( const classMemberFunctionPointer& ) noexcept = delete;
+        
+        classMemberFunctionPointer( classMemberFunctionPointer&&) noexcept = default;
+        classMemberFunctionPointer& operator=( classMemberFunctionPointer&&) noexcept = default;
+        
         
         ~classMemberFunctionPointer(){}
         

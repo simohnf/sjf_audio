@@ -26,13 +26,12 @@ namespace sjf::rev
     template < typename  T >
     class oneMultAP
     {
-    private:
-        delay< T > m_del;
-        damper< T > m_damper;
-        
     public:
         oneMultAP(){}
         ~oneMultAP(){}
+        
+        oneMultAP( oneMultAP&& ) noexcept = default;
+        oneMultAP& operator=( oneMultAP&& ) noexcept = default;
         
         /**
          This must be called before first use in order to set basic information such as maximum delay lengths
@@ -56,14 +55,21 @@ namespace sjf::rev
          output:
             Processed sample
          */
-        T process( T x, T delay, T coef, int interpType = DEFAULT_INTERP, T damping = 0.0 )
+        T process( T x, T delay, T coef, T damping = 0.0 )
         {
-            auto delayed = m_del.getSample( delay, interpType );
+            auto delayed = m_del.getSample( delay );
             auto xhn = ( x - delayed ) * coef;
             auto fb = damping > 0.0 && damping < 1.0 ? m_damper.process( ( x + xhn ), damping ) : ( x + xhn );
             m_del.setSample( fb );
             return delayed + xhn;
         }
+        
+        /** Set the interpolation Type to be used */
+        void setInterpolationType( sjf_interpolators::interpolatorTypes interpType ) { m_del.setInterpolationType( interpType ); }
+        
+    private:
+        delay< T > m_del;
+        damper< T > m_damper;
         
     };
 }

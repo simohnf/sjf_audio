@@ -36,7 +36,8 @@ namespace sjf::rev
          */
         void initialise( T sampleRate )
         {
-            auto delSize = sjf_nearestPowerAbove( sampleRate * 0.5, 2 );
+//            auto delSize = sjf_nearestPowerAbove( sampleRate * 0.5, 2 );
+            auto delSize = sampleRate / 2;
             m_delay.initialise( delSize );
         }
         
@@ -126,11 +127,11 @@ namespace sjf::rev
          Output:
             combination of all of the taps
          */
-        T process( T x, int interpType = DEFAULT_INTERP )
+        T process( T x )
         {
             T output = 0.0;
             for ( auto t = 0; t < m_nTaps; t++ )
-                output += getSample( t, interpType );
+                output += getSample( t );
             m_delay.setSample( x );
             return output;
         }
@@ -143,9 +144,9 @@ namespace sjf::rev
          output:
             Output of delay tap
          */
-        inline T getSample( int tapNum, int interpType = DEFAULT_INTERP )
+        inline T getSample( int tapNum )
         {
-            return m_delay.getSample( m_delayTimesSamps[ tapNum ], interpType ) * m_gains[ tapNum ];
+            return m_delay.getSample( m_delayTimesSamps[ tapNum ] ) * m_gains[ tapNum ];
         }
         
         /**
@@ -158,6 +159,8 @@ namespace sjf::rev
             m_delay.setSample( x );
         }
         
+        
+        void setInterpolationType( sjf_interpolators::interpolatorTypes type ) { m_delay.setInterpolationType( type );   }
     private:
         const int MAXNTAPS;
         std::vector< T > m_delayTimesSamps, m_gains;

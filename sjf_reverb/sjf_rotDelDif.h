@@ -178,9 +178,9 @@ namespace sjf::rev
          Output:
             None - Samples are processed in place and any down mixing is left to the user
          */
-        void processInPlace( std::vector< T >& samps, int interpType = DEFAULT_INTERP )
+        void processInPlace( std::vector< T >& samps )
         {
-            int rCh = 0;
+            auto rCh = 0;
             assert( samps.size() == NCHANNELS );
             // we need to go through each stage
             for ( auto s = 0; s < NSTAGES; s++ )
@@ -192,34 +192,20 @@ namespace sjf::rev
                     // then read samples from delay, but rotate channels
                     rCh = m_rotationMatrix[ s ][ c ];
                     samps[ c ] = m_polFlip[ s ][ c ] ?
-                        -m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ c ], interpType ) :
-                            m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ c ], interpType );
+                        -m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ rCh ] ) :
+                            m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ rCh ] );
                     samps[ c ] = m_dampers[ s ][ c ].process( samps[ c ], m_damping[ s ][ c ] );
                     sjf::mixers::Hadamard< T >::inPlace( samps.data(), NCHANNELS );
                 }
             }
         }
         
-//        void inPlace( std::vector< T >& samps ) override
-//        {
-//            int rCh = 0;
-//            assert( samps.size() == NCHANNELS );
-//            // we need to go through each stage
-//            for ( auto s = 0; s < NSTAGES; s++ )
-//            {
-//                for ( auto c = 0; c < NCHANNELS; c++ )
-//                {
-//                    // first set samples in delay line
-//                    m_delays[ s ][ c ].setSample( samps[ c ] );
-//                    // then read samples from delay, but rotate channels
-//                    rCh = m_rotationMatrix[ s ][ c ];
-//                    samps[ c ] = m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ c ], m_interpType );
-////                    samps[ c ] = m_polFlip[ s ][ c ] ?  : -m_delays[ s ][ rCh ];
-//                    samps[ c ] = m_dampers[ s ][ c ].process( samps[ c ], m_damping[ s ][ c ] );
-//                    sjf::mixers::Hadamard< T >::inPlace( samps.data(), NCHANNELS );
-//                }
-//            }
-//        }
+        void setInterpolationType( sjf_interpolators::interpolatorTypes type )
+        {
+            for ( auto & v : m_delays )
+                for ( auto & d : v )
+                    d.setInterpolationType( type );
+        }
         
     private:
         const int NCHANNELS;
@@ -230,11 +216,9 @@ namespace sjf::rev
         std::vector< std::vector< T > > m_delayTimesSamps, m_damping;
         
         std::vector< std::vector< bool > > m_polFlip;
-        std::vector< std::vector< int > > m_rotationMatrix;
+        std::vector< std::vector< size_t > > m_rotationMatrix;
         
         T m_SR = 44100;
-        
-        int m_interpType = DEFAULT_INTERP;
         
     };
 }

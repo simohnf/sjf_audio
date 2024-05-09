@@ -54,7 +54,8 @@ namespace sjf::rev
         void initialise( T sampleRate )
         {
             m_SR = sampleRate;
-            auto delSize = sjf_nearestPowerAbove( m_SR / 2, 2 );
+//            auto delSize = sjf_nearestPowerAbove( m_SR / 2, 2 );
+            auto delSize = m_SR / 2;
             for ( auto s = 0; s < NSTAGES; s++ )
             {
                 for ( auto a = 0; a < NAP_PERSTAGE; a++ )
@@ -144,64 +145,34 @@ namespace sjf::rev
             return NAP_PERSTAGE;
         }
         
-        /**
-         This should be called for every sample in the block
-         The input is:
-         the sample to input into the loop
-         the interpolation type (optional, defaults to linear, see @sjf_interpolators)
-         */
-        T process( T input, int interpType = DEFAULT_INTERP )
-        {
-            auto samp = m_lastSamp;
-            auto output = 0.0;
-            for ( auto s = 0; s < NSTAGES; s ++ )
-            {
-                samp +=  input;
-                for ( auto a = 0; a < NAP_PERSTAGE; a++ )
-                {
-                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], interpType );
-                }
-                samp = m_dampers[ s ].process( samp, m_damping );
-                output += samp;
-                m_delays[ s ].setSample( samp * m_gains[ s ] );
-                samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
-            }
-            m_lastSamp = samp;
-            return output;
-        }
-        
-        /**
-         Stereo processing In place
-         This should be called for every sample in the block
-         The input is:
-         the sample to input into the loop
-         the interpolation type (optional, defaults to linear, see @sjf_interpolators)
-         */
-        void processInPlaceLR( T& inputL, T& inputR, int interpType = DEFAULT_INTERP )
-        {
-            auto samp = m_lastSamp;
-            auto outputL = 0.0, outputR = 0.0;
-            bool chR = false;
-            for ( auto s = 0; s < NSTAGES; s ++ )
-            {
-                samp += chR ?  inputR : inputL;
-                for ( auto a = 0; a < NAP_PERSTAGE; a++ )
-                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], interpType );
-                samp = m_dampers[ s ].process( samp, m_damping );
-                outputL += chR ? 0 : samp;
-                outputR += chR ? samp : 0;
-                m_delays[ s ].setSample( samp * m_gains[ s ] );
-                samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
-                chR = !chR;
-            }
-            m_lastSamp = samp;
-            inputL = outputL;
-            inputR = outputR;
-            return;
-        }
+//        /**
+//         This should be called for every sample in the block
+//         The input is:
+//         the sample to input into the loop
+//         the interpolation type (optional, defaults to linear, see @sjf_interpolators)
+//         */
+//        T process( T input, int interpType = DEFAULT_INTERP )
+//        {
+//            auto samp = m_lastSamp;
+//            auto output = 0.0;
+//            for ( auto s = 0; s < NSTAGES; s ++ )
+//            {
+//                samp +=  input;
+//                for ( auto a = 0; a < NAP_PERSTAGE; a++ )
+//                {
+//                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], interpType );
+//                }
+//                samp = m_dampers[ s ].process( samp, m_damping );
+//                output += samp;
+//                m_delays[ s ].setSample( samp * m_gains[ s ] );
+//                samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
+//            }
+//            m_lastSamp = samp;
+//            return output;
+//        }
         
         
-        void processInPlace( std::vector<T>& input, int interpType = DEFAULT_INTERP )
+        void processInPlace( std::vector<T>& input )
         {
             auto nChannels = input.size();
             std::vector<T> output( nChannels, 0 );
@@ -212,8 +183,10 @@ namespace sjf::rev
             for ( auto s = 0; s < NSTAGES; s ++ )
             {
                 samp += input[ chanCount ];
+
                 for ( auto a = 0; a < NAP_PERSTAGE; a++ )
-                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], interpType );
+//                    T process( T x, T delay, T coef, T damping = 0.0 )
+                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ] );
                 samp = m_dampers[ s ].process( samp, m_damping );
                 output[ chanCount ] += samp;
                 m_delays[ s ].setSample( samp * m_gains[ s ] );
@@ -225,31 +198,14 @@ namespace sjf::rev
             return;
         }
         
-        
-//        void inPlace( std::vector<T>& input ) override
-//        {
-//            auto nChannels = input.size();
-//            std::vector<T> output( nChannels, 0 );
-//            auto chanCount = 0;
-//            auto samp = m_lastSamp;
-////            auto outputL = 0.0, outputR = 0.0;
-////            bool chR = false;
-//            for ( auto s = 0; s < NSTAGES; s ++ )
-//            {
-//                samp += input[ chanCount ];
-//                for ( auto a = 0; a < NAP_PERSTAGE; a++ )
-//                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], m_interpType );
-//                samp = m_dampers[ s ].process( samp, m_damping );
-//                output[ chanCount ] += samp;
-//                m_delays[ s ].setSample( samp * m_gains[ s ] );
-//                samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
-//                chanCount = ( ++chanCount == nChannels ) ? 0 : chanCount;
-//            }
-//            m_lastSamp = samp;
-//            input = output;
-//            return;
-//        }
-//        
+        void setInterpolationType( sjf_interpolators::interpolatorTypes type )
+        {
+            for ( auto & d : m_delays )
+                d.setInterpolationType( type );
+            for ( auto & i : m_aps )
+                for ( auto & a : i )
+                    a.setInterpolationType( type );
+        }
     private:
         const int NSTAGES, NAP_PERSTAGE;
         std::vector< std::vector< oneMultAP < T > > > m_aps;
@@ -263,8 +219,6 @@ namespace sjf::rev
         T m_lastSamp = 0;
         T m_SR = 44100, m_decayInMS = 100;
         T m_damping = 0.999;
-        
-        int m_interpType = DEFAULT_INTERP;
     };
 }
 

@@ -22,7 +22,7 @@ namespace sjf_interpolators
 {
     //==============================================================================
     enum interpolatorTypes : char
-    { linear = 1, cubic, pureData, fourthOrder, godot, hermite, allpass };
+    { none = 0, linear = 1, cubic, pureData, fourthOrder, godot, hermite, allpass };
     //==============================================================================
     /**
      Basic linear interpolation between 2 points

@@ -924,6 +924,34 @@ template< typename classType, typename returnType, typename... arguments >
         classType* PARENT;
     };
 
+//========//========//========//========//========//========//========
+//========//========//========//========//========//========//========
+//========//========//========//========//========//========//========
+namespace sjf::utilities
+{
+    /** Simple class for ending to and decoding from MS. Use like : sjf::utilities::MidSide<float>::encode( lSamp, rSamp )*/
+    template < typename Sample >
+    class MidSide
+    {
+    public:
+        /** encode from LR to MS -> this works in place so left will be replaced with mid and right willb be replaced with side */
+        static inline void encode( Sample& left, Sample& right )
+        {
+            auto tmp = left;
+            left += right;              /* MID ==> left + right */
+            right = tmp - right;        /* SIDE ==> left - right */
+        }
+        
+        /** decode from MS to LR -> this works in place so mid will be replaced with left and side will be replaced with right */
+        static inline void decode( Sample &mid, Sample& side )
+        {
+            auto tmp = mid;
+            mid = (mid + side) * 0.5;   /*  2 * L = mid + side */
+            side = (tmp- side) * 0.5;   /*  2 * R = mid - side */
+        }
+    };
+}
+
 }
 
 

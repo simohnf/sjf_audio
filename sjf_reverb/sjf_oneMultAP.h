@@ -68,7 +68,7 @@ namespace sjf::rev
         void setInterpolationType( sjf_interpolators::interpolatorTypes interpType ) { m_del.setInterpolationType( interpType ); }
         
     private:
-        delay< T > m_del;
+        delayLine::delay< T > m_del;
         damper< T > m_damper;
         
     };

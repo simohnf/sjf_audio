@@ -209,7 +209,7 @@ namespace sjf::rev
     private:
         const int NSTAGES, NAP_PERSTAGE;
         std::vector< std::vector< oneMultAP < T > > > m_aps;
-        std::vector< delay < T > > m_delays;
+        std::vector< delayLine::delay < T > > m_delays;
         std::vector< damper < T > > m_dampers;
         
         std::vector< T > m_gains;

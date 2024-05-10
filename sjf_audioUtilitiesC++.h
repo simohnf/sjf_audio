@@ -934,21 +934,45 @@ namespace sjf::utilities
     class MidSide
     {
     public:
-        /** encode from LR to MS -> this works in place so left will be replaced with mid and right willb be replaced with side */
-        static inline void encode( Sample& left, Sample& right )
+        struct MS{ Sample mid, side; };
+        struct LR{ Sample left, right; };
+    
+        /** encode from LR to MS */
+        static inline MS encode( Sample left, Sample right )
         {
-            auto tmp = left;
-            left += right;              /* MID ==> left + right */
-            right = tmp - right;        /* SIDE ==> left - right */
+//            auto tmp = left;
+//            left += right;              /* MID ==> left + right */
+//            right = tmp - right;        /* SIDE ==> left - right */
+            return { left + right, left - right };
         }
         
-        /** decode from MS to LR -> this works in place so mid will be replaced with left and side will be replaced with right */
-        static inline void decode( Sample &mid, Sample& side )
+        static inline MS encode( LR lr )
         {
-            auto tmp = mid;
-            mid = (mid + side) * 0.5;   /*  2 * L = mid + side */
-            side = (tmp- side) * 0.5;   /*  2 * R = mid - side */
+//            auto tmp = left;
+//            left += right;              /* MID ==> left + right */
+//            right = tmp - right;        /* SIDE ==> left - right */
+            return { lr.left + lr.right, lr.left - lr.right };
         }
+        
+        /** decode from MS to LR  */
+        static inline LR decode( MS ms )
+        {
+//            auto tmp = mid;
+//            mid = (mid + side) * 0.5;   /*  2 * L = mid + side */
+//            side = (tmp- side) * 0.5;   /*  2 * R = mid - side */
+            return { (ms.mid + ms.side)*0.5,  (ms.mid - ms.side)*0.5, };
+        }
+        
+        /** decode from MS to LR  */
+        static inline LR decode( Sample mid, Sample side )
+        {
+//            auto tmp = mid;
+//            mid = (mid + side) * 0.5;   /*  2 * L = mid + side */
+//            side = (tmp- side) * 0.5;   /*  2 * R = mid - side */
+            return { (mid + side)*0.5,  (mid - side)*0.5, };
+        }
+        
+
     };
 }
 

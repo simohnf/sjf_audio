@@ -211,7 +211,7 @@ namespace sjf::rev
         
         const int NCHANNELS;
         
-        std::vector< delay< T > > m_delays;
+        std::vector< delayLine::delay< T > > m_delays;
         std::vector< damper< T > > m_dampers;
         std::vector< oneMultAP< T > > m_diffusers;
         std::vector< T > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;

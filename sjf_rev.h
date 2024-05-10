@@ -17,7 +17,7 @@
 
 #include "sjf_reverb/sjf_rev_consts.h"
 #include "sjf_reverb/sjf_damper.h"
-#include "sjf_reverb/sjf_delay.h"
+#include "sjf_delay.h"
 #include "sjf_reverb/sjf_oneMultAP.h"
 #include "sjf_reverb/sjf_seriesAP.h"
 #include "sjf_reverb/sjf_multitap.h"

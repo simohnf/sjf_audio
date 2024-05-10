@@ -165,7 +165,7 @@ namespace sjf::rev
         const int MAXNTAPS;
         std::vector< T > m_delayTimesSamps, m_gains;
         int m_nTaps = MAXNTAPS;
-        delay< T > m_delay;
+        delayLine::delay< T > m_delay;
     };
 }
 

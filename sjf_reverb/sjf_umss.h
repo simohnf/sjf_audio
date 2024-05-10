@@ -29,7 +29,7 @@ namespace sjf::rev
     private:
         const int NFBLOOPS, NOUTTAPS;
         const T FBSCALE;
-        delay< T > m_delayLine;
+        delayLine::delay< T > m_delayLine;
         damper< T > m_damper;
         sjf::filters::dcBlock< T > m_dcBlock;
         std::vector < T > m_fbDelayTimesSamps;

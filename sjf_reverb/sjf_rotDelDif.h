@@ -211,7 +211,7 @@ namespace sjf::rev
         const int NCHANNELS;
         const int NSTAGES;
         
-        std::vector< std::vector< delay< T > > > m_delays;
+        std::vector< std::vector< delayLine::delay< T > > > m_delays;
         std::vector< std::vector< damper< T > > > m_dampers;
         std::vector< std::vector< T > > m_delayTimesSamps, m_damping;
         

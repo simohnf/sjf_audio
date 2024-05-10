@@ -21,7 +21,7 @@ namespace sjf::rev
     class nestedAP
     {
     private:
-        std::array< delay< T >, NSTAGES > m_delays;
+        std::array< delayLine::delay< T >, NSTAGES > m_delays;
         std::array< damper< T >, NSTAGES > m_dampers;
         
         std::array< T, NSTAGES > m_delayTimesSamps, m_coefs, m_damping;

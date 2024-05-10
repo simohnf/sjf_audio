@@ -1,141 +1,222 @@
 //
-//  sjf_delayLine.h
+//  sjf_delay.h
 //
-//  Created by Simon Fay on 24/08/2022.
+//  Created by Simon Fay on 27/03/2024.
 //
 
-#ifndef sjf_delayLine_h
-#define sjf_delayLine_h
+#ifndef sjf_rev_delay_h
+#define sjf_rev_delay_h
 
-#include <JuceHeader.h>
-#include "sjf_interpolationTypes.h"
+//#include "../sjf_audioUtilitiesC++.h"
+//#include "../sjf_interpolators.h"
+//#include "../gcem/include/gcem.hpp"
+//
+//#include "sjf_rev_consts.h"
 
-class sjf_delayLine {
-protected:
-    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> m_delL, m_delR;
-    juce::AudioBuffer<float> m_delayBuffer; // This is the circular buffer for the delay
-    
-    int m_SR = 44100;
-    int m_writePos = 0; // this is the index to write to in the "m_delayBuffer"
-    float m_delBufferLength = 3; // Maximum delay time equals 2 seconds plus 1 second for safety with stereo spread increase
-    
-public:
-    sjf_delayLine()
+#include "sjf_rev.h"
+
+namespace sjf::delayLine
+{
+    /**
+     basic circular buffer based delay line
+     */
+    template < typename  T >
+    class delay
     {
-        m_delayBuffer.setSize(2, m_SR * m_delBufferLength );
-        m_delayBuffer.clear();
-        
-        m_delL.reset( m_SR, 0.02f ) ;
-        m_delR.reset( m_SR, 0.02f ) ;
-        
-        m_delL.setCurrentAndTargetValue( 500.0f ) ;
-        m_delR.setCurrentAndTargetValue( 500.0f ) ;
-    };
-    //==============================================================================
-    virtual ~sjf_delayLine() {};
-    //==============================================================================
-    virtual void intialise( int sampleRate , int totalNumInputChannels, int totalNumOutputChannels, int samplesPerBlock)
-    {
-        if (sampleRate > 0 ) { m_SR = sampleRate; }
-        m_delayBuffer.setSize( totalNumOutputChannels, m_SR * m_delBufferLength );
-        m_delayBuffer.clear();
-        
-        m_delL.reset( m_SR, 0.02f ) ;
-        m_delR.reset( m_SR, 0.02f ) ;
-    };
-    //==============================================================================
-    void writeToDelayBuffer(juce::AudioBuffer<float>& sourceBuffer, float gain)
-    {
-        auto bufferSize = sourceBuffer.getNumSamples();
-        auto delayBufferSize = m_delayBuffer.getNumSamples();
-        for (int index = 0; index < bufferSize; index++)
+    public:
+        delay()
         {
-            auto wp = (m_writePos + index) % delayBufferSize;
-            for (int channel = 0; channel < sourceBuffer.getNumChannels(); channel++)
-            {
-                m_delayBuffer.setSample(channel % m_delayBuffer.getNumChannels(), wp, (sourceBuffer.getSample(channel, index) * gain) );
+            initialise( 4096 ); // ensure this are initialised to something
+        }
+        ~delay(){}
+        
+        
+        delay( delay&&) noexcept = default;
+        delay& operator=( delay&&) noexcept = default;
+        
+        /**
+         This must be called before first use in order to set basic information such as maximum delay lengths and sample rate
+         Size should be a power of 2
+         */
+        void initialise( int sizeInSamps_pow2 )
+        {
+            if (!sjf_isPowerOf( sizeInSamps_pow2, 2 ) )
+                sizeInSamps_pow2 = sjf_nearestPowerAbove( sizeInSamps_pow2, 2 );
+            m_buffer.resize( sizeInSamps_pow2, 0 );
+            m_wrapMask = sizeInSamps_pow2 - 1;
+        }
+        
+        /**
+         This retrieves a sample from a previous point in the buffer
+         Input is:
+            the number of samples in the past to read from
+            the interpolation type see @sjf_interpolators
+         */
+//        inline T getSample( T delay, int interpType = DEFAULT_INTERP )
+//        {
+//            auto rp = getPosition( ( m_writePos - delay ) );
+//            switch( interpType )
+//            {
+//                case 0:
+//                    return m_buffer[ static_cast< int >(rp) ];
+//                case sjf_interpolators::interpolatorTypes::linear:
+//                    return linInterp( rp );
+//                case sjf_interpolators::interpolatorTypes::cubic:
+//                    return polyInterp( rp, sjf_interpolators::interpolatorTypes::cubic );
+//                case sjf_interpolators::interpolatorTypes::pureData:
+//                    return polyInterp( rp, sjf_interpolators::interpolatorTypes::pureData );
+//                case sjf_interpolators::interpolatorTypes::fourthOrder:
+//                    return polyInterp( rp, sjf_interpolators::interpolatorTypes::fourthOrder );
+//                case sjf_interpolators::interpolatorTypes::godot:
+//                    return polyInterp( rp, sjf_interpolators::interpolatorTypes::godot );
+//                case sjf_interpolators::interpolatorTypes::hermite:
+//                    return polyInterp( rp, sjf_interpolators::interpolatorTypes::hermite );
+//            }
+//            return m_buffer[ rp ];
+//        }
+        
+        
+        /**
+         This retrieves a sample from a previous point in the buffer
+         Input is:
+            the number of samples in the past to read from
+            the interpolation type see @sjf_interpolators
+         */
+        inline T getSample( T delay )
+        {
+            auto rp = getPosition( ( m_writePos - delay ) );
+            return m_interpolate( rp );
+        }
+        
+        /**
+         This sets the cvalue of the sample at the current write position and automatically updates the write pointer
+         */
+        void setSample( T x )
+        {
+            m_buffer[ m_writePos ] = x;
+            m_writePos += 1;
+            m_writePos &= m_wrapMask;
+        }
+        
+        /** Set the interpolation Type to be used */
+        void setInterpolationType( sjf_interpolators::interpolatorTypes interpType )
+        {
+            switch ( interpType ) {
+                case 0:
+                    m_interpolate = &delay::noInterp;
+                    return;
+                case sjf_interpolators::interpolatorTypes::linear :
+                    m_interpolate = &delay::linInterp;
+                    return;
+                case sjf_interpolators::interpolatorTypes::cubic :
+                    m_interpolate = &delay::cubicInterp;
+                    return;
+                case sjf_interpolators::interpolatorTypes::pureData :
+                    m_interpolate = &delay::pdInterp;
+                    return;
+                case sjf_interpolators::interpolatorTypes::fourthOrder :
+                    m_interpolate = &delay::fourPointInterp;
+                    return;
+                case sjf_interpolators::interpolatorTypes::godot :
+                    m_interpolate = &delay::godotInterp;
+                    return;
+                case sjf_interpolators::interpolatorTypes::hermite :
+                    m_interpolate = &delay::hermiteInterp;
+                    return;
+                default:
+                    m_interpolate = &delay::linInterp;
+                    return;
             }
         }
-    };
-    //==============================================================================
-    void copyFromDelayBuffer(juce::AudioBuffer<float>& destinationBuffer, float gain)
-    {
-        auto bufferSize = destinationBuffer.getNumSamples();
-        auto delayBufferSize = m_delayBuffer.getNumSamples();
-        auto numChannels = destinationBuffer.getNumChannels();
-        auto delTimeL = m_delL.getCurrentValue() * m_SR / 1000.0f;
-        auto delTimeR = m_delR.getCurrentValue() * m_SR / 1000.0f;
-        for (int index = 0; index < bufferSize; index++)
-        {
-            for (int channel = 0; channel < numChannels; channel++)
-            {
-                float channelReadPos;
-                if( channel == 0 ) { channelReadPos = m_writePos - delTimeL + index; }
-                else if(channel == 1) { channelReadPos =  m_writePos - delTimeR + index; }
-                else { return; }
-                while ( channelReadPos < 0 ) { channelReadPos += delayBufferSize; }
-                while (channelReadPos >= delayBufferSize) { channelReadPos -= delayBufferSize; }
-                auto val = cubicInterpolate(m_delayBuffer, channel % m_delayBuffer.getNumChannels(), channelReadPos) * gain;
-                destinationBuffer.addSample(channel, index, val );
-            }
-            delTimeL = m_delL.getNextValue() * m_SR / 1000.0f;
-            delTimeR = m_delR.getNextValue() * m_SR / 1000.0f;
-        }
-    };
-    //==============================================================================
-    void addToDelayBuffer (juce::AudioBuffer<float>& sourceBuffer, float gain)
-    {
-        auto bufferSize = sourceBuffer.getNumSamples();
-        auto delayBufferSize = m_delayBuffer.getNumSamples();
         
-        for (int channel = 0; channel < sourceBuffer.getNumChannels(); ++channel)
-        {
-            for (int index = 0; index < bufferSize; index ++)
-            {
-                float value = sourceBuffer.getSample(channel, index) * gain;
-                m_delayBuffer.addSample(channel, ( (m_writePos + index) % delayBufferSize ) , value );
-            }
-        }
-    };
-    //==============================================================================
-    void addToDelayBuffer (juce::AudioBuffer<float>& sourceBuffer, float gain1, float gain2)
-    {
-        auto bufferSize = sourceBuffer.getNumSamples();
-        auto delayBufferSize = m_delayBuffer.getNumSamples();
+    private:
+        inline T noInterp( T findex ){ return m_buffer[ findex ]; }
         
-        for (int channel = 0; channel < sourceBuffer.getNumChannels(); ++channel)
+        inline T linInterp( T findex )
         {
-            float gain;
-            if (channel == 0){ gain = gain1; }
-            else{ gain = gain2; }
-            for (int index = 0; index < bufferSize; index ++)
-            {
-                float value = sourceBuffer.getSample(channel, index) * gain;
-                m_delayBuffer.addSample(channel, ( (m_writePos + index) % delayBufferSize ) , value );
-            }
+            T x1, x2, mu;
+            auto ind1 = static_cast< long >( findex );
+            mu = findex - ind1;
+            x1 = m_buffer[ ind1 ];
+            x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
+            
+            return sjf_interpolators::linearInterpolate( mu, x1, x2 );
         }
-    };
-    //==============================================================================
-    void updateBufferPositions(int bufferSize)
-    {
-        auto delayBufferSize = m_delayBuffer.getNumSamples();
-        //    Update write position ensuring it stays within size of delay buffer
-        m_writePos += bufferSize;
-        m_writePos %= delayBufferSize;
-    };
-    //==============================================================================
-    // set and retrieve parameters
-    void setDelTimeL( float delLMS) { m_delL.setTargetValue( delLMS ); }
-    void setDelTimeR( float delRMS) { m_delR.setTargetValue( delRMS ); }
-    float getDelTimeL( ) { return m_delL.getTargetValue( ); }
-    float getDelTimeR( ) { return m_delR.getTargetValue( ); }
-    void clearBuffer() { m_delayBuffer.clear(); }
-    void setMaxDelayLength ( float maxDelayInSecs ) { m_delBufferLength = maxDelayInSecs; }
-    //==============================================================================
-    
-    
+        
+        inline T cubicInterp( T findex )
+        {
+            T x0, x1, x2, x3, mu;
+            auto ind1 = static_cast< long >( findex );
+            mu = findex - ind1;
+            x0 = m_buffer[ ( (ind1-1) & m_wrapMask ) ];
+            x1 = m_buffer[ ind1 ];
+            x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
+            x3 = m_buffer[ ( (ind1+2) & m_wrapMask ) ];
+            return sjf_interpolators::cubicInterpolate( mu, x0, x1, x2, x3 );
+        }
+        
+        inline T pdInterp( T findex )
+        {
+            T x0, x1, x2, x3, mu;
+            auto ind1 = static_cast< long >( findex );
+            mu = findex - ind1;
+            x0 = m_buffer[ ( (ind1-1) & m_wrapMask ) ];
+            x1 = m_buffer[ ind1 ];
+            x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
+            x3 = m_buffer[ ( (ind1+2) & m_wrapMask ) ];
+            return sjf_interpolators::fourPointInterpolatePD( mu, x0, x1, x2, x3 );
+        }
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (sjf_delayLine)
-};
+        
+        inline T fourPointInterp( T findex )
+        {
+            T x0, x1, x2, x3, mu;
+            auto ind1 = static_cast< long >( findex );
+            mu = findex - ind1;
+            x0 = m_buffer[ ( (ind1-1) & m_wrapMask ) ];
+            x1 = m_buffer[ ind1 ];
+            x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
+            x3 = m_buffer[ ( (ind1+2) & m_wrapMask ) ];
+            return sjf_interpolators::fourPointFourthOrderOptimal( mu, x0, x1, x2, x3 );
+        }
+        
+        inline T godotInterp( T findex )
+        {
+            T x0, x1, x2, x3, mu;
+            auto ind1 = static_cast< long >( findex );
+            mu = findex - ind1;
+            x0 = m_buffer[ ( (ind1-1) & m_wrapMask ) ];
+            x1 = m_buffer[ ind1 ];
+            x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
+            x3 = m_buffer[ ( (ind1+2) & m_wrapMask ) ];
+            return sjf_interpolators::cubicInterpolateGodot( mu, x0, x1, x2, x3 );
+        }
+        
+        inline T hermiteInterp( T findex )
+        {
+            T x0, x1, x2, x3, mu;
+            auto ind1 = static_cast< long >( findex );
+            mu = findex - ind1;
+            x0 = m_buffer[ ( (ind1-1) & m_wrapMask ) ];
+            x1 = m_buffer[ ind1 ];
+            x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
+            x3 = m_buffer[ ( (ind1+2) & m_wrapMask ) ];
+            return sjf_interpolators::cubicInterpolateHermite( mu, x0, x1, x2, x3 );
+        }
 
-#endif /* sjf_delayLine_h */
+        T getPosition( T pos )
+        {
+            int p = pos;
+            T mu = pos - p;
+            p &= m_wrapMask;
+            return ( static_cast< T >( p ) + mu );
+        }
+        
+    private:
+        std::vector< T > m_buffer;
+        int m_writePos = 0, m_wrapMask;
+        sjf::utilities::classMemberFunctionPointer<delay, T, T> m_interpolate{ this, &delay::linInterp };
+    };
+}
+
+#endif /* sjf_rev_delay_h */

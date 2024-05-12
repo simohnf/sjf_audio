@@ -32,6 +32,7 @@ namespace sjf::rev
         {
             m_delays.resize( NCHANNELS );
             m_dampers.resize( NCHANNELS );
+            m_lowDampers.resize( NCHANNELS );
             m_diffusers.resize( NCHANNELS );
             m_delayTimesSamps.resize( NCHANNELS, 0 );
             m_apDelayTimesSamps.resize( NCHANNELS, 0 );
@@ -42,13 +43,6 @@ namespace sjf::rev
                 d.initialise( m_SR );
             for ( auto & ap : m_diffusers )
                 ap.initialise( m_SR * 0.25 );
-            
-            // ensure delaytimes are initialised
-//            for ( auto d = 0; d < NCHANNELS; d++ )
-//            {
-//                setDelayTime( m_SR * ( 0.1 + ( rand01() * 0.4 ) ), d );
-//                setAPTime( m_SR * ( 0.01 + ( rand01() * 0.14 ) ), d );
-//            }
             setDecayInMS( m_decayInMS );
         }
         ~fdn(){}
@@ -116,19 +110,18 @@ namespace sjf::rev
          This sets the amount of diffusion ( must be greater than -1 and less than 1
          0 sets no diffusion
          */
-        void setDiffusion( T diff )
-        {
-            m_diffusion = diff;
-        }
+        void setDiffusion( T diff ) { m_diffusion = diff; }
         
         
         /**
-         This sets the amount of damping applied in the loop ( must be >= 0 and <= 1 )
+         This sets the amount of high frequency damping applied in the loop ( must be >= 0 and <= 1 )
          */
-        void setDamping( T damp )
-        {
-            m_damping = damp;
-        }
+        void setDamping( T dampCoef ) { m_damping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999; }
+        
+        /**
+         This sets the amount of low frequency damping applied in the loop ( must be >= 0 and <= 1 )
+         */
+        void setDampingLow( T dampCoef ) { m_lowDamping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999; }
         
         /**
          This sets the desired decay time in milliseconds
@@ -161,17 +154,9 @@ namespace sjf::rev
             {
                 delayed[ c ] = m_delays[ c ].getSample( m_delayTimesSamps[ c ] );
                 delayed[ c ] = m_dampers[ c ].process( delayed[ c ], m_damping ); // lp filter
+                delayed[ c ] = m_lowDampers[ c ].processHP( delayed[ c ], m_lowDamping ); // hp filter
             }
             
-//            switch( mixType )
-//            {
-//                case mixers::none :
-//                    break;
-//                case mixers::hadamard :
-//                    sjf::mixers::Hadamard< T >::inPlace( delayed.data(), NCHANNELS );
-//                case mixers::householder :
-//                    sjf::mixers::Householder< T >::mixInPlace( delayed.data(), NCHANNELS );
-//            }
             mixer( delayed );
         
             
@@ -180,7 +165,6 @@ namespace sjf::rev
                     m_delays[ c ].setSample( samples[ c ] + delayed[ c ]*m_fbGains[ c ] );
             else
                 for ( auto c = 0; c < NCHANNELS; c++ )
-                    //                    T process( T x, T delay, T coef, T damping = 0.0 )
                     m_delays[ c ].setSample( m_diffusers[ c ].process( samples[c]+delayed[c]*m_fbGains[c], m_apDelayTimesSamps[c], m_diffusion ) );
             samples = delayed;
             return;
@@ -212,10 +196,10 @@ namespace sjf::rev
         const int NCHANNELS;
         
         std::vector< delayLine::delay< T > > m_delays;
-        std::vector< filters::damper< T > > m_dampers;
+        std::vector< filters::damper< T > > m_dampers, m_lowDampers;
         std::vector< filters::oneMultAP< T > > m_diffusers;
         std::vector< T > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
-        T m_decayInMS = 1000, m_SR = 44100, m_damping = 0.2, m_diffusion = 0.5;
+        T m_decayInMS{1000}, m_SR{44100}, m_damping{0.2}, m_lowDamping{0.95}, m_diffusion{0.5};
         
         mixers m_mixType = mixers::hadamard;
         int m_interpType = DEFAULT_INTERP;

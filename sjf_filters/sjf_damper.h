@@ -32,11 +32,27 @@ namespace sjf::filters
          The input is:
             the sample to process
             the damping coefficient ( must be >=0 and <=1 )
+        Output:
+                 result  of low pass
          */
         T process( T x, T coef )
         {
             m_lastOut = x + coef*( m_lastOut - x );
             return m_lastOut;
+        }
+        
+        /**
+         this should be called every sample in the block,
+         The input is:
+            the sample to process
+            the damping coefficient ( must be >=0 and <=1 )
+         Output:
+                  result  of high pass
+         */
+        T processHP( T x, T coef )
+        {
+            m_lastOut = x + coef*( m_lastOut - x );
+            return (x - m_lastOut);
         }
         
         /**

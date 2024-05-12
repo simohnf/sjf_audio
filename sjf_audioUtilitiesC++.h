@@ -941,9 +941,12 @@ template< typename classType, typename returnType, typename... arguments >
         static inline MS encode( LR lr ) { return { lr.left + lr.right, lr.left - lr.right }; }
         
         /** decode from MS to LR  */
-        static inline LR decode( MS ms ) { return { (ms.mid + ms.side)*0.5,  (ms.mid - ms.side)*0.5, }; }
+        static inline LR decode( MS ms ) { return { (ms.mid + ms.side)*outScale,  (ms.mid - ms.side)*outScale, }; }
         /** decode from MS to LR  */
-        static inline LR decode( Sample mid, Sample side ) { return { (mid + side)*0.5,  (mid - side)*0.5, }; }
+        static inline LR decode( Sample mid, Sample side ) { return { (mid + side)*outScale,  (mid - side)*outScale, }; }
+        
+    private:
+        static constexpr Sample outScale{0.5};
     };
 
     template< typename Sample >

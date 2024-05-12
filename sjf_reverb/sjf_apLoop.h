@@ -29,6 +29,7 @@ namespace sjf::rev
                 s.resize( NAP_PERSTAGE );
             m_delays.resize( NSTAGES );
             m_dampers.resize( NSTAGES );
+            m_lowDampers.resize( NSTAGES );
             m_gains.resize( NSTAGES );
             
             m_delayTimesSamps.resize( NSTAGES );
@@ -130,6 +131,14 @@ namespace sjf::rev
         }
         
         /**
+         This sets the amount of low frequency damping applied between each section of the loop ( must be >= 0 and <= 1 )
+         */
+        void setDampingLow( T dampCoef )
+        {
+            m_lowDamping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999;
+        }
+        
+        /**
          return the number of stages in the loop
          */
         auto getNStages( )
@@ -145,49 +154,20 @@ namespace sjf::rev
             return NAP_PERSTAGE;
         }
         
-//        /**
-//         This should be called for every sample in the block
-//         The input is:
-//         the sample to input into the loop
-//         the interpolation type (optional, defaults to linear, see @sjf_interpolators)
-//         */
-//        T process( T input, int interpType = DEFAULT_INTERP )
-//        {
-//            auto samp = m_lastSamp;
-//            auto output = 0.0;
-//            for ( auto s = 0; s < NSTAGES; s ++ )
-//            {
-//                samp +=  input;
-//                for ( auto a = 0; a < NAP_PERSTAGE; a++ )
-//                {
-//                    samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ], interpType );
-//                }
-//                samp = m_dampers[ s ].process( samp, m_damping );
-//                output += samp;
-//                m_delays[ s ].setSample( samp * m_gains[ s ] );
-//                samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
-//            }
-//            m_lastSamp = samp;
-//            return output;
-//        }
-        
-        
         void processInPlace( std::vector<T>& input )
         {
             auto nChannels = input.size();
             std::vector<T> output( nChannels, 0 );
             auto chanCount = 0;
             auto samp = m_lastSamp;
-//            auto outputL = 0.0, outputR = 0.0;
-//            bool chR = false;
             for ( auto s = 0; s < NSTAGES; s ++ )
             {
                 samp += input[ chanCount ];
 
                 for ( auto a = 0; a < NAP_PERSTAGE; a++ )
-//                    T process( T x, T delay, T coef, T damping = 0.0 )
                     samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ] );
                 samp = m_dampers[ s ].process( samp, m_damping );
+                samp = m_lowDampers[ s ].processHP( samp, m_lowDamping );
                 output[ chanCount ] += samp;
                 m_delays[ s ].setSample( samp * m_gains[ s ] );
                 samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
@@ -210,15 +190,15 @@ namespace sjf::rev
         const int NSTAGES, NAP_PERSTAGE;
         std::vector< std::vector< filters::oneMultAP < T > > > m_aps;
         std::vector< delayLine::delay < T > > m_delays;
-        std::vector< filters::damper < T > > m_dampers;
+        std::vector< filters::damper < T > > m_dampers, m_lowDampers;
         
         std::vector< T > m_gains;
         std::vector< std::vector< T > > m_delayTimesSamps;
         std::vector< std::vector< T > > m_diffusions;
         
-        T m_lastSamp = 0;
-        T m_SR = 44100, m_decayInMS = 100;
-        T m_damping = 0.999;
+        T m_lastSamp{0};
+        T m_SR{44100}, m_decayInMS{100};
+        T m_damping{0.2}, m_lowDamping{0.95};
     };
 }
 

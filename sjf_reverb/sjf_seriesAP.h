@@ -165,7 +165,7 @@ namespace sjf::rev
         
     private:
         const int NSTAGES;
-        std::vector< oneMultAP< T > > m_aps;
+        std::vector< filters::oneMultAP< T > > m_aps;
         std::vector< T > m_coefs, m_delayTimesSamps, m_damping;
     };
     

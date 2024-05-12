@@ -212,7 +212,7 @@ namespace sjf::rev
         const int NSTAGES;
         
         std::vector< std::vector< delayLine::delay< T > > > m_delays;
-        std::vector< std::vector< damper< T > > > m_dampers;
+        std::vector< std::vector< filters::damper< T > > > m_dampers;
         std::vector< std::vector< T > > m_delayTimesSamps, m_damping;
         
         std::vector< std::vector< bool > > m_polFlip;

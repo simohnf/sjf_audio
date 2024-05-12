@@ -17,7 +17,7 @@
 //#include "sjf_rev_consts.h"
 
 #include "../sjf_rev.h"
-#include "../sjf_dcBlock.h"
+//#include "../filter.h"
 namespace sjf::rev
 {
     /**
@@ -30,7 +30,7 @@ namespace sjf::rev
         const int NFBLOOPS, NOUTTAPS;
         const T FBSCALE;
         delayLine::delay< T > m_delayLine;
-        damper< T > m_damper;
+        filters::damper< T > m_damper;
         sjf::filters::dcBlock< T > m_dcBlock;
         std::vector < T > m_fbDelayTimesSamps;
         std::vector < int > m_outTapDelayTimesSamps;

@@ -16,9 +16,9 @@
 #include "sjf_multiChannelEffect.h"
 
 #include "sjf_reverb/sjf_rev_consts.h"
-#include "sjf_reverb/sjf_damper.h"
-#include "sjf_delay.h"
-#include "sjf_reverb/sjf_oneMultAP.h"
+#include "sjf_filters.h"
+#include "sjf_delays.h"
+//#include "sjf_oneMultAP.h"
 #include "sjf_reverb/sjf_seriesAP.h"
 #include "sjf_reverb/sjf_multitap.h"
 #include "sjf_reverb/sjf_apLoop.h"
@@ -102,7 +102,7 @@ template < typename T >
         
     private:
         T m_r = 0.0, m_offset, m_lastPhase = 0.0;
-        sjf::rev::damper< T > m_lpf;
+        sjf::filters::damper< T > m_lpf;
     };
 
 

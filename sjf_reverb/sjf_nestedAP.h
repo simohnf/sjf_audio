@@ -22,7 +22,7 @@ namespace sjf::rev
     {
     private:
         std::array< delayLine::delay< T >, NSTAGES > m_delays;
-        std::array< damper< T >, NSTAGES > m_dampers;
+        std::array< filters::damper< T >, NSTAGES > m_dampers;
         
         std::array< T, NSTAGES > m_delayTimesSamps, m_coefs, m_damping;
     public:

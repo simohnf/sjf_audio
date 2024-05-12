@@ -8,16 +8,10 @@
 #ifndef sjf_rev_oneMultAP_h
 #define sjf_rev_oneMultAP_h
 
-//#include "../sjf_audioUtilitiesC++.h"
-//#include "../sjf_interpolators.h"
-//#include "../gcem/include/gcem.hpp"
-//#include "sjf_delay.h"
-//
-//#include "sjf_rev_consts.h"
+#include "../sjf_delays.h"
+#include "sjf_damper.h"
 
-#include "../sjf_rev.h"
-
-namespace sjf::rev
+namespace sjf::filters
 {
     /**
      One multiply all pass as per Moorer - "about this reverberation business"
@@ -69,7 +63,7 @@ namespace sjf::rev
         
     private:
         delayLine::delay< T > m_del;
-        damper< T > m_damper;
+        filters::damper< T > m_damper;
         
     };
 }

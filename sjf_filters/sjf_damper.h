@@ -11,9 +11,9 @@
 //#include "../sjf_interpolators.h"
 //#include "../gcem/include/gcem.hpp"
 
-#include "../sjf_rev.h"
+//#include "sjf_rev.h"
 
-namespace sjf::rev
+namespace sjf::filters
 {
     /**
      basic one pole lowpass filter, but set so that the higher the coefficient the lower the cut off frequency, this just makes it useful for setting damping in a reverb loop

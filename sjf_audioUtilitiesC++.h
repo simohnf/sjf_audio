@@ -927,56 +927,46 @@ template< typename classType, typename returnType, typename... arguments >
 //========//========//========//========//========//========//========
 //========//========//========//========//========//========//========
 //========//========//========//========//========//========//========
-namespace sjf::utilities
-{
+
     /** Simple class for ending to and decoding from MS. Use like : sjf::utilities::MidSide<float>::encode( lSamp, rSamp )*/
     template < typename Sample >
-    class MidSide
+    struct MidSide
     {
-    public:
         struct MS{ Sample mid, side; };
         struct LR{ Sample left, right; };
     
         /** encode from LR to MS */
-        static inline MS encode( Sample left, Sample right )
-        {
-//            auto tmp = left;
-//            left += right;              /* MID ==> left + right */
-//            right = tmp - right;        /* SIDE ==> left - right */
-            return { left + right, left - right };
-        }
-        
-        static inline MS encode( LR lr )
-        {
-//            auto tmp = left;
-//            left += right;              /* MID ==> left + right */
-//            right = tmp - right;        /* SIDE ==> left - right */
-            return { lr.left + lr.right, lr.left - lr.right };
-        }
+        static inline MS encode( Sample left, Sample right ) { return { left + right, left - right }; }
+        /** encode from LR to MS */
+        static inline MS encode( LR lr ) { return { lr.left + lr.right, lr.left - lr.right }; }
         
         /** decode from MS to LR  */
-        static inline LR decode( MS ms )
-        {
-//            auto tmp = mid;
-//            mid = (mid + side) * 0.5;   /*  2 * L = mid + side */
-//            side = (tmp- side) * 0.5;   /*  2 * R = mid - side */
-            return { (ms.mid + ms.side)*0.5,  (ms.mid - ms.side)*0.5, };
-        }
-        
+        static inline LR decode( MS ms ) { return { (ms.mid + ms.side)*0.5,  (ms.mid - ms.side)*0.5, }; }
         /** decode from MS to LR  */
-        static inline LR decode( Sample mid, Sample side )
-        {
-//            auto tmp = mid;
-//            mid = (mid + side) * 0.5;   /*  2 * L = mid + side */
-//            side = (tmp- side) * 0.5;   /*  2 * R = mid - side */
-            return { (mid + side)*0.5,  (mid - side)*0.5, };
-        }
-        
-
+        static inline LR decode( Sample mid, Sample side ) { return { (mid + side)*0.5,  (mid - side)*0.5, }; }
     };
+
+    template< typename Sample >
+    Sample clip( Sample value, const Sample min, const Sample max ) { return value < min ? min : value > max ? max : value; }
+
+
+
+    template < typename Sample >
+    Sample phaseEnvelope( const Sample phase, const Sample nRampSegments )
+    {
+        Sample up, down;
+        
+        up = down = phase * nRampSegments;
+        up = clip< Sample >( up, 0, 1 );
+        
+        down -= ( nRampSegments - 1 );
+        down *= -1;
+        down = clip< Sample > ( down, -1, 0 );
+        
+        return up + down;
+    }
 }
 
-}
 
 
 #endif /* sjf_audioUtilitiesC++ */

@@ -1,26 +1,27 @@
 //
-//  sjf_damper.h
+//  sjf_onepole.h
+//  sjf_verb
 //
-//  Created by Simon Fay on 27/03/2024.
+//  Created by Simon Fay on 13/05/2024.
+//  Copyright © 2024 sjf. All rights reserved.
 //
 
-#ifndef sjf_damper_h
-#define sjf_damper_h
-
+#ifndef sjf_onepole_h
+#define sjf_onepole_h
 namespace sjf::filters
 {
     /**
      basic one pole lowpass/highpass filter, but set so that the higher the coefficient the lower the cut off frequency, this just makes it useful for setting damping in a reverb loop
-        this class is set so that higher coefficients equate to lower cutoff frequencies!
+        this class is set so that higher coefficients equate to higher cutoff frequencies!
      */
     template < typename Sample >
-    class damper
+    class onepole
     {
     private:
         Sample m_lastOut = 0;
     public:
-        damper(){}
-        ~damper(){}
+        onepole(){}
+        ~onepole(){}
         
         /**
          this should be called every sample in the block,
@@ -32,7 +33,7 @@ namespace sjf::filters
          */
         Sample process( Sample x, Sample coef )
         {
-            m_lastOut = x + coef*( m_lastOut - x );
+            m_lastOut += coef*( x - m_lastOut );
             return m_lastOut;
         }
         
@@ -44,11 +45,7 @@ namespace sjf::filters
          Output:
                   result  of high pass
          */
-        Sample processHP( Sample x, Sample coef )
-        {
-            m_lastOut = x + coef*( m_lastOut - x );
-            return (x - m_lastOut);
-        }
+        Sample processHP( Sample x, Sample coef ) { return x - process( x, coef ); }
         
         /**
          Reset the currently stored value. Can be used to clear delay line to 0 or to set to an initial value
@@ -57,5 +54,4 @@ namespace sjf::filters
     };
 }
 
-
-#endif /* sjf_damper_h */
+#endif /* sjf_onepole_h */

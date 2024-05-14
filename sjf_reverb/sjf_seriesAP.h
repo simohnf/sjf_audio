@@ -30,18 +30,14 @@ namespace sjf::rev
         seriesAllpass( int nstages ) noexcept : NSTAGES( nstages )
         {
             m_aps.resize( NSTAGES );
-            m_coefs.resize( NSTAGES );
+            m_coefs.resize( NSTAGES, 0.7 );
             m_delayTimesSamps.resize( NSTAGES );
-            m_damping.resize( NSTAGES );
+            m_damping.resize( NSTAGES, 0 );
             
             initialise( 44100 ); // default sample rate
-            setCoefs( 0.7 ); // default coefficient
+//            setCoefs( 0.7 ); // default coefficient
             for ( auto s = 0; s < NSTAGES; s++ )
-            {
                 m_delayTimesSamps[ s ] = ( rand01()*2048 ) + 1024; // random delay times just so it's initialised
-                m_coefs[ s ] = 0;
-                m_damping[ s ] = 0;
-            }
         }
         ~seriesAllpass(){} 
         
@@ -136,8 +132,8 @@ namespace sjf::rev
          */
         void setDamping( T damp )
         {
-            for ( auto d = 0; d < NSTAGES; d++ )
-                m_damping[ d ] = damp;
+            for ( auto & d: m_damping )
+                d = damp;
         }
         
         

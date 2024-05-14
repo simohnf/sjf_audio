@@ -8,8 +8,10 @@
 #ifndef sjf_filters_h
 #define sjf_filters_h
 
+#include "sjf_filters/sjf_onepole.h"
 #include "sjf_filters/sjf_damper.h"
 #include "sjf_filters/sjf_dcBlock.h"
 #include "sjf_filters/sjf_oneMultAP.h"
+
 
 #endif /* sjf_filters_h */

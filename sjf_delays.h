@@ -10,4 +10,6 @@
 
 #include "sjf_delays/sjf_delay.h"
 #include "sjf_delays/sjf_reverseDelay.h"
+#include "sjf_delays/sjf_pitchShift.h"
+
 #endif /* sjf_delays_h */

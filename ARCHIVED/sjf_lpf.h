@@ -146,30 +146,30 @@ public:
 
 
 
-namespace sjf::filters
-{
-    template< typename Sample >
-    class onepole
-    {
-    public:
-        onepole(){}
-        ~onepole(){}
-        
-        Sample process( Sample x, Sample coef )
-        {
-            m_y1 = x + coef*( m_y1 - x );
-            return m_y1;
-        }
-        
-        void clear()
-        {
-            m_y1 = 0;
-        }
-        
-    private:
-        Sample m_y1 = 0;
-    };
-}
+//namespace sjf::filters
+//{
+//    template< typename Sample >
+//    class onepole
+//    {
+//    public:
+//        onepole(){}
+//        ~onepole(){}
+//        
+//        Sample process( Sample x, Sample coef )
+//        {
+//            m_y1 = x + coef*( m_y1 - x );
+//            return m_y1;
+//        }
+//        
+//        void clear()
+//        {
+//            m_y1 = 0;
+//        }
+//        
+//    private:
+//        Sample m_y1 = 0;
+//    };
+//}
 
 #endif /* sjf_lpf_h */
 

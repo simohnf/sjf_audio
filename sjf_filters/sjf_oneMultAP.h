@@ -5,8 +5,8 @@
 //
 
 
-#ifndef sjf_rev_oneMultAP_h
-#define sjf_rev_oneMultAP_h
+#ifndef sjf_oneMultAP_h
+#define sjf_oneMultAP_h
 
 #include "../sjf_delays.h"
 #include "sjf_damper.h"

@@ -10,14 +10,9 @@
 #include <math.h>
 #include "gcem/include/gcem.hpp"
 
-//#ifndef PI
-//#define PI M_PI
-//#endif
-
 template< typename T >
 void clipInPlace( T& value, const T& min, const T& max )
 {
-//    std::swap( min, max );
     if ( value < min )
         value = min;
     else if ( value > max )
@@ -969,7 +964,4 @@ template< typename classType, typename returnType, typename... arguments >
         return up + down;
     }
 }
-
-
-
 #endif /* sjf_audioUtilitiesC++ */

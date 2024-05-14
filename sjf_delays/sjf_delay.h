@@ -51,11 +51,30 @@ namespace sjf::delayLine
          Input is:
             the number of samples in the past to read from
          */
-        inline Sample getSample( Sample delay )
-        {
-            auto rp = getPosition( ( m_writePos - delay ) );
-            return m_interpolate( rp );
-        }
+        utilities::classMemberFunctionPointer< delay, Sample, Sample > getSample{ this, &delay::linInterp };
+//        inline Sample getSample( Sample delay )
+//        {
+//            return m_interpolate( m_writePos-delay );
+//            auto rp = getPosition( ( m_writePos - delay ) );
+//            switch (m_interType) {
+//                case sjf_interpolators::interpolatorTypes::none:
+//                    return noInterp( rp );
+//                case sjf_interpolators::interpolatorTypes::linear :
+//                    return linInterp( rp );
+//                case sjf_interpolators::interpolatorTypes::cubic :
+//                    return cubicInterp( rp );
+//                case sjf_interpolators::interpolatorTypes::pureData :
+//                    return pdInterp( rp );
+//                case sjf_interpolators::interpolatorTypes::fourthOrder :
+//                    return fourPointInterp( rp );
+//                case sjf_interpolators::interpolatorTypes::godot :
+//                    return godotInterp( rp );
+//                case sjf_interpolators::interpolatorTypes::hermite :
+//                    return hermiteInterp( rp );
+//                default:
+//                    return linInterp( rp );
+//            };
+//        }
         
         /**
          This sets the value of the sample at the current write position and automatically updates the write pointer
@@ -70,43 +89,49 @@ namespace sjf::delayLine
         /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
         void setInterpolationType( sjf_interpolators::interpolatorTypes interpType )
         {
+//            m_interType = interpType;
             switch ( interpType ) {
-                case 0:
-                    m_interpolate = &delay::noInterp;
+                case sjf_interpolators::interpolatorTypes::none:
+                    getSample = &delay::noInterp;
                     return;
                 case sjf_interpolators::interpolatorTypes::linear :
-                    m_interpolate = &delay::linInterp;
+                    getSample = &delay::linInterp;
                     return;
                 case sjf_interpolators::interpolatorTypes::cubic :
-                    m_interpolate = &delay::cubicInterp;
+                    getSample = &delay::cubicInterp;
                     return;
                 case sjf_interpolators::interpolatorTypes::pureData :
-                    m_interpolate = &delay::pdInterp;
+                    getSample = &delay::pdInterp;
                     return;
                 case sjf_interpolators::interpolatorTypes::fourthOrder :
-                    m_interpolate = &delay::fourPointInterp;
+                    getSample = &delay::fourPointInterp;
                     return;
                 case sjf_interpolators::interpolatorTypes::godot :
-                    m_interpolate = &delay::godotInterp;
+                    getSample = &delay::godotInterp;
                     return;
                 case sjf_interpolators::interpolatorTypes::hermite :
-                    m_interpolate = &delay::hermiteInterp;
+                    getSample = &delay::hermiteInterp;
                     return;
                 default:
-                    m_interpolate = &delay::linInterp;
+                    getSample = &delay::linInterp;
                     return;
             }
         }
         
     private:
-        inline Sample noInterp( Sample findex ){ return m_buffer[ findex ]; }
+        inline Sample noInterp( Sample findex )
+        {
+            findex = static_cast<int>(m_writePos - findex);
+            return m_buffer[ findex ];
+        }
         
         inline Sample linInterp( Sample findex )
         {
+            findex = m_writePos - findex;
             Sample x1, x2, mu;
             auto ind1 = static_cast< long >( findex );
             mu = findex - ind1;
-            x1 = m_buffer[ ind1 ];
+            x1 = m_buffer[ ind1 & m_wrapMask ];
             x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
             
             return sjf_interpolators::linearInterpolate( mu, x1, x2 );
@@ -114,11 +139,12 @@ namespace sjf::delayLine
         
         inline Sample cubicInterp( Sample findex )
         {
+            findex = m_writePos - findex;
             Sample x0, x1, x2, x3, mu;
             auto ind1 = static_cast< long >( findex );
             mu = findex - ind1;
             x0 = m_buffer[ ( (ind1-1) & m_wrapMask ) ];
-            x1 = m_buffer[ ind1 ];
+            x1 = m_buffer[ ind1 & m_wrapMask ];
             x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
             x3 = m_buffer[ ( (ind1+2) & m_wrapMask ) ];
             return sjf_interpolators::cubicInterpolate( mu, x0, x1, x2, x3 );
@@ -126,11 +152,12 @@ namespace sjf::delayLine
         
         inline Sample pdInterp( Sample findex )
         {
+            findex = m_writePos - findex;
             Sample x0, x1, x2, x3, mu;
             auto ind1 = static_cast< long >( findex );
             mu = findex - ind1;
             x0 = m_buffer[ ( (ind1-1) & m_wrapMask ) ];
-            x1 = m_buffer[ ind1 ];
+            x1 = m_buffer[ ind1 & m_wrapMask ];
             x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
             x3 = m_buffer[ ( (ind1+2) & m_wrapMask ) ];
             return sjf_interpolators::fourPointInterpolatePD( mu, x0, x1, x2, x3 );
@@ -139,11 +166,12 @@ namespace sjf::delayLine
         
         inline Sample fourPointInterp( Sample findex )
         {
+            findex = m_writePos - findex;
             Sample x0, x1, x2, x3, mu;
             auto ind1 = static_cast< long >( findex );
             mu = findex - ind1;
             x0 = m_buffer[ ( (ind1-1) & m_wrapMask ) ];
-            x1 = m_buffer[ ind1 ];
+            x1 = m_buffer[ ind1 & m_wrapMask ];
             x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
             x3 = m_buffer[ ( (ind1+2) & m_wrapMask ) ];
             return sjf_interpolators::fourPointFourthOrderOptimal( mu, x0, x1, x2, x3 );
@@ -151,11 +179,12 @@ namespace sjf::delayLine
         
         inline Sample godotInterp( Sample findex )
         {
+            findex = m_writePos - findex;
             Sample x0, x1, x2, x3, mu;
             auto ind1 = static_cast< long >( findex );
             mu = findex - ind1;
             x0 = m_buffer[ ( (ind1-1) & m_wrapMask ) ];
-            x1 = m_buffer[ ind1 ];
+            x1 = m_buffer[ ind1 & m_wrapMask];
             x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
             x3 = m_buffer[ ( (ind1+2) & m_wrapMask ) ];
             return sjf_interpolators::cubicInterpolateGodot( mu, x0, x1, x2, x3 );
@@ -163,11 +192,12 @@ namespace sjf::delayLine
         
         inline Sample hermiteInterp( Sample findex )
         {
+            findex = m_writePos - findex;
             Sample x0, x1, x2, x3, mu;
             auto ind1 = static_cast< long >( findex );
             mu = findex - ind1;
             x0 = m_buffer[ ( (ind1-1) & m_wrapMask ) ];
-            x1 = m_buffer[ ind1 ];
+            x1 = m_buffer[ ind1 & m_wrapMask];
             x2 = m_buffer[ ( (ind1+1) & m_wrapMask ) ];
             x3 = m_buffer[ ( (ind1+2) & m_wrapMask ) ];
             return sjf_interpolators::cubicInterpolateHermite( mu, x0, x1, x2, x3 );
@@ -181,10 +211,13 @@ namespace sjf::delayLine
             return ( static_cast< Sample >( p ) + mu );
         }
         
+        
     private:
         std::vector< Sample > m_buffer;
         int m_writePos = 0, m_wrapMask;
-        sjf::utilities::classMemberFunctionPointer< delay, Sample, Sample > m_interpolate{ this, &delay::linInterp };
+        
+//        sjf_interpolators::interpolatorTypes m_interType =  sjf_interpolators::interpolatorTypes::linear;
+        
     };
 }
 

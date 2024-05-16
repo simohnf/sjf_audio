@@ -14,7 +14,7 @@
 //#include "sjf_rev_consts.h"
 
 #include "../sjf_filters.h"
-
+#include "../sjf_interpolators/sjf_interpolator.h"
 namespace sjf::delayLine
 {
     /**
@@ -215,8 +215,7 @@ namespace sjf::delayLine
     private:
         std::vector< Sample > m_buffer;
         int m_writePos = 0, m_wrapMask;
-        
-//        sjf_interpolators::interpolatorTypes m_interType =  sjf_interpolators::interpolatorTypes::linear;
+        sjf::interpolation::interpolator<Sample> m_interpolator;
         
     };
 }

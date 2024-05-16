@@ -63,6 +63,7 @@ namespace sjf::delayLine
         /** Pitch shift the input signal. */
         Sample process( Sample x )
         {
+            
             m_delay.setSample( m_lpfIn.process( x, m_lpfInCoef ) );
             Sample outSamp{0}, delayed{0}, phase{m_phasor.process()};
             

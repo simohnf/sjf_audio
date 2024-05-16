@@ -9,4 +9,6 @@
 #define sjf_oscillators_h
 
 #include "sjf_oscillators/sjf_phasor.h"
+#include "sjf_oscillators/sjf_sinCos.h"
+
 #endif /* sjf_oscillators_h */

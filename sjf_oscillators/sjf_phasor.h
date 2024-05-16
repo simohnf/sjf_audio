@@ -10,9 +10,6 @@
 #define sjf_phasor_h
 
 
-/**
- A collection of basic building blocks for phasorerb design
- */
 namespace sjf::oscillators
 {
 

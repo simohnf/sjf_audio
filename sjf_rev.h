@@ -18,7 +18,7 @@
 #include "sjf_reverb/sjf_rev_consts.h"
 #include "sjf_filters.h"
 #include "sjf_delays.h"
-//#include "sjf_oscillators.h"
+#include "sjf_nonlinearities.h"
 
 #include "sjf_reverb/sjf_seriesAP.h"
 #include "sjf_reverb/sjf_multitap.h"

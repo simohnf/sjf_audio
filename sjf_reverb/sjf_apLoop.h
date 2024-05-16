@@ -154,15 +154,20 @@ namespace sjf::rev
             return NAP_PERSTAGE;
         }
         
-        void processInPlace( std::vector<T>& input )
+        /**
+         This should be called for every sample in the block
+         The input is:
+            array of samples, one for each channel in the delay network (up & downmixing must be done outside the loop
+         */
+        void processInPlace( std::vector<T>& samples )
         {
-            auto nChannels = input.size();
+            auto nChannels = samples.size();
             std::vector<T> output( nChannels, 0 );
             auto chanCount = 0;
             auto samp = m_lastSamp;
             for ( auto s = 0; s < NSTAGES; s ++ )
             {
-                samp += input[ chanCount ];
+                samp += samples[ chanCount ];
 
                 for ( auto a = 0; a < NAP_PERSTAGE; a++ )
                     samp = m_aps[ s ][ a ].process( samp, m_delayTimesSamps[ s ][ a ], m_diffusions[ s ][ a ] );
@@ -173,11 +178,12 @@ namespace sjf::rev
                 samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
                 chanCount = ( ++chanCount == nChannels ) ? 0 : chanCount;
             }
-            m_lastSamp = samp;
-            input = output;
+            m_lastSamp = m_fbControl ? nonlinearities::tanhSimple( samp ) : samp;
+            samples = output;
             return;
         }
         
+        /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
         void setInterpolationType( sjf_interpolators::interpolatorTypes type )
         {
             for ( auto & d : m_delays )
@@ -186,6 +192,9 @@ namespace sjf::rev
                 for ( auto & a : i )
                     a.setInterpolationType( type );
         }
+        
+        /** sets whether feedback should be limited. This adds a nonlinearity within the loop, increasing cpu load slightly, but preventing overloads( hopefully ) */
+        void setControlFB( bool shouldLimitFeedback ){ m_fbControl = shouldLimitFeedback; }
     private:
         const int NSTAGES, NAP_PERSTAGE;
         std::vector< std::vector< filters::oneMultAP < T > > > m_aps;
@@ -199,6 +208,8 @@ namespace sjf::rev
         T m_lastSamp{0};
         T m_SR{44100}, m_decayInMS{100};
         T m_damping{0.2}, m_lowDamping{0.95};
+        
+        bool m_fbControl{false};
     };
 }
 

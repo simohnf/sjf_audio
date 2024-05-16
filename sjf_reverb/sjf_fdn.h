@@ -143,8 +143,6 @@ namespace sjf::rev
          This should be called for every sample in the block
          The input is:
             array of samples, one for each channel in the delay network (up & downmixing must be done outside the loop
-            the desired mixing type within the loop ( see @mixers )
-            the interpolation type ( optional, defaults to linear, see @sjf_interpolators )
          */
         void processInPlace( std::vector< T >& samples )
         {
@@ -162,7 +160,11 @@ namespace sjf::rev
             
             if ( m_diffusion == 0.0 )
                 for ( auto c = 0; c < NCHANNELS; c++ )
-                    m_delays[ c ].setSample( samples[ c ] + delayed[ c ]*m_fbGains[ c ] );
+                    m_delays[ c ].setSample(
+                                            m_fbControl?
+                                            nonlinearities::tanhSimple( samples[ c ] + delayed[ c ]*m_fbGains[ c ] ) :
+                                            samples[ c ] + delayed[ c ]*m_fbGains[ c ]
+                                            );
             else
                 for ( auto c = 0; c < NCHANNELS; c++ )
                     m_delays[ c ].setSample( m_diffusers[ c ].process( samples[c]+delayed[c]*m_fbGains[c], m_apDelayTimesSamps[c], m_diffusion ) );
@@ -170,6 +172,7 @@ namespace sjf::rev
             return;
         }
         
+        /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
         void setInterpolationType( sjf_interpolators::interpolatorTypes type )
         {
             for ( auto & d : m_delays )
@@ -178,13 +181,16 @@ namespace sjf::rev
                 a.setInterpolationType( type );
         }
         
-        
+        /** determines which type of mixing should be used */
         void setMixType( mixers type )
         {
             if (m_mixType == type){ return; }
             m_mixType = type;
             
         }
+        
+        /** sets whether feedback should be limited. This adds a nonlinearity within the loop, increasing cpu load slightly, but preventing overloads( hopefully ) */
+        void setControlFB( bool shouldLimitFeedback ){ m_fbControl = shouldLimitFeedback; }
         
     private:
         inline void noMix( std::vector< T > delayed ) { return; }
@@ -205,6 +211,8 @@ namespace sjf::rev
         int m_interpType = DEFAULT_INTERP;
         
         sjf::utilities::classMemberFunctionPointer< fdn, void, std::vector< T > > mixer{ this, &fdn::hadamardMix };
+        
+        bool m_fbControl{false};
     };
 }
 

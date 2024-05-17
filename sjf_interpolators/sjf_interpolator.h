@@ -11,7 +11,7 @@
 #include "../sjf_audioUtilitiesC++.h"
 namespace sjf::interpolation
 {
-    enum class interpolatorTypes { none, linear, cubic, pureData, fourthOrder, godot, hermite, allpass };
+    enum class interpolatorTypes { none, linear, cubic, pureData, fourthOrder, godot, hermite };
     
     template< typename Sample >
     struct interpVals { Sample mu, x0, x1, x2, x3; };

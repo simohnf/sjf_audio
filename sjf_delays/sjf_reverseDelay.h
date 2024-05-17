@@ -73,7 +73,7 @@ namespace sjf::delayLine
         
         
         /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
-        void setInterpolationType( sjf_interpolators::interpolatorTypes interpType ){ m_delay.setInterpolationType( interpType ); }
+        void setInterpolationType( interpolation::interpolatorTypes interpType ){ m_delay.setInterpolationType( interpType ); }
     private:
         
         

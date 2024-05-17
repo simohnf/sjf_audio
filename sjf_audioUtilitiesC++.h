@@ -735,13 +735,15 @@ inline bool sjf_isPrime( int number )
 }
 //==========================================================
 /** check whether a number is a power of another number */
-inline bool sjf_isPowerOf( unsigned long val, unsigned long baseToCheck )
+inline bool sjf_isPowerOf( const unsigned long val, const unsigned long baseToCheck )
 {
-    auto v = static_cast< double >( val );
-    auto b = 1.0 / static_cast< double >( baseToCheck );
-    while ( v > baseToCheck )
-        v *= b;
-    return ( b == baseToCheck );
+//    auto v = static_cast< double >( val );
+    auto b = baseToCheck;
+//    while ( v > baseToCheck )
+//        v *= b;
+    while( baseToCheck < val )
+        b *= baseToCheck;
+    return ( val == b  );
 }
 
 //==========================================================

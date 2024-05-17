@@ -160,7 +160,7 @@ namespace sjf::rev
         }
         
         
-        void setInterpolationType( sjf_interpolators::interpolatorTypes type ) { m_delay.setInterpolationType( type );   }
+        void setInterpolationType( sjf::interpolation::interpolatorTypes type ) { m_delay.setInterpolationType( type );   }
     private:
         const int MAXNTAPS;
         std::vector< T > m_delayTimesSamps, m_gains;

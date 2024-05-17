@@ -200,7 +200,7 @@ namespace sjf::rev
             }
         }
         
-        void setInterpolationType( sjf_interpolators::interpolatorTypes type )
+        void setInterpolationType( sjf::interpolation::interpolatorTypes type )
         {
             for ( auto & v : m_delays )
                 for ( auto & d : v )

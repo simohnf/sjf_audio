@@ -51,9 +51,12 @@ namespace sjf::delayLine
          Input is:
             the number of samples in the past to read from
          */
-        utilities::classMemberFunctionPointer< delay, Sample, Sample > getSample{ this, &delay::linInterp };
-//        inline Sample getSample( Sample delay )
-//        {
+//        utilities::classMemberFunctionPointer< delay, Sample, Sample > getSample{ this, &delay::linInterp };
+        inline Sample getSample( Sample delay )
+        {
+            return m_interpolator( m_buffer.data(), m_buffer.size(), m_writePos-delay );
+        }
+        
 //            return m_interpolate( m_writePos-delay );
 //            auto rp = getPosition( ( m_writePos - delay ) );
 //            switch (m_interType) {
@@ -87,36 +90,7 @@ namespace sjf::delayLine
         }
         
         /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
-        void setInterpolationType( sjf_interpolators::interpolatorTypes interpType )
-        {
-//            m_interType = interpType;
-            switch ( interpType ) {
-                case sjf_interpolators::interpolatorTypes::none:
-                    getSample = &delay::noInterp;
-                    return;
-                case sjf_interpolators::interpolatorTypes::linear :
-                    getSample = &delay::linInterp;
-                    return;
-                case sjf_interpolators::interpolatorTypes::cubic :
-                    getSample = &delay::cubicInterp;
-                    return;
-                case sjf_interpolators::interpolatorTypes::pureData :
-                    getSample = &delay::pdInterp;
-                    return;
-                case sjf_interpolators::interpolatorTypes::fourthOrder :
-                    getSample = &delay::fourPointInterp;
-                    return;
-                case sjf_interpolators::interpolatorTypes::godot :
-                    getSample = &delay::godotInterp;
-                    return;
-                case sjf_interpolators::interpolatorTypes::hermite :
-                    getSample = &delay::hermiteInterp;
-                    return;
-                default:
-                    getSample = &delay::linInterp;
-                    return;
-            }
-        }
+        void setInterpolationType( interpolation::interpolatorTypes interpType ) { m_interpolator.setInterpolationType( interpType ); }
         
     private:
         inline Sample noInterp( Sample findex )

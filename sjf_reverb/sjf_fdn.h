@@ -173,7 +173,7 @@ namespace sjf::rev
         }
         
         /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
-        void setInterpolationType( sjf_interpolators::interpolatorTypes type )
+        void setInterpolationType( sjf::interpolation::interpolatorTypes type )
         {
             for ( auto & d : m_delays )
                 d.setInterpolationType( type );

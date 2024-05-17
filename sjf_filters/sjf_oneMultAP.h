@@ -59,7 +59,7 @@ namespace sjf::filters
         }
         
         /** Set the interpolation Type to be used */
-        void setInterpolationType( sjf_interpolators::interpolatorTypes interpType ) { m_del.setInterpolationType( interpType ); }
+        void setInterpolationType( sjf::interpolation::interpolatorTypes interpType ) { m_del.setInterpolationType( interpType ); }
         
     private:
         delayLine::delay< T > m_del;

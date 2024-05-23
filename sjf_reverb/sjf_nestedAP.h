@@ -61,7 +61,7 @@ namespace sjf::rev
          output:
             Processed sample
          */
-        T process( T x,  int interpType = DEFAULT_INTERP )
+        T process( T x,  int interpType = 0 )
         {
             auto firstStage = 0;
             return processStageRecursive( firstStage, x, interpType );
@@ -98,7 +98,7 @@ namespace sjf::rev
         /**
          This recursive call will move through each stage of the structure, passing the results of the allpass calculations to the next and then previous stages
          */
-        T processStageRecursive( int stage, T x, int interpType = DEFAULT_INTERP )
+        T processStageRecursive( int stage, T x, int interpType = 0 )
         {
             // base case
             if ( stage == NSTAGES )

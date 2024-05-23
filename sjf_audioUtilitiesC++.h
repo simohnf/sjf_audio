@@ -8,6 +8,9 @@
 #define sjf_audioUtilitiesCplusplus_h
 
 #include <math.h>
+#include <vector>
+#include <array>
+#include <string>
 #include "gcem/include/gcem.hpp"
 
 template< typename T >
@@ -712,7 +715,6 @@ auto sjf_crossCorrelationMaxTimeLag( const T* val1, const T* val2, const size_t 
             maxVal = newVal;
         }
     }
-    std::cout << maxVal << std::endl;
     return maxIndex;
 }
 
@@ -737,13 +739,17 @@ inline bool sjf_isPrime( int number )
 /** check whether a number is a power of another number */
 inline bool sjf_isPowerOf( const unsigned long val, const unsigned long baseToCheck )
 {
-//    auto v = static_cast< double >( val );
+    assert( val >= baseToCheck  );
+////    auto v = static_cast< double >( val );
+//    auto b = baseToCheck;
+////    while ( v > baseToCheck )
+////        v *= b;
+//    while( baseToCheck < val )
+//        b *= baseToCheck;
     auto b = baseToCheck;
-//    while ( v > baseToCheck )
-//        v *= b;
-    while( baseToCheck < val )
-        b *= baseToCheck;
-    return ( val == b  );
+    while ( b < val )
+        b*= baseToCheck;
+    return ( b == val  );
 }
 
 //==========================================================

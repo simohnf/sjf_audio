@@ -24,8 +24,8 @@ namespace sjf::rev
      */
     
     // NCHANNELS should be a power of 2!!!
-    template< typename T >
-    class fdn /* : sjf::multiChannelEffect< T > */
+    template< typename Sample >
+    class fdn
     {
     public:
         fdn( int nchannels ) noexcept : NCHANNELS( nchannels )
@@ -44,13 +44,14 @@ namespace sjf::rev
             for ( auto & ap : m_diffusers )
                 ap.initialise( m_SR * 0.25 );
             setDecayInMS( m_decayInMS );
+            setSetValVariant();
         }
         ~fdn(){}
         
         /**
          This must be called before first use in order to set basic information such as maximum delay lengths and sample rate
          */
-        void initialise( int maxSizePerChannelSamps, int maxSizePerAPChannelSamps, T sampleRate )
+        void initialise( int maxSizePerChannelSamps, int maxSizePerAPChannelSamps, Sample sampleRate )
         {
             m_SR = sampleRate;
             for ( auto & d : m_delays )
@@ -68,7 +69,7 @@ namespace sjf::rev
         /**
          This allows you to set all of the delay times
          */
-        void setDelayTimes( const std::vector< T >& dt )
+        void setDelayTimes( const std::vector< Sample >& dt )
         {
             assert( dt.size() == NCHANNELS );
             for ( auto c = 0; c < NCHANNELS; c ++ )
@@ -79,7 +80,7 @@ namespace sjf::rev
         /**
          This allows you to set one of the delay times, this does not reset the decay time calculation so you will need to reset that using setDecayInMS()!!!
          */
-        void setDelayTime( const T dt, const int delayNumber )
+        void setDelayTime( const Sample dt, const int delayNumber )
         {
             assert( delayNumber < NCHANNELS );
             m_delayTimesSamps[ delayNumber ] = dt;
@@ -88,7 +89,7 @@ namespace sjf::rev
         /**
          This allows you to set all of the delay times used by the allpass filters for diffusion.
          */
-        void setAPTimes( const std::vector< T >& dt )
+        void setAPTimes( const std::vector< Sample >& dt )
         {
             assert( dt.size() == NCHANNELS );
             for ( auto c = 0; c < NCHANNELS; c ++ )
@@ -99,7 +100,7 @@ namespace sjf::rev
         /**
          This allows you to set one of the delay times used by the allpass filters for diffusion,  this does not reset the decay time calculation so you will need to reset that using setDecayInMS()!!! 
          */
-        void setAPTime( const T dt, const int delayNumber )
+        void setAPTime( const Sample dt, const int delayNumber )
         {
             assert( delayNumber < NCHANNELS );
             m_apDelayTimesSamps[ delayNumber ] = dt;
@@ -110,23 +111,32 @@ namespace sjf::rev
          This sets the amount of diffusion ( must be greater than -1 and less than 1
          0 sets no diffusion
          */
-        void setDiffusion( T diff ) { m_diffusion = diff; }
+        void setDiffusion( Sample diff )
+        {
+            if ( (m_diffusion==0.0||diff==0.0) && (m_diffusion!=diff) )
+            {
+                m_diffusion = diff;
+                setSetValVariant();
+                return;
+            }
+            m_diffusion = diff;
+        }
         
         
         /**
          This sets the amount of high frequency damping applied in the loop ( must be >= 0 and <= 1 )
          */
-        void setDamping( T dampCoef ) { m_damping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999; }
+        void setDamping( Sample dampCoef ) { m_damping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999; }
         
         /**
          This sets the amount of low frequency damping applied in the loop ( must be >= 0 and <= 1 )
          */
-        void setDampingLow( T dampCoef ) { m_lowDamping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999; }
+        void setDampingLow( Sample dampCoef ) { m_lowDamping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999; }
         
         /**
          This sets the desired decay time in milliseconds
          */
-        void setDecayInMS( T decayInMS )
+        void setDecayInMS( Sample decayInMS )
         {
             if ( m_decayInMS == decayInMS ){ return; }
             m_decayInMS = decayInMS;
@@ -134,7 +144,7 @@ namespace sjf::rev
             for ( auto c = 0; c < NCHANNELS; c++ )
             {
                 dt = ( m_delayTimesSamps[ c ] +  m_apDelayTimesSamps[ c ] ) * 1000.0 / m_SR;
-                m_fbGains[ c ] = sjf_calculateFeedbackGain< T >( dt, m_decayInMS );
+                m_fbGains[ c ] = sjf_calculateFeedbackGain< Sample >( dt, m_decayInMS );
             }
         }
         
@@ -144,10 +154,10 @@ namespace sjf::rev
          The input is:
             array of samples, one for each channel in the delay network (up & downmixing must be done outside the loop
          */
-        void processInPlace( std::vector< T >& samples )
+        void processInPlace( std::vector< Sample >& samples )
         {
             assert( samples.size() == NCHANNELS );
-            std::vector< T > delayed( NCHANNELS, 0 );
+            std::vector< Sample > delayed( NCHANNELS, 0 );
             for ( auto c = 0; c < NCHANNELS; c++ )
             {
                 delayed[ c ] = m_delays[ c ].getSample( m_delayTimesSamps[ c ] );
@@ -157,17 +167,34 @@ namespace sjf::rev
             
             mixer( delayed );
         
+            for ( auto c = 0; c < NCHANNELS; c++ )
+            {
+                auto val = samples[ c ]+delayed[ c ]*m_fbGains[ c ];
+                std::visit( fdnSetValVisitor{ val, c, *this }, m_setValTypes[ m_setValVisitorType ] );
+            }
             
-            if ( m_diffusion == 0.0 )
-                for ( auto c = 0; c < NCHANNELS; c++ )
-                    m_delays[ c ].setSample(
-                                            m_fbControl?
-                                            nonlinearities::tanhSimple( samples[ c ] + delayed[ c ]*m_fbGains[ c ] ) :
-                                            samples[ c ] + delayed[ c ]*m_fbGains[ c ]
-                                            );
-            else
-                for ( auto c = 0; c < NCHANNELS; c++ )
-                    m_delays[ c ].setSample( m_diffusers[ c ].process( samples[c]+delayed[c]*m_fbGains[c], m_apDelayTimesSamps[c], m_diffusion ) );
+//            if ( m_diffusion == 0.0 )
+//                if ( m_fbControl )
+//                    for ( auto c = 0; c < NCHANNELS; c++ )
+//                        m_delays[ c ].setSample( nonlinearities::tanhSimple( samples[ c ] + delayed[ c ]*m_fbGains[ c ] ) );
+//                else
+//                    for ( auto c = 0; c < NCHANNELS; c++ )
+//                        m_delays[ c ].setSample( samples[ c ] + delayed[ c ]*m_fbGains[ c ] );
+//            else
+//                if ( m_fbControl )
+//                    for ( auto c = 0; c < NCHANNELS; c++ )
+//                    {
+//                        auto val = samples[ c ] + delayed[ c ]*m_fbGains[ c ];
+//                        val = m_diffusers[ c ].process( val, m_apDelayTimesSamps[ c ], m_diffusion );
+//                        m_delays[ c ].setSample( nonlinearities::tanhSimple( val ) );
+//                    }
+//                else
+//                    for ( auto c = 0; c < NCHANNELS; c++ )
+//                    {
+//                        auto val = samples[ c ] + delayed[ c ]*m_fbGains[ c ];
+//                        val = m_diffusers[ c ].process( val, m_apDelayTimesSamps[ c ], m_diffusion );
+//                        m_delays[ c ].setSample( val );
+//                    }
             samples = delayed;
             return;
         }
@@ -190,27 +217,83 @@ namespace sjf::rev
         }
         
         /** sets whether feedback should be limited. This adds a nonlinearity within the loop, increasing cpu load slightly, but preventing overloads( hopefully ) */
-        void setControlFB( bool shouldLimitFeedback ){ m_fbControl = shouldLimitFeedback; }
+        void setControlFB( bool shouldLimitFeedback )
+        {
+            m_fbControl = shouldLimitFeedback;
+            setSetValVariant();
+        }
         
     private:
-        inline void noMix( std::vector< T > delayed ) { return; }
-        inline void hadamardMix( std::vector< T > delayed ){ sjf::mixers::Hadamard< T >::inPlace( delayed.data(), NCHANNELS ); }
-        inline void householderMixMix( std::vector< T > delayed ) { sjf::mixers::Householder< T >::mixInPlace( delayed.data(), NCHANNELS ); }
+        void setSetValVariant()
+        {
+            if( !m_fbControl && m_diffusion == 0 )
+                m_setValVisitorType = 0;
+            else if( m_fbControl && m_diffusion == 0 )
+                m_setValVisitorType = 1;
+            else if( !m_fbControl && m_diffusion != 0 )
+                m_setValVisitorType = 2;
+            else if( m_fbControl && m_diffusion != 0 )
+                m_setValVisitorType = 3;
+        }
+        
+        
+        struct noDiffNoLimit
+        {
+            void operator()( Sample val, size_t c, fdn& parent )
+                { parent.m_delays[ c ].setSample( val ); }
+        };
+        struct noDiffLimit
+        {
+            void operator()( Sample val, size_t c, fdn& parent )
+                { parent.m_delays[ c ].setSample( nonlinearities::tanhSimple( val ) ); }
+        };
+        struct diffNoLimit
+        {
+            void operator()( Sample val, size_t c, fdn& parent )
+            {
+                val = parent.m_diffusers[ c ].process( val, parent.m_apDelayTimesSamps[ c ], parent.m_diffusion );
+                parent.m_delays[ c ].setSample( val ); }
+        };
+        struct diffLimit
+        {
+            void operator()( Sample val, size_t c, fdn& parent )
+            {
+                val = parent.m_diffusers[ c ].process( val, parent.m_apDelayTimesSamps[ c ], parent.m_diffusion );
+                parent.m_delays[ c ].setSample( nonlinearities::tanhSimple( val ) );
+            }
+        };
+        struct fdnSetValVisitor
+        {
+            Sample val;
+            int channel;
+            fdn& parent;
+            void operator ()( noDiffNoLimit& s ){ s( val, channel, parent ); }
+            void operator ()( noDiffLimit& s ){ s( val, channel, parent ); }
+            void operator ()( diffNoLimit& s ){ s( val, channel, parent ); }
+            void operator ()( diffLimit& s ){ s( val, channel, parent ); }
+        };
+        int m_setValVisitorType = 0;
+        using setValVariant = std::variant< noDiffNoLimit, noDiffLimit, diffNoLimit, diffLimit >;
+        std::array< setValVariant, 4 > m_setValTypes{ noDiffNoLimit(), noDiffLimit(), diffNoLimit(), diffLimit() };
+        
+        
+        inline void noMix( std::vector< Sample > delayed ) { return; }
+        inline void hadamardMix( std::vector< Sample > delayed ){ sjf::mixers::Hadamard< Sample >::inPlace( delayed.data(), NCHANNELS ); }
+        inline void householderMixMix( std::vector< Sample > delayed ) { sjf::mixers::Householder< Sample >::mixInPlace( delayed.data(), NCHANNELS ); }
         
                 
         
         const int NCHANNELS;
         
-        std::vector< delayLine::delay< T > > m_delays;
-        std::vector< filters::damper< T > > m_dampers, m_lowDampers;
-        std::vector< filters::oneMultAP< T > > m_diffusers;
-        std::vector< T > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
-        T m_decayInMS{1000}, m_SR{44100}, m_damping{0.2}, m_lowDamping{0.95}, m_diffusion{0.5};
+        std::vector< delayLine::delay< Sample > > m_delays;
+        std::vector< filters::damper< Sample > > m_dampers, m_lowDampers;
+        std::vector< filters::oneMultAP< Sample > > m_diffusers;
+        std::vector< Sample > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
+        Sample m_decayInMS{1000}, m_SR{44100}, m_damping{0.2}, m_lowDamping{0.95}, m_diffusion{0.5};
         
         mixers m_mixType = mixers::hadamard;
-        int m_interpType = DEFAULT_INTERP;
-        
-        sjf::utilities::classMemberFunctionPointer< fdn, void, std::vector< T > > mixer{ this, &fdn::hadamardMix };
+
+        sjf::utilities::classMemberFunctionPointer< fdn, void, std::vector< Sample > > mixer{ this, &fdn::hadamardMix };
         
         bool m_fbControl{false};
     };

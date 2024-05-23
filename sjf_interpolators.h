@@ -18,7 +18,7 @@
 //==============================================================================
 //==============================================================================
 
-namespace sjf_interpolators
+namespace sjf::interpolation
 {
     //==============================================================================
     enum interpolatorTypes : char
@@ -223,6 +223,48 @@ namespace sjf_interpolators
     private:
         T m_x1 = 0, m_y1 = 0, m_n = 0;
     };
+
+template< typename Sample >
+struct interpolator
+{
+    inline Sample operator()( Sample* samps, long arraySize, Sample findex )
+    {
+        assert( sjf_isPowerOf( arraySize, 2 ) ); // arraySize must be a power of 2 for the wrap mask to work!!!
+        const auto wrapMask = arraySize - 1;
+        Sample x0, x1, x2, x3, mu;
+        auto ind1 = static_cast< long >( findex );
+        mu = findex - ind1;
+        x0 = samps[ ( (ind1-1) & wrapMask ) ];
+        x1 = samps[ ind1 & wrapMask ];
+        x2 = samps[ ( (ind1+1) & wrapMask ) ];
+        x3 = samps[ ( (ind1+2) & wrapMask ) ];
+        switch ( m_interp ) {
+            case interpolatorTypes::none:
+                return samps[ ind1 ];
+            case interpolatorTypes::linear :
+                return linearInterpolate( mu, x1, x2 );
+            case interpolatorTypes::cubic :
+                return cubicInterpolate( mu, x0, x1, x2, x3 );
+            case interpolatorTypes::pureData :
+                return fourPointInterpolatePD( mu, x0, x1, x2, x3 );
+            case interpolatorTypes::fourthOrder :
+                return fourPointFourthOrderOptimal( mu, x0, x1, x2, x3 );
+            case interpolatorTypes::godot :
+                return cubicInterpolateGodot( mu, x0, x1, x2, x3 );
+            case interpolatorTypes::hermite :
+                return cubicInterpolateHermite( mu, x0, x1, x2, x3 );
+            default:
+                return linearInterpolate( mu, x1, x2 );
+        }
+        
+    }
+    void setInterpolationType( interpolatorTypes interpType ) { m_interp = interpType;    }
+private:
+    interpolatorTypes m_interp{ interpolatorTypes::linear };
+};
+
+
+
 
 }
 

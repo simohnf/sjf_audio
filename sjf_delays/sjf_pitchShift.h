@@ -7,18 +7,12 @@
 #ifndef sjf_pitchShift_h
 #define sjf_pitchShift_h
 
-//#include "../sjf_audioUtilitiesC++.h"
-//#include "../sjf_interpolators.h"
-//#include "../gcem/include/gcem.hpp"
-//
-//#include "sjf_rev_consts.h"
 
 
 #include "sjf_delay.h"
 #include "../sjf_oscillators/sjf_phasor.h"
 #include "../sjf_table.h"
 #include "../sjf_filters.h"
-//#include "../sjf_filters/sjf_onepole.h"
 
 namespace sjf::delayLine
 {
@@ -90,7 +84,7 @@ namespace sjf::delayLine
         }
         
     private:
-        static constexpr Sample NVOICES{3}, LPFINCUTOFF{1000}, LPFOUTCUTOFF{4000};
+        static constexpr Sample NVOICES{3}, LPFINCUTOFF{1000}, LPFOUTCUTOFF{2500};
         Sample m_SR{44100}, m_windowSecs{0.2}, m_windowSizeSamps{m_SR*m_windowSecs}, m_invWindowSecs{1/m_windowSecs}, m_scaleFactor{1}, m_voiceOffset{1.0/NVOICES}, m_lpfInCoef{ calculateLPFCoefficient<Sample>( LPFINCUTOFF, m_SR) }, m_lpfOutCoef{ calculateLPFCoefficient<Sample>( LPFOUTCUTOFF, m_SR) }, m_dtSamps{4410};
         
         delay< Sample > m_delay;
@@ -98,7 +92,8 @@ namespace sjf::delayLine
         filters::onepole< Sample > m_lpfIn, m_lpfOut;
         
         struct cosFunc{ Sample operator()( Sample findex ){ return gcem::cos<Sample>(findex*2.0*M_PI); } };
-        wavetable::table< Sample, 1024, cosFunc > m_window;
+//        wavetable::table< Sample, 1024, cosFunc > m_window;
+        wavetable::tab< Sample, 1024, cosFunc, interpolation::fourPointInterpolatePD<Sample> > m_window;
     };
 }
 

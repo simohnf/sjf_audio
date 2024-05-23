@@ -53,7 +53,7 @@ namespace sjf::filters
         {
             auto delayed = m_del.getSample( delay );
             auto xhn = ( x - delayed ) * coef;
-            auto fb = damping > 0.0 && damping < 1.0 ? m_damper.process( ( x + xhn ), damping ) : ( x + xhn );
+            auto fb = (damping > 0.0 && damping < 1.0) ? m_damper.process( ( x + xhn ), damping ) : ( x + xhn );
             m_del.setSample( fb );
             return delayed + xhn;
         }

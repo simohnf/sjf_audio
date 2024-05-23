@@ -16,7 +16,7 @@ namespace sjf::nonlinearities
     inline Sample cubic( Sample x )
     {
         static constexpr Sample div{1.0/3.0}, lim{div*2};
-        return x <= 1 ? -lim : x >= 1 ? lim : x - x*x*x*div; //
+        return (x <= -1) ? -lim : (x >= 1) ? lim : x - x*x*x*div; //
     }
 
     /** approximation of tanh function
@@ -25,7 +25,7 @@ namespace sjf::nonlinearities
     template< typename Sample >
     inline Sample tanhSimple( Sample x )
     {
-        return x < 3 ? -1 : x > 3 ? 1 : x*(27 + x*x)/(27+9*x*x);
+        return 0.99999*((x < -3) ? -1 : (x > 3) ? 1 : x*(27 + x*x)/(27+9*x*x));
     }
 }
 #endif /* sjf_nonlinearities_h */

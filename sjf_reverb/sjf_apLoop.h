@@ -63,6 +63,7 @@ namespace sjf::rev
                     m_aps[ s ][ a ].initialise( delSize );
                 m_delays[ s ].initialise( delSize );
             }
+            m_lastSamp = 0;
         }
         
         /**
@@ -191,6 +192,7 @@ namespace sjf::rev
             for ( auto & i : m_aps )
                 for ( auto & a : i )
                     a.setInterpolationType( type );
+            m_lastSamp = 0;
         }
         
         /** sets whether feedback should be limited. This adds a nonlinearity within the loop, increasing cpu load slightly, but preventing overloads( hopefully ) */

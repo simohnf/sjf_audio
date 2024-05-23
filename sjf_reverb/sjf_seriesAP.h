@@ -8,13 +8,6 @@
 #ifndef sjf_rev_seriesAllpass_h
 #define sjf_rev_seriesAllpass_h
 
-//#include "../sjf_audioUtilitiesC++.h"
-//#include "../sjf_interpolators.h"
-//#include "../gcem/include/gcem.hpp"
-//#include "sjf_oneMultAP.h"
-//
-//#include "sjf_rev_consts.h"
-
 #include "../sjf_rev.h"
 
 namespace sjf::rev

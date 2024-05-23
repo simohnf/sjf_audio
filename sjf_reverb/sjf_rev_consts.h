@@ -9,13 +9,12 @@
 #ifndef sjf_rev_const_h
 #define sjf_rev_const_h
 
-//#include "../sjf_interpolators.h"
 
 #include "../sjf_rev.h"
 
 namespace sjf::rev
 {
-    const int DEFAULT_INTERP = sjf_interpolators::interpolatorTypes::linear;
+//    const int DEFAULT_INTERP = sjf_interpolators::interpolatorTypes::linear;
 }
 
 #endif /* sjf_rev_const.h */

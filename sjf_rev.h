@@ -11,9 +11,7 @@
 
 
 #include "sjf_audioUtilitiesC++.h"
-#include "sjf_interpolators.h"
 #include "gcem/include/gcem.hpp"
-#include "sjf_multiChannelEffect.h"
 
 #include "sjf_reverb/sjf_rev_consts.h"
 #include "sjf_filters.h"

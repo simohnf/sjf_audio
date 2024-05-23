@@ -8,16 +8,9 @@
 #ifndef sjf_rev_umss_h
 #define sjf_rev_umss_h
 
-//#include "../sjf_audioUtilitiesC++.h"
-//#include "../sjf_interpolators.h"
-//#include "../gcem/include/gcem.hpp"
-//#include "sjf_delay.h"
-//#include "sjf_damper.h"
-//
-//#include "sjf_rev_consts.h"
 
 #include "../sjf_rev.h"
-//#include "../filter.h"
+
 namespace sjf::rev
 {
     /**
@@ -73,7 +66,7 @@ namespace sjf::rev
             interpolation type ( optional, defaults to linear,  see @sjf_interpolators )
          output is the processed sample
          */
-        void process( T x, T* outputSamples, int numOutChannels, int interpType = DEFAULT_INTERP )
+        void process( T x, T* outputSamples, int numOutChannels, int interpType = 0 )
         {
             T fbLoop = 0.0f;
             // we should add modulation to fb delayTaps

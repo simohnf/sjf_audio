@@ -165,36 +165,23 @@ namespace sjf::rev
                 delayed[ c ] = m_lowDampers[ c ].processHP( delayed[ c ], m_lowDamping ); // hp filter
             }
             
-            mixer( delayed );
+//            mixer( delayed );
+            switch ( m_mixType ) {
+                case mixers::hadamard:
+                    hadamardMix( delayed );
+                    break;
+                case mixers::householder:
+                    householderMixMix( delayed );
+                    break;
+                default:
+                    break;
+            }
         
             for ( auto c = 0; c < NCHANNELS; c++ )
             {
                 auto val = samples[ c ]+delayed[ c ]*m_fbGains[ c ];
                 std::visit( fdnSetValVisitor{ val, c, *this }, m_setValTypes[ m_setValVisitorType ] );
             }
-            
-//            if ( m_diffusion == 0.0 )
-//                if ( m_fbControl )
-//                    for ( auto c = 0; c < NCHANNELS; c++ )
-//                        m_delays[ c ].setSample( nonlinearities::tanhSimple( samples[ c ] + delayed[ c ]*m_fbGains[ c ] ) );
-//                else
-//                    for ( auto c = 0; c < NCHANNELS; c++ )
-//                        m_delays[ c ].setSample( samples[ c ] + delayed[ c ]*m_fbGains[ c ] );
-//            else
-//                if ( m_fbControl )
-//                    for ( auto c = 0; c < NCHANNELS; c++ )
-//                    {
-//                        auto val = samples[ c ] + delayed[ c ]*m_fbGains[ c ];
-//                        val = m_diffusers[ c ].process( val, m_apDelayTimesSamps[ c ], m_diffusion );
-//                        m_delays[ c ].setSample( nonlinearities::tanhSimple( val ) );
-//                    }
-//                else
-//                    for ( auto c = 0; c < NCHANNELS; c++ )
-//                    {
-//                        auto val = samples[ c ] + delayed[ c ]*m_fbGains[ c ];
-//                        val = m_diffusers[ c ].process( val, m_apDelayTimesSamps[ c ], m_diffusion );
-//                        m_delays[ c ].setSample( val );
-//                    }
             samples = delayed;
             return;
         }
@@ -293,7 +280,7 @@ namespace sjf::rev
         
         mixers m_mixType = mixers::hadamard;
 
-        sjf::utilities::classMemberFunctionPointer< fdn, void, std::vector< Sample > > mixer{ this, &fdn::hadamardMix };
+//        sjf::utilities::classMemberFunctionPointer< fdn, void, std::vector< Sample > > mixer{ this, &fdn::hadamardMix };
         
         bool m_fbControl{false};
     };

@@ -67,9 +67,11 @@ namespace sjf::delayLine
          Input is:
             the number of samples in the past to read from
          */
-        Sample getSample( ) { return m_getSamp( ); }
+//        Sample getSample( ) { return m_getSamp( ); }
+        Sample getSample( ) { return m_isReversed ? getReversed() : getNormal(); }
         
-        void reverse( bool shouldReverse ) { m_getSamp = shouldReverse ? &reverseDelay::getReversed : &reverseDelay::getNormal; }
+//        void reverse( bool shouldReverse ) { m_getSamp = shouldReverse ? &reverseDelay::getReversed : &reverseDelay::getNormal; }
+        void reverse( bool shouldReverse ) { m_isReversed = shouldReverse; }
         
         
         /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
@@ -101,7 +103,8 @@ namespace sjf::delayLine
         Sample m_SR{44100}, m_rampLen{45}, m_dtSamps{4410}, m_invDT{ 1/m_dtSamps}, m_nRampSegs{m_dtSamps/m_rampLen}, m_revCount{0};
         int maxDT{ sjf_nearestPowerAbove(static_cast<int>(m_SR), 2) };
         
-        sjf::utilities::classMemberFunctionPointer< reverseDelay, Sample > m_getSamp{ this, &reverseDelay::getReversed  };
+        bool m_isReversed{true};
+//        sjf::utilities::classMemberFunctionPointer< reverseDelay, Sample > m_getSamp{ this, &reverseDelay::getReversed  };
     };
 }
 #endif /* sjf_reverseDelay_h */

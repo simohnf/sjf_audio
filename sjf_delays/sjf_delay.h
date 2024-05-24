@@ -18,7 +18,7 @@ namespace sjf::delayLine
     /**
      basic circular buffer based delay line
      */
-    template < typename Sample >
+    template < typename Sample, typename InterpFunctor = interpolation::fourPointInterpolatePD<Sample> >
     class delay
     {
     public:
@@ -50,7 +50,8 @@ namespace sjf::delayLine
          Input is:
             the number of samples in the past to read from
          */
-        inline Sample getSample( Sample delay ){ return m_interpolator( m_buffer.data(), m_buffer.size(), m_writePos-delay ); }
+        inline Sample getSample( Sample delay ){ return m_interp( m_buffer.data(), m_buffer.size(), m_writePos-delay ); }
+//        { return m_interpolator( m_buffer.data(), m_buffer.size(), m_writePos-delay ); }
         
         /**
          This sets the value of the sample at the current write position and automatically updates the write pointer
@@ -71,6 +72,7 @@ namespace sjf::delayLine
         std::vector< Sample > m_buffer;
         int m_writePos = 0, m_wrapMask;
         sjf::interpolation::interpolator<Sample> m_interpolator;
+        InterpFunctor m_interp;
         
     };
 }

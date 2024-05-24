@@ -19,11 +19,12 @@ namespace sjf::interpolation
     template< typename Sample >
     inline interpVals<Sample> calculateVals( const Sample* samps, const long arraySize, const Sample findex )
     {
-        assert( sjf_isPowerOf( arraySize, 2 ) ); // arraySize must be a power of 2 for the wrap mask to work!!!
+//        auto f = findex + arraySize;
         const auto wrapMask = arraySize - 1;
         Sample x0, x1, x2, x3, mu;
-        auto ind1 = static_cast< long >( findex ) + arraySize;
-        mu = findex - ind1;
+        auto ind1 = static_cast< long >( findex );
+        mu = findex < 0 ? ( 1.0 + (findex-ind1) ) : findex-ind1;
+        ind1 &= wrapMask;
         x0 = samps[ ( (ind1-1) & wrapMask ) ];
         x1 = samps[ ind1 & wrapMask ];
         x2 = samps[ ( (ind1+1) & wrapMask ) ];
@@ -37,7 +38,6 @@ namespace sjf::interpolation
         Sample operator()( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 ){ return x1; }
         Sample operator()( const Sample* samps, const long arraySize, const Sample findex )
         {
-            assert( sjf_isPowerOf( arraySize, 2 ) );
             return samps[ (static_cast<long>(findex)&(arraySize-1) ) ];
         }
         Sample operator()( const interpVals<Sample> vals ) { return vals.x1; }
@@ -48,7 +48,10 @@ namespace sjf::interpolation
     {
         Sample operator()( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 ){ return calculation( mu, x1, x2 ); }
         Sample operator()( const Sample* samps, const long arraySize, const Sample findex )
-            { auto vals = calculateVals( samps, arraySize, findex ); return calculation( vals.mu, vals.x1, vals.x2 ); }
+        {
+            auto vals = calculateVals( samps, arraySize, findex );
+            return calculation( vals.mu, vals.x1, vals.x2 );
+        }
         Sample operator() ( interpVals<Sample> vals ) { return calculation( vals.mu, vals.x1, vals.x2 ); }
     private:
         inline Sample calculation( const Sample mu, const Sample x1, const Sample x2 )
@@ -62,7 +65,10 @@ namespace sjf::interpolation
     {
         Sample operator()( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 ) { return calculation( mu, x0, x1, x2, x3 ); }
         Sample operator()( const Sample* samps, const long arraySize, const Sample findex )
-            { auto vals = calculateVals( samps, arraySize, findex ); return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
+        {
+            auto vals = calculateVals( samps, arraySize, findex );
+            return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 );
+        }
         Sample operator()( const interpVals<Sample> vals ) { return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
     private:
         inline Sample calculation( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 )

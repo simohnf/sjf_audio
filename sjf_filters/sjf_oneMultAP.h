@@ -24,8 +24,8 @@ namespace sjf::filters
         oneMultAP(){}
         ~oneMultAP(){}
         
-        oneMultAP( oneMultAP&& ) noexcept = default;
-        oneMultAP& operator=( oneMultAP&& ) noexcept = default;
+//        oneMultAP( oneMultAP&& ) noexcept = default;
+//        oneMultAP& operator=( oneMultAP&& ) noexcept = default;
         
         /**
          This must be called before first use in order to set basic information such as maximum delay lengths

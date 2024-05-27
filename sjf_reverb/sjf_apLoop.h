@@ -19,10 +19,10 @@ namespace sjf::rev
      This version does not use a single loop
      */
     template < typename T >
-    class allpassLoop /* : public sjf::multiChannelEffect< T > */
+    class allpassLoop 
     {
     public:
-        allpassLoop( int stages, int apPerStage ): NSTAGES( stages ), NAP_PERSTAGE( apPerStage )
+        allpassLoop( size_t stages, size_t apPerStage ): NSTAGES( stages ), NAP_PERSTAGE( apPerStage )
         {
             m_aps.resize( NSTAGES );
             for ( auto & s : m_aps )
@@ -198,7 +198,7 @@ namespace sjf::rev
         /** sets whether feedback should be limited. This adds a nonlinearity within the loop, increasing cpu load slightly, but preventing overloads( hopefully ) */
         void setControlFB( bool shouldLimitFeedback ){ m_fbControl = shouldLimitFeedback; }
     private:
-        const int NSTAGES, NAP_PERSTAGE;
+        const size_t NSTAGES, NAP_PERSTAGE;
         std::vector< std::vector< filters::oneMultAP < T > > > m_aps;
         std::vector< delayLine::delay < T > > m_delays;
         std::vector< filters::damper < T > > m_dampers, m_lowDampers;

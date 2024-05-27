@@ -24,14 +24,14 @@ namespace sjf::delayLine
     public:
         delay()
         {
-            initialise( 4096 ); // ensure this are initialised to something
+//            initialise( 4096 ); // ensure this are initialised to something
         }
         ~delay(){}
         
         
-        delay( delay&&) noexcept = default;
-        delay& operator=( delay&&) noexcept = default;
-        
+//        delay( delay&&) noexcept = default;
+//        delay& operator=( delay&&) noexcept = default;
+//        
         /**
          This must be called before first use in order to set basic information such as maximum delay lengths and sample rate
          Size should be a power of 2
@@ -64,14 +64,18 @@ namespace sjf::delayLine
         }
         
         /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
-        void setInterpolationType( interpolation::interpolatorTypes interpType ) { m_interpolator.setInterpolationType( interpType ); }
+        void setInterpolationType( interpolation::interpolatorTypes interpType )
+        {
+//            m_interpolator.setInterpolationType( interpType );
+            
+        }
         
         void clear() { std::fill( m_buffer.begin(), m_buffer.end(), 0 ); }
         
     private:
         std::vector< Sample > m_buffer;
         int m_writePos = 0, m_wrapMask;
-        sjf::interpolation::interpolator<Sample> m_interpolator;
+//        sjf::interpolation::interpolator<Sample> m_interpolator;
         InterpFunctor m_interp;
         
     };

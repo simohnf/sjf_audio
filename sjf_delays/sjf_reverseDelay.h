@@ -52,6 +52,7 @@ namespace sjf::delayLine
         /** Set the delaytime and related calculations */
         void setDelayTime( Sample delayInSamps )
         {
+            delayInSamps = delayInSamps > 1 ? delayInSamps : 1;
             if( m_dtSamps == delayInSamps*2 ){ return; } // Save a little CPU
             m_dtSamps = delayInSamps*2;
             m_invDT = 1.0/m_dtSamps;
@@ -67,24 +68,14 @@ namespace sjf::delayLine
          Input is:
             the number of samples in the past to read from
          */
-//        Sample getSample( ) { return m_getSamp( ); }
-        Sample getSample( ) { return m_isReversed ? getReversed() : getNormal(); }
-        
-//        void reverse( bool shouldReverse ) { m_getSamp = shouldReverse ? &reverseDelay::getReversed : &reverseDelay::getNormal; }
-        void reverse( bool shouldReverse ) { m_isReversed = shouldReverse; }
-        
-        
-        /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
-        void setInterpolationType( interpolation::interpolatorTypes interpType ){ m_delay.setInterpolationType( interpType ); }
-    private:
-        
+        Sample getSample( ) { return m_delay.getSample( m_dtSamps ); }
         
         /**
          This retrieves a sample from a previous point in the buffer put reads the buffer in reverse
          Input is:
             the number of samples in the past to read from
          */
-        Sample getReversed( )
+        Sample getSampleReversed( )
         {
             Sample outSamp = m_delay.getSample( m_revCount + 1 ) * sjf::utilities::phaseEnvelope( (m_revCount * m_invDT), m_nRampSegs );
             m_revCount += 2;
@@ -92,19 +83,15 @@ namespace sjf::delayLine
             return outSamp;
         }
         
-        /**
-         This retrieves a sample from a previous point in the buffer
-         Input is:
-            the number of samples in the past to read from
-         */
-        Sample getNormal( ) { return m_delay.getSample( m_dtSamps ); }
+        
+        /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
+        void setInterpolationType( interpolation::interpolatorTypes interpType ){ m_delay.setInterpolationType( interpType ); }
+    private:
+        
         
         delay< Sample > m_delay;
         Sample m_SR{44100}, m_rampLen{45}, m_dtSamps{4410}, m_invDT{ 1/m_dtSamps}, m_nRampSegs{m_dtSamps/m_rampLen}, m_revCount{0};
         int maxDT{ sjf_nearestPowerAbove(static_cast<int>(m_SR), 2) };
-        
-        bool m_isReversed{true};
-//        sjf::utilities::classMemberFunctionPointer< reverseDelay, Sample > m_getSamp{ this, &reverseDelay::getReversed  };
     };
 }
 #endif /* sjf_reverseDelay_h */

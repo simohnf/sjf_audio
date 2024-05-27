@@ -19,7 +19,7 @@ namespace sjf::rev
     class rotDelDif /* : sjf::multiChannelEffect< T > */
     {
     public:
-        rotDelDif( int nChannels, int nStages) : NCHANNELS( nChannels), NSTAGES( nStages )
+        rotDelDif( int nChannels, int nStages ) : NCHANNELS( nChannels ), NSTAGES( nStages )
         {
             m_delays.resize( NSTAGES );
             m_dampers.resize( NSTAGES );

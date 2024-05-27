@@ -19,7 +19,9 @@ namespace sjf::interpolation
     template< typename Sample >
     inline interpVals<Sample> calculateVals( const Sample* samps, const long arraySize, const Sample findex )
     {
-//        auto f = findex + arraySize;
+#ifndef DEBUG
+        assert( sjf_isPowerOf( arraySize, 2 ) );
+#endif
         const auto wrapMask = arraySize - 1;
         Sample x0, x1, x2, x3, mu;
         auto ind1 = static_cast< long >( findex );

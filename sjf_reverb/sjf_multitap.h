@@ -16,7 +16,7 @@ namespace sjf::rev
      Basic multitap delayLine for use primarily as part of an early reflection generator
      No filtering or feedback is applied
      */
-    template < typename T >
+    template < typename T, typename InterpFunctor = interpolation::noneInterpolate<T> >
     class multiTap
     {
 
@@ -149,7 +149,7 @@ namespace sjf::rev
         const int MAXNTAPS;
         std::vector< T > m_delayTimesSamps, m_gains;
         int m_nTaps = MAXNTAPS;
-        delayLine::delay< T > m_delay;
+        delayLine::delay< T, InterpFunctor > m_delay;
     };
 }
 

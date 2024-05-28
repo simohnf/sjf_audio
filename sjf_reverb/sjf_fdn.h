@@ -28,7 +28,7 @@ namespace sjf::rev
     class fdn
     {
     public:
-        fdn( size_t nchannels ) noexcept : NCHANNELS( nchannels )
+        fdn( size_t nChannels ) noexcept : NCHANNELS( nChannels ), m_hadMixer(nChannels), m_houseMixer(nChannels)
         {
             m_delays.resize( NCHANNELS );
             m_dampers.resize( NCHANNELS );
@@ -166,10 +166,10 @@ namespace sjf::rev
             }
             switch ( m_mixType ) {
                 case mixers::hadamard:
-                    hadamardMix( delayed );
+                    m_hadMixer.inPlace(delayed.data(), NCHANNELS);
                     break;
                 case mixers::householder:
-                    householderMixMix( delayed );
+                    m_houseMixer.inPlace(delayed.data(), NCHANNELS);
                     break;
                 default:
                     break;
@@ -246,12 +246,6 @@ namespace sjf::rev
                  m_setValType = setValType::fbdiff;
         }
         
-        inline void noMix( std::vector< Sample > delayed ) { return; }
-        inline void hadamardMix( std::vector< Sample > delayed ){ sjf::mixers::Hadamard< Sample >::inPlace( delayed.data(), NCHANNELS ); }
-        inline void householderMixMix( std::vector< Sample > delayed ) { sjf::mixers::Householder< Sample >::mixInPlace( delayed.data(), NCHANNELS ); }
-        
-                
-        
         const size_t NCHANNELS;
         
         std::vector< delayLine::delay< Sample > > m_delays;
@@ -266,6 +260,9 @@ namespace sjf::rev
         
         enum class setValType { fbdiff, nofbnodiff, fbnodiff, nofbdiff };
         setValType m_setValType{setValType::nofbnodiff};
+        
+        sjf::mixers::Hadamard< Sample > m_hadMixer;
+        sjf::mixers::Householder< Sample > m_houseMixer;
     };
 }
 

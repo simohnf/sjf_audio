@@ -17,18 +17,17 @@ namespace sjf::interpolation
     struct interpVals { Sample mu, x0, x1, x2, x3; };
     
     template< typename Sample >
-    inline interpVals<Sample> calculateVals( const Sample* samps, const long arraySize, const Sample findex )
+    inline interpVals<Sample> calculateVals( const Sample* samps, const long wrapMask, const Sample findex )
     {
 #ifndef DEBUG
-        assert( sjf_isPowerOf( arraySize, 2 ) );
+        assert( sjf_isPowerOf( wrapMask+1, 2 ) );
 #endif
-        const auto wrapMask = arraySize - 1;
         Sample x0, x1, x2, x3, mu;
         auto ind1 = static_cast< long >( findex );
         mu = findex < 0 ? ( 1.0 + (findex-ind1) ) : findex-ind1;
         ind1 &= wrapMask;
         x0 = samps[ ( (ind1-1) & wrapMask ) ];
-        x1 = samps[ ind1 & wrapMask ];
+        x1 = samps[ ind1 ];
         x2 = samps[ ( (ind1+1) & wrapMask ) ];
         x3 = samps[ ( (ind1+2) & wrapMask ) ];
         return { mu, x0, x1, x2, x3 };
@@ -38,9 +37,9 @@ namespace sjf::interpolation
     struct noneInterpolate
     {
         Sample operator()( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 ){ return x1; }
-        Sample operator()( const Sample* samps, const long arraySize, const Sample findex )
+        Sample operator()( const Sample* samps, const long wrapMask, const Sample findex )
         {
-            return samps[ (static_cast<long>(findex)&(arraySize-1) ) ];
+            return samps[ (static_cast<long>(findex)&wrapMask ) ];
         }
         Sample operator()( const interpVals<Sample> vals ) { return vals.x1; }
     };
@@ -49,9 +48,9 @@ namespace sjf::interpolation
     struct linearInterpolate
     {
         Sample operator()( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 ){ return calculation( mu, x1, x2 ); }
-        Sample operator()( const Sample* samps, const long arraySize, const Sample findex )
+        Sample operator()( const Sample* samps, const long wrapMask, const Sample findex )
         {
-            auto vals = calculateVals( samps, arraySize, findex );
+            auto vals = calculateVals( samps, wrapMask, findex );
             return calculation( vals.mu, vals.x1, vals.x2 );
         }
         Sample operator() ( interpVals<Sample> vals ) { return calculation( vals.mu, vals.x1, vals.x2 ); }
@@ -66,9 +65,9 @@ namespace sjf::interpolation
     struct cubicInterpolate
     {
         Sample operator()( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 ) { return calculation( mu, x0, x1, x2, x3 ); }
-        Sample operator()( const Sample* samps, const long arraySize, const Sample findex )
+        Sample operator()( const Sample* samps, const long wrapMask, const Sample findex )
         {
-            auto vals = calculateVals( samps, arraySize, findex );
+            auto vals = calculateVals( samps, wrapMask, findex );
             return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 );
         }
         Sample operator()( const interpVals<Sample> vals ) { return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
@@ -88,8 +87,8 @@ namespace sjf::interpolation
     struct fourPointInterpolatePD
     {
         Sample operator()( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 ) { return calculation( mu, x0, x1, x2, x3 ); }
-        Sample operator()( const Sample* samps, const long arraySize, const Sample findex )
-            { auto vals = calculateVals( samps, arraySize, findex );  return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
+        Sample operator()( const Sample* samps, const long wrapMask, const Sample findex )
+            { auto vals = calculateVals( samps, wrapMask, findex );  return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
         Sample operator()( const interpVals<Sample> vals ) { return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
     private:
         inline Sample calculation( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 )
@@ -103,8 +102,8 @@ namespace sjf::interpolation
     struct fourPointFourthOrderOptimal
     {
         Sample operator()( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 ) { return calculation( mu, x0, x1, x2, x3 ); }
-        Sample operator()( const Sample* samps, const long arraySize, const Sample findex )
-            { auto vals = calculateVals( samps, arraySize, findex ); return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
+        Sample operator()( const Sample* samps, const long wrapMask, const Sample findex )
+            { auto vals = calculateVals( samps, wrapMask, findex ); return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
         Sample operator()( const interpVals<Sample> vals ) { return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
     private:
         inline Sample calculation( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 )
@@ -127,8 +126,8 @@ namespace sjf::interpolation
     struct cubicInterpolateGodot
     {
         Sample operator()( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 ) { return calculation( mu, x0, x1, x2, x3 ); }
-        Sample operator()( const Sample* samps, const long arraySize, const Sample findex )
-            { auto vals = calculateVals( samps, arraySize, findex ); return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
+        Sample operator()( const Sample* samps, const long wrapMask, const Sample findex )
+            { auto vals = calculateVals( samps, wrapMask, findex ); return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
         Sample operator()( const interpVals<Sample> vals ) { return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
     private:
         inline Sample calculation( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 )
@@ -148,8 +147,8 @@ namespace sjf::interpolation
     struct cubicInterpolateHermite
     {
         Sample operator()( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 ) { return calculation( mu, x0, x1, x2, x3 ); }
-        Sample operator()( const Sample* samps, const long arraySize, const Sample findex )
-            { auto vals = calculateVals( samps, arraySize, findex ); return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
+        Sample operator()( const Sample* samps, const long wrapMask, const Sample findex )
+            { auto vals = calculateVals( samps, wrapMask, findex ); return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
         Sample operator()( const interpVals<Sample> vals ) { return calculation( vals.mu, vals.x0, vals.x1, vals.x2, vals.x3 ); }
     private:
         inline Sample calculation( const Sample mu, const Sample x0, const Sample x1, const Sample x2, const Sample x3 )

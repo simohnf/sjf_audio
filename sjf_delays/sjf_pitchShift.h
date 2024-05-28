@@ -93,7 +93,7 @@ namespace sjf::delayLine
         
         struct cosFunc{ Sample operator()( Sample findex ){ return gcem::cos<Sample>(findex*2.0*M_PI); } };
 //        wavetable::table< Sample, 1024, cosFunc > m_window;
-        wavetable::tab< Sample, 1024, cosFunc, interpolation::fourPointInterpolatePD<Sample> > m_window;
+        wavetable::tab< Sample, 1024, cosFunc, interpolation::linearInterpolate<Sample> > m_window;
     };
 }
 

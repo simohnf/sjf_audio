@@ -291,7 +291,7 @@ T sjf_scale( const T& valueToScale, const T& inMin, const T& inMax, const T& out
 //==============================================================================
 //==============================================================================
 //==============================================================================
-// Use like `Hadamard<double, 8>::inPlace(data)` - size must be a power of 2
+/** Use like `Hadamard<double, 8>::inPlace(data)` - size must be a power of 2 */
 template< typename Sample, int size >
 class Hadamard
 {
@@ -331,64 +331,6 @@ public:
         }
     }
 };
-
-
-namespace  sjf::mixers
-{
-//===================================
-    // Use like `Hadamard<double, 8>::inPlace(data)` - size must be a power of 2
-    template< typename Sample >
-    struct Hadamard
-    {
-        static inline void recursiveUnscaled(Sample * data, const int size ) {
-            if (size <= 1) return;
-            const int hSize = size/2;
-            
-            // Two (unscaled) Hadamards of half the size
-            Hadamard< Sample >::recursiveUnscaled( data, hSize );
-            Hadamard< Sample >::recursiveUnscaled(data + hSize, hSize);
-            
-            // Combine the two halves using sum/difference
-            for (int i = 0; i < hSize; ++i) {
-                double a = data[i];
-                double b = data[i + hSize];
-                data[i] = (a + b);
-                data[i + hSize] = (a - b);
-            }
-        }
-        
-        static inline void inPlace(Sample* data, const int size ) {
-            recursiveUnscaled( data, size );
-            
-            Sample scalingFactor = std::sqrt(1.0/size);
-            for (int c = 0; c < size; ++c) {
-                data[c] *= scalingFactor;
-            }
-        }
-        
-        static inline void inPlace(Sample * data, const Sample &scalingFactor, const int size ) {
-            recursiveUnscaled( data, size );
-            //        Sample scalingFactor = std::sqrt(1.0/size);
-            for (int c = 0; c < size; ++c) {
-                data[c] *= scalingFactor;
-            }
-        }
-    };
-
-    template< typename Sample >
-    struct Householder
-    {
-        static inline void mixInPlace( Sample* data, int size )
-        {
-            Sample sum = 0.0f; // use this to mix all samples with householder matrix
-            for( auto c = 0; c < size; c++ )
-                sum += data[ c ];
-            sum *= ( -2.0f / static_cast< Sample >(size) ); // Householder weighting
-            for ( int c = 0; c < size; c++ )
-                data[ c ] += sum;
-        }
-    };
-}
 //==============================================================================
 //==============================================================================
 //==============================================================================
@@ -411,6 +353,69 @@ public:
         }
     }
 };
+//===================================//===================================//===================================
+//===================================//===================================//===================================
+//===================================//===================================//===================================
+//===================================//===================================//===================================
+
+namespace  sjf::mixers
+{
+//===================================
+    // copied from Geraint Luff
+    template< typename Sample >
+    struct Hadamard
+    {
+        Hadamard( const size_t size ) : m_scalingFactor( std::sqrt(1.0/static_cast<Sample>(size) ) ) {}
+        
+        inline void inPlace(Sample* data, const size_t size ) {
+            recursiveUnscaled( data, size );
+            for (int c = 0; c < size; ++c) {
+                data[c] *= m_scalingFactor;
+            }
+        }
+        
+    private:
+        
+        inline void recursiveUnscaled(Sample * data, const size_t size ) {
+            if (size <= 1) return;
+            const int hSize = size/2;
+            
+            // Two (unscaled) Hadamards of half the size
+            Hadamard< Sample >::recursiveUnscaled( data, hSize );
+            Hadamard< Sample >::recursiveUnscaled(data + hSize, hSize);
+            
+            // Combine the two halves using sum/difference
+            for (int i = 0; i < hSize; ++i) {
+                double a = data[i];
+                double b = data[i + hSize];
+                data[i] = (a + b);
+                data[i + hSize] = (a - b);
+            }
+        }
+        
+        
+        const Sample m_scalingFactor{0.7071};
+    };
+
+    // copied from Geraint Luff
+    template< typename Sample >
+    struct Householder
+    {
+        Householder( const size_t size ) : m_weighting( -2.0f / static_cast< Sample >(size) ) {}
+        
+        inline void inPlace( Sample* data, const size_t size )
+        {
+            Sample sum = 0.0f; // use this to mix all samples with householder matrix
+            for( auto c = 0; c < size; c++ )
+                sum += data[ c ];
+            sum *= m_weighting; // Householder weighting
+            for ( int c = 0; c < size; c++ )
+                data[ c ] += sum;
+        }
+    private:
+        Sample m_weighting{1};
+    };
+}
 //==============================================================================
 //==============================================================================
 //==============================================================================
@@ -740,12 +745,6 @@ inline bool sjf_isPrime( int number )
 inline bool sjf_isPowerOf( const unsigned long val, const unsigned long baseToCheck )
 {
     assert( val >= baseToCheck  );
-////    auto v = static_cast< double >( val );
-//    auto b = baseToCheck;
-////    while ( v > baseToCheck )
-////        v *= b;
-//    while( baseToCheck < val )
-//        b *= baseToCheck;
     auto b = baseToCheck;
     while ( b < val )
         b*= baseToCheck;

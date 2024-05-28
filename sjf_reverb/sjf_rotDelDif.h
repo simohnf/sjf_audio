@@ -15,13 +15,14 @@ namespace sjf::rev
      A structure of delays with rotation, mixing, and lpf between each stage
      For use as a diffuser a là Geraint Luff "Let's Write a Reverb"... also Miller Puckette
      */
-    template< typename T >
-    class rotDelDif /* : sjf::multiChannelEffect< T > */
+    template< typename T, typename InterpFunctor = interpolation::fourPointInterpolatePD<T> >
+    class rotDelDif
     {
     public:
-        rotDelDif( int nChannels, int nStages ) : NCHANNELS( nChannels ), NSTAGES( nStages )
+        rotDelDif( int nChannels, int nStages ) : NCHANNELS(nChannels), NSTAGES(nStages), m_hadMixer(nChannels)
         {
             m_delays.resize( NSTAGES );
+            m_delaysModulated.resize( NSTAGES );
             m_dampers.resize( NSTAGES );
             m_delayTimesSamps.resize( NSTAGES );
             m_damping.resize( NSTAGES );
@@ -29,7 +30,7 @@ namespace sjf::rev
             m_rotationMatrix.resize( NSTAGES );
             for ( auto s = 0; s < NSTAGES; s++ )
             {
-                m_delays[ s ].resize( NCHANNELS );
+                m_delays[ s ].resize( NCHANNELS - 1 );
                 m_dampers[ s ].resize( NCHANNELS );
                 m_delayTimesSamps[ s ].resize( NCHANNELS, 0 );
                 m_damping[ s ].resize( NCHANNELS, 0 );
@@ -49,23 +50,25 @@ namespace sjf::rev
             for ( auto & s : m_delays )
                 for ( auto & d : s )
                     d.initialise( maxDelayTimeSamps );
+            for ( auto & d : m_delaysModulated )
+                d.initialise( maxDelayTimeSamps );
         }
         
         
-        /**
-         Set all of the delayTimes
-         */
-        void setDelayTimes( const std::vector< std::vector< T > >& dt )
-        {
-            assert( dt.size() == NSTAGES );
-            for ( auto s = 0; s < NSTAGES; s++ )
-            {
-                assert( dt[ s ].size() == NCHANNELS );
-                for ( auto d = 0; d < NCHANNELS; d++ )
-                    m_delayTimesSamps[ s ][ d ] = dt[ s ][ d ];
-            }
-        }
-        
+//        /**
+//         Set all of the delayTimes
+//         */
+//        void setDelayTimes( const std::vector< std::vector< T > >& dt )
+//        {
+//            assert( dt.size() == NSTAGES );
+//            for ( auto s = 0; s < NSTAGES; s++ )
+//            {
+//                assert( dt[ s ].size() == NCHANNELS );
+//                for ( auto d = 0; d < NCHANNELS; d++ )
+//                    m_delayTimesSamps[ s ][ d ] = dt[ s ][ d ];
+//            }
+//        }
+//
         /**
          Set one of the delayTimes
          */
@@ -180,23 +183,29 @@ namespace sjf::rev
          */
         void processInPlace( std::vector< T >& samps )
         {
-            auto rCh = 0;
             assert( samps.size() == NCHANNELS );
             // we need to go through each stage
+            auto nonModChannels = NCHANNELS-1;
             for ( auto s = 0; s < NSTAGES; s++ )
             {
-                for ( auto c = 0; c < NCHANNELS; c++ )
+                for ( auto c = 0; c < nonModChannels; c++ )
                 {
                     // first set samples in delay line
                     m_delays[ s ][ c ].setSample( samps[ c ] );
-                    // then read samples from delay, but rotate channels
-                    rCh = m_rotationMatrix[ s ][ c ];
-                    samps[ c ] = m_polFlip[ s ][ c ] ?
-                        -m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ rCh ] ) :
-                            m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ rCh ] );
+                    // then read samples from delay, but rotate channels and flip polarity of some
+                    samps[ c ] = m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ m_rotationMatrix[ s ][ c ] ] );
+                    samps[ c ] *= m_polFlip[ s ][ c ] ? -1 : 1;
                     samps[ c ] = m_dampers[ s ][ c ].process( samps[ c ], m_damping[ s ][ c ] );
-                    sjf::mixers::Hadamard< T >::inPlace( samps.data(), NCHANNELS );
                 }
+                auto c = nonModChannels;
+                // first set samples in delay line
+                m_delaysModulated[ s ].setSample( samps[ c ] );
+                // then read samples from delay, but rotate channels and flip polarity of some
+                samps[ c ] = m_delaysModulated[ s ].getSample( m_delayTimesSamps[ s ][ m_rotationMatrix[ s ][ c ] ] );
+                samps[ c ] *= m_polFlip[ s ][ c ] ? -1 : 1;
+                samps[ c ] = m_dampers[ s ][ c ].process( samps[ c ], m_damping[ s ][ c ] );
+                
+                m_hadMixer.inPlace( samps.data(), NCHANNELS );
             }
         }
         
@@ -211,7 +220,8 @@ namespace sjf::rev
         const int NCHANNELS;
         const int NSTAGES;
         
-        std::vector< std::vector< delayLine::delay< T > > > m_delays;
+        std::vector< std::vector< delayLine::delay< T, interpolation::noneInterpolate<T> > > > m_delays;
+        std::vector< delayLine::delay< T, InterpFunctor > > m_delaysModulated;
         std::vector< std::vector< filters::damper< T > > > m_dampers;
         std::vector< std::vector< T > > m_delayTimesSamps, m_damping;
         
@@ -219,7 +229,7 @@ namespace sjf::rev
         std::vector< std::vector< size_t > > m_rotationMatrix;
         
         T m_SR = 44100;
-        
+        sjf::mixers::Hadamard<T> m_hadMixer;
     };
 }
 

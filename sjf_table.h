@@ -19,11 +19,12 @@ namespace sjf::wavetable
         constexpr tab() : m_table() { for ( int i = 0; i < TABLE_SIZE; i++ ) { m_table[ i ] = func( static_cast<Sample>(i)/SIZE ); } }
         ~tab(){}
 
-        inline Sample getVal( Sample phase ) { return m_interpolator( m_table, TABLE_SIZE, (phase*SIZE) ); }
+        inline Sample getVal( Sample phase ) { return m_interpolator( m_table, WRAPMASK, (phase*SIZE) ); }
 
     private:
         Sample m_table[ TABLE_SIZE ];
         static constexpr Sample SIZE{ TABLE_SIZE };
+        static constexpr long WRAPMASK{TABLE_SIZE-1};
         Functor func;
         InterpFunctor m_interpolator;
     };

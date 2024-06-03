@@ -32,6 +32,7 @@ namespace sjf::filters
          */
         Sample process( Sample x, Sample coef )
         {
+            assert ( coef >= 0 && coef <= 1 );
             m_lastOut = x + coef*( m_lastOut - x );
             return m_lastOut;
         }
@@ -46,6 +47,7 @@ namespace sjf::filters
          */
         Sample processHP( Sample x, Sample coef )
         {
+            assert ( coef >= 0 && coef <= 1 );
             m_lastOut = x + coef*( m_lastOut - x );
             return (x - m_lastOut);
         }

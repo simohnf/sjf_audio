@@ -11,5 +11,6 @@
 #include "sjf_delays/sjf_delay.h"
 #include "sjf_delays/sjf_reverseDelay.h"
 #include "sjf_delays/sjf_pitchShift.h"
+#include "sjf_delays/sjf_grandelay.h"
 
 #endif /* sjf_delays_h */

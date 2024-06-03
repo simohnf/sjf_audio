@@ -13,11 +13,12 @@
 #include "sjf_audioUtilitiesC++.h"
 #include "gcem/include/gcem.hpp"
 
-#include "sjf_reverb/sjf_rev_consts.h"
 #include "sjf_filters.h"
 #include "sjf_delays.h"
 #include "sjf_nonlinearities.h"
 
+
+#include "sjf_reverb/sjf_revTypdefs.h"
 #include "sjf_reverb/sjf_seriesAP.h"
 #include "sjf_reverb/sjf_multitap.h"
 #include "sjf_reverb/sjf_apLoop.h"
@@ -32,7 +33,8 @@
  */
 namespace sjf::rev
 {
-
+    
+    /** random modulation --> outputs maximum of 0 --> 2* nominal val */
     template < typename T >
     class dtModulatorVoice
     {
@@ -49,14 +51,14 @@ namespace sjf::rev
             m_lpf.reset( initialValue );
         }
         
-        T process( T dt, T phase, T depth, T damping )
+        T process( T val, T phase, T depth, T damping )
         {
             phase += m_offset;
             phase = phase >= 1.0 ? phase - 1.0 : phase;
             if ( phase > 0.5 && m_lastPhase < 0.5 )
                 m_r = ( ( rand01() * 2.0 ) - 1.0 ) ;
             m_lastPhase = phase;
-            return m_lpf.process( dt + ( m_r * dt * depth ), damping );
+            return m_lpf.process( val + ( m_r * val * depth ), damping );
         }
         
     private:

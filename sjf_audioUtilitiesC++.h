@@ -378,14 +378,14 @@ namespace  sjf::mixers
         
         inline void recursiveUnscaled(Sample * data, const size_t size ) {
             if (size <= 1) return;
-            const int hSize = size/2;
+            const auto hSize = size/2;
             
             // Two (unscaled) Hadamards of half the size
             Hadamard< Sample >::recursiveUnscaled( data, hSize );
             Hadamard< Sample >::recursiveUnscaled(data + hSize, hSize);
             
             // Combine the two halves using sum/difference
-            for (int i = 0; i < hSize; ++i) {
+            for (auto i = 0; i < hSize; ++i) {
                 double a = data[i];
                 double b = data[i + hSize];
                 data[i] = (a + b);
@@ -409,7 +409,7 @@ namespace  sjf::mixers
             for( auto c = 0; c < size; c++ )
                 sum += data[ c ];
             sum *= m_weighting; // Householder weighting
-            for ( int c = 0; c < size; c++ )
+            for( auto c = 0; c < size; c++ )
                 data[ c ] += sum;
         }
     private:
@@ -725,7 +725,7 @@ auto sjf_crossCorrelationMaxTimeLag( const T* val1, const T* val2, const size_t 
 
 //==========================================================
 /** check if an integer is a prime number */
-inline bool sjf_isPrime( int number )
+inline constexpr bool sjf_isPrime( int number )
 {
     auto max = gcem::floor( gcem::sqrt( number ) );
     if ( number < 2 )
@@ -970,5 +970,159 @@ template< typename classType, typename returnType, typename... arguments >
         
         return up + down;
     }
+
+//    template< typename T >
+//    void twoDVectorResize( std::vector< std::vector< T > >& vect, size_t newSize1, size_t newSize2 )
+//    {
+//        vect.resize( newSize1, std::vector< T >( newSize2 ) );
+//    }
+//
+//    template< typename T, typename T2 >
+//    void twoDVectorResize( std::vector< std::vector< T > >& vect, size_t newSize1, size_t newSize2, T2 initialValue )
+//    {
+//        vect.resize( newSize1, std::vector< T >( newSize2, initialValue ) );
+//    }
+
+    /** resize multidimensional std::vectors */
+    template< typename T, typename... ARGS >
+    void vectorResize( std::vector<T>& vect, size_t newSize ) { vect.resize( newSize ); }
+
+    /** resize multidimensional std::vectors */
+    template< typename T, typename... ARGS >
+    void vectorResize( std::vector<T>& vect, size_t newSize, T initialValue ) { vect.resize( newSize, initialValue ); }
+    
+    /** resize multidimensional std::vectors */
+    template< typename T, typename... ARGS >
+    void vectorResize( std::vector<T>& vect, size_t newSize, ARGS... args ) { vect.resize( newSize, {args...} ); }
+    
+    /** resize multidimensional std::vectors
+     Call like vectorResize( vectorName, d1 size, d2 size, etc )
+     For vectors of floats/ints etc, an additional final value can be included to initialise all values.
+     ==> e.g. vectorResize( myVector, 2, 3, 0.2  ) --> std::vector<std::vector<double>> { {0.2, 0.2, 0.2}, {0.2, 0.2, 0.2} }
+     If the final dimension is another container this can be initialised by providing the required number of initial values.
+     ==> e.g. vectorResize( myVectorOfArrays, 2, 3, 0.2, 0.3  ) --> std::vector<std::vector<std::array<double, 2>>> { { {0.2, 0.3}, {0.2, 0.3}, {0.2, 0.3}  },  { {0.2, 0.3}, {0.2, 0.3}, {0.2, 0.3}  } };
+     Alternatively, the final dimension can be initialised using a braced initialiser list
+     ==> e.g. e.g. vectorResize( myVectorOfArrays, 2, 3, {0.2, 0.3, 0.5}  ) --> std::vector<std::vector<std::vector<double>>>{ { {0.2, 0.3, 0.5} , {0.2, 0.3, 0.5} , {0.2, 0.3, 0.5} },  { {0.2, 0.3, 0.5} , {0.2, 0.3, 0.5} , {0.2, 0.3, 0.5} } };
+     */
+    template< typename T, typename... ARGS >
+    void vectorResize( std::vector<std::vector<T>>& vect, size_t newSize, ARGS... args )
+    {
+        vect.resize( newSize );
+        for ( auto & v: vect )
+            vectorResize( v, args... );
+    }
+
+
+    /** Calculate the sqrt of a number using Newton's method ( recursive ) */
+    template< typename T >
+    constexpr T sqrtR( T x, T tol = 0.00001, T guess = 1 )
+    {
+        auto nG = 0.5 * ( guess + x/guess );
+        auto diff = nG - guess;
+        diff = diff<0 ? -diff : diff;
+        if ( diff <= tol )
+            return nG;
+        else
+            return sqrtR( x, tol, nG );
+    }
+
+    /** Calculate the sqrt of a number using Newton's method ( recursive ) */
+    template< typename T >
+    constexpr T sqrt( T x, T tol = 0.00001 )
+    {
+        auto guess = 1.;
+        auto nG = 0.5 * ( guess + x/guess );
+        auto diff = nG - guess;
+        diff = diff<0 ? -diff : diff;
+        while( diff > tol )
+        {
+            guess = nG;
+            nG = 0.5 * ( guess + x/guess );
+            diff = nG - guess;
+            diff = diff<0 ? -diff : diff;
+        }
+        return nG;
+    }
+
+    /** check if an integer is a prime number */
+    inline constexpr bool isPrime( size_t number )
+    {
+        if ( number < 2 )
+            return false;
+        if ( number == 2 )
+            return true;
+        auto max = sqrt<double>(number);
+        auto count = 2.;
+        while( count <= max )
+        {
+            auto res = number/count;
+            if( res - static_cast<size_t>(res) == 0 )
+                return false;
+            ++count;
+        }
+        return true;
+    }
+
+    /** Simple struct holding all prime numbers upto(and including) the maximum */
+    template< size_t MAX >
+    struct primes
+    {
+        constexpr primes() : m_table(), m_table2()
+        {
+            for ( auto i = 0; i < MAX+1; ++i )
+            {
+                if( isPrime( i, MAX2 ) )
+                {
+                    m_table[ i ] = true;
+                    m_table2[ MAX2 ] = i;
+                    ++MAX2;
+                }
+                else
+                    m_table[ i ] = false;
+            }
+        }
+        
+        /** Is the given number prime? */
+        const bool operator[] ( size_t number ) const
+        {
+            assert( number < MAX+1 );
+            return m_table[ number ];
+        }
+        
+        /** What is the nth prime number? (note the first prime is index 0!!!) */
+        const size_t nthPrime( size_t n ) const
+        {
+            assert( n < MAX2 );
+            return m_table2[ n ];
+        }
+        
+        /** How many primes are less than or equal to the given maximum */
+        const size_t getNPrimes() const { return MAX2; }
+    private:
+        constexpr bool isPrime( size_t number, size_t countToDate ) const
+        {
+            if ( number < 2 ){ return false; }
+            if ( number == 2 ){ return true; }
+            auto sq = sqrt<double>( number );
+            auto max = sq;
+            max = max < countToDate ? max : countToDate;
+            for ( auto i = 0; i < max; ++i )
+            {
+                auto test = static_cast<double>( m_table2[ i ] );
+                if ( test > sq )
+                    return true;
+                auto res = number / static_cast<double>( m_table2[ i ] );
+                if( res - static_cast<size_t>(res) == 0 )
+                    return false;
+            }
+            return true;
+        }
+        
+        
+        
+        bool m_table[ MAX+1 ];
+        size_t MAX2{0};
+        size_t m_table2[ MAX+1 ];
+    };
 }
 #endif /* sjf_audioUtilitiesC++ */

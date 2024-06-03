@@ -19,7 +19,7 @@ namespace sjf::delayLine
     /**
      basic circular buffer based pitchShift line
      */
-    template < typename Sample >
+    template < typename Sample, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
     class pitchShift
     {
     public:
@@ -27,12 +27,13 @@ namespace sjf::delayLine
         ~pitchShift(){ }
         
         /** This should be called prior to usage to initialise important values */
-        void initialise( Sample sampleRate )
+        void initialise( const Sample sampleRate )
         {
             m_SR = sampleRate > 0 ? sampleRate : m_SR;
             setWindowSize( m_windowSecs );
             m_lpfInCoef = calculateLPFCoefficient<Sample>( LPFINCUTOFF, m_SR );
             m_lpfOutCoef = calculateLPFCoefficient<Sample>( LPFOUTCUTOFF, m_SR );
+            m_delay.initialise( m_SR );
         }
         
         /** Set the playback scaling factor (e.g. 2 would be an octave above, 0.5 an octave below */
@@ -45,7 +46,7 @@ namespace sjf::delayLine
         }
         
         /** Set the size of the overlapping window --> larger windows allow greater pitch shifts, but can introduce noticeable delay */
-        void setWindowSize( Sample windowSizeSecs )
+        void setWindowSize( const Sample windowSizeSecs )
         {
             
             m_windowSecs = windowSizeSecs > 0 ? windowSizeSecs : m_windowSecs;
@@ -55,9 +56,8 @@ namespace sjf::delayLine
         }
         
         /** Pitch shift the input signal. */
-        Sample process( Sample x )
+        Sample process( const Sample x )
         {
-            
             m_delay.setSample( m_lpfIn.process( x, m_lpfInCoef ) );
             Sample outSamp{0}, delayed{0}, phase{m_phasor.process()};
             
@@ -71,28 +71,24 @@ namespace sjf::delayLine
             return m_lpfOut.process(outSamp, m_lpfOutCoef);
         }
         
-        /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
-        void setInterpolationType( sjf::interpolation::interpolatorTypes interpType ) { m_delay.setInterpolationType( interpType ); }
-        
         /** Set the additional delay time */
-        void setDelayTime( Sample delayInSamps ) { m_dtSamps = delayInSamps > 0 ? delayInSamps : 0; }
+        void setDelayTime( const Sample delayInSamps ) { m_dtSamps = delayInSamps > 0 ? delayInSamps : 0; }
         
-        void setSetLPFCutOffs( Sample inCutoff, Sample outCutoff )
+        void setSetLPFCutOffs( const Sample inCutoff, const Sample outCutoff )
         {
             m_lpfInCoef = calculateLPFCoefficient<Sample>( inCutoff, m_SR);
             m_lpfOutCoef = calculateLPFCoefficient<Sample>( outCutoff, m_SR);
         }
         
     private:
-        static constexpr Sample NVOICES{3}, LPFINCUTOFF{1000}, LPFOUTCUTOFF{2500};
+        static constexpr Sample NVOICES{3}, LPFINCUTOFF{2000}, LPFOUTCUTOFF{5000};
         Sample m_SR{44100}, m_windowSecs{0.2}, m_windowSizeSamps{m_SR*m_windowSecs}, m_invWindowSecs{1/m_windowSecs}, m_scaleFactor{1}, m_voiceOffset{1.0/NVOICES}, m_lpfInCoef{ calculateLPFCoefficient<Sample>( LPFINCUTOFF, m_SR) }, m_lpfOutCoef{ calculateLPFCoefficient<Sample>( LPFOUTCUTOFF, m_SR) }, m_dtSamps{4410};
         
-        delay< Sample > m_delay;
+        delay< Sample, INTERPOLATION_FUNCTOR > m_delay;
         oscillators::phasor< float > m_phasor{ 0, 44100 };
         filters::onepole< Sample > m_lpfIn, m_lpfOut;
         
-        struct cosFunc{ Sample operator()( Sample findex ){ return gcem::cos<Sample>(findex*2.0*M_PI); } };
-//        wavetable::table< Sample, 1024, cosFunc > m_window;
+        struct cosFunc{ const Sample operator()( Sample findex ) const { return gcem::cos<Sample>(findex*2.0*M_PI); } };
         wavetable::tab< Sample, 1024, cosFunc, interpolation::linearInterpolate<Sample> > m_window;
     };
 }

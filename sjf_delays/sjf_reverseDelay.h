@@ -13,7 +13,7 @@
 
 namespace sjf::delayLine
 {
-    template< typename Sample >
+    template< typename Sample, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
     class reverseDelay
     {
     public:
@@ -68,7 +68,7 @@ namespace sjf::delayLine
          Input is:
             the number of samples in the past to read from
          */
-        Sample getSample( ) { return m_delay.getSample( m_dtSamps ); }
+        Sample getSample( ) const { return m_delay.getSample( m_dtSamps ); }
         
         /**
          This retrieves a sample from a previous point in the buffer put reads the buffer in reverse
@@ -83,13 +83,10 @@ namespace sjf::delayLine
             return outSamp;
         }
         
-        
-        /** Set the interpolation Type to be used, the interpolation type see @sjf_interpolators */
-        void setInterpolationType( interpolation::interpolatorTypes interpType ){ m_delay.setInterpolationType( interpType ); }
     private:
         
         
-        delay< Sample > m_delay;
+        delay< Sample, INTERPOLATION_FUNCTOR > m_delay;
         Sample m_SR{44100}, m_rampLen{45}, m_dtSamps{4410}, m_invDT{ 1/m_dtSamps}, m_nRampSegs{m_dtSamps/m_rampLen}, m_revCount{0};
         int maxDT{ sjf_nearestPowerAbove(static_cast<int>(m_SR), 2) };
     };

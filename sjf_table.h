@@ -19,14 +19,14 @@ namespace sjf::wavetable
         constexpr tab() : m_table() { for ( int i = 0; i < TABLE_SIZE; i++ ) { m_table[ i ] = func( static_cast<Sample>(i)/SIZE ); } }
         ~tab(){}
 
-        inline Sample getVal( Sample phase ) { return m_interpolator( m_table, WRAPMASK, (phase*SIZE) ); }
+        const inline Sample getVal( Sample phase ) const { return m_interpolator( m_table, WRAPMASK, (phase*SIZE) ); }
 
     private:
         Sample m_table[ TABLE_SIZE ];
         static constexpr Sample SIZE{ TABLE_SIZE };
         static constexpr long WRAPMASK{TABLE_SIZE-1};
-        Functor func;
-        InterpFunctor m_interpolator;
+        const Functor func;
+        const InterpFunctor m_interpolator;
     };
 
     /** wavetable */
@@ -36,13 +36,13 @@ namespace sjf::wavetable
         constexpr table() : m_table() { for ( int i = 0; i < TABLE_SIZE; i++ ) { m_table[ i ] = func( static_cast<Sample>(i)/SIZE ); } }
         ~table(){}
 
-        inline Sample getVal( Sample phase ) { return m_interpolator( m_table, TABLE_SIZE, (phase*SIZE) ); }
+        const inline Sample getVal( Sample phase ) const { return m_interpolator( m_table, TABLE_SIZE, (phase*SIZE) ); }
         void setInterpolationType( sjf::interpolation::interpolatorTypes interpType ){ m_interpolator.setInterpolationType( interpType ); }
     private:
         Sample m_table[ TABLE_SIZE ];
         static constexpr Sample SIZE{TABLE_SIZE};
-        Functor func;
-        sjf::interpolation::interpolator<Sample> m_interpolator;
+        const Functor func;
+        const sjf::interpolation::interpolator<Sample> m_interpolator;
     };
 
     template< typename Sample, size_t TABLE_SIZE >

@@ -26,7 +26,7 @@ namespace sjf::rev
             utilities::vectorResize( m_delayTimesSamps, NSTAGES, NCHANNELS, static_cast<Sample>(0) );
             utilities::vectorResize( m_damping, NSTAGES, NCHANNELS, static_cast<Sample>(0) );
             utilities::vectorResize( m_polFlip, NSTAGES, NCHANNELS, static_cast<Sample>(1) );
-            utilities::vectorResize( m_rotationMatrix, NSTAGES, NCHANNELS, static_cast<size_t>(0) );
+//            utilities::vectorResize( m_rotationMatrix, NSTAGES, NCHANNELS, static_cast<size_t>(0) );
         }
         ~rotDelDif(){}
         
@@ -103,37 +103,37 @@ namespace sjf::rev
         
         
         
-        /**
-         Set how the channels will be shuffled/rotated between each stage
-         No test will be made to ensure that all of the channels are read so this is your responsibility
-         */
-        void setRotationMatrix( const twoDVect< size_t >& matrix )
-        {
-            assert( matrix.size() == NSTAGES );
-            for ( auto i = 0; i < NSTAGES; ++i )
-            {
-                assert( matrix[ i ].size() == NCHANNELS );
-                for ( auto j = 0; j < NSTAGES; ++j )
-                {
-                    assert( matrix[ i ][ j ] < NCHANNELS );
-                    m_rotationMatrix[ i ][ j ] = matrix[ i ][ j ];
-                }
-            }
-        }
-        
-        /**
-         Set how the channels will be shuffled/rotated between each stage
-         No test will be made to ensure that all of the channels are read so this is your responsibility
-         */
-        void setRotationMatrix( const vect< size_t >& matrix, const size_t stage )
-        {
-            assert( matrix.size() == NCHANNELS );
-            for ( auto i = 0; i < NCHANNELS; ++i )
-            {
-                assert( matrix[ i ] < NCHANNELS );
-                m_rotationMatrix[ stage ][ i ] = matrix[ i ];
-            }
-        }
+//        /**
+//         Set how the channels will be shuffled/rotated between each stage
+//         No test will be made to ensure that all of the channels are read so this is your responsibility
+//         */
+//        void setRotationMatrix( const twoDVect< size_t >& matrix )
+//        {
+//            assert( matrix.size() == NSTAGES );
+//            for ( auto i = 0; i < NSTAGES; ++i )
+//            {
+//                assert( matrix[ i ].size() == NCHANNELS );
+//                for ( auto j = 0; j < NSTAGES; ++j )
+//                {
+//                    assert( matrix[ i ][ j ] < NCHANNELS );
+//                    m_rotationMatrix[ i ][ j ] = matrix[ i ][ j ];
+//                }
+//            }
+//        }
+//
+//        /**
+//         Set how the channels will be shuffled/rotated between each stage
+//         No test will be made to ensure that all of the channels are read so this is your responsibility
+//         */
+//        void setRotationMatrix( const vect< size_t >& matrix, const size_t stage )
+//        {
+//            assert( matrix.size() == NCHANNELS );
+//            for ( auto i = 0; i < NCHANNELS; ++i )
+//            {
+//                assert( matrix[ i ] < NCHANNELS );
+//                m_rotationMatrix[ stage ][ i ] = matrix[ i ];
+//            }
+//        }
         
         
         /**
@@ -180,7 +180,8 @@ namespace sjf::rev
                     // first set samples in delay line
                     m_delays[ i ][ j ].setSample( samps[ j ] );
                     // then read samples from delay, but rotate channels and flip polarity of some
-                    samps[ j ] = m_delays[ i ][ j ].getSample( m_delayTimesSamps[ i ][ m_rotationMatrix[ i ][ j ] ] ) * m_polFlip[ i ][ j ];
+                    samps[ j ] = m_delays[ i ][ j ].getSample( m_delayTimesSamps[ i ][ j ] ) * m_polFlip[ i ][ j ];
+//                    samps[ j ] = m_delays[ i ][ j ].getSample( m_delayTimesSamps[ i ][ m_rotationMatrix[ i ][ j ] ] ) * m_polFlip[ i ][ j ];
                     samps[ j ] = m_dampers[ i ][ j ].process( samps[ j ], m_damping[ i ][ j ] );
                     m_hadMixer.inPlace( samps.data(), NCHANNELS );
                 }
@@ -195,7 +196,7 @@ namespace sjf::rev
         twoDVect< Sample > m_delayTimesSamps, m_damping;
         
         twoDVect< Sample > m_polFlip; // multiply by one or minus one
-        twoDVect< size_t > m_rotationMatrix;
+//        twoDVect< size_t > m_rotationMatrix;
         
         Sample m_SR = 44100;
         sjf::mixers::Hadamard< Sample > m_hadMixer;

@@ -381,8 +381,8 @@ namespace  sjf::mixers
             const auto hSize = size/2;
             
             // Two (unscaled) Hadamards of half the size
-            Hadamard< Sample >::recursiveUnscaled( data, hSize );
-            Hadamard< Sample >::recursiveUnscaled(data + hSize, hSize);
+            recursiveUnscaled( data, hSize );
+            recursiveUnscaled(data + hSize, hSize);
             
             // Combine the two halves using sum/difference
             for (auto i = 0; i < hSize; ++i) {
@@ -392,8 +392,6 @@ namespace  sjf::mixers
                 data[i + hSize] = (a - b);
             }
         }
-        
-        
         const Sample m_scalingFactor{0.7071};
     };
 

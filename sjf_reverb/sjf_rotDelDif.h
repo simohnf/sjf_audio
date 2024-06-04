@@ -37,9 +37,13 @@ namespace sjf::rev
         void initialise( const Sample sampleRate, const Sample maxDelayTimeSamps )
         {
             m_SR = sampleRate;
+//            for ( auto & s : m_delays )
+//                for ( auto & d : s )
+//                    d.initialise( maxDelayTimeSamps );
             for ( auto & s : m_delays )
-                for ( auto & d : s )
-                    d.initialise( maxDelayTimeSamps );
+                s.initialise( maxDelayTimeSamps );
+//                for ( auto & d : s )
+//                    d.initialise( maxDelayTimeSamps );
         }
         
         
@@ -178,20 +182,24 @@ namespace sjf::rev
                 for ( auto j = 0; j < NCHANNELS; ++j )
                 {
                     // first set samples in delay line
-                    m_delays[ i ][ j ].setSample( samps[ j ] );
+//                    m_delays[ i ][ j ].setSample( samps[ j ] );
+                    m_delays[ i ].setSample( j, samps[ j ] );
                     // then read samples from delay, but rotate channels and flip polarity of some
-                    samps[ j ] = m_delays[ i ][ j ].getSample( m_delayTimesSamps[ i ][ j ] ) * m_polFlip[ i ][ j ];
+//                    samps[ j ] = m_delays[ i ][ j ].getSample( m_delayTimesSamps[ i ][ j ] ) * m_polFlip[ i ][ j ];
+                    samps[ j ] = m_delays[ i ].getSample( j, m_delayTimesSamps[ i ][ j ] ) * m_polFlip[ i ][ j ];
 //                    samps[ j ] = m_delays[ i ][ j ].getSample( m_delayTimesSamps[ i ][ m_rotationMatrix[ i ][ j ] ] ) * m_polFlip[ i ][ j ];
                     samps[ j ] = m_dampers[ i ][ j ].process( samps[ j ], m_damping[ i ][ j ] );
-                    m_hadMixer.inPlace( samps.data(), NCHANNELS );
                 }
+                m_hadMixer.inPlace( samps.data(), NCHANNELS );
+                m_delays[ i ].updateWritePos();
             }
         }
     private:
         const size_t NCHANNELS;
         const size_t NSTAGES;
         
-        twoDVect< delayLine::delay< Sample, INTERPOLATION_FUNCTOR > > m_delays;
+        vect< delayLine::multiChannelDelay<Sample, INTERPOLATION_FUNCTOR> > m_delays;
+//        twoDVect< delayLine::delay< Sample, INTERPOLATION_FUNCTOR > > m_delays;
         twoDVect< filters::damper< Sample > > m_dampers;
         twoDVect< Sample > m_delayTimesSamps, m_damping;
         

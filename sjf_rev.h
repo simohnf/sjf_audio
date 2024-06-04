@@ -16,6 +16,7 @@
 #include "sjf_filters.h"
 #include "sjf_delays.h"
 #include "sjf_nonlinearities.h"
+#include "sjf_mixers.h"
 
 
 #include "sjf_reverb/sjf_revTypdefs.h"

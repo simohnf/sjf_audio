@@ -86,6 +86,7 @@ namespace sjf::delayLine
             if (!sjf_isPowerOf( sizeInSamps_pow2, 2 ) )
                 sizeInSamps_pow2 = sjf_nearestPowerAbove( sizeInSamps_pow2, 2l );
             m_channelOffset = sizeInSamps_pow2;
+            assert( sizeInSamps_pow2 * NCHANNELS < m_buffer.max_size() );
             m_buffer.resize( sizeInSamps_pow2 * NCHANNELS, 0 );
             m_wrapMask = sizeInSamps_pow2 - 1;
             clear();
@@ -107,9 +108,14 @@ namespace sjf::delayLine
          */
         void setSample( size_t channel, Sample x )
         {
-            m_writePos &= m_wrapMask;
+            assert( channel < NCHANNELS );
             m_buffer[ m_channelOffset*channel + m_writePos ] = x;
+        }
+        
+        void updateWritePos()
+        {
             ++m_writePos;
+            m_writePos &= m_wrapMask;
         }
         
         /** Clear the buffer */

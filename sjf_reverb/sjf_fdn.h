@@ -24,11 +24,11 @@ namespace sjf::rev
      */
     
     // NCHANNELS should be a power of 2!!!
-    template< typename Sample, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
+    template< typename Sample, typename MIXER, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample >  >
     class fdn
     {
     public:
-        fdn( const size_t nChannels = 8 ) noexcept : NCHANNELS( nChannels ), m_hadMixer(nChannels), m_houseMixer(nChannels)
+        fdn( const size_t nChannels = 8 ) noexcept : NCHANNELS(nChannels), m_mixer(nChannels) //, m_hadMixer(nChannels), m_houseMixer(nChannels)
         {
             m_delays.resize( NCHANNELS );
             m_dampers.resize( NCHANNELS );
@@ -159,16 +159,17 @@ namespace sjf::rev
                 delayed[ c ] = m_dampers[ c ].process( delayed[ c ], m_damping ); // lp filter
                 delayed[ c ] = m_lowDampers[ c ].processHP( delayed[ c ], m_lowDamping ); // hp filter
             }
-            switch ( m_mixType ) {
-                case mixers::hadamard:
-                    m_hadMixer.inPlace(delayed.data(), NCHANNELS);
-                    break;
-                case mixers::householder:
-                    m_houseMixer.inPlace(delayed.data(), NCHANNELS);
-                    break;
-                default:
-                    break;
-            }
+//            switch ( m_mixType ) {
+//                case mixers::hadamard:
+//                    m_hadMixer.inPlace(delayed.data(), NCHANNELS);
+//                    break;
+//                case mixers::householder:
+//                    m_houseMixer.inPlace(delayed.data(), NCHANNELS);
+//                    break;
+//                default:
+//                    break;
+//            }
+            m_mixer.inPlace(delayed.data(), NCHANNELS);
         
             switch (m_setValType) {
                 case setValType::fbdiff:
@@ -245,8 +246,9 @@ namespace sjf::rev
         enum class setValType { fbdiff, nofbnodiff, fbnodiff, nofbdiff };
         setValType m_setValType{setValType::nofbnodiff};
         
-        sjf::mixers::Hadamard< Sample > m_hadMixer;
-        sjf::mixers::Householder< Sample > m_houseMixer;
+//        sjf::mixers::Hadamard< Sample > m_hadMixer;
+//        sjf::mixers::Householder< Sample > m_houseMixer;
+        MIXER m_mixer;
         sjf::delayLine::gDelay<Sample> m_gdel;
         
     };

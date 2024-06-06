@@ -32,7 +32,7 @@ namespace sjf::delayLine
                 sizeInSamps_pow2 = sjf_nearestPowerAbove( sizeInSamps_pow2, 2l );
             m_buffer.resize( sizeInSamps_pow2, 0 );
             m_wrapMask = sizeInSamps_pow2 - 1;
-            clear();
+//            clear();
         }
         
         /**
@@ -89,7 +89,7 @@ namespace sjf::delayLine
             assert( sizeInSamps_pow2 * NCHANNELS < m_buffer.max_size() );
             m_buffer.resize( sizeInSamps_pow2 * NCHANNELS, 0 );
             m_wrapMask = sizeInSamps_pow2 - 1;
-            clear();
+//            clear();
         }
         
         /**

@@ -22,15 +22,12 @@ namespace sjf::rev
     /**
      A feedback delay network with low pass filtering and allpass based diffusion in the loop
      */
-    
-    // NCHANNELS should be a power of 2!!!
     template< typename Sample, typename MIXER, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample >  >
     class fdn
     {
     public:
-        fdn( const size_t nChannels = 8 ) noexcept : NCHANNELS(nChannels), m_mixer(nChannels) //, m_hadMixer(nChannels), m_houseMixer(nChannels)
+        fdn( const size_t nChannels = 8 ) noexcept : NCHANNELS(nChannels), m_mixer(nChannels), m_delays(nChannels)
         {
-            m_delays.resize( NCHANNELS );
             m_dampers.resize( NCHANNELS );
             m_lowDampers.resize( NCHANNELS );
             m_diffusers.resize( NCHANNELS );
@@ -38,9 +35,7 @@ namespace sjf::rev
             m_apDelayTimesSamps.resize( NCHANNELS, 0 );
             m_fbGains.resize( NCHANNELS, 0 );
             
-            
-            for ( auto & d : m_delays )
-                d.initialise( m_SR );
+            m_delays.initialise(m_SR);
             for ( auto & ap : m_diffusers )
                 ap.initialise( m_SR * 0.25 );
             setDecay( m_decayInMS );
@@ -54,8 +49,7 @@ namespace sjf::rev
         void initialise( const long maxSizePerChannelSamps, const long maxSizePerAPChannelSamps, const Sample sampleRate )
         {
             m_SR = sampleRate > 0 ? sampleRate : m_SR;
-            for ( auto & d : m_delays )
-                d.initialise( maxSizePerChannelSamps );
+            m_delays.initialise( maxSizePerChannelSamps );
             for ( auto & ap : m_diffusers )
                 ap.initialise( maxSizePerAPChannelSamps );
             
@@ -155,20 +149,10 @@ namespace sjf::rev
             vect< Sample > delayed( NCHANNELS, 0 );
             for ( auto c = 0; c < NCHANNELS; ++c )
             {
-                delayed[ c ] = m_delays[ c ].getSample( m_delayTimesSamps[ c ] );
+                delayed[ c ] = m_delays.getSample( c, m_delayTimesSamps[ c ] );
                 delayed[ c ] = m_dampers[ c ].process( delayed[ c ], m_damping ); // lp filter
                 delayed[ c ] = m_lowDampers[ c ].processHP( delayed[ c ], m_lowDamping ); // hp filter
             }
-//            switch ( m_mixType ) {
-//                case mixers::hadamard:
-//                    m_hadMixer.inPlace(delayed.data(), NCHANNELS);
-//                    break;
-//                case mixers::householder:
-//                    m_houseMixer.inPlace(delayed.data(), NCHANNELS);
-//                    break;
-//                default:
-//                    break;
-//            }
             m_mixer.inPlace(delayed.data(), NCHANNELS);
         
             switch (m_setValType) {
@@ -176,40 +160,38 @@ namespace sjf::rev
                     for ( auto c = 0; c < NCHANNELS; ++c )
                     {
                         auto val = samples[ c ]+delayed[ c ]*m_fbGains[ c ];
-                        m_delays[ c ].setSample( nonlinearities::tanhSimple( m_diffusers[ c ].process( val, m_apDelayTimesSamps[ c ], m_diffusion ) ) );
+                        m_delays.setSample( c, nonlinearities::tanhSimple( m_diffusers[ c ].process( val, m_apDelayTimesSamps[ c ], m_diffusion ) ) );
                     }
                     break;
                 case setValType::fbnodiff:
                     for ( auto c = 0; c < NCHANNELS; ++c )
                     {
                         auto val = samples[ c ]+delayed[ c ]*m_fbGains[ c ];
-                        m_delays[ c ].setSample( nonlinearities::tanhSimple( val ) );
+                        m_delays.setSample( c, nonlinearities::tanhSimple( val ) );
                     }
                     break;
                 case setValType::nofbdiff:
                     for ( auto c = 0; c < NCHANNELS; ++c )
                     {
                         auto val = samples[ c ]+delayed[ c ]*m_fbGains[ c ];
-                        m_delays[ c ].setSample( m_diffusers[ c ].process( val, m_apDelayTimesSamps[ c ], m_diffusion ) );
+                        m_delays.setSample( c, m_diffusers[ c ].process( val, m_apDelayTimesSamps[ c ], m_diffusion ) );
                     }
                     break;
                 case setValType::nofbnodiff:
                     for ( auto c = 0; c < NCHANNELS; ++c )
                     {
                         auto val = samples[ c ]+delayed[ c ]*m_fbGains[ c ];
-                        m_delays[ c ].setSample( val );
+                        m_delays.setSample( c, val );
                     }
                     break;
                 default:
                     break;
             }
+            m_delays.updateWritePos();
             samples = delayed;
             return;
         }
         
-        
-        /** determines which type of mixing should be used */
-        void setMixType( const mixers type ) { m_mixType = type; }
         
         /** sets whether feedback should be limited. This adds a nonlinearity within the loop, increasing cpu load slightly, but preventing overloads( hopefully ) */
         void setControlFB( const bool shouldLimitFeedback )
@@ -233,23 +215,21 @@ namespace sjf::rev
         
         const size_t NCHANNELS;
         
-        vect< delayLine::delay< Sample, INTERPOLATION_FUNCTOR > > m_delays;
+        delayLine::multiChannelDelay<Sample,INTERPOLATION_FUNCTOR > m_delays;
         vect< filters::oneMultAP< Sample, INTERPOLATION_FUNCTOR > > m_diffusers;
         vect< filters::damper< Sample > > m_dampers, m_lowDampers;
         vect< Sample > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
         Sample m_decayInMS{1000}, m_SR{44100}, m_damping{0.2}, m_lowDamping{0.95}, m_diffusion{0.5};
         
-        mixers m_mixType = mixers::hadamard;
+        MIXER m_mixer;
         
         bool m_fbControl{false};
         
         enum class setValType { fbdiff, nofbnodiff, fbnodiff, nofbdiff };
         setValType m_setValType{setValType::nofbnodiff};
         
-//        sjf::mixers::Hadamard< Sample > m_hadMixer;
-//        sjf::mixers::Householder< Sample > m_houseMixer;
-        MIXER m_mixer;
-        sjf::delayLine::gDelay<Sample> m_gdel;
+        
+
         
     };
 }

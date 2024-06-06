@@ -40,10 +40,7 @@ namespace sjf::rev
     class dtModulatorVoice
     {
     public:
-        dtModulatorVoice( )
-        {
-            m_r = ( rand01() * 2.0 ) - 1.0;
-        }
+        dtModulatorVoice( ) : m_r((rand01()*2.0 )-1.0) {}
         ~dtModulatorVoice(){}
         
         void initialise( T offset, T initialValue )

@@ -21,7 +21,7 @@ namespace sjf::rev
     {
 
     public:
-        multiTap( const size_t maxNTaps = 64 ) noexcept : MAXNTAPS( maxNTaps ), m_nTaps( maxNTaps )
+        multiTap( const size_t maxNTaps = 64 ) noexcept : MAXNTAPS( maxNTaps ), m_nTaps( MAXNTAPS )
         {
             m_delayTimesSamps.resize( MAXNTAPS, 0 );
             m_gains.resize( MAXNTAPS, 0 );
@@ -34,7 +34,7 @@ namespace sjf::rev
          */
         void initialise( const Sample sampleRate )
         {
-            if( sampleRate<=0 ){ return; }
+            if( sampleRate <= 0 ){ return; }
             m_delay.initialise( (sampleRate / 2) );
         }
         
@@ -64,6 +64,7 @@ namespace sjf::rev
         void setDelayTimeSamps( const Sample dt, const size_t tapNum )
         {
             assert( dt > 0 );
+            assert( tapNum < MAXNTAPS );
             m_delayTimesSamps[ tapNum ] = dt;
         }
         
@@ -72,9 +73,8 @@ namespace sjf::rev
          */
         void setGains( const vect< Sample >& gains )
         {
-            assert( gains.size() == MAXNTAPS );
-            for ( auto  i = 0; i < MAXNTAPS; ++i )
-                m_gains[ i ] = gains[ i ];
+            assert( gains.size() == MAXNTAPS && gains.size() == m_gains.size() );
+            m_gains = gains;
         }
         
         /**
@@ -123,25 +123,19 @@ namespace sjf::rev
          output:
             Output of delay tap
          */
-        inline Sample getSample( const size_t tapNum ) const
-        {
-            return m_delay.getSample( m_delayTimesSamps[ tapNum ] ) * m_gains[ tapNum ];
-        }
+        inline Sample getSample( const size_t tapNum ) const { return m_delay.getSample( m_delayTimesSamps[ tapNum ] ) * m_gains[ tapNum ]; }
         
         /**
          Push a sample value into the delay line
          Input:
             value to store in delay line
          */
-        inline void setSample( const Sample x )
-        {
-            m_delay.setSample( x );
-        }
+        inline void setSample( const Sample x ) { m_delay.setSample( x ); }
         
     private:
         const size_t MAXNTAPS;
+        size_t m_nTaps;
         vect< Sample > m_delayTimesSamps, m_gains;
-        size_t m_nTaps = MAXNTAPS;
         delayLine::delay< Sample, INTERPOLATION_FUNCTOR > m_delay;
     };
 }

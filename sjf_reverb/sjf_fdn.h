@@ -11,7 +11,6 @@
 
 namespace sjf::rev
 {
-
     /**
      The different possible mixers that can be used within the loop
      */
@@ -22,11 +21,11 @@ namespace sjf::rev
     /**
      A feedback delay network with low pass filtering and allpass based diffusion in the loop
      */
-    template< typename Sample, typename MIXER, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample >  >
+    template< typename Sample, typename MIXER = sjf::mixers::Hadamard<Sample>, typename LIMITER = sjf::rev::fbLimiters::nolimit<Sample>, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD<Sample>  >
     class fdn
     {
     public:
-        fdn( const size_t nChannels = 8 ) noexcept : NCHANNELS(nChannels), m_mixer(nChannels), m_delays(nChannels)
+        fdn( const size_t nChannels = 8 ) noexcept : NCHANNELS(nChannels), m_delays(NCHANNELS), m_mixer(NCHANNELS)
         {
             m_dampers.resize( NCHANNELS );
             m_lowDampers.resize( NCHANNELS );
@@ -39,7 +38,6 @@ namespace sjf::rev
             for ( auto & ap : m_diffusers )
                 ap.initialise( m_SR * 0.25 );
             setDecay( m_decayInMS );
-            setSetValType();
         }
         ~fdn(){}
         
@@ -108,7 +106,6 @@ namespace sjf::rev
         void setDiffusion( const Sample diff )
         {
             m_diffusion = diff;
-            setSetValType();
         }
         
         
@@ -154,39 +151,23 @@ namespace sjf::rev
                 delayed[ c ] = m_lowDampers[ c ].processHP( delayed[ c ], m_lowDamping ); // hp filter
             }
             m_mixer.inPlace(delayed.data(), NCHANNELS);
-        
-            switch (m_setValType) {
-                case setValType::fbdiff:
-                    for ( auto c = 0; c < NCHANNELS; ++c )
-                    {
-                        auto val = samples[ c ]+delayed[ c ]*m_fbGains[ c ];
-                        m_delays.setSample( c, nonlinearities::tanhSimple( m_diffusers[ c ].process( val, m_apDelayTimesSamps[ c ], m_diffusion ) ) );
-                    }
-                    break;
-                case setValType::fbnodiff:
-                    for ( auto c = 0; c < NCHANNELS; ++c )
-                    {
-                        auto val = samples[ c ]+delayed[ c ]*m_fbGains[ c ];
-                        m_delays.setSample( c, nonlinearities::tanhSimple( val ) );
-                    }
-                    break;
-                case setValType::nofbdiff:
-                    for ( auto c = 0; c < NCHANNELS; ++c )
-                    {
-                        auto val = samples[ c ]+delayed[ c ]*m_fbGains[ c ];
-                        m_delays.setSample( c, m_diffusers[ c ].process( val, m_apDelayTimesSamps[ c ], m_diffusion ) );
-                    }
-                    break;
-                case setValType::nofbnodiff:
-                    for ( auto c = 0; c < NCHANNELS; ++c )
-                    {
-                        auto val = samples[ c ]+delayed[ c ]*m_fbGains[ c ];
-                        m_delays.setSample( c, val );
-                    }
-                    break;
-                default:
-                    break;
-            }
+            
+            
+            for ( auto c = 0; c < NCHANNELS; ++c )
+                m_delays.setSample( c, m_limiter( m_diffusers[c].process( samples[c]+delayed[c]*m_fbGains[c], m_apDelayTimesSamps[c],m_diffusion ) ) );
+//
+//            if ( m_fbControl )
+//                for ( auto c = 0; c < NCHANNELS; ++c )
+//                    m_delays.setSample( c,
+//                                       nonlinearities::tanhSimple(
+//                                                                  m_diffusers[c].process( (samples[c]+delayed[c]*m_fbGains[c]), m_apDelayTimesSamps[c],m_diffusion )
+//                                                                  )
+//                                       );
+//            else
+//                for ( auto c = 0; c < NCHANNELS; ++c )
+//                    m_delays.setSample( c,
+//                                       m_diffusers[c].process( (samples[c]+delayed[c]*m_fbGains[c]), m_apDelayTimesSamps[c],m_diffusion )
+//                                       );
             m_delays.updateWritePos();
             samples = delayed;
             return;
@@ -194,25 +175,9 @@ namespace sjf::rev
         
         
         /** sets whether feedback should be limited. This adds a nonlinearity within the loop, increasing cpu load slightly, but preventing overloads( hopefully ) */
-        void setControlFB( const bool shouldLimitFeedback )
-        {
-            m_fbControl = shouldLimitFeedback;
-            setSetValType();
-        }
+        void setControlFB( const bool shouldLimitFeedback ) { m_fbControl = shouldLimitFeedback; }
         
     private:
-        void setSetValType()
-        {
-            if( !m_fbControl && m_diffusion == 0 )
-                m_setValType = setValType::nofbnodiff;
-            else if( m_fbControl && m_diffusion == 0 )
-                m_setValType = setValType::fbnodiff;
-            else if( !m_fbControl && m_diffusion != 0 )
-                m_setValType = setValType::nofbdiff;
-            else if( m_fbControl && m_diffusion != 0 )
-                 m_setValType = setValType::fbdiff;
-        }
-        
         const size_t NCHANNELS;
         
         delayLine::multiChannelDelay<Sample,INTERPOLATION_FUNCTOR > m_delays;
@@ -222,15 +187,8 @@ namespace sjf::rev
         Sample m_decayInMS{1000}, m_SR{44100}, m_damping{0.2}, m_lowDamping{0.95}, m_diffusion{0.5};
         
         MIXER m_mixer;
-        
+        LIMITER m_limiter;
         bool m_fbControl{false};
-        
-        enum class setValType { fbdiff, nofbnodiff, fbnodiff, nofbdiff };
-        setValType m_setValType{setValType::nofbnodiff};
-        
-        
-
-        
     };
 }
 

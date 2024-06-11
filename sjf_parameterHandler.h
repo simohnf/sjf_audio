@@ -15,20 +15,23 @@ namespace sjf::parameterHandler {
     class paramHandlerVector
     {
     public:
-        paramHandlerVector(){} // default constructor so that you could add only the parameters desired using method below
+        paramHandlerVector( juce::AudioProcessorValueTreeState& vts ) : m_vts(vts) {} // default constructor so that you could add only the parameters desired using method below
         
         ~paramHandlerVector( )
         {
             m_list.clear();
+            for ( auto i = 0; i < m_params.size(); ++i )
+                m_vts.removeParameterListener( m_paramIDs[ i ], m_params[ i ].get() );
             m_params.clear();
         }
         
-        void addParameter( juce::AudioProcessorValueTreeState& vts, juce::AudioProcessorParameter* parameterPtr, std::function< void(float) > audioThreadCallback )
+        void addParameter( /*juce::AudioProcessorValueTreeState& vts,*/ juce::AudioProcessorParameter* parameterPtr, std::function< void(float) > audioThreadCallback )
         {
             auto parameterID = static_cast< juce::AudioProcessorParameterWithID* >(parameterPtr)->getParameterID();
-            auto nP = std::make_unique< param > ( parameterPtr, vts.getRawParameterValue( parameterID ), m_parentCallback, audioThreadCallback );
-            vts.addParameterListener( parameterID, nP.get() );
+            auto nP = std::make_unique< param > ( parameterPtr, m_vts.getRawParameterValue( parameterID ), m_parentCallback, audioThreadCallback );
+            m_vts.addParameterListener( parameterID, nP.get() );
             m_params.push_back( std::move( nP )  );
+            m_paramIDs.push_back( parameterID );
         }
         
         /** Call this on the audio thread to trigger all of the pending parameter updates */
@@ -93,8 +96,9 @@ namespace sjf::parameterHandler {
         //======================//======================//======================//======================
         //======================//======================//======================//======================
         
-        
+        juce::AudioProcessorValueTreeState& m_vts;
         std::vector< std::unique_ptr< param > > m_params;
+        std::vector< juce::String > m_paramIDs;
         sjf::dataStructures::linkedList< param > m_list;
         
         std::function< void(param*) > m_parentCallback = [ this ]

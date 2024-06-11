@@ -105,6 +105,7 @@ namespace sjf::rev
          */
         void setDiffusion( const Sample diff )
         {
+            assert ( diff > -0.9 && diff < 0.9 );
             m_diffusion = diff;
         }
         
@@ -112,13 +113,19 @@ namespace sjf::rev
         /**
          This sets the amount of high frequency damping applied in the loop ( must be >= 0 and <= 1 )
          */
-        void setDamping( const Sample dampCoef ) { m_damping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999; }
-        
+        void setDamping( const Sample dampCoef )
+        {
+            assert ( dampCoef > 0 && dampCoef < 1 );
+            m_damping = dampCoef;
+        }
         /**
          This sets the amount of low frequency damping applied in the loop ( must be >= 0 and <= 1 )
          */
-        void setDampingLow( const Sample dampCoef ) { m_lowDamping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999; }
-        
+        void setDampingLow( const Sample dampCoef )
+        {
+            assert ( dampCoef > 0 && dampCoef < 1 );
+            m_lowDamping = dampCoef;
+        }
         /**
          This sets the desired decay time in milliseconds
          */
@@ -155,27 +162,12 @@ namespace sjf::rev
             
             for ( auto c = 0; c < NCHANNELS; ++c )
                 m_delays.setSample( c, m_limiter( m_diffusers[c].process( samples[c]+delayed[c]*m_fbGains[c], m_apDelayTimesSamps[c],m_diffusion ) ) );
-//
-//            if ( m_fbControl )
-//                for ( auto c = 0; c < NCHANNELS; ++c )
-//                    m_delays.setSample( c,
-//                                       nonlinearities::tanhSimple(
-//                                                                  m_diffusers[c].process( (samples[c]+delayed[c]*m_fbGains[c]), m_apDelayTimesSamps[c],m_diffusion )
-//                                                                  )
-//                                       );
-//            else
-//                for ( auto c = 0; c < NCHANNELS; ++c )
-//                    m_delays.setSample( c,
-//                                       m_diffusers[c].process( (samples[c]+delayed[c]*m_fbGains[c]), m_apDelayTimesSamps[c],m_diffusion )
-//                                       );
             m_delays.updateWritePos();
             samples = delayed;
             return;
         }
         
         
-        /** sets whether feedback should be limited. This adds a nonlinearity within the loop, increasing cpu load slightly, but preventing overloads( hopefully ) */
-        void setControlFB( const bool shouldLimitFeedback ) { m_fbControl = shouldLimitFeedback; }
         
     private:
         const size_t NCHANNELS;
@@ -188,7 +180,6 @@ namespace sjf::rev
         
         MIXER m_mixer;
         LIMITER m_limiter;
-        bool m_fbControl{false};
     };
 }
 

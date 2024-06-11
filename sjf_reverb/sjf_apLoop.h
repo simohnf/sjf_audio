@@ -71,14 +71,15 @@ namespace sjf::rev
         
         /**
          This sets the amount of diffusion
-         i.e. the allpass coefficient ( keep -1 < diff < 1 for safety )
+         i.e. the allpass coefficient ( keep -0.9 < diff < 0.9 for safety )
          */
         void setDiffusion( const Sample diff )
         {
-            auto d = diff <= 0.9 ? (diff >= -0.9 ? diff : -0.9 ) : 0.9;
+            assert ( diff > -0.9 && diff < 0.9 );
+//            auto d = diff <= 0.9 ? (diff >= -0.9 ? diff : -0.9 ) : 0.9;
             for ( auto s = 0; s < NSTAGES; ++s )
                 for ( auto a = 0; a < NAP_PERSTAGE; ++a )
-                    m_diffusions[ s ][ a ] = d;
+                    m_diffusions[ s ][ a ] = diff;
         }
         
         /**
@@ -109,17 +110,15 @@ namespace sjf::rev
         /**
          Get the current decay time in ms
          */
-        auto getDecayInMs() const
-        {
-            return m_decayInMS;
-        }
+        auto getDecayInMs() const { return m_decayInMS; }
         
         /**
          This sets the amount of damping applied between each section of the loop ( must be >= 0 and <= 1 )
          */
         void setDamping( const Sample dampCoef )
         {
-            m_damping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999;
+            assert ( dampCoef > 0 && dampCoef < 1 );
+            m_damping = dampCoef;
         }
         
         /**
@@ -127,24 +126,19 @@ namespace sjf::rev
          */
         void setDampingLow( const Sample dampCoef )
         {
-            m_lowDamping = dampCoef < 1 ? (dampCoef > 0 ? dampCoef : 00001) : 0.9999;
+            assert ( dampCoef > 0 && dampCoef < 1 );
+            m_lowDamping = dampCoef;
         }
         
         /**
          return the number of stages in the loop
          */
-        auto getNStages( ) const
-        {
-            return NSTAGES;
-        }
+        auto getNStages( ) const { return NSTAGES; }
         
         /**
          return the number of allpass filter in each stage of the loop
          */
-        auto getNApPerStage( ) const
-        {
-            return NAP_PERSTAGE;
-        }
+        auto getNApPerStage( ) const { return NAP_PERSTAGE; }
         
         /**
          This should be called for every sample in the block
@@ -178,7 +172,8 @@ namespace sjf::rev
         
         
         /** sets whether feedback should be limited. This adds a nonlinearity within the loop, increasing cpu load slightly, but preventing overloads( hopefully ) */
-        void setControlFB( const bool shouldLimitFeedback ){ m_fbControl = shouldLimitFeedback; }
+        void setControlFB( const bool shouldLimitFeedback ) { m_fbControl = shouldLimitFeedback; }
+        
     private:
         const size_t NSTAGES, NAP_PERSTAGE;
         twoDVect< filters::oneMultAP < Sample, INTERPOLATION_FUNCTOR > > m_aps;

@@ -25,7 +25,8 @@ namespace sjf::parameterHandler {
             m_params.clear();
         }
         
-        void addParameter( /*juce::AudioProcessorValueTreeState& vts,*/ juce::AudioProcessorParameter* parameterPtr, std::function< void(float) > audioThreadCallback )
+        /** use this function to add a listener to the value tree state with a given callback */
+        void addParameter( juce::AudioProcessorParameter* parameterPtr, std::function< void(float) > audioThreadCallback )
         {
             auto parameterID = static_cast< juce::AudioProcessorParameterWithID* >(parameterPtr)->getParameterID();
             auto nP = std::make_unique< param > ( parameterPtr, m_vts.getRawParameterValue( parameterID ), m_parentCallback, audioThreadCallback );

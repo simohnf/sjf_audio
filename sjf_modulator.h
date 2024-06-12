@@ -11,7 +11,7 @@
 
 #include "sjf_audioUtilitiesC++.h"
 #include "sjf_filters.h"
-
+#include "sjf_mathsApproximations.h"
 
 namespace sjf::modulator
 {
@@ -33,6 +33,18 @@ namespace sjf::modulator
     private:
         T m_r{0.0}, m_lastPhase{0.0};
         sjf::filters::damper< T > m_lpf;
+    };
+
+
+    template< typename T >
+    class sinMod
+    {
+    public:
+        sinMod(){}
+        
+        void initialise( T initialValue ) { }
+        T operator()( const T val, const T phase, const T depth, const T damping )
+            { return val + ( sjf::maths::sinApprox( (phase*2 - 1)*M_PI ) * val * depth ); }
     };
 
     /** class for modulation of  values --> outputs maximum of 0 --> 2* nominal val */

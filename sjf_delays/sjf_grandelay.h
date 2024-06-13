@@ -71,7 +71,7 @@ namespace sjf::delayLine
         
         struct windowfunc{ const Sample operator()( Sample findex ) const { return 0.5 + 0.5*gcem::cos<Sample>(findex*2.0*M_PI); } };
         static constexpr size_t TABLE_SIZE{2048};
-        wavetable::tab< Sample, TABLE_SIZE, windowfunc, interpolation::linearInterpolate<Sample> > m_window;
+        wavetable::tab< Sample, TABLE_SIZE, windowfunc, interpolation::interpolatorTypes::linear > m_window;
         oscillators::phasor<Sample> m_phasor{ 1, m_SR };
     };
 }

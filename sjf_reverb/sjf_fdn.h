@@ -21,7 +21,8 @@ namespace sjf::rev
     /**
      A feedback delay network with low pass filtering and allpass based diffusion in the loop
      */
-    template< typename Sample, typename MIXER = sjf::mixers::Hadamard<Sample>, typename LIMITER = sjf::rev::fbLimiters::nolimit<Sample>, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD<Sample>  >
+    template< typename Sample, typename MIXER = sjf::mixers::Hadamard<Sample>, typename LIMITER = sjf::rev::fbLimiters::nolimit<Sample>, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
+//typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD<Sample>  >
     class fdn
     {
     public:
@@ -172,8 +173,8 @@ namespace sjf::rev
     private:
         const size_t NCHANNELS;
         
-        delayLine::multiChannelDelay<Sample,INTERPOLATION_FUNCTOR > m_delays;
-        vect< filters::oneMultAP< Sample, INTERPOLATION_FUNCTOR > > m_diffusers;
+        delayLine::multiChannelDelay<Sample, interpType > m_delays;
+        vect< filters::oneMultAP< Sample, interpType > > m_diffusers;
         vect< filters::damper< Sample > > m_dampers, m_lowDampers;
         vect< Sample > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
         Sample m_decayInMS{1000}, m_SR{44100}, m_damping{0.2}, m_lowDamping{0.95}, m_diffusion{0.5};

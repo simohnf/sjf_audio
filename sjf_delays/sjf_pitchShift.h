@@ -19,7 +19,7 @@ namespace sjf::delayLine
     /**
      basic circular buffer based pitchShift line
      */
-    template < typename Sample, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
+    template < typename Sample, interpolation::interpolatorTypes interpType /*, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample >*/ >
     class pitchShift
     {
     public:
@@ -84,12 +84,12 @@ namespace sjf::delayLine
         static constexpr Sample NVOICES{3}, LPFINCUTOFF{2000}, LPFOUTCUTOFF{5000};
         Sample m_SR{44100}, m_windowSecs{0.2}, m_windowSizeSamps{m_SR*m_windowSecs}, m_invWindowSecs{1/m_windowSecs}, m_scaleFactor{1}, m_voiceOffset{1.0/NVOICES}, m_lpfInCoef{ calculateLPFCoefficient<Sample>( LPFINCUTOFF, m_SR) }, m_lpfOutCoef{ calculateLPFCoefficient<Sample>( LPFOUTCUTOFF, m_SR) }, m_dtSamps{4410};
         
-        delay< Sample, INTERPOLATION_FUNCTOR > m_delay;
+        delay< Sample, interpType > m_delay;
         oscillators::phasor< float > m_phasor{ 0, 44100 };
         filters::onepole< Sample > m_lpfIn, m_lpfOut;
         
         struct cosFunc{ const Sample operator()( Sample findex ) const { return gcem::cos<Sample>(findex*2.0*M_PI); } };
-        wavetable::tab< Sample, 1024, cosFunc, interpolation::linearInterpolate<Sample> > m_window;
+        wavetable::tab< Sample, 1024, cosFunc, interpolation::interpolatorTypes::linear > m_window;
     };
 }
 

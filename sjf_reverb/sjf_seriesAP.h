@@ -16,7 +16,8 @@ namespace sjf::rev
      An array of one multiply allpass filters connected in series
      input signal is passed through each all pass filter in turn
      */
-    template < typename Sample, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
+    template < typename Sample, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
+//, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
     class seriesAllpass
     {
     public:
@@ -164,7 +165,7 @@ namespace sjf::rev
 
     private:
         const size_t NSTAGES;
-        vect< filters::oneMultAP< Sample, INTERPOLATION_FUNCTOR > > m_aps;
+        vect< filters::oneMultAP< Sample, interpType > > m_aps;
         vect< Sample > m_coefs, m_delayTimesSamps, m_damping;
     };
     

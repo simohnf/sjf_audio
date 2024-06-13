@@ -18,7 +18,9 @@ namespace sjf::rev
      Each stage is separated by a further delay and then a lowpass filter
      This version does not use a single loop
      */
-    template < typename Sample, typename LIMITER = sjf::rev::fbLimiters::nolimit<Sample>, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
+
+    template < typename Sample, typename LIMITER = sjf::rev::fbLimiters::nolimit<Sample>, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
+//, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
     class allpassLoop 
     {
     public:
@@ -176,8 +178,8 @@ namespace sjf::rev
         
     private:
         const size_t NSTAGES, NAP_PERSTAGE;
-        twoDVect< filters::oneMultAP < Sample, INTERPOLATION_FUNCTOR > > m_aps;
-        vect< delayLine::delay < Sample, INTERPOLATION_FUNCTOR > > m_delays;
+        twoDVect< filters::oneMultAP < Sample, interpType > > m_aps;
+        vect< delayLine::delay < Sample, interpType > > m_delays;
         vect< filters::damper < Sample > > m_dampers, m_lowDampers;
         
         vect< Sample > m_gains;

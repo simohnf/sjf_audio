@@ -15,7 +15,8 @@ namespace sjf::rev
      A structure of delays with rotation, mixing, and lpf between each stage
      For use as a diffuser a là Geraint Luff "Let's Write a Reverb"... also Miller Puckette
      */
-    template< typename Sample, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
+    template< typename Sample, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
+//, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
     class rotDelDif
     {
     public:
@@ -175,8 +176,8 @@ namespace sjf::rev
     private:
         const size_t NCHANNELS, NSTAGES, NMODCHANNELS;
         
-        vect< delayLine::multiChannelDelay<Sample, INTERPOLATION_FUNCTOR> > m_modDelays;
-        vect< delayLine::multiChannelDelay<Sample, interpolation::noneInterpolate<Sample>> > m_delays;
+        vect< delayLine::multiChannelDelay<Sample, interpType> > m_modDelays;
+        vect< delayLine::multiChannelDelay<Sample, interpolation::interpolatorTypes::none > > m_delays;
         
         twoDVect< filters::damper< Sample > > m_dampers;
         twoDVect< Sample > m_delayTimesSamps, m_damping;

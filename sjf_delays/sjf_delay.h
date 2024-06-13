@@ -15,7 +15,7 @@ namespace sjf::delayLine
     /**
      basic circular buffer based delay line
      */
-    template < typename Sample, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD<Sample> >
+    template < typename Sample, interpolation::interpolatorTypes interpType /*typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD<Sample>*/ >
     class delay
     {
     public:
@@ -58,7 +58,8 @@ namespace sjf::delayLine
     private:
         std::vector< Sample > m_buffer;
         long  m_writePos = 0, m_wrapMask;
-        const INTERPOLATION_FUNCTOR m_interp;
+//        const INTERPOLATION_FUNCTOR m_interp;
+        interpolation::interpolator<Sample, interpType> m_interp;
         
     };
 
@@ -67,7 +68,8 @@ namespace sjf::delayLine
 //==================//==================//==================//==================//==================//==================
 //==================//==================//==================//==================//==================//==================
 
-    template < typename Sample, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD<Sample> >
+    template < typename Sample, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
+//typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD<Sample> >
     class multiChannelDelay
     {
     public:
@@ -125,7 +127,8 @@ namespace sjf::delayLine
         const size_t NCHANNELS;
         std::vector< Sample > m_buffer;
         long  m_writePos{0}, m_wrapMask{0}, m_channelOffset{0};
-        const INTERPOLATION_FUNCTOR m_interp;
+//        const INTERPOLATION_FUNCTOR m_interp;
+        interpolation::interpolator<Sample, interpType> m_interp;
     };
 }
 

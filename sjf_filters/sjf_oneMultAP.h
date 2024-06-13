@@ -17,7 +17,8 @@ namespace sjf::filters
      One multiply all pass as per Moorer - "about this reverberation business"
      This is a very bare bones implementation that essentially just serves as a wrapper for a delayline with an optional damper which can be activated
      */
-    template < typename Sample, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
+    template < typename Sample, interpolation::interpolatorTypes interpType >
+//, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
     class oneMultAP
     {
     public:
@@ -73,7 +74,7 @@ namespace sjf::filters
         }
         
     private:
-        delayLine::delay< Sample, INTERPOLATION_FUNCTOR > m_del;
+        delayLine::delay< Sample, interpType > m_del;
         filters::damper< Sample > m_damper;
         
     };

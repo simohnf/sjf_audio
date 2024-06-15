@@ -16,6 +16,8 @@
 
 namespace  sjf::mixers
 {
+    enum class mixerTypes { none, hadamard, householder };
+    
     /** only for consitency with other mixers */
     template< typename Sample >
     struct None
@@ -77,6 +79,41 @@ namespace  sjf::mixers
         }
     private:
         Sample m_weighting{1};
+    };
+
+
+
+
+    template < typename Sample, mixerTypes type >
+    struct mixer;
+
+    template < typename Sample >
+    struct mixer< Sample, mixerTypes::none >
+    {
+        mixer( size_t size ) {}
+        inline void inPlace( Sample* data, const size_t size ) const { return; }
+        
+    };
+
+
+    template < typename Sample >
+    struct mixer< Sample, mixerTypes::householder >
+    {
+        mixer( size_t size ) : m_mix( size ) {}
+        inline void inPlace( Sample* data, const size_t size ) const { m_mix.inPlace( data, size ); }
+        
+    private:
+        Householder<Sample> m_mix;
+    };
+
+    template < typename Sample >
+    struct mixer< Sample, mixerTypes::hadamard >
+    {
+        mixer( size_t size ) : m_mix( size ) {}
+        inline void inPlace( Sample* data, const size_t size ) const { m_mix.inPlace( data, size ); }
+        
+    private:
+        Hadamard<Sample> m_mix;
     };
 }
 #endif /* sjf_mixers_h */

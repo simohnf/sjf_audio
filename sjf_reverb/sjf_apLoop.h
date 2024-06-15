@@ -19,8 +19,7 @@ namespace sjf::rev
      This version does not use a single loop
      */
 
-    template < typename Sample, typename LIMITER = sjf::rev::fbLimiters::nolimit<Sample>, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
-//, typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD< Sample > >
+    template < typename Sample, rev::fbLimiters::fbLimiterTypes limitType  = rev::fbLimiters::fbLimiterTypes::none, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
     class allpassLoop 
     {
     public:
@@ -192,7 +191,8 @@ namespace sjf::rev
         
         bool m_fbControl{false};
         
-        LIMITER m_limiter;
+//        LIMITER m_limiter;
+        fbLimiters::limiter< Sample, limitType > m_limiter;
     };
 }
 

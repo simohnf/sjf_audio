@@ -14,6 +14,9 @@
  */
 namespace sjf::rev::fbLimiters
 {
+
+    enum class fbLimiterTypes{ none, tanh };
+
     /** basic tanh based limiting */
     template< typename Sample >
     struct limit { inline Sample operator()( Sample x ) const { return sjf::nonlinearities::tanhSimple( x );} };
@@ -22,6 +25,20 @@ namespace sjf::rev::fbLimiters
     template< typename Sample >
     struct nolimit { inline Sample operator()( Sample x ) const { return x; } };
 
+    template< typename Sample, fbLimiterTypes type >
+    struct limiter;
+
+    template< typename Sample >
+    struct limiter< Sample, fbLimiterTypes::none >
+    {
+        Sample operator()( Sample x ) const { return x; }
+    };
+
+    template< typename Sample >
+    struct limiter< Sample, fbLimiterTypes::tanh >
+    {
+        Sample operator()( Sample x ) const { return x; }
+    };
 
 //========================//========================//========================//========================//========================
 //========================//========================//========================//========================//========================

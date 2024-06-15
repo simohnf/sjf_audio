@@ -12,17 +12,9 @@
 namespace sjf::rev
 {
     /**
-     The different possible mixers that can be used within the loop
-     */
-    enum class mixers
-    {
-        none, hadamard, householder
-    };
-    /**
      A feedback delay network with low pass filtering and allpass based diffusion in the loop
      */
-    template< typename Sample, typename MIXER = sjf::mixers::Hadamard<Sample>, typename LIMITER = sjf::rev::fbLimiters::nolimit<Sample>, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
-//typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD<Sample>  >
+template< typename Sample, mixers::mixerTypes mixType = mixers::mixerTypes::householder, rev::fbLimiters::fbLimiterTypes limitType  = rev::fbLimiters::fbLimiterTypes::none, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
     class fdn
     {
     public:
@@ -179,8 +171,10 @@ namespace sjf::rev
         vect< Sample > m_delayTimesSamps, m_apDelayTimesSamps, m_fbGains;
         Sample m_decayInMS{1000}, m_SR{44100}, m_damping{0.2}, m_lowDamping{0.95}, m_diffusion{0.5};
         
-        MIXER m_mixer;
-        LIMITER m_limiter;
+//        MIXER m_mixer;
+        mixers::mixer< Sample, mixType > m_mixer;
+//        LIMITER m_limiter;
+        fbLimiters::limiter< Sample, limitType > m_limiter;
     };
 }
 

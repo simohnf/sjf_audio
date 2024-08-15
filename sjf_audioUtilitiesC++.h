@@ -1062,5 +1062,17 @@ template< typename classType, typename returnType, typename... arguments >
         size_t MAX2{0};
         size_t m_table2[ MAX+1 ];
     };
+
+    /** simple function to wrap input when it goes below a given minimum or above given maximum */
+    template < typename T, T min = 0, T max = 1 >
+    T wrap ( T x )
+    {
+        static constexpr T range = max - min;
+        while ( x < min )
+            x += range;
+        while ( x > max )
+            x -= range;
+        return x > min ? ( (x < max) ? x : x - range ) : x + range;
+    };
 }
 #endif /* sjf_audioUtilitiesC++ */

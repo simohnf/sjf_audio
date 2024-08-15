@@ -15,16 +15,18 @@ namespace sjf::delayLine
     /**
      basic circular buffer based delay line
      */
-    template < typename Sample, interpolation::interpolatorTypes interpType /*typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD<Sample>*/ >
+    template < typename Sample, interpolation::interpolatorTypes interpType >
     class delay
     {
     public:
-        delay() {}
+        delay(){}
+        delay( std::vector< Sample >& buffer ) : m_buffer(buffer), m_wrapMask(buffer.size()-1) {}
+        
         ~delay(){}
         
         /**
          This must be called before first use in order to set basic information such as maximum delay lengths and sample rate
-         Size should be a power of 2
+         Size should be a power of 2. You shouldn't have to call this when passing a preexisting buffer to the constructor
          */
         void initialise( long sizeInSamps_pow2 )
         {
@@ -32,7 +34,6 @@ namespace sjf::delayLine
                 sizeInSamps_pow2 = sjf_nearestPowerAbove( sizeInSamps_pow2, 2l );
             m_buffer.resize( sizeInSamps_pow2, 0 );
             m_wrapMask = sizeInSamps_pow2 - 1;
-//            clear();
         }
         
         /**
@@ -58,7 +59,6 @@ namespace sjf::delayLine
     private:
         std::vector< Sample > m_buffer;
         long  m_writePos = 0, m_wrapMask;
-//        const INTERPOLATION_FUNCTOR m_interp;
         interpolation::interpolator<Sample, interpType> m_interp;
         
     };
@@ -69,29 +69,25 @@ namespace sjf::delayLine
 //==================//==================//==================//==================//==================//==================
 
     template < typename Sample, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
-//typename INTERPOLATION_FUNCTOR = interpolation::fourPointInterpolatePD<Sample> >
     class multiChannelDelay
     {
     public:
-        multiChannelDelay( const size_t nChannels ) : NCHANNELS( nChannels )
-        {
-            
-        }
+        multiChannelDelay( const size_t nChannels ) : NCHANNELS( nChannels ) { }
+        multiChannelDelay( const size_t nChannels, std::vector< Sample >& buffer ) : NCHANNELS( nChannels ), m_buffer(buffer), m_channelOffset(m_buffer.size()/NCHANNELS), m_wrapMask(m_channelOffset-1) { }
         ~multiChannelDelay(){}
         
         /**
          This must be called before first use in order to set basic information such as maximum delay lengths and sample rate
-         Size should be a power of 2
+         Size should be a power of 2. You shouldn't have to call this when passing a preexisting buffer to the constructor
          */
         void initialise( long sizeInSamps_pow2 )
         {
             if (!sjf_isPowerOf( sizeInSamps_pow2, 2 ) )
                 sizeInSamps_pow2 = sjf_nearestPowerAbove( sizeInSamps_pow2, 2l );
             m_channelOffset = sizeInSamps_pow2;
-            assert( sizeInSamps_pow2 * NCHANNELS < m_buffer.max_size() );
-            m_buffer.resize( sizeInSamps_pow2 * NCHANNELS, 0 );
-            m_wrapMask = sizeInSamps_pow2 - 1;
-//            clear();
+            assert( m_channelOffset * NCHANNELS < m_buffer.max_size() );
+            m_buffer.resize( m_channelOffset * NCHANNELS, 0 );
+            m_wrapMask = m_channelOffset - 1;
         }
         
         /**
@@ -127,7 +123,6 @@ namespace sjf::delayLine
         const size_t NCHANNELS;
         std::vector< Sample > m_buffer;
         long  m_writePos{0}, m_wrapMask{0}, m_channelOffset{0};
-//        const INTERPOLATION_FUNCTOR m_interp;
         interpolation::interpolator<Sample, interpType> m_interp;
     };
 }

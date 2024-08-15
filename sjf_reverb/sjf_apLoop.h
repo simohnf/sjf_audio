@@ -77,7 +77,6 @@ namespace sjf::rev
         void setDiffusion( const Sample diff )
         {
             assert ( diff > -0.9 && diff < 0.9 );
-//            auto d = diff <= 0.9 ? (diff >= -0.9 ? diff : -0.9 ) : 0.9;
             for ( auto s = 0; s < NSTAGES; ++s )
                 for ( auto a = 0; a < NAP_PERSTAGE; ++a )
                     m_diffusions[ s ][ a ] = diff;
@@ -165,7 +164,6 @@ namespace sjf::rev
                 samp = m_delays[ s ].getSample( m_delayTimesSamps[ s ][ NAP_PERSTAGE ] );
                 chanCount = ( ++chanCount >= nChannels ) ? 0 : chanCount;
             }
-//            m_lastSamp = m_fbControl ? nonlinearities::tanhSimple( samp ) : samp;
             m_lastSamp = m_limiter( samp );
             samples = output;
             return;
@@ -190,8 +188,6 @@ namespace sjf::rev
         Sample m_damping{0.2}, m_lowDamping{0.95};
         
         bool m_fbControl{false};
-        
-//        LIMITER m_limiter;
         fbLimiters::limiter< Sample, limitType > m_limiter;
     };
 }

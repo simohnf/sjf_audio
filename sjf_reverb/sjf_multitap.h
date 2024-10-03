@@ -16,17 +16,16 @@ namespace sjf::rev
      Basic multitap delayLine for use primarily as part of an early reflection generator
      No filtering or feedback is applied
      */
-    template < typename T >
+    template < typename Sample, interpolation::interpolatorTypes interpType = interpolation::interpolatorTypes::pureData >
+//typename INTERPOLATION_FUNCTOR = interpolation::noneInterpolate< Sample > >
     class multiTap
     {
 
     public:
-        multiTap( int maxNTaps) : MAXNTAPS( maxNTaps )
+        multiTap( const size_t maxNTaps = 64 ) noexcept : MAXNTAPS( maxNTaps ), m_nTaps( MAXNTAPS )
         {
-            m_delayTimesSamps.resize( MAXNTAPS );
-            m_gains.resize( MAXNTAPS );
-            for ( auto i = 0; i < MAXNTAPS; i++ )
-                m_delayTimesSamps[ i ] = m_gains[ i ] = 0;
+            m_delayTimesSamps.resize( MAXNTAPS, 0 );
+            m_gains.resize( MAXNTAPS, 0 );
         }
         ~multiTap(){}
         
@@ -34,88 +33,87 @@ namespace sjf::rev
         /**
          This must be called before first use in order to set basic information such as maximum delay length and sample rate
          */
-        void initialise( T sampleRate )
+        void initialise( const Sample sampleRate )
         {
-            auto delSize = sjf_nearestPowerAbove( sampleRate * 0.5, 2 );
-            m_delay.initialise( delSize );
+            if( sampleRate <= 0 ){ return; }
+            m_delay.initialise( (sampleRate / 2) );
         }
         
         /**
          This must be called before first use in order to set the maximum delay length
          */
-        void initialise( int maxDelayInSamps )
+        void initialise( const long maxDelayInSamps )
         {
-            if ( !sjf_isPowerOf( maxDelayInSamps, 2 ) )
-                maxDelayInSamps = sjf_nearestPowerAbove( maxDelayInSamps, 2 );
-            m_delay.initialise( maxDelayInSamps );
+            assert( maxDelayInSamps > 0 );
+            m_delay.initialise( sjf_isPowerOf( maxDelayInSamps, 2 ) ? maxDelayInSamps : sjf_nearestPowerAbove( maxDelayInSamps, 2l ) );
         }
         
         
         /**
          Set all of the delayTimes in samples
          */
-        void setDelayTimesSamps( const std::vector< T >& dt )
+        void setDelayTimesSamps( const vect< Sample >& dt )
         {
             assert( dt.size() == MAXNTAPS );
-            for ( auto d = 0; d < MAXNTAPS; d++ )
-                m_delayTimesSamps[ d ] = dt[ d ];
+            for ( auto i = 0; i < MAXNTAPS; ++i )
+                m_delayTimesSamps[ i ] = dt[ i ];
         }
         
         /**
-         Set the delayTime in samples for a single tap
+         Set the delayTime in samples for a single tap ( must be greater than 0!!!)
          */
-        void setDelayTimeSamps( int tapNum, T dt )
+        void setDelayTimeSamps( const Sample dt, const size_t tapNum )
         {
+            assert( dt > 0 );
+            assert( tapNum < MAXNTAPS );
             m_delayTimesSamps[ tapNum ] = dt;
         }
         
         /**
          Set all of the gains
          */
-        void setGains( const std::vector< T >& gains )
+        void setGains( const vect< Sample >& gains )
         {
-            assert( gains.size() == MAXNTAPS );
-            for ( auto  g = 0; g < MAXNTAPS; g++ )
-                m_gains[ g ] = gains[ g ];
+            assert( gains.size() == MAXNTAPS && gains.size() == m_gains.size() );
+            m_gains = gains;
         }
         
         /**
          Set the gain for an individual tap
          */
-        void setGain( int tapNum, T gain )
+        void setGain( const Sample gain, const size_t tapNum )
         {
+            assert( tapNum < MAXNTAPS );
             m_gains[ tapNum ] = gain;
         }
         
         /**
          Using this you can change the number of active taps
          */
-        void setNTaps( int nTaps )
+        void setNTaps( const size_t nTaps )
         {
-            m_nTaps = nTaps < 1 ? 1 : ( nTaps > MAXNTAPS ? MAXNTAPS : nTaps );
+            assert( nTaps > 0 && nTaps <= MAXNTAPS );
+            m_nTaps = nTaps;
         }
         
         /**
          Return the maximum number of taps possible
          */
-        int getMaxNTaps()
-        {
-            return MAXNTAPS;
-        }
+        size_t getMaxNTaps() const { return MAXNTAPS; }
         
         /**
-         This processone sample
+         This processes one sample
          Input:
             sample to be inserted into the delayLine
          Output:
             combination of all of the taps
          */
-        T process( T x, int interpType = 0 )
+        inline Sample process( Sample x )
         {
-            T output = 0.0;
-            for ( auto t = 0; t < m_nTaps; t++ )
-                output += getSample( t, interpType );
-            m_delay.setSample( x );
+            Sample output = 0.0;
+            for ( auto i = 0; i < m_nTaps; ++i )
+                output += getSample( i );
+            setSample( x );
             return output;
         }
         
@@ -123,30 +121,23 @@ namespace sjf::rev
          Using this you can get the output of a single tap at a time
          Input:
             The tap number
-            optional - the interpolation type (defaults to no interpolation)
          output:
             Output of delay tap
          */
-        inline T getSample( int tapNum, int interpType = 0 )
-        {
-            return m_delay.getSample( m_delayTimesSamps[ tapNum ], interpType ) * m_gains[ tapNum ];
-        }
+        inline Sample getSample( const size_t tapNum ) const { return m_delay.getSample( m_delayTimesSamps[ tapNum ] ) * m_gains[ tapNum ]; }
         
         /**
          Push a sample value into the delay line
          Input:
             value to store in delay line
          */
-        inline void setSample( T x )
-        {
-            m_delay.setSample( x );
-        }
+        inline void setSample( const Sample x ) { m_delay.setSample( x ); }
         
     private:
-        const int MAXNTAPS;
-        std::vector< T > m_delayTimesSamps, m_gains;
-        int m_nTaps = MAXNTAPS;
-        delay< T > m_delay;
+        const size_t MAXNTAPS;
+        size_t m_nTaps;
+        vect< Sample > m_delayTimesSamps, m_gains;
+        delayLine::delay< Sample, interpType > m_delay;
     };
 }
 

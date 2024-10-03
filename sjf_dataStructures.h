@@ -83,6 +83,13 @@ namespace sjf::dataStructures
          */
         std::atomic_flag isBusy = ATOMIC_FLAG_INIT;
         
+        
+        void clear()
+        {
+            while( head != nullptr )
+                popNode(); // clear list
+        }
+        
     private:
         /** pointer to the first node of the list */
         node* head = nullptr;

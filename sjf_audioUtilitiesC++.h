@@ -8,16 +8,14 @@
 #define sjf_audioUtilitiesCplusplus_h
 
 #include <math.h>
+#include <vector>
+#include <array>
+#include <string>
 #include "gcem/include/gcem.hpp"
-
-//#ifndef PI
-//#define PI M_PI
-//#endif
 
 template< typename T >
 void clipInPlace( T& value, const T& min, const T& max )
 {
-//    std::swap( min, max );
     if ( value < min )
         value = min;
     else if ( value > max )
@@ -293,7 +291,7 @@ T sjf_scale( const T& valueToScale, const T& inMin, const T& inMax, const T& out
 //==============================================================================
 //==============================================================================
 //==============================================================================
-// Use like `Hadamard<double, 8>::inPlace(data)` - size must be a power of 2
+/** Use like `Hadamard<double, 8>::inPlace(data)` - size must be a power of 2 */
 template< typename Sample, int size >
 class Hadamard
 {
@@ -333,64 +331,6 @@ public:
         }
     }
 };
-
-
-namespace  sjf::mixers
-{
-//===================================
-    // Use like `Hadamard<double, 8>::inPlace(data)` - size must be a power of 2
-    template< typename Sample >
-    struct Hadamard
-    {
-        static inline void recursiveUnscaled(Sample * data, const int size ) {
-            if (size <= 1) return;
-            const int hSize = size/2;
-            
-            // Two (unscaled) Hadamards of half the size
-            Hadamard< Sample >::recursiveUnscaled( data, hSize );
-            Hadamard< Sample >::recursiveUnscaled(data + hSize, hSize);
-            
-            // Combine the two halves using sum/difference
-            for (int i = 0; i < hSize; ++i) {
-                double a = data[i];
-                double b = data[i + hSize];
-                data[i] = (a + b);
-                data[i + hSize] = (a - b);
-            }
-        }
-        
-        static inline void inPlace(Sample* data, const int size ) {
-            recursiveUnscaled( data, size );
-            
-            Sample scalingFactor = std::sqrt(1.0/size);
-            for (int c = 0; c < size; ++c) {
-                data[c] *= scalingFactor;
-            }
-        }
-        
-        static inline void inPlace(Sample * data, const Sample &scalingFactor, const int size ) {
-            recursiveUnscaled( data, size );
-            //        Sample scalingFactor = std::sqrt(1.0/size);
-            for (int c = 0; c < size; ++c) {
-                data[c] *= scalingFactor;
-            }
-        }
-    };
-
-    template< typename Sample >
-    struct Householder
-    {
-        static inline void mixInPlace( Sample* data, int size )
-        {
-            Sample sum = 0.0f; // use this to mix all samples with householder matrix
-            for( auto c = 0; c < size; c++ )
-                sum += data[ c ];
-            sum *= ( -2.0f / static_cast< Sample >(size) ); // Householder weighting
-            for ( int c = 0; c < size; c++ )
-                data[ c ] += sum;
-        }
-    };
-}
 //==============================================================================
 //==============================================================================
 //==============================================================================
@@ -413,6 +353,7 @@ public:
         }
     }
 };
+
 //==============================================================================
 //==============================================================================
 //==============================================================================
@@ -717,13 +658,12 @@ auto sjf_crossCorrelationMaxTimeLag( const T* val1, const T* val2, const size_t 
             maxVal = newVal;
         }
     }
-    std::cout << maxVal << std::endl;
     return maxIndex;
 }
 
 //==========================================================
 /** check if an integer is a prime number */
-inline bool sjf_isPrime( int number )
+inline constexpr bool sjf_isPrime( int number )
 {
     auto max = gcem::floor( gcem::sqrt( number ) );
     if ( number < 2 )
@@ -740,19 +680,19 @@ inline bool sjf_isPrime( int number )
 }
 //==========================================================
 /** check whether a number is a power of another number */
-inline bool sjf_isPowerOf( unsigned long val, unsigned long baseToCheck )
+inline bool sjf_isPowerOf( const unsigned long val, const unsigned long baseToCheck )
 {
-    auto powerOf = false;
-    auto v = static_cast< double >( val );
-    auto b = 1.0 / static_cast< double >( baseToCheck );
-    while ( v > baseToCheck )
-        v *= b;
-    return ( b == baseToCheck );
+    assert( val >= baseToCheck  );
+    auto b = baseToCheck;
+    while ( b < val )
+        b*= baseToCheck;
+    return ( b == val  );
 }
 
 //==========================================================
 /** find the nearest power of a base above value */
-inline unsigned long sjf_nearestPowerAbove( unsigned long val, unsigned long base )
+template< typename T >
+inline T sjf_nearestPowerAbove( T val, T base )
 {
     return std::pow( 2, std::ceil( std::log( val )/ std::log( base ) ) );
 }
@@ -894,5 +834,245 @@ void genVelvetNoise( T max, std::vector< T >& storage  )
 }
 
 
+namespace sjf::utilities
+{
+    /** class to hold and call member functions of other classes ( e.g. instead of having big switch/if statements etc */
+template< typename classType, typename returnType, typename... arguments >
+    class classMemberFunctionPointer
+    {
+        typedef returnType ( classType::*memberPtr )( arguments... args );
+    public:
+        classMemberFunctionPointer( classType* parent ) noexcept : PARENT( parent ) {}
+        classMemberFunctionPointer( classType* parent, memberPtr memFunc ) : funcPtr( memFunc ), PARENT( parent ) {}
 
+        classMemberFunctionPointer( const classMemberFunctionPointer& ) noexcept = delete;
+        classMemberFunctionPointer& operator=( const classMemberFunctionPointer& ) noexcept = delete;
+        
+        classMemberFunctionPointer( classMemberFunctionPointer&&) noexcept = default;
+        classMemberFunctionPointer& operator=( classMemberFunctionPointer&&) noexcept = default;
+        
+        
+        ~classMemberFunctionPointer(){}
+        
+        returnType operator() ( arguments... args ){ return ( PARENT->*funcPtr )( args... ); }
+
+        void operator=( memberPtr func ){ funcPtr = func; }
+
+    private:
+
+        memberPtr funcPtr{ nullptr };
+        classType* PARENT;
+    };
+
+//========//========//========//========//========//========//========
+//========//========//========//========//========//========//========
+//========//========//========//========//========//========//========
+
+    /** Simple class for ending to and decoding from MS. Use like : sjf::utilities::MidSide<float>::encode( lSamp, rSamp )*/
+    template < typename Sample >
+    struct MidSide
+    {
+        struct MS{ Sample mid, side; };
+        struct LR{ Sample left, right; };
+    
+        /** encode from LR to MS */
+        static inline MS encode( Sample left, Sample right ) { return { left + right, left - right }; }
+        /** encode from LR to MS */
+        static inline MS encode( LR lr ) { return { lr.left + lr.right, lr.left - lr.right }; }
+        
+        /** decode from MS to LR  */
+        static inline LR decode( MS ms ) { return { (ms.mid + ms.side)*outScale,  (ms.mid - ms.side)*outScale, }; }
+        /** decode from MS to LR  */
+        static inline LR decode( Sample mid, Sample side ) { return { (mid + side)*outScale,  (mid - side)*outScale, }; }
+        
+    private:
+        static constexpr Sample outScale{0.5};
+    };
+
+    template< typename Sample >
+    Sample clip( Sample value, const Sample min, const Sample max ) { return value < min ? min : value > max ? max : value; }
+
+
+
+    template < typename Sample >
+    Sample phaseEnvelope( const Sample phase, const Sample nRampSegments )
+    {
+        Sample up, down;
+        
+        up = down = phase * nRampSegments;
+        up = clip< Sample >( up, 0, 1 );
+        
+        down -= ( nRampSegments - 1 );
+        down *= -1;
+        down = clip< Sample > ( down, -1, 0 );
+        
+        return up + down;
+    }
+
+//    template< typename T >
+//    void twoDVectorResize( std::vector< std::vector< T > >& vect, size_t newSize1, size_t newSize2 )
+//    {
+//        vect.resize( newSize1, std::vector< T >( newSize2 ) );
+//    }
+//
+//    template< typename T, typename T2 >
+//    void twoDVectorResize( std::vector< std::vector< T > >& vect, size_t newSize1, size_t newSize2, T2 initialValue )
+//    {
+//        vect.resize( newSize1, std::vector< T >( newSize2, initialValue ) );
+//    }
+
+    /** resize multidimensional std::vectors */
+    template< typename T, typename... ARGS >
+    void vectorResize( std::vector<T>& vect, size_t newSize ) { vect.resize( newSize ); }
+
+    /** resize multidimensional std::vectors */
+    template< typename T, typename... ARGS >
+    void vectorResize( std::vector<T>& vect, size_t newSize, T initialValue ) { vect.resize( newSize, initialValue ); }
+    
+    /** resize multidimensional std::vectors */
+    template< typename T, typename... ARGS >
+    void vectorResize( std::vector<T>& vect, size_t newSize, ARGS... args ) { vect.resize( newSize, {args...} ); }
+    
+    /** resize multidimensional std::vectors
+     Call like vectorResize( vectorName, d1 size, d2 size, etc )
+     For vectors of floats/ints etc, an additional final value can be included to initialise all values.
+     ==> e.g. vectorResize( myVector, 2, 3, 0.2  ) --> std::vector<std::vector<double>> { {0.2, 0.2, 0.2}, {0.2, 0.2, 0.2} }
+     If the final dimension is another container this can be initialised by providing the required number of initial values.
+     ==> e.g. vectorResize( myVectorOfArrays, 2, 3, 0.2, 0.3  ) --> std::vector<std::vector<std::array<double, 2>>> { { {0.2, 0.3}, {0.2, 0.3}, {0.2, 0.3}  },  { {0.2, 0.3}, {0.2, 0.3}, {0.2, 0.3}  } };
+     Alternatively, the final dimension can be initialised using a braced initialiser list
+     ==> e.g. e.g. vectorResize( myVectorOfArrays, 2, 3, {0.2, 0.3, 0.5}  ) --> std::vector<std::vector<std::vector<double>>>{ { {0.2, 0.3, 0.5} , {0.2, 0.3, 0.5} , {0.2, 0.3, 0.5} },  { {0.2, 0.3, 0.5} , {0.2, 0.3, 0.5} , {0.2, 0.3, 0.5} } };
+     */
+    template< typename T, typename... ARGS >
+    void vectorResize( std::vector<std::vector<T>>& vect, size_t newSize, ARGS... args )
+    {
+        vect.resize( newSize );
+        for ( auto & v: vect )
+            vectorResize( v, args... );
+    }
+
+
+    /** Calculate the sqrt of a number using Newton's method ( recursive ) */
+    template< typename T >
+    constexpr T sqrtR( T x, T tol = 0.00001, T guess = 1 )
+    {
+        auto nG = 0.5 * ( guess + x/guess );
+        auto diff = nG - guess;
+        diff = diff<0 ? -diff : diff;
+        if ( diff <= tol )
+            return nG;
+        else
+            return sqrtR( x, tol, nG );
+    }
+
+    /** Calculate the sqrt of a number using Newton's method ( recursive ) */
+    template< typename T >
+    constexpr T sqrt( T x, T tol = 0.00001 )
+    {
+        auto guess = 1.;
+        auto nG = 0.5 * ( guess + x/guess );
+        auto diff = nG - guess;
+        diff = diff<0 ? -diff : diff;
+        while( diff > tol )
+        {
+            guess = nG;
+            nG = 0.5 * ( guess + x/guess );
+            diff = nG - guess;
+            diff = diff<0 ? -diff : diff;
+        }
+        return nG;
+    }
+
+    /** check if an integer is a prime number */
+    inline constexpr bool isPrime( size_t number )
+    {
+        if ( number < 2 )
+            return false;
+        if ( number == 2 )
+            return true;
+        auto max = sqrt<double>(number);
+        auto count = 2.;
+        while( count <= max )
+        {
+            auto res = number/count;
+            if( res - static_cast<size_t>(res) == 0 )
+                return false;
+            ++count;
+        }
+        return true;
+    }
+
+    /** Simple struct holding all prime numbers upto(and including) the maximum */
+    template< size_t MAX >
+    struct primes
+    {
+        constexpr primes() : m_table(), m_table2()
+        {
+            for ( auto i = 0; i < MAX+1; ++i )
+            {
+                if( isPrime( i, MAX2 ) )
+                {
+                    m_table[ i ] = true;
+                    m_table2[ MAX2 ] = i;
+                    ++MAX2;
+                }
+                else
+                    m_table[ i ] = false;
+            }
+        }
+        
+        /** Is the given number prime? */
+        const bool operator[] ( size_t number ) const
+        {
+            assert( number < MAX+1 );
+            return m_table[ number ];
+        }
+        
+        /** What is the nth prime number? (note the first prime is index 0!!!) */
+        const size_t nthPrime( size_t n ) const
+        {
+            assert( n < MAX2 );
+            return m_table2[ n ];
+        }
+        
+        /** How many primes are less than or equal to the given maximum */
+        const size_t getNPrimes() const { return MAX2; }
+    private:
+        constexpr bool isPrime( size_t number, size_t countToDate ) const
+        {
+            if ( number < 2 ){ return false; }
+            if ( number == 2 ){ return true; }
+            auto sq = sqrt<double>( number );
+            auto max = sq;
+            max = max < countToDate ? max : countToDate;
+            for ( auto i = 0; i < max; ++i )
+            {
+                auto test = static_cast<double>( m_table2[ i ] );
+                if ( test > sq )
+                    return true;
+                auto res = number / static_cast<double>( m_table2[ i ] );
+                if( res - static_cast<size_t>(res) == 0 )
+                    return false;
+            }
+            return true;
+        }
+        
+        
+        
+        bool m_table[ MAX+1 ];
+        size_t MAX2{0};
+        size_t m_table2[ MAX+1 ];
+    };
+
+    /** simple function to wrap input when it goes below a given minimum or above given maximum */
+    template < typename T, T min = 0, T max = 1 >
+    T wrap ( T x )
+    {
+        static constexpr T range = max - min;
+        while ( x < min )
+            x += range;
+        while ( x > max )
+            x -= range;
+        return x > min ? ( (x < max) ? x : x - range ) : x + range;
+    };
+}
 #endif /* sjf_audioUtilitiesC++ */

@@ -1,3 +1,10 @@
 [submodule "gcem"]
 	path = gcem
 	url = https://github.com/kthohr/gcem
+[submodule "3rdparty/variant"]
+	path = 3rdparty/variant
+	url = https://github.com/mpark/variant.git
+[submodule "modules/melatonin_perfetto"]
+	path = modules/melatonin_perfetto
+	url = https://github.com/sudara/melatonin_perfetto.git
+	branch = main

@@ -46,7 +46,7 @@ namespace sjf_compileTimeRandom
         
         static result_type constexpr max()
         {
-            return std::numeric_limits<result_type>::min();
+            return std::numeric_limits<result_type>::max();
         }
         
     private:

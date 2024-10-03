@@ -18,11 +18,11 @@
 //==============================================================================
 //==============================================================================
 
-namespace sjf_interpolators
+namespace sjf::interpolation
 {
     //==============================================================================
     enum interpolatorTypes : char
-    { linear = 1, cubic, pureData, fourthOrder, godot, hermite, allpass };
+    { none = 0, linear = 1, cubic, pureData, fourthOrder, godot, hermite, allpass };
     //==============================================================================
     /**
      Basic linear interpolation between 2 points
@@ -31,7 +31,7 @@ namespace sjf_interpolators
      x2 - value of second point
      */
     template <typename T>
-    const T linearInterpolate ( const T &mu, const T &x1, const T &x2 )
+    const T linearInterpolate ( const T mu, const T x1, const T x2 )
     { return x1 + mu*(x2-x1); }
     //==============================================================================
     /**
@@ -43,7 +43,7 @@ namespace sjf_interpolators
      x3 - value of point after next
      */
     template <typename T>
-    const T cubicInterpolate ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
+    const T cubicInterpolate ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         T a0,a1,a2,mu2;
         
@@ -64,7 +64,7 @@ namespace sjf_interpolators
      x3 - value of point after next
      */
     template <typename T>
-    const T fourPointInterpolatePD ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
+    const T fourPointInterpolatePD ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         auto x2minusx1 = x2-x1;
         return x1 + mu * (x2minusx1 - 0.1666667f * (1.0f - mu) * ( (x3 - x0 - 3.0f * x2minusx1) * mu + (x3 + 2.0f*x0 - 3.0f*x1) ) );
@@ -80,7 +80,7 @@ namespace sjf_interpolators
      x3 - value of point after next
      */
     template <typename T>
-    const T fourPointFourthOrderOptimal  ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
+    const T fourPointFourthOrderOptimal  ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         //    Copied from Olli Niemitalo - Polynomial Interpolators for High-Quality Resampling of Oversampled Audio
         // Optimal 2x (4-point, 4th-order) (z-form)
@@ -105,7 +105,7 @@ namespace sjf_interpolators
      x3 - value of point after next
      */
     template <typename T>
-    const T cubicInterpolateGodot ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
+    const T cubicInterpolateGodot ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         //  Godot https://stackoverflow.com/questions/1125666/how-do-you-do-bicubic-or-other-non-linear-interpolation-of-re-sampled-audio-da
         T a0,a1,a2,a3,mu2;
@@ -128,7 +128,7 @@ namespace sjf_interpolators
      x3 - value of point after next
      */
     template <typename T>
-    const T cubicInterpolateHermite ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
+    const T cubicInterpolateHermite ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         T a1,a2,a3;
         
@@ -148,7 +148,7 @@ namespace sjf_interpolators
      x3 - value of point after next
      */
     template <typename T>
-    const T cubicInterpolateHermite2 ( const T &mu, const T &x0, const T &x1, const T &x2, const T &x3 )
+    const T cubicInterpolateHermite2 ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         T diff = x1 - x2;
         T a1 = x2 - x0;
@@ -223,6 +223,48 @@ namespace sjf_interpolators
     private:
         T m_x1 = 0, m_y1 = 0, m_n = 0;
     };
+
+template< typename Sample >
+struct interpolator
+{
+    inline Sample operator()( Sample* samps, long arraySize, Sample findex )
+    {
+        assert( sjf_isPowerOf( arraySize, 2 ) ); // arraySize must be a power of 2 for the wrap mask to work!!!
+        const auto wrapMask = arraySize - 1;
+        Sample x0, x1, x2, x3, mu;
+        auto ind1 = static_cast< long >( findex );
+        mu = findex - ind1;
+        x0 = samps[ ( (ind1-1) & wrapMask ) ];
+        x1 = samps[ ind1 & wrapMask ];
+        x2 = samps[ ( (ind1+1) & wrapMask ) ];
+        x3 = samps[ ( (ind1+2) & wrapMask ) ];
+        switch ( m_interp ) {
+            case interpolatorTypes::none:
+                return samps[ ind1 ];
+            case interpolatorTypes::linear :
+                return linearInterpolate( mu, x1, x2 );
+            case interpolatorTypes::cubic :
+                return cubicInterpolate( mu, x0, x1, x2, x3 );
+            case interpolatorTypes::pureData :
+                return fourPointInterpolatePD( mu, x0, x1, x2, x3 );
+            case interpolatorTypes::fourthOrder :
+                return fourPointFourthOrderOptimal( mu, x0, x1, x2, x3 );
+            case interpolatorTypes::godot :
+                return cubicInterpolateGodot( mu, x0, x1, x2, x3 );
+            case interpolatorTypes::hermite :
+                return cubicInterpolateHermite( mu, x0, x1, x2, x3 );
+            default:
+                return linearInterpolate( mu, x1, x2 );
+        }
+        
+    }
+    void setInterpolationType( interpolatorTypes interpType ) { m_interp = interpType;    }
+private:
+    interpolatorTypes m_interp{ interpolatorTypes::linear };
+};
+
+
+
 
 }
 

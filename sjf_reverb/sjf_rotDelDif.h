@@ -184,8 +184,9 @@ namespace sjf::rev
                     m_delays[ s ][ c ].setSample( samps[ c ] );
                     // then read samples from delay, but rotate channels
                     rCh = m_rotationMatrix[ s ][ c ];
-                    samps[ c ] = m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ c ], interpType );
-//                    samps[ c ] = m_polFlip[ s ][ c ] ?  : -m_delays[ s ][ rCh ];
+                    samps[ c ] = m_polFlip[ s ][ c ] ?
+                        -m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ c ], interpType ) :
+                            m_delays[ s ][ c ].getSample( m_delayTimesSamps[ s ][ c ], interpType );
                     samps[ c ] = m_dampers[ s ][ c ].process( samps[ c ], m_damping[ s ][ c ] );
                     sjf::mixers::Hadamard< T >::inPlace( samps.data(), NCHANNELS );
                 }

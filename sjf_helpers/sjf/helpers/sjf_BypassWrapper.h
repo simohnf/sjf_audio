@@ -21,6 +21,7 @@ public:
     */
     struct Parameters : public helpers::AudioParametersBase
     {
+        FloatState mix;
         BoolState bypass;
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String&, const juce::String&) override
@@ -29,6 +30,14 @@ public:
             {
                 /// we insert the parameters into the processors parameter tree,
                 /// BUT The BypassWrapper::Parameters struct handles smoothing/reset etc the
+
+                {
+                    const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
+                    const auto attributes = juce::AudioParameterFloatAttributes{}
+                                                                                    .withLabel("%");
+                    const auto mapping = [&](const float x){ return x * 0.01f;};
+                    createTrackedParameter (*targetFactory, mix, "Mix", "Mix", range, 100.0f, mapping, attributes);
+                }
                 createTrackedParameter (*targetFactory, bypass, "Bypass", "Bypass", false);
             }
             else
@@ -67,7 +76,6 @@ public:
     {
         processor.reset();
         parameters.reset();
-
         if (parameters.bypass.currentValue)
         {
             dryRamp.setCurrentAndTargetValue(1.0f);
@@ -75,8 +83,10 @@ public:
         }
         else
         {
-            dryRamp.setCurrentAndTargetValue(0.0f);
-            wetRamp.setCurrentAndTargetValue(1.0f);
+            auto dry = sqrt(1.0f - parameters.mix.currentValue);
+            auto wet = sqrt(parameters.mix.currentValue);
+            dryRamp.setCurrentAndTargetValue(dry);
+            wetRamp.setCurrentAndTargetValue(wet);
         }
     }
 
@@ -92,27 +102,28 @@ public:
             jassertfalse; // This should never happen! Top level processor needs to handle host setting bypass
         }
 
-        if (parameters.checkForStateChange())
+        if (!wetRamp.isSmoothing() && !dryRamp.isSmoothing())
         {
             parameters.reset(); // we only have bool parameter so we can snap and do our thing
             if (parameters.bypass.currentValue)
             {
-                if (wetRamp.getTargetValue() != 0.0f)
-                    wetRamp.setTargetValue(0.0f);
-                if (dryRamp.getTargetValue() != 1.0f)
-                    dryRamp.setTargetValue(1.0f);
+                wetRamp.setTargetValue(0.0f);
+                dryRamp.setTargetValue(1.0f);
             }
-            else if (!parameters.bypass.currentValue)
+            else
             {
-                if (wetRamp.getTargetValue() != 1.0f)
-                    wetRamp.setTargetValue(1.0f);
-                if (dryRamp.getTargetValue() != 0.0f)
-                    dryRamp.setTargetValue(0.0f);
+                wetRamp.setTargetValue(sqrt(parameters.mix.currentValue));
+                dryRamp.setTargetValue(sqrt(1.0f - parameters.mix.currentValue));
             }
-                
         }
 
-        if (wetRamp.isSmoothing() || dryRamp.isSmoothing())
+        if (wetRamp.getCurrentValue() == 0.0f)
+        {
+            outputBlock.copyFrom(inputBlock);
+            dryRamp.skip(static_cast<int>(inputBlock.getNumSamples()));
+            wetRamp.skip(static_cast<int>(inputBlock.getNumSamples()));
+        }
+        else
         {
             juce::dsp::AudioBlock<float> dryBlock(inputBuffer);
             dryBlock.copyFrom(inputBlock);
@@ -120,14 +131,6 @@ public:
             dryBlock.multiplyBy(dryRamp);
             outputBlock.multiplyBy(wetRamp);
             outputBlock.add(dryBlock);
-        }
-        else if (wetRamp.getCurrentValue() == 1.0f)
-        {
-            processor.process (context);
-        }
-        else
-        {
-            outputBlock.copyFrom(inputBlock);
         }
     }
 

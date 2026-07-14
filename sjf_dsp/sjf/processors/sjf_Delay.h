@@ -54,9 +54,9 @@ public:
             auto strIndex = 0ul;
             for (auto& delayTime : delayTimes)
             {
-                const auto range = juce::NormalisableRange<float>{ 1.0f, MAX_DELAY_MS, 0.01f };
-                const auto attributes = juce::AudioParameterFloatAttributes{}
-                                                                                .withLabel("ms");
+                auto range = juce::NormalisableRange<float>{ 1.0f, MAX_DELAY_MS, 0.01f };
+                range.setSkewForCentre(1000.0f);
+                const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("ms");
                 const auto mapping = [&](const float x){ return x * spec.sampleRate * 0.001f;};
                 const auto& str = delayTimeStrings[strIndex++];
                 createTrackedParameter  (*factory, delayTime, "Time" + str.substring(0, 1),  "Time "+ str +" (ms)",  range, 100.0f, mapping, attributes);
@@ -76,8 +76,7 @@ public:
 
             {
                 const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
-                const auto attributes = juce::AudioParameterFloatAttributes{}
-                                                                                .withLabel("%");
+                const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("%");
                 const auto mapping = [&](const float x){ return x * 0.01f;};
                 createTrackedParameter  (*factory, feedback, "Feedback",  "Feedback",  range, 0.0f, mapping, attributes);
             }

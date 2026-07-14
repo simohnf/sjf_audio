@@ -24,7 +24,8 @@ public:
         {
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
             {
-                const auto range = NormalisableRange<float>{ 20.0f, 20000.0f, 0.1f };
+                auto range = NormalisableRange<float>{ 20.0f, 20000.0f, 0.1f };
+                range.setSkewForCentre(2000.0f);
                 const auto attributes = AudioParameterFloatAttributes().withLabel("Hz");
                 createTrackedParameter  (*factory, cutoff, "Cutoff",  "Cutoff Frequency",  range, 1000.0f, {}, attributes);
             }
@@ -117,8 +118,8 @@ public:
     {
         const auto& inputBlock = context.getInputBlock();
         auto& outputBlock      = context.getOutputBlock();
-        const auto numChannels = outputBlock.getNumChannels();
-        const auto numSamples  = outputBlock.getNumSamples();
+        // const auto numChannels = outputBlock.getNumChannels();
+        // const auto numSamples  = outputBlock.getNumSamples();
 
         jassert (inputBlock.getNumChannels() == 1);
         jassert (inputBlock.getNumSamples() == 1);

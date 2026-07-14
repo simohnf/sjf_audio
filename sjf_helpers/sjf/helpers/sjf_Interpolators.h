@@ -264,6 +264,3 @@ namespace sjf::interpolation
 
 }
 
-
-#endif /* sjf_interpolators_h */
-

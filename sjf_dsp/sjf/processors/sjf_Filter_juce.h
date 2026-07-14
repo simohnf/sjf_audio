@@ -167,7 +167,7 @@ private:
         // const auto numChannels = outputBlock.getNumChannels();
 
         jassert (inputBlock.getNumChannels() == 1);
-        jassert (inputBlock.getNumSamples() == 1);
+        jassert (outputBlock.getNumSamples() == 1);
 
         auto& params = *filter[channel].parameters;
         params.type = static_cast<juce::dsp::StateVariableFilter::StateVariableFilterType>(parameters.type.currentValue);

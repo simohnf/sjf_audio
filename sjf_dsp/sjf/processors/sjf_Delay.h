@@ -7,10 +7,10 @@
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/helpers/sjf_DelayLine.h>
 
-#include "sjf/helpers/sjf_Filter_juce.h"
+#include "sjf_Filter_juce.h"
 #include "sjf/helpers/sjf_Waveshapers.h"
 
-namespace sjf
+namespace sjf::dsp
 {
 class Delay
 {
@@ -166,8 +166,8 @@ private:
         jassert (inputBlock.getNumSamples() == numSamples);
 
         AudioBuffer<float> oneSampleBuffer(1, 1);
-        dsp::AudioBlock<float> onesampleBlock(oneSampleBuffer);
-        dsp::ProcessContextReplacing<float> oneSampleContext(onesampleBlock);
+        juce::dsp::AudioBlock<float> onesampleBlock(oneSampleBuffer);
+        juce::dsp::ProcessContextReplacing<float> oneSampleContext(onesampleBlock);
         auto oneSamplePointer = onesampleBlock.getChannelPointer (0);
         auto& sample = oneSamplePointer[0];
 
@@ -241,8 +241,8 @@ private:
         jassert (inputBlock.getNumSamples() == numSamples);
 
         AudioBuffer<float> oneSampleBuffer(1, 1);
-        dsp::AudioBlock<float> onesampleBlock(oneSampleBuffer);
-        dsp::ProcessContextReplacing<float> oneSampleContext(onesampleBlock);
+        juce::dsp::AudioBlock<float> onesampleBlock(oneSampleBuffer);
+        juce::dsp::ProcessContextReplacing<float> oneSampleContext(onesampleBlock);
         auto oneSamplePointer = onesampleBlock.getChannelPointer (0);
         auto& sample = oneSamplePointer[0];
 
@@ -367,7 +367,7 @@ private:
     juce::dsp::ProcessSpec spec{};
     Parameters parameters;
     std::array<sjf::helpers::DelayLine, NUM_CHANNELS> delayLine;
-    sjf::helpers::SVF<true, true> filter;
+    sjf::dsp::SVF<true, true> filter;
     std::array<const float*, NUM_CHANNELS> inputChannelPointers;
     std::array<float*, NUM_CHANNELS> outputChannelPointers;
 };

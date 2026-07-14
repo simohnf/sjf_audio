@@ -8,7 +8,7 @@
 
 namespace sjf
 {
-class Delay
+class DummyProcessor
 {
 public:
     struct Parameters : public helpers::AudioParametersBase

@@ -5,8 +5,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
-
-#include "sjf_ChunkedWrapper.h"
+#include <sjf/helpers/sjf_ChunkedWrapper.h>
 
 namespace sjf::helpers
 {

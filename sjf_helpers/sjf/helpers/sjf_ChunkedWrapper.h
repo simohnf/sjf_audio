@@ -12,13 +12,13 @@
 namespace sjf::helpers
 {
 template <typename Processor>
-class Chunker
+class ChunkedWrapper
 {
     static constexpr size_t MAX_CHUNK_SIZE = 32;
 
 public:
     template <typename... Args>
-    Chunker (Args&&... args) : processor (std::forward<Args> (args)...) {}
+    ChunkedWrapper (Args&&... args) : processor (std::forward<Args> (args)...) {}
 
     /** Initialises the processor and internal specs. */
     void prepare (const juce::dsp::ProcessSpec& spec_)

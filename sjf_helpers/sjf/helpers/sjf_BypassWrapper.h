@@ -67,6 +67,17 @@ public:
     {
         processor.reset();
         parameters.reset();
+
+        if (parameters.bypass.currentValue)
+        {
+            dryRamp.setCurrentAndTargetValue(1.0f);
+            wetRamp.setCurrentAndTargetValue(0.0f);
+        }
+        else
+        {
+            dryRamp.setCurrentAndTargetValue(0.0f);
+            wetRamp.setCurrentAndTargetValue(1.0f);
+        }
     }
 
     //==============================================================================

@@ -96,7 +96,9 @@ public:
         }
     };
 
-    Delay() : parameters(spec) {}
+    Delay() : parameters(spec), inputChannelPointers({}), outputChannelPointers({})
+    {
+    }
 
 
     void prepare (const juce::dsp::ProcessSpec& spec_)

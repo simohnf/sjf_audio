@@ -18,7 +18,7 @@ namespace sjf::interpolation
 {
     //==============================================================================
     enum class InterpolatorTypes
-    { none, linear, cubic, pureData, fourthOrder, godot, hermite, allpass };
+    { none, linear, cubic, pureData, fourthOrder, godot, hermite };
     //==============================================================================
     /**
      Basic linear interpolation between 2 points

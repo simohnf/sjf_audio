@@ -13,23 +13,16 @@ class Delay
 public:
     struct Parameters : public helpers::AudioParametersBase
     {
-        /// NOTE: You need to ensure all TrackedState objects of a given type are declared consecutively!!!
-        FloatState  cutoff, gain;
-        IntState    quality;
-        BoolState   myBool;
-        ChoiceState mode;
+        FloatState  delayTime;
+        // IntState    quality;
+        // BoolState   myBool;
+        // ChoiceState mode;
 
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
-            createTrackedParameter  (*factory, cutoff, "cutoff",  "Cutoff Freq",  { 20.0f, 20000.0f, 0.5f }, 1000.0f);
-            createTrackedParameter    (*factory, quality, "quality", "Oversampling", 1, 4, 1);
-            createTrackedParameter   (*factory, myBool, "MyBool",  "My Bool", false);
-            createTrackedParameter (*factory, mode, "mode",    "Filter Mode",  { "Lowpass", "Highpass" }, 0);
-
-            createTrackedParameter (*factory, gain, "gain",    "Master Volume", { -60.0f, 6.0f }, 0.0f,
-                                                    [](const float dB) { return juce::Decibels::decibelsToGain (dB); });
+            createTrackedParameter  (*factory, delayTime, "Time",  "Time (ms)",  { 1, 10000 }, 100.0f);
 
             return factory;
         }

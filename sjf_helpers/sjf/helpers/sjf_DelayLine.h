@@ -50,7 +50,32 @@ namespace sjf::helpers
         {
             jassert(static_cast<size_t>(delayTimeSamps + 0.5f) < delayLine.size() - 2);
 
-            const auto ind1 = (delayLine.size() + writeIndex - delayTimeSamps) & MASK;
+            auto find1 = (delayLine.size() + writeIndex - delayTimeSamps);
+            jassert (find1 < delayLine.size() && find1 >= 0);
+            auto ind1 = static_cast<size_t>(find1);
+            const auto mu = find1 - static_cast<float>(ind1);
+            ind1 &= MASK;
+            const auto ind2 = (ind1 + 1) & MASK;
+
+            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::none)
+                return readSample(static_cast<size_t>(std::round(delayTimeSamps)));
+            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::linear)
+                return sjf::interpolation::linearInterpolate(mu, ind1, ind2);
+
+            const auto ind0 = (ind1 + delayLine.size() - 1) & MASK;
+            const auto ind3 = (ind2 + 1) & MASK;
+
+            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::cubic)
+                return sjf::interpolation::cubicInterpolate(mu, ind0, ind1, ind2, ind3);
+            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::pureData)
+                return sjf::interpolation::fourPointInterpolatePD(mu, ind0, ind1, ind2, ind3);
+            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::fourthOrder)
+                return sjf::interpolation::fourPointFourthOrderOptimal(mu, ind0, ind1, ind2, ind3);
+            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::godot)
+                return sjf::interpolation::cubicInterpolateGodot(mu, ind0, ind1, ind2, ind3);
+            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::hermite)
+                return sjf::interpolation::cubicInterpolateHermite2(mu, ind0, ind1, ind2, ind3);
+
             return delayLine[ind];
         }
 

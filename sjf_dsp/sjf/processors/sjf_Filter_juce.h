@@ -6,7 +6,7 @@
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
 
-namespace sjf::helpers
+namespace sjf::dsp
 {
 /// just a wrapper around the juce StateVariableFilter to allow it to be easily dropped into custom processors
 template<bool FixedType = false, bool NoResonance = false>
@@ -122,7 +122,7 @@ public:
         // const auto numSamples  = outputBlock.getNumSamples();
 
         jassert (inputBlock.getNumChannels() == 1);
-        jassert (inputBlock.getNumSamples() == 1);
+        jassert (outputBlock.getNumSamples() == 1);
 
         if (parameters.checkForStateChange())
         {
@@ -164,7 +164,7 @@ private:
     {
         const auto& inputBlock = context.getInputBlock();
         auto& outputBlock      = context.getOutputBlock();
-        const auto numChannels = outputBlock.getNumChannels();
+        // const auto numChannels = outputBlock.getNumChannels();
 
         jassert (inputBlock.getNumChannels() == 1);
         jassert (inputBlock.getNumSamples() == 1);

@@ -36,50 +36,53 @@ namespace sjf::helpers
 
         void writeSample(const float x)
         {
-            delayLine[writeIndex] = x;
+            delayLine[writeIndex++] = x;
             writeIndex &= MASK;
         }
-
-        void readSample(const float delayTimeSamps)
-        {
-
-        }
-
         template<sjf::interpolation::InterpolatorTypes InterpType>
-        float readSample(const float delayTimeSamps, const InterpType interpType)
+        [[nodiscard]] float readSample(const float delayTimeSamps) const
         {
-            jassert(static_cast<size_t>(delayTimeSamps + 0.5f) < delayLine.size() - 2);
+            jassert(delayLine.size() > 2);
+            jassert(static_cast<size_t>(lround(delayTimeSamps)) < delayLine.size() - 2);
 
-            auto find1 = (delayLine.size() + writeIndex - delayTimeSamps);
-            jassert (find1 < delayLine.size() && find1 >= 0);
+            const auto find1 = (static_cast<float>(delayLine.size() + writeIndex) - delayTimeSamps);
+            jassert ( find1 >= 0);
             auto ind1 = static_cast<size_t>(find1);
             const auto mu = find1 - static_cast<float>(ind1);
             ind1 &= MASK;
             const auto ind2 = (ind1 + 1) & MASK;
 
+            const auto x1 = delayLine[ind1];
+            const auto x2 = delayLine[ind2];
+
             if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::none)
                 return readSample(static_cast<size_t>(std::round(delayTimeSamps)));
-            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::linear)
-                return sjf::interpolation::linearInterpolate(mu, ind1, ind2);
+            else if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::linear)
+                return sjf::interpolation::linearInterpolate(mu, x1, x2);
+
 
             const auto ind0 = (ind1 + delayLine.size() - 1) & MASK;
             const auto ind3 = (ind2 + 1) & MASK;
 
-            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::cubic)
-                return sjf::interpolation::cubicInterpolate(mu, ind0, ind1, ind2, ind3);
-            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::pureData)
-                return sjf::interpolation::fourPointInterpolatePD(mu, ind0, ind1, ind2, ind3);
-            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::fourthOrder)
-                return sjf::interpolation::fourPointFourthOrderOptimal(mu, ind0, ind1, ind2, ind3);
-            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::godot)
-                return sjf::interpolation::cubicInterpolateGodot(mu, ind0, ind1, ind2, ind3);
-            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::hermite)
-                return sjf::interpolation::cubicInterpolateHermite2(mu, ind0, ind1, ind2, ind3);
+            const auto x0 = delayLine[ind0];
+            const auto x3 = delayLine[ind3];
 
-            return delayLine[ind];
+            if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::cubic)
+                return sjf::interpolation::cubicInterpolate(mu, x0, x1, x2, x3);
+            else if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::pureData)
+                return sjf::interpolation::fourPointInterpolatePD(mu, x0, x1, x2, x3);
+            else if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::fourthOrder)
+                return sjf::interpolation::fourPointFourthOrderOptimal(mu, x0, x1, x2, x3);
+            else if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::godot)
+                return sjf::interpolation::cubicInterpolateGodot(mu, x0, x1, x2, x3);
+            else if constexpr (InterpType == sjf::interpolation::InterpolatorTypes::hermite)
+                return sjf::interpolation::cubicInterpolateHermite2(mu, x0, x1, x2, x3);
+
+            return 0.0f;
+
         }
 
-        float readSample(const size_t delayTimeSamps)
+        [[nodiscard]] float readSample(const size_t delayTimeSamps) const
         {
             jassert(delayTimeSamps < delayLine.size() - 2);
             const auto readIndex = (delayLine.size() + writeIndex - delayTimeSamps) & MASK;
@@ -88,7 +91,7 @@ namespace sjf::helpers
 
     private:
         std::vector<float> delayLine;
-        juce::dsp::ProcessSpec spec;
+        juce::dsp::ProcessSpec spec{};
         size_t writeIndex{}, MASK{};
 
 

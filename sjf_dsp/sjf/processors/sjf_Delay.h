@@ -7,6 +7,8 @@
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/helpers/sjf_DelayLine.h>
 
+#include "sjf/helpers/sjf_Waveshapers.h"
+
 namespace sjf
 {
 class Delay
@@ -14,12 +16,24 @@ class Delay
     static constexpr auto MAX_DELAY_MS = 10000.0f;
     static constexpr auto NUM_CHANNELS = 2;
 public:
+    struct SaturationTypes
+    {
+        enum class Enum {None, Soft, Overdrive, Tape, BucketBrigade, Hard, COUNT, DEFAULT = None};
+
+        static StringArray getNames(){ return {"None", "Soft", "Overdrive", "Tape", "BucketBrigade", "Hard"};}
+
+        static int getIndex(Enum e){ return static_cast<int>(e); }
+        static Enum asEnum(int index){ return static_cast<Enum>(index); }
+        static int getDefaultIndex(){ return getIndex(Enum::DEFAULT);}
+    };
+
     struct Parameters : public helpers::AudioParametersBase
     {
-        FloatState  delayTime, feedback;
-        // IntState    quality;
-        // BoolState   myBool;
-        // ChoiceState mode;
+        std::array<FloatState, NUM_CHANNELS> delayTimes;
+        FloatState feedback, drive;
+
+        BoolState link, pingPong;
+        ChoiceState saturationType;
 
         juce::dsp::ProcessSpec& spec;
 
@@ -27,14 +41,36 @@ public:
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
+            static_assert(NUM_CHANNELS > 0, "Number of channels must be greater than 0!!!");
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
-
+            auto delayTimeStrings = [](){
+                if constexpr(NUM_CHANNELS == 1)
+                    return std::vector<String>{""};
+                if constexpr (NUM_CHANNELS == 2)
+                    return std::vector<String>{"Left", "Right"};
+                return std::vector<String>{""};
+            }();
+            auto strIndex = 0ul;
+            for (auto& delayTime : delayTimes)
             {
                 const auto range = juce::NormalisableRange<float>{ 1.0f, MAX_DELAY_MS, 0.01f };
                 const auto attributes = juce::AudioParameterFloatAttributes{}
                                                                                 .withLabel("ms");
                 const auto mapping = [&](const float x){ return x * spec.sampleRate * 0.001f;};
-                createTrackedParameter  (*factory, delayTime, "Time",  "Time (ms)",  range, 100.0f, mapping, attributes);
+                const auto& str = delayTimeStrings[strIndex++];
+                createTrackedParameter  (*factory, delayTime, "Time" + str.substring(0, 1),  "Time "+ str +" (ms)",  range, 100.0f, mapping, attributes);
+            }
+            {
+                if constexpr (NUM_CHANNELS > 1)
+                    createTrackedParameter(*factory, link, "Link", "Link", false);
+                else
+                    link.currentValue = true;
+            }
+            {
+                if constexpr (NUM_CHANNELS > 1)
+                    createTrackedParameter(*factory, pingPong, "PingPong", "Ping Pong", false);
+                else
+                    pingPong.currentValue = false;
             }
 
             {
@@ -44,6 +80,17 @@ public:
                 const auto mapping = [&](const float x){ return x * 0.01f;};
                 createTrackedParameter  (*factory, feedback, "Feedback",  "Feedback",  range, 0.0f, mapping, attributes);
             }
+
+            {
+                createTrackedParameter(*factory, saturationType, "SaturationType", "Saturation Type", SaturationTypes::getNames(), SaturationTypes::getDefaultIndex());
+                const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
+                const auto attributes = juce::AudioParameterFloatAttributes{}
+                .withLabel("%");
+                const auto mapping = [&](const float x){ return jmap(x * 0.01f, 0.01f, 1.0f);};
+                createTrackedParameter  (*factory, drive, "Drive",  "Drive",  range, 0.0f, mapping, attributes);
+            }
+
+
 
             return factory;
         }
@@ -113,18 +160,55 @@ private:
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);
 
-        const auto delayTime = parameters.delayTime.currentValue;
+
         const auto feedback = parameters.feedback.currentValue;
+        const auto saturationType = SaturationTypes::asEnum(parameters.saturationType.currentValue);
+
+        const auto drive = saturationType != SaturationTypes::Enum::None ? parameters.drive.currentValue : 1.0f;
+        const auto norm = drive > 0.0f ? 1.0f / applySaturation(drive, saturationType) : 1.0f;
+
+
         for (auto channel = 0ul; channel < numChannels; ++channel)
         {
-            auto* inputSamples  = inputBlock.getChannelPointer (channel);
-            auto* outputSamples = outputBlock.getChannelPointer (channel);
+            inputChannelPointers[channel] = inputBlock.getChannelPointer (channel);
+            outputChannelPointers[channel] = outputBlock.getChannelPointer (channel);
+        }
 
+
+        if (!parameters.pingPong.currentValue)
+        {
             for (auto i = 0ul; i < numSamples; ++i)
             {
-                const auto popped = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
-                delayLine[channel].writeSample(inputSamples[i] + feedback * popped);
-                outputSamples[i] = popped;
+                for (auto channel = 0ul; channel < numChannels; ++channel)
+                {
+                    const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].currentValue : parameters.delayTimes[channel].currentValue;
+                    auto popped = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+                    popped = applySaturation(popped * drive, saturationType) * norm;
+                    delayLine[channel].writeSample(inputChannelPointers[channel][i] + feedback * popped);
+                    outputChannelPointers[channel][i] = popped;
+                }
+            }
+        }
+        else
+        {
+            const auto scale = 1.0f / sqrtf(NUM_CHANNELS);
+            for (auto i = 0ul; i < numSamples; ++i)
+            {
+                auto input = 0.0f;
+                for (auto channel = 0ul; channel < numChannels; ++channel)
+                    input += inputChannelPointers[channel][i];
+                input *= scale;
+                for (auto channel = 0ul; channel < numChannels; ++channel)
+                {
+
+                    const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].currentValue : parameters.delayTimes[channel].currentValue;
+                    auto popped = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+                    popped = applySaturation(popped * drive, saturationType) * norm;
+                    const auto wc = channel+1 < NUM_CHANNELS ? channel+1 : 0;
+                    delayLine[wc].writeSample(input + feedback * popped);
+                    input = 0.0f;
+                    outputChannelPointers[channel][i] = popped;
+                }
             }
         }
 
@@ -147,18 +231,109 @@ private:
             outputChannelPointers[channel] = outputBlock.getChannelPointer (channel);
         }
 
-        for (size_t i = 0; i < numSamples; ++i)
+        const auto saturationType = SaturationTypes::asEnum(parameters.saturationType.currentValue);
+        if (!parameters.pingPong.currentValue)
         {
-            // Remember to tick the smoothers!!! for every sample
-            parameters.tickSmoothers();
-            const auto delayTime = parameters.delayTime.currentValue;
-            const auto feedback = parameters.feedback.currentValue;
-            for (auto channel = 0ul; channel < numChannels; ++channel)
+            for (size_t i = 0; i < numSamples; ++i)
             {
-                const auto popped = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
-                delayLine[channel].writeSample(inputChannelPointers[channel][i] + feedback * popped);
-                outputChannelPointers[channel][i] = popped;
+                // Remember to tick the smoothers!!! for every sample
+                parameters.tickSmoothers();
+
+                const auto feedback = parameters.feedback.currentValue;
+                const auto drive = saturationType != SaturationTypes::Enum::None ? parameters.drive.currentValue : 1.0f;
+                const auto norm = drive > 0.0f ? 1.0f / applySaturation(drive, saturationType) : 1.0f;
+                for (auto channel = 0ul; channel < numChannels; ++channel)
+                {
+                    const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].currentValue : parameters.delayTimes[channel].currentValue;
+                    auto popped = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+                    popped = applySaturation(popped * drive, saturationType) * norm;
+                    delayLine[channel].writeSample(inputChannelPointers[channel][i] + feedback * popped);
+                    outputChannelPointers[channel][i] = popped;
+                }
             }
+        }
+        else
+        {
+            const auto scale = 1.0f / sqrtf(NUM_CHANNELS);
+            for (size_t i = 0; i < numSamples; ++i)
+            {
+                // Remember to tick the smoothers!!! for every sample
+                parameters.tickSmoothers();
+
+                auto input = 0.0f;
+                for (auto channel = 0ul; channel < numChannels; ++channel)
+                    input += inputChannelPointers[channel][i];
+                input *= scale;
+
+
+                const auto feedback = parameters.feedback.currentValue;
+                const auto drive = saturationType != SaturationTypes::Enum::None ? parameters.drive.currentValue : 1.0f;
+                const auto norm = drive > 0.0f ? 1.0f / applySaturation(drive, saturationType) : 1.0f;
+                for (auto channel = 0ul; channel < numChannels; ++channel)
+                {
+                    const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].currentValue : parameters.delayTimes[channel].currentValue;
+                    auto popped = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+                    popped = applySaturation(popped * drive, saturationType) * norm;
+                    const auto wc = channel+1 < NUM_CHANNELS ? channel+1 : 0;
+                    delayLine[wc].writeSample(input + feedback * popped);
+                    input = 0.0f;
+                    outputChannelPointers[channel][i] = popped;
+                }
+            }
+        }
+
+    }
+
+    static float applySaturation(float x, const SaturationTypes::Enum type)
+    {
+        using Types = SaturationTypes::Enum;
+        switch (type)
+        {
+        case Types::None:
+            return applySaturationTagged<Types::None>(x);
+        case SaturationTypes::Enum::Soft:
+            return applySaturationTagged<Types::Soft>(x);
+        case SaturationTypes::Enum::Overdrive:
+            return applySaturationTagged<Types::Overdrive>(x);
+        case SaturationTypes::Enum::Tape:
+            return applySaturationTagged<Types::Tape>(x);
+        case SaturationTypes::Enum::BucketBrigade:
+            return applySaturationTagged<Types::BucketBrigade>(x);
+        case SaturationTypes::Enum::Hard:
+            return applySaturationTagged<Types::Hard>(x);
+        case SaturationTypes::Enum::COUNT:
+            return applySaturationTagged<Types::COUNT>(x);
+        default:
+            return applySaturationTagged<Types::None>(x);
+        }
+    }
+
+    template <SaturationTypes::Enum type>
+    static float applySaturationTagged(const float x)
+    {
+        if constexpr (type == SaturationTypes::Enum::Soft)
+        {
+            return sjf::helpers::Waveshapers::Clippers::soft(x);
+        }
+        else if constexpr (type == SaturationTypes::Enum::Overdrive)
+        {
+            return sjf::helpers::Waveshapers::Clippers::tanh(x);
+        }
+        else if constexpr (type == SaturationTypes::Enum::Tape)
+        {
+            return sjf::helpers::Waveshapers::Sigmoids::xOverOnePlusAbsX(x);
+        }
+        else if constexpr (type == SaturationTypes::Enum::BucketBrigade)
+        {
+            return sjf::helpers::Waveshapers::Misc::bucketBrigade(x);
+        }
+        else if constexpr (type == SaturationTypes::Enum::Hard)
+        {
+            return sjf::helpers::Waveshapers::Clippers::hard(x);
+        }
+        else // if constexpr (type == SaturationTypes::Enum::None)
+        {
+            return x;
         }
 
     }

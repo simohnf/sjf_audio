@@ -7,6 +7,7 @@
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/helpers/sjf_DelayLine.h>
 
+#include "sjf/helpers/sjf_Filter_juce.h"
 #include "sjf/helpers/sjf_Waveshapers.h"
 
 namespace sjf
@@ -112,6 +113,7 @@ public:
             dl.prepare(spec);
             dl.setMaxDelayTimeMS(MAX_DELAY_MS);
         }
+        filter.prepare(spec);
         reset();
     }
 
@@ -120,7 +122,7 @@ public:
         parameters.reset();
         for (auto& dl : delayLine)
             dl.reset();
-
+        filter.reset();
     }
 
     template <typename ProcessContext>
@@ -147,7 +149,9 @@ public:
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
     {
-        return parameters.createParameters (factoryID, factoryName);
+        auto factory = parameters.createParameters (factoryID, factoryName);;
+        factory->addChild(filter.createParameters("Filter", "Filter"));
+        return factory;
     }
 
 private:
@@ -161,6 +165,12 @@ private:
 
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);
+
+        AudioBuffer<float> oneSampleBuffer(1, 1);
+        dsp::AudioBlock<float> onesampleBlock(oneSampleBuffer);
+        dsp::ProcessContextReplacing<float> oneSampleContext(onesampleBlock);
+        auto oneSamplePointer = onesampleBlock.getChannelPointer (0);
+        auto& sample = oneSamplePointer[0];
 
 
         const auto feedback = parameters.feedback.currentValue;
@@ -184,10 +194,12 @@ private:
                 for (auto channel = 0ul; channel < numChannels; ++channel)
                 {
                     const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].currentValue : parameters.delayTimes[channel].currentValue;
-                    auto popped = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
-                    popped = applySaturation(popped * drive, saturationType) * norm;
-                    delayLine[channel].writeSample(inputChannelPointers[channel][i] + feedback * popped);
-                    outputChannelPointers[channel][i] = popped;
+                    sample = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+                    sample = applySaturation(sample * drive, saturationType) * norm;
+
+                    filter.process(oneSampleContext, channel);
+                    delayLine[channel].writeSample(inputChannelPointers[channel][i] + feedback * sample);
+                    outputChannelPointers[channel][i] = sample;
                 }
             }
         }
@@ -204,12 +216,14 @@ private:
                 {
 
                     const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].currentValue : parameters.delayTimes[channel].currentValue;
-                    auto popped = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
-                    popped = applySaturation(popped * drive, saturationType) * norm;
+                    sample = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+                    sample = applySaturation(sample * drive, saturationType) * norm;
+
+                    filter.process(oneSampleContext, channel);
                     const auto wc = channel+1 < NUM_CHANNELS ? channel+1 : 0;
-                    delayLine[wc].writeSample(input + feedback * popped);
+                    delayLine[wc].writeSample(input + feedback * sample);
                     input = 0.0f;
-                    outputChannelPointers[channel][i] = popped;
+                    outputChannelPointers[channel][i] = sample;
                 }
             }
         }
@@ -227,6 +241,12 @@ private:
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);
 
+        AudioBuffer<float> oneSampleBuffer(1, 1);
+        dsp::AudioBlock<float> onesampleBlock(oneSampleBuffer);
+        dsp::ProcessContextReplacing<float> oneSampleContext(onesampleBlock);
+        auto oneSamplePointer = onesampleBlock.getChannelPointer (0);
+        auto& sample = oneSamplePointer[0];
+
         for (auto channel = 0ul; channel < numChannels; ++channel)
         {
             inputChannelPointers[channel] = inputBlock.getChannelPointer (channel);
@@ -236,6 +256,7 @@ private:
         const auto saturationType = SaturationTypes::asEnum(parameters.saturationType.currentValue);
         if (!parameters.pingPong.currentValue)
         {
+
             for (size_t i = 0; i < numSamples; ++i)
             {
                 // Remember to tick the smoothers!!! for every sample
@@ -247,10 +268,13 @@ private:
                 for (auto channel = 0ul; channel < numChannels; ++channel)
                 {
                     const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].currentValue : parameters.delayTimes[channel].currentValue;
-                    auto popped = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
-                    popped = applySaturation(popped * drive, saturationType) * norm;
-                    delayLine[channel].writeSample(inputChannelPointers[channel][i] + feedback * popped);
-                    outputChannelPointers[channel][i] = popped;
+                    sample = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+                    sample = applySaturation(sample * drive, saturationType) * norm;
+                    filter.process(oneSampleContext, channel);
+
+
+                    delayLine[channel].writeSample(inputChannelPointers[channel][i] + feedback * sample);
+                    outputChannelPointers[channel][i] = sample;
                 }
             }
         }
@@ -274,12 +298,13 @@ private:
                 for (auto channel = 0ul; channel < numChannels; ++channel)
                 {
                     const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].currentValue : parameters.delayTimes[channel].currentValue;
-                    auto popped = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
-                    popped = applySaturation(popped * drive, saturationType) * norm;
+                    sample = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+                    sample = applySaturation(sample * drive, saturationType) * norm;
+                    filter.process(oneSampleContext, channel);
                     const auto wc = channel+1 < NUM_CHANNELS ? channel+1 : 0;
-                    delayLine[wc].writeSample(input + feedback * popped);
+                    delayLine[wc].writeSample(input + feedback * sample);
                     input = 0.0f;
-                    outputChannelPointers[channel][i] = popped;
+                    outputChannelPointers[channel][i] = sample;
                 }
             }
         }
@@ -343,6 +368,7 @@ private:
     juce::dsp::ProcessSpec spec{};
     Parameters parameters;
     std::array<sjf::helpers::DelayLine, NUM_CHANNELS> delayLine;
+    sjf::helpers::SVF<true, true> filter;
     std::array<const float*, NUM_CHANNELS> inputChannelPointers;
     std::array<float*, NUM_CHANNELS> outputChannelPointers;
 };

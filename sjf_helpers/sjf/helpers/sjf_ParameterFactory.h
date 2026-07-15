@@ -219,6 +219,47 @@ public:
 
     bool isSmoothing() const noexcept { return masterRamp.isSmoothing(); }
 
+
+    void addChildParameters (AudioParametersBase* child)
+    {
+        childParameters.push_back(child);
+    }
+
+    void setMasterAudioParameters(AudioParametersBase* masterParameters)
+    {
+
+        auto setMaster = [](auto& stateVector, auto& mappingVector, const auto& masterStateVector, const auto& masterMappingVector)
+        {
+            jassert(stateVector.size() == masterStateVector.size());
+            jassert(mappingVector.size() == masterMappingVector.size());
+            jassert(stateVector.size() == mappingVector.size());
+            for (auto i = 0ul; i < stateVector.size(); ++i)
+            {
+                const auto& fs = stateVector[i];
+                const auto& mfs = masterStateVector[i];
+                auto& fm = mappingVector[i];
+                const auto& mfm = masterMappingVector[i];
+                fs->juceParameter = mfs->juceParameter;
+                fs->currentValue = mfs->currentValue;
+                fs->startValue = mfs->startValue;
+                fs->targetValue = mfs->targetValue;
+
+                fm = mfm;
+            }
+        };
+
+        setMaster(floatStates, floatMappings, masterParameters->floatStates, masterParameters->floatMappings);
+        setMaster(intStates, intMappings, masterParameters->intStates, masterParameters->intMappings);
+        setMaster(boolStates, boolMappings, masterParameters->boolStates, masterParameters->boolMappings);
+        setMaster(choiceStates, choiceMappings, masterParameters->choiceStates, masterParameters->choiceMappings);
+
+        jassert(childParameters.size() == masterParameters->childParameters.size());
+        for (auto i = 0ul; i < childParameters.size(); ++i)
+        {
+            childParameters[i]->setMasterAudioParameters(masterParameters->childParameters[i]);
+        }
+    }
+
 private:
 
     template<typename TrackedStateType, typename TrackedStateMappingType>
@@ -345,6 +386,8 @@ private:
     std::vector<IntMapping> intMappings;
     std::vector<BoolMapping> boolMappings;
     std::vector<ChoiceMapping> choiceMappings;
+
+    std::vector<AudioParametersBase*> childParameters;
 
     juce::LinearSmoothedValue<float> masterRamp;
 

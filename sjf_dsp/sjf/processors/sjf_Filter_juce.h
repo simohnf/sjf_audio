@@ -29,18 +29,22 @@ public:
                 const auto attributes = AudioParameterFloatAttributes().withLabel("Hz");
                 createTrackedParameter  (*factory, cutoff, "Cutoff",  "Cutoff Frequency",  range, 1000.0f, {}, attributes);
             }
-            if constexpr (!NoResonance)
+            if constexpr (NoResonance)
+            {
+                resonance.currentValue = 0.7071f;
+            }
+            else
             {
                 const auto range = NormalisableRange<float>{ 0.1f,  18.0f, 0.01f};
                 const auto attributes = AudioParameterFloatAttributes();
                 createTrackedParameter  (*factory, resonance, "Q",  "Q",  range, 0.7071f, {}, attributes);
             }
-            else
-            {
-                resonance.currentValue = 0.7071f;
-            }
 
-            if (!FixedType)
+            if (FixedType)
+            {
+                type.currentValue = 0;
+            }
+            else
             {
                 createTrackedParameter(*factory, type, "Type", "Type", {"LP", "BP", "HP"}, 0);
             }
@@ -61,23 +65,17 @@ public:
     {
         spec = spec_;
         parameters.prepare(spec);
-        filter.resize(spec.numChannels);
-        auto monoSpec = spec;
-        monoSpec.numChannels = 1;
-        for (auto& c : filter)
-            c.prepare(monoSpec);
+        filter.prepare(spec);
+        inputChannelPointers.resize(spec.numChannels);
+        outputChannelPointers.resize(spec.numChannels);
         reset();
     }
 
     void reset()
     {
         parameters.reset();
-        for (auto& c : filter)
-        {
-            c.parameters->type = static_cast<juce::dsp::StateVariableFilter::StateVariableFilterType>(parameters.type.currentValue);
-            c.parameters->setCutOffFrequency(spec.sampleRate, parameters.cutoff.currentValue, parameters.resonance.currentValue);
-            c.reset();
-        }
+        updateFilterParameters();
+        filter.reset();
     }
 
     template <typename ProcessContext>
@@ -85,88 +83,36 @@ public:
     {
         const auto& inputBlock = context.getInputBlock();
         auto& outputBlock      = context.getOutputBlock();
-        const auto numChannels = outputBlock.getNumChannels();
         const auto numSamples  = outputBlock.getNumSamples();
-
-        jassert (inputBlock.getNumChannels() == numChannels);
-        jassert (inputBlock.getNumSamples() == numSamples);
+        const auto numChannels = inputBlock.getNumChannels();
 
 
+        for (auto channel = 0ul; channel < numChannels; ++channel)
+        {
+            inputChannelPointers[channel] = inputBlock.getChannelPointer (channel);
+            outputChannelPointers[channel] = outputBlock.getChannelPointer (channel);
+        }
 
         if (parameters.checkForStateChange())
         {
-            for ( auto channel = 0ul; channel < numChannels; channel++)
+            for (auto i = 0ul; i < numSamples; ++i)
             {
-                auto inBlock = inputBlock.getSingleChannelBlock(channel);
-                auto outBlock = outputBlock.getSingleChannelBlock(channel);
-                auto monoContext = [&]()
-                {
-                    if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
-                        return ProcessContext(inBlock, outBlock);
-                    else
-                        return ProcessContext(outBlock);
-                }();
-
-                processSmoothedState(monoContext, channel);
+                parameters.tickSmoothers();
+                updateFilterParameters();
+                for ( auto c = 0ul; c < numChannels; c++)
+                    outputChannelPointers[c][i] = filter.processSample(static_cast<int>(c), inputChannelPointers[c][i]);
             }
         }
         else
         {
-            for (auto channel = 0ul; channel < numChannels; channel++)
-            {
-                auto inBlock = inputBlock.getSingleChannelBlock(channel);
-                auto outBlock = outputBlock.getSingleChannelBlock(channel);
-                auto monoContext = [&]()
-                {
-                    if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
-                        return ProcessContext(inBlock, outBlock);
-                    else
-                        return ProcessContext(outBlock);
-                }();
-
-                processStaticState(monoContext, channel);
-            }
+            updateFilterParameters();
+            filter.process(context);
         }
     }
 
-    template <typename ProcessContext>
-    void process (const ProcessContext& context, const size_t channel) noexcept
+    float processSample(const int channel, const float input)
     {
-        const auto& inputBlock = context.getInputBlock();
-        auto& outputBlock      = context.getOutputBlock();
-        // const auto numChannels = outputBlock.getNumChannels();
-        // const auto numSamples  = outputBlock.getNumSamples();
-
-        jassert (inputBlock.getNumChannels() == 1);
-        jassert (outputBlock.getNumSamples() == 1);
-
-        if (parameters.checkForStateChange())
-        {
-            processSmoothedState(context, channel);
-        }
-        else
-        {
-            processStaticState(context, channel);
-        }
-    }
-
-    float processSample(const bool shouldTickSmoohters, const size_t channel, const float input)
-    {
-        auto& params = *filter[channel].parameters;
-        if (shouldTickSmoohters)
-        {
-            const auto f = parameters.cutoff.currentValue;
-            const auto r = parameters.resonance.currentValue;
-            const auto t = parameters.type.currentValue;
-            parameters.tickSmoothers();
-            if ( !approximatelyEqual(f, parameters.cutoff.currentValue) || !approximatelyEqual(r, parameters.resonance.currentValue) || t != parameters.type.currentValue )
-            {
-                params.type = static_cast<juce::dsp::StateVariableFilter::StateVariableFilterType>(parameters.type.currentValue);
-                params.setCutOffFrequency(spec.sampleRate, parameters.cutoff.currentValue, parameters.resonance.currentValue);
-            }
-        }
-
-        return filter[channel].processSample(input);
+        return filter.processSample(channel, input);
     }
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
@@ -174,53 +120,18 @@ public:
         return parameters.createParameters (factoryID, factoryName);
     }
 
+    void updateFilterParameters()
+    {
+        filter.setType(static_cast<juce::dsp::StateVariableTPTFilterType>(parameters.type.currentValue));
+        filter.setCutoffFrequency(parameters.cutoff.currentValue);
+        filter.setResonance(parameters.resonance.currentValue);
+    }
+
 private:
-    template <typename ProcessContext>
-    void processStaticState (const ProcessContext& context, const size_t channel) noexcept
-    {
-        const auto& inputBlock = context.getInputBlock();
-        auto& outputBlock      = context.getOutputBlock();
-        // const auto numChannels = outputBlock.getNumChannels();
-
-        jassert (inputBlock.getNumChannels() == 1);
-        jassert (outputBlock.getNumSamples() == 1);
-
-        auto& params = *filter[channel].parameters;
-        params.type = static_cast<juce::dsp::StateVariableFilter::StateVariableFilterType>(parameters.type.currentValue);
-        params.setCutOffFrequency(spec.sampleRate, parameters.cutoff.currentValue, parameters.resonance.currentValue);
-        filter[channel].process(context);
-
-    }
-
-    template <typename ProcessContext>
-    void processSmoothedState (const ProcessContext& context, const size_t channel) noexcept
-    {
-        const auto& inputBlock = context.getInputBlock();
-        auto& outputBlock      = context.getOutputBlock();
-        const auto numChannels = outputBlock.getNumChannels();
-        const auto numSamples  = outputBlock.getNumSamples();
-
-        jassert (inputBlock.getNumChannels() == numChannels);
-        jassert (inputBlock.getNumSamples() == numSamples);
-
-
-        const auto shouldTickParameters = channel == 0;
-        for (size_t i = 0; i < numSamples; ++i)
-        {
-            // Remember to tick the smoothers!!! for every sample
-            if (shouldTickParameters)
-                parameters.tickSmoothers();
-
-            auto& params = *filter[channel].parameters;
-            params.type = static_cast<juce::dsp::StateVariableFilter::StateVariableFilterType>(parameters.type.currentValue);
-            params.setCutOffFrequency(spec.sampleRate, parameters.cutoff.currentValue, parameters.resonance.currentValue);
-            outputBlock.getChannelPointer (0)[i] = filter[channel].processSample(inputBlock.getChannelPointer (0)[i]);
-        }
-
-    }
-
-    std::vector<juce::dsp::StateVariableFilter::Filter<float>> filter;
+    juce::dsp::StateVariableTPTFilter<float> filter;
     juce::dsp::ProcessSpec spec{};
 
+    std::vector<const float*> inputChannelPointers;
+    std::vector<float*> outputChannelPointers;
 };
 }

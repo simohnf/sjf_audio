@@ -374,6 +374,27 @@ protected:
         choiceMappings.push_back (mapping ? mapping : [](const int x) { return x; });
     }
 
+    void addTrackedChildParameters(AudioParametersBase& childParameters_)
+    {
+        auto addTrackedChild = [](auto& stateVector, auto& mappingVector, auto& childStateVector, auto& childMappingVector)
+        {
+            jassert(childStateVector.size() == childMappingVector.size());
+            jassert(stateVector.size() == mappingVector.size());
+            for (auto i = 0ul; i < childStateVector.size(); ++i)
+            {
+                stateVector.push_back (childStateVector[i]);
+                mappingVector.push_back (childMappingVector[i]);
+            }
+            childStateVector.clear();
+            childMappingVector.clear();
+        };
+
+        addTrackedChild(floatStates, floatMappings, childParameters_.floatStates, childParameters_.floatMappings);
+        addTrackedChild(intStates, intMappings, childParameters_.intStates, childParameters_.intMappings);
+        addTrackedChild(boolStates, boolMappings, childParameters_.boolStates, childParameters_.boolMappings);
+        addTrackedChild(choiceStates, choiceMappings, childParameters_.choiceStates, childParameters_.choiceMappings);
+    }
+
     juce::dsp::ProcessSpec spec{44100, 32, 2};
 
 private:

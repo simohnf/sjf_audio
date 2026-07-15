@@ -91,25 +91,41 @@ public:
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);
 
-        auto monoContext = [&](const size_t channel)
-        {
-            auto inBlock = inputBlock.getSingleChannelBlock(channel);
-            auto outBlock = outputBlock.getSingleChannelBlock(channel);
-            if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
-                return ProcessContext(inBlock, outBlock);
-            else
-                return ProcessContext(outBlock);
-        };
+
 
         if (parameters.checkForStateChange())
         {
             for ( auto channel = 0ul; channel < numChannels; channel++)
-                processSmoothedState(monoContext(channel), channel);
+            {
+                auto inBlock = inputBlock.getSingleChannelBlock(channel);
+                auto outBlock = outputBlock.getSingleChannelBlock(channel);
+                auto monoContext = [&]()
+                {
+                    if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
+                        return ProcessContext(inBlock, outBlock);
+                    else
+                        return ProcessContext(outBlock);
+                }();
+
+                processSmoothedState(monoContext, channel);
+            }
         }
         else
         {
             for (auto channel = 0ul; channel < numChannels; channel++)
-                processStaticState(monoContext(channel), channel);
+            {
+                auto inBlock = inputBlock.getSingleChannelBlock(channel);
+                auto outBlock = outputBlock.getSingleChannelBlock(channel);
+                auto monoContext = [&]()
+                {
+                    if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
+                        return ProcessContext(inBlock, outBlock);
+                    else
+                        return ProcessContext(outBlock);
+                }();
+
+                processStaticState(monoContext, channel);
+            }
         }
     }
 

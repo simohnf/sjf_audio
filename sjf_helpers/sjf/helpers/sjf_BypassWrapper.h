@@ -84,7 +84,7 @@ public:
 
     private:
         ParameterFactory* targetFactory{nullptr};
-    };
+    } parameters;
 
     //==============================================================================
     void prepare (const juce::dsp::ProcessSpec& spec_)
@@ -196,7 +196,6 @@ public:
 private:
     juce::dsp::ProcessSpec spec{};
     Processor processor;
-    Parameters parameters;
 
     juce::AudioBuffer<float> inputBuffer;
     juce::LinearSmoothedValue<float> wetRamp, dryRamp;

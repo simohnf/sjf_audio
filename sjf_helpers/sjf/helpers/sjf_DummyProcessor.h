@@ -33,7 +33,7 @@ public:
 
             return factory;
         }
-    };
+    } parameters;
 
 
 
@@ -122,6 +122,5 @@ private:
     }
 
     juce::dsp::ProcessSpec spec{};
-    Parameters parameters;
 };
 }

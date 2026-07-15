@@ -47,7 +47,7 @@ public:
 
             return factory;
         }
-    };
+    } parameters;
 
     template <bool B = FixedType, typename = std::enable_if_t<B>>
     void setType (const juce::dsp::StateVariableFilter::StateVariableFilterType& filterType)
@@ -221,7 +221,6 @@ private:
 
     std::vector<juce::dsp::StateVariableFilter::Filter<float>> filter;
     juce::dsp::ProcessSpec spec{};
-    Parameters parameters;
 
 };
 }

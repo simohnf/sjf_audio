@@ -25,7 +25,8 @@ namespace sjf::helpers
                 return factory;
             }
 
-        };
+        } parameters;
+
         template <typename... Args>
         OversamplingWrapper (Args&&... args) : processor (std::forward<Args> (args)...) {}
 
@@ -100,7 +101,6 @@ namespace sjf::helpers
 
         std::unique_ptr<juce::dsp::Oversampling<float>> oversampling;
         sjf::helpers::ChunkedWrapper<Processor> processor;
-        Parameters parameters;
         juce::dsp::ProcessSpec spec{};
     };
 }

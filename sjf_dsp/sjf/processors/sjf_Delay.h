@@ -91,7 +91,7 @@ public:
 
             return factory;
         }
-    };
+    } parameters;
 
     Delay()
     : inputChannelPointers({}), outputChannelPointers({})
@@ -289,7 +289,6 @@ private:
 
 
     juce::dsp::ProcessSpec spec{};
-    Parameters parameters;
     std::array<sjf::helpers::DelayLine, NUM_CHANNELS> delayLine;
     Filter filter;
     std::array<const float*, NUM_CHANNELS> inputChannelPointers;

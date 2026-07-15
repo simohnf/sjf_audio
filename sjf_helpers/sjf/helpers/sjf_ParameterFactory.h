@@ -333,6 +333,8 @@ protected:
         choiceMappings.push_back (mapping ? mapping : [](const int x) { return x; });
     }
 
+    juce::dsp::ProcessSpec spec{44100, 32, 2};
+
 private:
     std::vector<FloatState*>  floatStates;
     std::vector<IntState*>    intStates;
@@ -345,6 +347,6 @@ private:
     std::vector<ChoiceMapping> choiceMappings;
 
     juce::LinearSmoothedValue<float> masterRamp;
-    juce::dsp::ProcessSpec spec{44100, 32, 2};
+
 };
 }

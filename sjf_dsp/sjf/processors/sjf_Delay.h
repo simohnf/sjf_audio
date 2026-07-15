@@ -8,6 +8,8 @@
 #include <sjf/helpers/sjf_DelayLine.h>
 
 #include "sjf_Filter_juce.h"
+#include "sjf/helpers/sjf_DCBlock.h"
+#include "sjf/helpers/sjf_ProcessDuplicator.h"
 #include "sjf/helpers/sjf_Waveshapers.h"
 
 namespace sjf::dsp
@@ -33,7 +35,7 @@ public:
 
     struct Parameters : public helpers::AudioParametersBase
     {
-        std::array<FloatState, NUM_CHANNELS> delayTimes;
+        std::array<FloatState, NUM_CHANNELS> delayTimes, detune;
         FloatState feedback, drive;
 
         BoolState link, pingPong;
@@ -50,22 +52,43 @@ public:
                     return std::vector<String>{"Left", "Right"};
                 return std::vector<String>{""};
             }();
-            auto strIndex = 0ul;
-            for (auto& delayTime : delayTimes)
+
+            // Delay Times
             {
-                auto range = juce::NormalisableRange<float>{ 1.0f, MAX_DELAY_MS, 0.01f };
-                range.setSkewForCentre(1000.0f);
-                const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("ms");
-                const auto mapping = [&](const float x){ return x * spec.sampleRate * 0.001f;};
-                const auto& str = delayTimeStrings[strIndex++];
-                createTrackedParameter  (*factory, delayTime, "Time" + str.substring(0, 1),  "Time "+ str +" (ms)",  range, 100.0f, mapping, attributes);
+                auto strIndex = 0ul;
+                for (auto& delayTime : delayTimes)
+                {
+                    auto range = juce::NormalisableRange<float>{ 1.0f, MAX_DELAY_MS, 0.01f };
+                    range.setSkewForCentre(1000.0f);
+                    const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("ms");
+                    const auto mapping = [&](const float x){ return x * spec.sampleRate * 0.001f;};
+                    const auto& str = delayTimeStrings[strIndex++];
+                    createTrackedParameter  (*factory, delayTime, "Time" + str.substring(0, 1),  "Time "+ str +" (ms)",  range, 100.0f, mapping, attributes);
+                }
             }
+
+            // Detune
+            {
+                auto strIndex = 0ul;
+                for (auto& d : detune)
+                {
+                    auto range = juce::NormalisableRange<float>{ -100.0f, 100.0f, 0.01f };
+                    const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("cents");
+                    const auto mapping = [&](const float x){ return x * 0.01f;};
+                    const auto& str = delayTimeStrings[strIndex++];
+                    createTrackedParameter  (*factory, d, "Detune" + str.substring(0, 1),  "Detune "+ str +" (cents)",  range, 0.0f, mapping, attributes);
+                }
+            }
+
+            // Link
             {
                 if constexpr (NUM_CHANNELS > 1)
                     createTrackedParameter(*factory, link, "Link", "Link", false);
                 else
                     link.currentValue = true;
             }
+
+            // Ping Pong
             {
                 if constexpr (NUM_CHANNELS > 1)
                     createTrackedParameter(*factory, pingPong, "PingPong", "Ping Pong", false);
@@ -73,6 +96,7 @@ public:
                     pingPong.currentValue = false;
             }
 
+            // Feedback
             {
                 const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
                 const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("%");
@@ -80,6 +104,7 @@ public:
                 createTrackedParameter  (*factory, feedback, "Feedback",  "Feedback",  range, 0.0f, mapping, attributes);
             }
 
+            // Saturation
             {
                 createTrackedParameter(*factory, saturationType, "SaturationType", "Saturation Type", SaturationTypes::getNames(), SaturationTypes::getDefaultIndex());
                 const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
@@ -110,7 +135,10 @@ public:
             dl.setMaxDelayTimeMS(MAX_DELAY_MS);
         }
 
+        dcBlocker.prepare(spec);
+
         filter.prepare(spec);
+
         reset();
     }
 
@@ -119,6 +147,8 @@ public:
         parameters.reset();
         for (auto& dl : delayLine)
             dl.reset();
+        dcBlocker.reset();
+
         filter.reset();
     }
 
@@ -133,6 +163,7 @@ public:
     {
         auto factory = parameters.createParameters (factoryID, factoryName);
         factory->addChild(filter.createParameters("Filter", "Filter"));
+        factory->addChild(dcBlocker.createParameters("DCBlock", "DCBlock"));
         return factory;
     }
 
@@ -202,14 +233,18 @@ private:
             const auto feedback = parameters.feedback.currentValue;
             const auto drive = saturationType != SaturationTypes::Enum::None ? parameters.drive.currentValue : 1.0f;
             const auto norm = drive > 0.0f ? 1.0f / applySaturation(drive, saturationType) : 1.0f;
+
             for (auto channel = 0ul; channel < numChannels; ++channel)
             {
                 auto& sample = wptrs[channel][0];
                 const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].currentValue : parameters.delayTimes[channel].currentValue;
+                const auto detune = parameters.detune[channel].currentValue;
+                delayLine[channel].setPitchShift(detune);
                 sample = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
                 sample = applySaturation(sample * drive, saturationType) * norm;
             }
 
+            dcBlocker.process(oneSampleContext);
             filter.process(oneSampleContext);
 
             for (auto channel = 0ul; channel < numChannels; ++channel)
@@ -280,7 +315,8 @@ private:
 
 
     juce::dsp::ProcessSpec spec{};
-    std::array<sjf::helpers::DelayLine, NUM_CHANNELS> delayLine;
+    std::array<sjf::helpers::PitchShiftDelayLine<>, NUM_CHANNELS> delayLine;
+    sjf::helpers::ProcessorDuplicator<helpers::DCBlocker<>> dcBlocker;
     Filter filter;
     std::array<const float*, NUM_CHANNELS> inputChannelPointers;
     std::array<float*, NUM_CHANNELS> outputChannelPointers;

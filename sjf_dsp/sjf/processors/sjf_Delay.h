@@ -114,6 +114,12 @@ public:
 
             return factory;
         }
+
+        void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+        {
+            for ( auto& dt : delayTimes)
+                dt.setPositionInfo(positionInfo);
+        }
     } parameters;
 
     Delay()
@@ -163,6 +169,11 @@ public:
         factory->addChild(filter.createParameters("Filter", "Filter"));
         factory->addChild(dcBlocker.createParameters("DCBlock", "DCBlock"));
         return factory;
+    }
+
+    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+    {
+        parameters.setPositionInfo(positionInfo);
     }
 
 private:

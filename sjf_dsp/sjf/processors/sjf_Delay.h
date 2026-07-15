@@ -129,10 +129,10 @@ public:
         auto& outputBlock      = context.getOutputBlock();
         const auto numChannels = outputBlock.getNumChannels();
         jassert(numChannels == NUM_CHANNELS);
-        const auto numSamples  = outputBlock.getNumSamples();
+        // const auto numSamples  = outputBlock.getNumSamples();
 
         jassert (inputBlock.getNumChannels() == NUM_CHANNELS);
-        jassert (outputBlock.getNumSamples() == NUM_CHANNELS);
+        jassert (outputBlock.getNumChannels() == NUM_CHANNELS);
 
         parameters.checkForStateChange();
         processInternal(context);
@@ -155,7 +155,7 @@ private:
         const auto numSamples  = outputBlock.getNumSamples();
 
         jassert (inputBlock.getNumChannels() == NUM_CHANNELS);
-        jassert (outputBlock.getNumSamples() == NUM_CHANNELS);
+        jassert (outputBlock.getNumChannels() == NUM_CHANNELS);
 
         AudioBuffer<float> oneSampleBuffer(NUM_CHANNELS, 1);
         const auto wptrs = oneSampleBuffer.getArrayOfWritePointers();

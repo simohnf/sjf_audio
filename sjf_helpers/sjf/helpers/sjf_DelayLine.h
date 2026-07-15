@@ -196,7 +196,7 @@ namespace sjf::helpers
         }
 
         sjf::helpers::DelayLine delayLine;
-        sjf::dsp::oscillators::Phasor<float> phasor{};
+        sjf::dsp::oscillators::Phasor phasor{};
         juce::dsp::ProcessSpec spec{};
 
         float windowSizeMS{20}, windowSizeSamps{}, invWindowSizeS{}, outputScale{calculatedOutputScaling()};

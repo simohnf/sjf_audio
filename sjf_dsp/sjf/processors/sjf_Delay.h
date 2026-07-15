@@ -35,7 +35,8 @@ public:
 
     struct Parameters : public helpers::AudioParametersBase
     {
-        std::array<FloatState, NUM_CHANNELS> delayTimes, detune;
+        std::array<oscillators::SyncedDurationParameter<>, NUM_CHANNELS> delayTimes{oscillators::SyncedDurationParameter<>{1.0f, 10000.0f, 100.0f, 1000.0f}, oscillators::SyncedDurationParameter<>(1.0f, 10000.0f, 100.0f, 1000.0f)};
+        std::array<FloatState, NUM_CHANNELS> detune;
         FloatState feedback, drive;
 
         BoolState link, pingPong;
@@ -58,12 +59,9 @@ public:
                 auto strIndex = 0ul;
                 for (auto& delayTime : delayTimes)
                 {
-                    auto range = juce::NormalisableRange<float>{ 1.0f, MAX_DELAY_MS, 0.01f };
-                    range.setSkewForCentre(1000.0f);
-                    const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("ms");
-                    const auto mapping = [&](const float x){ return x * spec.sampleRate * 0.001f;};
                     const auto& str = delayTimeStrings[strIndex++];
-                    createTrackedParameter  (*factory, delayTime, "Time" + str.substring(0, 1),  "Time "+ str +" (ms)",  range, 100.0f, mapping, attributes);
+                    factory->addChild(delayTime.createParameters("Time" + str.substring(0, 1), "Time " + str));
+                    addTrackedChildParameters(delayTime);
                 }
             }
 
@@ -237,7 +235,7 @@ private:
             for (auto channel = 0ul; channel < numChannels; ++channel)
             {
                 auto& sample = wptrs[channel][0];
-                const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].currentValue : parameters.delayTimes[channel].currentValue;
+                const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].time.currentValue : parameters.delayTimes[channel].time.currentValue;
                 const auto detune = parameters.detune[channel].currentValue;
                 delayLine[channel].setPitchShift(detune);
                 sample = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);

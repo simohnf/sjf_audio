@@ -5,6 +5,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
+#include "sjf_OptionalCalls.h"
 
 namespace sjf::helpers
 {
@@ -193,6 +194,10 @@ public:
     [[nodiscard]] Processor& getProcessor() noexcept { return processor; }
     [[nodiscard]] const Processor& getProcessor() const noexcept { return processor; }
 
+    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+    {
+        sjf::optional_calls::setPositionInfo(processor, positionInfo);
+    }
 private:
     juce::dsp::ProcessSpec spec{};
     Processor processor;

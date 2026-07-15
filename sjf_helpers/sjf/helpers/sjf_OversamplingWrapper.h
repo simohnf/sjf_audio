@@ -6,6 +6,7 @@
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/helpers/sjf_ChunkedWrapper.h>
+#include "sjf_OptionalCalls.h"
 
 namespace sjf::helpers
 {
@@ -84,6 +85,12 @@ namespace sjf::helpers
             factory->addChild(parameters.createParameters (factoryID + "OS", factoryName + " Oversampling"));
             return factory;
         }
+
+        void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+        {
+            sjf::optional_calls::setPositionInfo(processor, positionInfo);
+        }
+
     private:
         void createOversampling()
         {

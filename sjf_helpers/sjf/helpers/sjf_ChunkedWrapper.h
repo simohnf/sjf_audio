@@ -8,6 +8,7 @@
 
 #include <sjf/helpers/sjf_ParameterFactory.h>
 
+#include "sjf_OptionalCalls.h"
 
 namespace sjf::helpers
 {
@@ -85,6 +86,11 @@ public:
 
     Processor& getProcessor() { return processor; }
     const Processor& getProcessor() const { return processor; }
+
+    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+    {
+        sjf::optional_calls::setPositionInfo(processor, positionInfo);
+    }
 private:
     Processor processor;
     juce::dsp::ProcessSpec spec;

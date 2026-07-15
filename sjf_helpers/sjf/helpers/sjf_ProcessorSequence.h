@@ -6,6 +6,7 @@
 #include <JuceHeader.h>
 
 #include <sjf/helpers/sjf_ParameterFactory.h>
+#include "sjf_OptionalCalls.h"
 
 namespace sjf::helpers
 {
@@ -102,6 +103,11 @@ public:
     /** Access an individual processor by index at compile-time */
     template <size_t Index> [[nodiscard]] decltype(auto) get() noexcept       { return std::get<Index> (processors); }
     template <size_t Index> [[nodiscard]] decltype(auto) get() const noexcept { return std::get<Index> (processors); }
+
+    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+    {
+        forEach([&](auto& proc){ sjf::optional_calls::setPositionInfo(proc, positionInfo); });
+    }
 
 private:
     /** Internal dispatcher that pairs tuple indices with variadic function arguments */

@@ -8,10 +8,23 @@
 
 namespace sjf::helpers
 {
+namespace bypass_wrapper_config
+{
+    struct Bypass{};
+    struct Mix{};
+    // more to come ?
+}
 
-template <typename Processor>
+template <typename Processor, typename... Configs>
 class BypassWrapper
 {
+    struct ConfigurationProvider
+    {
+        template<typename Config>
+        struct is_config_enabled {
+            static constexpr bool value {(std::is_same_v<Config, Configs> || ...)};
+        };
+    };
 public:
     BypassWrapper() = default;
     ~BypassWrapper() = default;
@@ -26,11 +39,13 @@ public:
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String&, const juce::String&) override
         {
+            using namespace bypass_wrapper_config;
             if (targetFactory)
             {
                 /// we insert the parameters into the processors parameter tree,
                 /// BUT The BypassWrapper::Parameters struct handles smoothing/reset etc the
 
+                if (ConfigurationProvider::template is_config_enabled<Mix>::value)
                 {
                     const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
                     const auto attributes = juce::AudioParameterFloatAttributes{}
@@ -38,7 +53,19 @@ public:
                     const auto mapping = [&](const float x){ return x * 0.01f;};
                     createTrackedParameter (*targetFactory, mix, "Mix", "Mix", range, 100.0f, mapping, attributes);
                 }
-                createTrackedParameter (*targetFactory, bypass, "Bypass", "Bypass", false);
+                else
+                {
+                    mix.currentValue = 1.0f;
+                }
+
+                if (ConfigurationProvider::template is_config_enabled<Bypass>::value)
+                {
+                    createTrackedParameter (*targetFactory, bypass, "Bypass", "Bypass", false);
+                }
+                else
+                {
+                    bypass.currentValue = true;
+                }
             }
             else
             {

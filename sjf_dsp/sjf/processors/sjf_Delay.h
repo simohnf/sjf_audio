@@ -472,7 +472,7 @@ private:
     juce::dsp::ProcessSpec spec{};
     std::array<DelayLine, NUM_CHANNELS> delayLine;
     [[maybe_unused]] LFO lfo;
-    sjf::helpers::ProcessorDuplicator<helpers::DCBlocker<>> dcBlocker;
+    sjf::helpers::ProcessorDuplicator<helpers::DCBlocker<false>> dcBlocker;
     [[maybe_unused]] Filter filter;
     std::array<const float*, NUM_CHANNELS> inputChannelPointers;
     std::array<float*, NUM_CHANNELS> outputChannelPointers;

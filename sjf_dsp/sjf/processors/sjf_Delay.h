@@ -15,19 +15,49 @@
 
 namespace sjf::dsp
 {
+
+namespace delay_config
+{
+    struct Modulation{};
+    struct PingPong{};
+    struct Saturation{};
+    struct Filter{};
+    struct Detune{};
+    struct TempoSync{};
+    struct LFOTempoSync{};
+    struct Link{};
+    struct Dummy{};
+}
+
+template<typename ... Configuration>
 class Delay
 {
     static constexpr auto MAX_DELAY_MS = 10000.0f;
     static constexpr auto NUM_CHANNELS = 2;
 
-    using LFO = sjf::dsp::oscillators::lfo::LFO<oscillators::lfo::DefaultWaveformProvider,
-                                                oscillators::lfo::configurations::Depth,
-                                                oscillators::lfo::configurations::Invert,
-                                                oscillators::lfo::configurations::PhaseOffset,
-                                                oscillators::lfo::configurations::Smooth>;
+
+
+
+    static constexpr auto hasModulation = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Modulation, Configuration...>;
+    static constexpr auto hasPingPong = sjf::helpers::functions::utilities::configurationAvailable<delay_config::PingPong, Configuration...>;
+    static constexpr auto hasSaturation = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Saturation, Configuration...>;
+    static constexpr auto hasFilter = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Filter, Configuration...>;
+    static constexpr auto hasDetune = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Detune, Configuration...>;
+    static constexpr auto hasTempoSync = sjf::helpers::functions::utilities::configurationAvailable<delay_config::TempoSync, Configuration...>;
+    static constexpr auto hasLink = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Link, Configuration...>;
+    static constexpr auto hasLFOTempoSync = sjf::helpers::functions::utilities::configurationAvailable<delay_config::LFOTempoSync, Configuration...>;
+
+    using LFO = sjf::dsp::oscillators::lfo::LFO<
+                                                oscillators::lfo::DefaultWaveformProvider,
+                                                oscillators::lfo::config::Depth,
+                                                oscillators::lfo::config::Invert,
+                                                oscillators::lfo::config::PhaseOffset,
+                                                oscillators::lfo::config::Smooth,
+                                                std::conditional_t<hasLFOTempoSync, oscillators::lfo::config::TempoSync, delay_config::Dummy>
+                                                >;
 
     using Filter = sjf::helpers::BypassWrapper<sjf::dsp::SVF<true, true>, helpers::bypass_wrapper_config::Bypass>;
-
+    using DelayLine = std::conditional_t<hasDetune, sjf::helpers::PitchShiftDelayLine<>, sjf::helpers::DelayLine>;
 public:
     struct SaturationTypes
     {
@@ -42,10 +72,12 @@ public:
 
     struct Parameters : public helpers::AudioParametersBase
     {
-        std::array<helpers::SyncedDurationParameter<>, NUM_CHANNELS> delayTimes{helpers::SyncedDurationParameter<>{1.0f, 10000.0f, 100.0f, 1000.0f},
-                                                                                helpers::SyncedDurationParameter<>(1.0f, 10000.0f, 100.0f, 1000.0f)};
+        using Duration = helpers::SyncedDurationParameter<>;
         std::array<FloatState, NUM_CHANNELS> detune;
         FloatState feedback, drive;
+        std::array<Duration, NUM_CHANNELS> delayTimes{Duration{1.0f, 10000.0f, 100.0f, 1000.0f},
+                                                      Duration(1.0f, 10000.0f, 100.0f, 1000.0f)};
+
 
         BoolState link, pingPong;
         ChoiceState saturationType;
@@ -68,12 +100,21 @@ public:
                 for (auto& delayTime : delayTimes)
                 {
                     const auto& str = delayTimeStrings[strIndex++];
-                    factory->addChild(delayTime.createParameters("Time" + str.substring(0, 1), "Time " + str));
-                    addTrackedChildParameters(delayTime);
+                    if constexpr (hasTempoSync)
+                    {
+                        factory->addChild(delayTime.createParameters("Time" + str.substring(0, 1), "Time " + str));
+                        addTrackedChildParameters(delayTime);
+                    }
+                    else
+                    {
+                        const auto mapping = [this](const float x) { return  x * spec.sampleRate * 0.001f;};
+                        createTrackedParameter(*factory, delayTime.time, "Time" + str.substring(0, 1),  "Time " + str, delayTime.getDurationRange(), delayTime.defaultTimeMS, mapping, Duration::getDurationAttributes());
+                    }
                 }
             }
 
             // Detune
+            if constexpr (hasDetune)
             {
                 auto strIndex = 0ul;
                 for (auto& d : detune)
@@ -87,6 +128,7 @@ public:
             }
 
             // Link
+            if constexpr (hasLink)
             {
                 if constexpr (NUM_CHANNELS > 1)
                     createTrackedParameter(*factory, link, "Link", "Link", false);
@@ -95,6 +137,7 @@ public:
             }
 
             // Ping Pong
+            if constexpr (hasPingPong)
             {
                 if constexpr (NUM_CHANNELS > 1)
                     createTrackedParameter(*factory, pingPong, "PingPong", "Ping Pong", false);
@@ -111,6 +154,7 @@ public:
             }
 
             // Saturation
+            if constexpr (hasSaturation)
             {
                 createTrackedParameter(*factory, saturationType, "SaturationType", "Saturation Type", SaturationTypes::getNames(), SaturationTypes::getDefaultIndex());
                 const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
@@ -132,7 +176,11 @@ public:
 
     Delay()
     : inputChannelPointers({}), outputChannelPointers({})
-    {}
+    {
+        static_assert((hasLFOTempoSync && hasModulation) || !hasLFOTempoSync, "You can't sync the LFO if it isn't activated");
+        static_assert(NUM_CHANNELS > 1 || !hasPingPong, "Can't have PingPong with a mono delay");
+        static_assert(NUM_CHANNELS > 1 || !hasLink, "Can't Link timings with a mono delay");
+    }
 
 
     void prepare (const juce::dsp::ProcessSpec& spec_)
@@ -141,6 +189,7 @@ public:
         jassert(spec.numChannels == NUM_CHANNELS);
 
         parameters.prepare(spec);
+
         for (auto& dl : delayLine)
         {
             dl.prepare(spec);
@@ -149,8 +198,13 @@ public:
 
         dcBlocker.prepare(spec);
 
-        filter.prepare(spec);
-        lfo.prepare(spec);
+        if constexpr (hasFilter)
+            filter.prepare(spec);
+
+        if constexpr (hasModulation)
+            lfo.prepare(spec);
+        else
+
 
         reset();
     }
@@ -160,10 +214,14 @@ public:
         parameters.reset();
         for (auto& dl : delayLine)
             dl.reset();
+
         dcBlocker.reset();
 
-        filter.reset();
-        lfo.reset();
+        if constexpr (hasFilter)
+            filter.reset();
+
+        if constexpr (hasModulation)
+            lfo.reset();
     }
 
     template <typename ProcessContext>
@@ -171,14 +229,22 @@ public:
     {
         parameters.checkForStateChange();
         processInternal(context);
+
+        dcBlocker.process(context);
     }
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
     {
         auto factory = parameters.createParameters (factoryID, factoryName);
-        factory->addChild(filter.createParameters("Filter", "Filter"));
+
+        if constexpr (hasFilter)
+            factory->addChild(filter.createParameters("Filter", "Filter"));
+
         factory->addChild(dcBlocker.createParameters("DCBlock", "DCBlock"));
-        factory->addChild(lfo.createParameters("Mod", "Modulation "));
+
+        if constexpr (hasModulation)
+            factory->addChild(lfo.createParameters("Mod", "Modulation "));
+
         return factory;
     }
 
@@ -211,10 +277,11 @@ private:
             outputChannelPointers[channel] = outputBlock.getChannelPointer (channel);
         }
 
-        const auto saturationType = SaturationTypes::asEnum(parameters.saturationType.currentValue);
-        const auto pingPong = parameters.pingPong.currentValue;
+        const auto saturationType = getSaturationType();
 
+        const auto pingPong = getPingPongActive();
 
+        const auto link = getLinkActive();
 
         const auto calculateInput = [&](const size_t channel, const size_t i)
         {
@@ -245,10 +312,8 @@ private:
             return channel;
         };
 
-        lfo.process(context);
 
-        const auto lfoBlock = lfo.getLfoOutput().getSubBlock(0, numSamples);
-
+        const auto lfoBlock = getLFOBlock(context);
 
         for (size_t i = 0; i < numSamples; ++i)
         {
@@ -256,22 +321,25 @@ private:
             parameters.tickSmoothers();
 
             const auto feedback = parameters.feedback.currentValue;
-            const auto drive = saturationType != SaturationTypes::Enum::None ? parameters.drive.currentValue : 1.0f;
+            const auto drive = getDrive();
             const auto norm = drive > 0.0f ? 1.0f / applySaturation(drive, saturationType) : 1.0f;
 
             for (auto channel = 0ul; channel < numChannels; ++channel)
             {
                 auto& sample = wptrs[channel][0];
-                auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].time.currentValue : parameters.delayTimes[channel].time.currentValue;
-                delayTime += delayTime * lfoBlock.getSample(static_cast<int>(channel), static_cast<int>(i));
-                const auto detune = parameters.detune[channel].currentValue;
-                delayLine[channel].setPitchShift(detune);
-                sample = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+                auto delayTime = link ? parameters.delayTimes[0].time.currentValue : parameters.delayTimes[channel].time.currentValue;
+                delayTime += delayTime * getLFOSample(static_cast<int>(channel), static_cast<int>(i), lfoBlock);
+                if constexpr (hasDetune)
+                {
+                    const auto detune = parameters.detune[channel].currentValue;
+                    delayLine[channel].setPitchShift(detune);
+                }
+                sample = delayLine[channel].template readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
                 sample = applySaturation(sample * drive, saturationType) * norm;
             }
 
-            dcBlocker.process(oneSampleContext);
-            filter.process(oneSampleContext);
+            if constexpr (hasFilter)
+                filter.process(oneSampleContext);
 
             for (auto channel = 0ul; channel < numChannels; ++channel)
             {
@@ -282,10 +350,72 @@ private:
                 outputChannelPointers[channel][i] = sample;
             }
         }
-
     }
 
-    static float applySaturation(float x, const SaturationTypes::Enum type)
+    template <typename ProcessContext>
+    juce::dsp::AudioBlock<float> getLFOBlock(const ProcessContext& context)
+    {
+        if constexpr (hasModulation)
+        {
+            const auto numSamples = context.getOutputBlock().getNumSamples();
+            lfo.process(context);
+            return lfo.getLfoOutput().getSubBlock(0, numSamples);
+        }
+        else
+        {
+            return juce::dsp::AudioBlock<float>{};
+        }
+    }
+
+    float getLFOSample(const int channel, const int i, const juce::dsp::AudioBlock<float>& lfoBlock)
+    {
+        if constexpr (hasModulation)
+        {
+            if constexpr ( LFO::numChannels == 2)
+                return lfoBlock.getSample(static_cast<int>(channel), static_cast<int>(i));
+            else
+                return lfoBlock.getSample(0, static_cast<int>(i));
+        }
+        else
+        {
+            return 0.0f;
+        }
+    }
+
+
+    bool getPingPongActive()
+    {
+        if constexpr (hasPingPong)
+            return parameters.pingPong.currentValue;
+        else
+            return false;
+    }
+
+    bool getLinkActive()
+    {
+        if constexpr (hasLink)
+            return parameters.link.currentValue;
+        else
+            return false;
+    }
+
+    SaturationTypes::Enum getSaturationType()
+    {
+        if constexpr (hasSaturation)
+            return SaturationTypes::asEnum(parameters.saturationType.currentValue);
+        else
+            return SaturationTypes::Enum::None;
+    }
+
+    float getDrive()
+    {
+        if constexpr (hasSaturation)
+            return getSaturationType() != SaturationTypes::Enum::None ? parameters.drive.currentValue : 1.0f;
+        else
+            return 1.0f;
+    }
+
+    static float applySaturation(const float x, const SaturationTypes::Enum type)
     {
         using Types = SaturationTypes::Enum;
         switch (type)
@@ -309,7 +439,7 @@ private:
         }
     }
 
-    template <SaturationTypes::Enum type>
+    template <typename SaturationTypes::Enum type>
     static float applySaturationTagged(const float x)
     {
         if constexpr (type == SaturationTypes::Enum::Soft)
@@ -341,10 +471,10 @@ private:
 
 
     juce::dsp::ProcessSpec spec{};
-    std::array<sjf::helpers::PitchShiftDelayLine<>, NUM_CHANNELS> delayLine;
-    LFO lfo;
+    std::array<DelayLine, NUM_CHANNELS> delayLine;
+    [[maybe_unused]] LFO lfo;
     sjf::helpers::ProcessorDuplicator<helpers::DCBlocker<>> dcBlocker;
-    Filter filter;
+    [[maybe_unused]] Filter filter;
     std::array<const float*, NUM_CHANNELS> inputChannelPointers;
     std::array<float*, NUM_CHANNELS> outputChannelPointers;
 };

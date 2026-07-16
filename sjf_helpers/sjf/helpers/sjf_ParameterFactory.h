@@ -204,13 +204,13 @@ public:
         if (masterRamp.isSmoothing()) {
             const float alpha = masterRamp.getNextValue();
             for (const auto state : floatStates)
-                state->currentValue = state->startValue + alpha * (state->targetValue - state->startValue);
+                state.get().currentValue = state.get().startValue + alpha * (state.get().targetValue - state.get().startValue);
             for (const auto state : intStates)
-                state->currentValue = state->targetValue;
+                state.get().currentValue = state.get().targetValue;
             for (const auto state : boolStates)
-                state->currentValue = state->targetValue;
+                state.get().currentValue = state.get().targetValue;
             for (const auto state : choiceStates)
-                state->currentValue = state->targetValue;
+                state.get().currentValue = state.get().targetValue;
 
             if (!masterRamp.isSmoothing())
                 checkForStateChange();
@@ -239,10 +239,10 @@ public:
                 const auto& mfs = masterStateVector[i];
                 auto& fm = mappingVector[i];
                 const auto& mfm = masterMappingVector[i];
-                fs->juceParameter = mfs->juceParameter;
-                fs->currentValue = mfs->currentValue;
-                fs->startValue = mfs->startValue;
-                fs->targetValue = mfs->targetValue;
+                fs.get().juceParameter = mfs.get().juceParameter;
+                fs.get().currentValue = mfs.get().currentValue;
+                fs.get().startValue = mfs.get().startValue;
+                fs.get().targetValue = mfs.get().targetValue;
 
                 fm = mfm;
             }
@@ -263,20 +263,20 @@ public:
 private:
 
     template<typename TrackedStateType, typename TrackedStateMappingType>
-    bool anyStatesDiverged( const std::vector<TrackedStateType*>& states, const std::vector<TrackedStateMappingType>& mappings ) noexcept
+    bool anyStatesDiverged( const std::vector<std::reference_wrapper<TrackedStateType>>& states, const std::vector<TrackedStateMappingType>& mappings ) noexcept
     {
         jassert(states.size() == mappings.size());
         for ( auto i = 0ul; i < states.size(); ++i)
         {
-            const auto mappedValue = mappings[i](states[i]->getParameterValue());
+            const auto mappedValue = mappings[i](states[i].get().getParameterValue());
             if constexpr (std::is_same_v<TrackedStateType, FloatState>)
             {
-                if (!(juce::approximatelyEqual(states[i]->targetValue, mappedValue)))
+                if (!(juce::approximatelyEqual(states[i].get().targetValue, mappedValue)))
                     return true;
             }
             else
             {
-                if (states[i]->targetValue != mappedValue)
+                if (states[i].get().targetValue != mappedValue)
                     return true;
             }
         }
@@ -284,19 +284,19 @@ private:
     }
 
     template<typename TrackedStateType, typename TrackedStateMappingType>
-    void latchAllStates( const std::vector<TrackedStateType*>& states, const std::vector<TrackedStateMappingType>& mappings ) noexcept
+    void latchAllStates( const std::vector<std::reference_wrapper<TrackedStateType>>& states, const std::vector<TrackedStateMappingType>& mappings ) noexcept
     {
         jassert(states.size() == mappings.size());
         for ( auto i = 0ul; i < states.size(); ++i)
-            states[i]->latchTarget(mappings[i](states[i]->getParameterValue()));
+            states[i].get().latchTarget(mappings[i](states[i].get().getParameterValue()));
     }
 
     template<typename TrackedStateType, typename TrackedStateMappingType>
-    void resetAllStates( const std::vector<TrackedStateType*>& states, const std::vector<TrackedStateMappingType>& mappings ) noexcept
+    void resetAllStates( const std::vector<std::reference_wrapper<TrackedStateType>>& states, const std::vector<TrackedStateMappingType>& mappings ) noexcept
     {
         jassert(states.size() == mappings.size());
         for ( auto i = 0ul; i < states.size(); ++i)
-            states[i]->reset(mappings[i](states[i]->getParameterValue()));
+            states[i].get().reset(mappings[i](states[i].get().getParameterValue()));
     }
 
     template <typename StateType, typename ParamType, typename MapType>
@@ -324,7 +324,7 @@ protected:
     {
         auto* param = factory.createFloatParameter (parameterID, parameterName, normalisableRange, defaultValue, attributes);
         initState(tracker, param, mapping);
-        floatStates.push_back (&tracker);
+        floatStates.push_back (tracker);
         floatMappings.push_back (mapping ? mapping : [](const float x) { return x; });
     }
 
@@ -339,7 +339,7 @@ protected:
         auto* param = factory.createIntParameter (parameterID, parameterName, minValue, maxValue, defaultValue, attributes);
         initState(tracker, param, mapping);
 
-        intStates.push_back (&tracker);
+        intStates.push_back (tracker);
         intMappings.push_back (mapping ?  mapping : [](const int x) { return x; });
     }
 
@@ -354,7 +354,7 @@ protected:
         auto* param = factory.createBoolParameter (parameterID, parameterName, defaultValue, attributes);
         initState(tracker, param, mapping);
 
-        boolStates.push_back (&tracker);
+        boolStates.push_back (tracker);
         boolMappings.push_back (mapping ? mapping : [](const bool x) { return x; });
     }
 
@@ -370,7 +370,7 @@ protected:
         auto* param = factory.createChoiceParameter (parameterID, parameterName, choices, defaultItemIndex, attributes);
         initState(tracker, param, mapping);
 
-        choiceStates.push_back (&tracker);
+        choiceStates.push_back (tracker);
         choiceMappings.push_back (mapping ? mapping : [](const int x) { return x; });
     }
 
@@ -398,10 +398,10 @@ protected:
     juce::dsp::ProcessSpec spec{44100, 32, 2};
 
 private:
-    std::vector<FloatState*>  floatStates;
-    std::vector<IntState*>    intStates;
-    std::vector<BoolState*>   boolStates;
-    std::vector<ChoiceState*> choiceStates;
+    std::vector<std::reference_wrapper<FloatState>>  floatStates;
+    std::vector<std::reference_wrapper<IntState>>    intStates;
+    std::vector<std::reference_wrapper<BoolState>>   boolStates;
+    std::vector<std::reference_wrapper<ChoiceState>> choiceStates;
 
     std::vector<FloatMapping> floatMappings;
     std::vector<IntMapping> intMappings;

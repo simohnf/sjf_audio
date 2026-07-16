@@ -32,10 +32,9 @@ namespace delay_config
 template<typename ... Configuration>
 class Delay
 {
+public:
     static constexpr auto MAX_DELAY_MS = 10000.0f;
-    static constexpr auto NUM_CHANNELS = 2;
-
-
+    static constexpr auto NUM_CHANNELS = 2; // TO DO: Enable Mono Delay
 
 
     static constexpr auto hasModulation = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Modulation, Configuration...>;
@@ -58,7 +57,7 @@ class Delay
 
     using Filter = sjf::helpers::BypassWrapper<sjf::dsp::SVF<true, true>, helpers::bypass_wrapper_config::Bypass>;
     using DelayLine = std::conditional_t<hasDetune, sjf::helpers::PitchShiftDelayLine<>, sjf::helpers::DelayLine>;
-public:
+
     struct SaturationTypes
     {
         enum class Enum {None, Soft, Overdrive, Tape, BucketBrigade, Hard, COUNT, DEFAULT = None};

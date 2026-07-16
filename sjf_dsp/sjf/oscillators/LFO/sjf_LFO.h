@@ -24,6 +24,7 @@ using DefaultWaveformProvider = LFOWaveformProvider<Sine, Triangle, Sawtooth, Sq
 template<typename WaveformProvider = DefaultWaveformProvider, typename... Configurations>
 class LFO
 {
+public:
     static constexpr auto hasDepth = helpers::functions::utilities::configurationAvailable<config::Depth, Configurations...>;
     static constexpr auto hasPhaseOffset = helpers::functions::utilities::configurationAvailable<config::PhaseOffset, Configurations...>;
     static constexpr auto hasInvert = helpers::functions::utilities::configurationAvailable<config::Invert, Configurations...>;
@@ -33,8 +34,6 @@ class LFO
     static constexpr auto numWaveforms = WaveformProvider::numWaveforms;
     static constexpr auto hasWaveformChoice = numWaveforms > 1;
 
-
-public:
     using Filters = std::array<juce::dsp::IIR::Filter<float>, numChannels>;
 
     struct Parameters : public helpers::AudioParametersBase

@@ -23,16 +23,10 @@ using DefaultWaveformProvider = LFOWaveformProvider<Sine, Triangle, Sawtooth, Sq
 template<typename WaveformProvider = DefaultWaveformProvider, typename... Configurations>
 class LFO
 {
-    template< typename Config>
-    static constexpr auto configurationAvailable()
-    {
-        return (std::is_same_v<Configurations, Config> || ...);
-    }
-
-    static constexpr auto hasDepth = configurationAvailable<configurations::Depth>();
-    static constexpr auto hasPhaseOffset = configurationAvailable<configurations::PhaseOffset>();
-    static constexpr auto hasInvert = configurationAvailable<configurations::Invert>();
-    static constexpr auto hasSmooth = configurationAvailable<configurations::Smooth>();
+    static constexpr auto hasDepth = helpers::functions::utilities::configurationAvailable<configurations::Depth, Configurations...>;
+    static constexpr auto hasPhaseOffset = helpers::functions::utilities::configurationAvailable<configurations::PhaseOffset, Configurations...>;
+    static constexpr auto hasInvert = helpers::functions::utilities::configurationAvailable<configurations::Invert, Configurations...>;
+    static constexpr auto hasSmooth = helpers::functions::utilities::configurationAvailable<configurations::Smooth, Configurations...>;
     static constexpr auto numChannels = hasPhaseOffset || hasInvert ? 2 : 1;
     static constexpr auto numWaveforms = WaveformProvider::numWaveforms;
     static constexpr auto hasWaveformChoice = numWaveforms > 1;

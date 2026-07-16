@@ -19,13 +19,8 @@ namespace bypass_wrapper_config
 template <typename Processor, typename... Configs>
 class BypassWrapper
 {
-    struct ConfigurationProvider
-    {
-        template<typename Config>
-        struct is_config_enabled {
-            static constexpr bool value {(std::is_same_v<Config, Configs> || ...)};
-        };
-    };
+    static constexpr auto hasBypass = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Bypass, Configs...>;
+    static constexpr auto hasMix = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mix, Configs...>;
 public:
     BypassWrapper() = default;
     ~BypassWrapper() = default;
@@ -46,7 +41,7 @@ public:
                 /// we insert the parameters into the processors parameter tree,
                 /// BUT The BypassWrapper::Parameters struct handles smoothing/reset etc the
 
-                if (ConfigurationProvider::template is_config_enabled<Mix>::value)
+                if constexpr (hasMix)
                 {
                     const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
                     const auto attributes = juce::AudioParameterFloatAttributes{}
@@ -59,7 +54,7 @@ public:
                     mix.currentValue = 1.0f;
                 }
 
-                if (ConfigurationProvider::template is_config_enabled<Bypass>::value)
+                if constexpr (hasBypass)
                 {
                     createTrackedParameter (*targetFactory, bypass, "Bypass", "Bypass", false);
                 }

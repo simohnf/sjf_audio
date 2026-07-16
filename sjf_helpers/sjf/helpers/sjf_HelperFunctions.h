@@ -23,6 +23,11 @@ namespace utilities
             (func(std::forward<T0>(items)), ...);
         }, std::forward<Tuple>(tuple));
     }
+
+
+    template <typename TargetConfig, typename... Configurations>
+    forcedinline constexpr bool configurationAvailable = (std::is_same_v<Configurations, TargetConfig> || ...);
+
 }
 
 namespace waveforms

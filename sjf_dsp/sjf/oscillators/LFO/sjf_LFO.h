@@ -10,12 +10,13 @@
 
 namespace sjf::dsp::oscillators::lfo
 {
-namespace configurations
+namespace config
 {
     struct PhaseOffset{};
     struct Invert{};
     struct Smooth{};
     struct Depth{};
+    struct TempoSync{};
 }
 
 using DefaultWaveformProvider = LFOWaveformProvider<Sine, Triangle, Sawtooth, Square>;
@@ -23,10 +24,11 @@ using DefaultWaveformProvider = LFOWaveformProvider<Sine, Triangle, Sawtooth, Sq
 template<typename WaveformProvider = DefaultWaveformProvider, typename... Configurations>
 class LFO
 {
-    static constexpr auto hasDepth = helpers::functions::utilities::configurationAvailable<configurations::Depth, Configurations...>;
-    static constexpr auto hasPhaseOffset = helpers::functions::utilities::configurationAvailable<configurations::PhaseOffset, Configurations...>;
-    static constexpr auto hasInvert = helpers::functions::utilities::configurationAvailable<configurations::Invert, Configurations...>;
-    static constexpr auto hasSmooth = helpers::functions::utilities::configurationAvailable<configurations::Smooth, Configurations...>;
+    static constexpr auto hasDepth = helpers::functions::utilities::configurationAvailable<config::Depth, Configurations...>;
+    static constexpr auto hasPhaseOffset = helpers::functions::utilities::configurationAvailable<config::PhaseOffset, Configurations...>;
+    static constexpr auto hasInvert = helpers::functions::utilities::configurationAvailable<config::Invert, Configurations...>;
+    static constexpr auto hasSmooth = helpers::functions::utilities::configurationAvailable<config::Smooth, Configurations...>;
+    static constexpr auto hasTempoSync = helpers::functions::utilities::configurationAvailable<config::TempoSync, Configurations...>;
     static constexpr auto numChannels = hasPhaseOffset || hasInvert ? 2 : 1;
     static constexpr auto numWaveforms = WaveformProvider::numWaveforms;
     static constexpr auto hasWaveformChoice = numWaveforms > 1;
@@ -37,9 +39,11 @@ public:
 
     struct Parameters : public helpers::AudioParametersBase
     {
-        helpers::SyncedFrequencyParameter<> frequency;
 
+        using FrequencyParam = helpers::SyncedFrequencyParameter<>;
         [[maybe_unused]] FloatState depth, phaseOffset;
+
+        FrequencyParam frequency;
 
         [[maybe_unused]] ChoiceState waveform, invert;
 
@@ -55,8 +59,16 @@ public:
             static_assert(numWaveforms > 0, "There must be at least one waveform!!!");
 
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
-            factory->addChild(frequency.createParameters("Frequency" , "Frequency"));
-            addTrackedChildParameters(frequency);
+
+            if constexpr (hasTempoSync)
+            {
+                factory->addChild(frequency.createParameters("Frequency" , "Frequency"));
+                addTrackedChildParameters(frequency);
+            }
+            else
+            {
+                createTrackedParameter(*factory, frequency.frequency, "Frequency", "Frequency", frequency.getFrequencyRange(), frequency.defaultFrequency, nullptr, FrequencyParam::getFrequencyAttributes());
+            }
 
             if constexpr (hasWaveformChoice)
                 createTrackedParameter(*factory, waveform, "Waveform", "Waveform", WaveformProvider::getNames(), 0);

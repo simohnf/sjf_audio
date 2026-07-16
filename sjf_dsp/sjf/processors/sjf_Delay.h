@@ -18,7 +18,6 @@ namespace sjf::dsp
 
 namespace delay_config
 {
-    struct Modulation{};
     struct PingPong{};
     struct Saturation{};
     struct Filter{};
@@ -26,10 +25,11 @@ namespace delay_config
     struct TempoSync{};
     struct LFOTempoSync{};
     struct Link{};
-    struct Dummy{};
+
 }
 
-template<typename ... Configuration>
+
+template<typename ... Configurations>
 class Delay
 {
 public:
@@ -37,23 +37,20 @@ public:
     static constexpr auto NUM_CHANNELS = 2; // TO DO: Enable Mono Delay
 
 
-    static constexpr auto hasModulation = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Modulation, Configuration...>;
-    static constexpr auto hasPingPong = sjf::helpers::functions::utilities::configurationAvailable<delay_config::PingPong, Configuration...>;
-    static constexpr auto hasSaturation = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Saturation, Configuration...>;
-    static constexpr auto hasFilter = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Filter, Configuration...>;
-    static constexpr auto hasDetune = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Detune, Configuration...>;
-    static constexpr auto hasTempoSync = sjf::helpers::functions::utilities::configurationAvailable<delay_config::TempoSync, Configuration...>;
-    static constexpr auto hasLink = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Link, Configuration...>;
-    static constexpr auto hasLFOTempoSync = sjf::helpers::functions::utilities::configurationAvailable<delay_config::LFOTempoSync, Configuration...>;
 
-    using LFO = sjf::dsp::oscillators::lfo::LFO<
-                                                oscillators::lfo::DefaultWaveformProvider,
-                                                oscillators::lfo::config::Depth,
-                                                oscillators::lfo::config::Invert,
-                                                oscillators::lfo::config::PhaseOffset,
-                                                oscillators::lfo::config::Smooth,
-                                                std::conditional_t<hasLFOTempoSync, oscillators::lfo::config::TempoSync, delay_config::Dummy>
-                                                >;
+    static constexpr auto hasPingPong = sjf::helpers::functions::utilities::configurationAvailable<delay_config::PingPong, Configurations...>;
+    static constexpr auto hasSaturation = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Saturation, Configurations...>;
+    static constexpr auto hasFilter = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Filter, Configurations...>;
+    static constexpr auto hasDetune = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Detune, Configurations...>;
+    static constexpr auto hasTempoSync = sjf::helpers::functions::utilities::configurationAvailable<delay_config::TempoSync, Configurations...>;
+    static constexpr auto hasLink = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Link, Configurations...>;
+
+    static constexpr auto hasModulation = sjf::helpers::functions::utilities::has_any_instantiation<sjf::dsp::oscillators::lfo::LFO, Configurations...>;
+    using LFO = sjf::helpers::functions::utilities::find_instantiation_of_t<
+                                                                                sjf::dsp::oscillators::lfo::LFO,
+                                                                                helpers::functions::utilities::DummyStruct,
+                                                                                Configurations...
+                                                                            >;
 
     using Filter = sjf::helpers::BypassWrapper<sjf::dsp::SVF<true, true>, helpers::bypass_wrapper_config::Bypass>;
     using DelayLine = std::conditional_t<hasDetune, sjf::helpers::PitchShiftDelayLine<>, sjf::helpers::DelayLine>;
@@ -176,7 +173,6 @@ public:
     Delay()
     : inputChannelPointers({}), outputChannelPointers({})
     {
-        static_assert((hasLFOTempoSync && hasModulation) || !hasLFOTempoSync, "You can't sync the LFO if it isn't activated");
         static_assert(NUM_CHANNELS > 1 || !hasPingPong, "Can't have PingPong with a mono delay");
         static_assert(NUM_CHANNELS > 1 || !hasLink, "Can't Link timings with a mono delay");
     }

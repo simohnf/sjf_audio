@@ -21,10 +21,16 @@ namespace config
 
 using DefaultWaveformProvider = LFOWaveformProvider<Sine, Triangle, Sawtooth, Square>;
 
-template<typename WaveformProvider = DefaultWaveformProvider, typename... Configurations>
+template<typename... Configurations>
 class LFO
 {
 public:
+    using WaveformProvider = sjf::helpers::functions::utilities::find_instantiation_of_t<
+                                                                                sjf::dsp::oscillators::lfo::LFOWaveformProvider,
+                                                                                helpers::functions::utilities::DummyStruct,
+                                                                                Configurations...
+                                                                            >;
+
     static constexpr auto hasDepth = helpers::functions::utilities::configurationAvailable<config::Depth, Configurations...>;
     static constexpr auto hasPhaseOffset = helpers::functions::utilities::configurationAvailable<config::PhaseOffset, Configurations...>;
     static constexpr auto hasInvert = helpers::functions::utilities::configurationAvailable<config::Invert, Configurations...>;
@@ -105,7 +111,9 @@ public:
 
     explicit LFO(const float minFrequency_ = 0.001f, const float maxFrequency_ = 20.0f, const float defaultFrequency_ = 1.0f)
     : parameters(minFrequency_, maxFrequency_, defaultFrequency_)
-    {}
+    {
+        static_assert(!std::is_same_v<helpers::functions::utilities::DummyStruct, LFO>, "You have not included an instance of LFOWaveformProvider in the template arguments");
+    }
 
     void prepare (const juce::dsp::ProcessSpec& spec_)
     {

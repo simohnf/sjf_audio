@@ -32,9 +32,9 @@ public:
         parameters.prepare(spec);
         dcBlocker.prepare(spec);
         if  constexpr (FIRST_ORDER)
-            dcBlocker.coefficients = juce::dsp::IIR::Coefficients<float>::makeFirstOrderHighPass(spec.sampleRate, 10.0f);
+            dcBlocker.coefficients = juce::dsp::IIR::Coefficients<float>::makeFirstOrderHighPass(spec.sampleRate, 15.0f);
         else
-            dcBlocker.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(spec.sampleRate, 10.0f);
+            dcBlocker.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass(spec.sampleRate, 15.0f);
         reset();
     }
 

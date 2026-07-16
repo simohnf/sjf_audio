@@ -94,6 +94,6 @@ public:
     }
 private:
     Processor processor;
-    juce::dsp::ProcessSpec spec;
+    juce::dsp::ProcessSpec spec{};
 };
 }

@@ -142,7 +142,10 @@ template<typename SyncRatesProvider = DefaultSyncRatesProvider>
 struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 {
     SyncedDurationParameter(const float minTimeMS_, const float maxTimeMS_, const float defaultTimeMS_, const float skewForCentre_)
-    : minTimeMS(minTimeMS_), maxTimeMS(maxTimeMS_), defaultTimeMS(defaultTimeMS_), skewForCentre(skewForCentre_)
+    : minTimeMS(jmin(minTimeMS_, maxTimeMS_))
+    , maxTimeMS(jmax(minTimeMS_, maxTimeMS_))
+    , defaultTimeMS((defaultTimeMS_ > minTimeMS && defaultTimeMS_ < maxTimeMS ? defaultTimeMS_ : jmap(0.5f, minTimeMS, maxTimeMS)))
+    , skewForCentre(((skewForCentre_ > minTimeMS && skewForCentre_ < maxTimeMS ? skewForCentre_ : jmap(0.5f, minTimeMS, maxTimeMS))))
     {
         positionInfo.setBpm(120);
     }
@@ -151,7 +154,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
     BoolState   sync;
     ChoiceState syncedNumerator, syncedDenominator;
 
-    float minTimeMS, maxTimeMS, defaultTimeMS, skewForCentre;
+    const float minTimeMS, maxTimeMS, defaultTimeMS, skewForCentre;
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
     {
@@ -163,7 +166,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
         // Delay Time
         {
             auto range = juce::NormalisableRange<float>{ minTimeMS, maxTimeMS, 0.01f };
-            range.setSkewForCentre(skewForCentre <= minTimeMS || skewForCentre >= maxTimeMS ? jmap(0.5f, minTimeMS, maxTimeMS) : skewForCentre);
+            range.setSkewForCentre(skewForCentre);
             const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("ms");
             const auto mapping = [&](const float x)
             {
@@ -175,7 +178,9 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
                 {
                     const auto beat = 60.0f/(*positionInfo.getBpm());
                     const auto bar = 4.0f * beat;
-                    const auto div = (static_cast<float>(syncedNumerator.currentValue)/static_cast<float>(syncedDenominator.currentValue) );
+                    const auto numerator = static_cast<float>(SyncRatesProvider::getNumerators()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
+                    const auto denominator = static_cast<float>(SyncRatesProvider::getDenominators()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
+                    const auto div = numerator / denominator;
                     return spec.sampleRate * bar * div;
                 }
             };
@@ -184,12 +189,12 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 
         // SyncedNumerator
         {
-            auto mapping = [&](const int indx){ return SyncRatesProvider::getNumerators()[indx];};
+            auto mapping = [&](const int indx){ return SyncRatesProvider::getNumerators()[static_cast<size_t>(indx)];};
             createTrackedParameter  (*factory, syncedNumerator, "NumDivisions", "NumDivisions", SyncRatesProvider::getNumeratorStrings(), 0, mapping);
         }
         //syncedDenominator
         {
-            auto mapping = [&](const int indx){ return SyncRatesProvider::getDenominators()[indx];};
+            auto mapping = [&](const int indx){ return SyncRatesProvider::getDenominators()[static_cast<size_t>(indx)];};
             createTrackedParameter (*factory, syncedDenominator, "Division", "Division", SyncRatesProvider::getDenominatorStrings(), 0, mapping);
         }
 

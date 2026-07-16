@@ -528,9 +528,6 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 
         // Delay Time
         {
-            auto range = juce::NormalisableRange<float>{ minTimeMS, maxTimeMS, 0.01f };
-            range.setSkewForCentre(skewForCentre);
-            const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("ms");
             const auto mapping = [&](const float x)
             {
                 if (!sync.currentValue)
@@ -547,7 +544,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
                     return spec.sampleRate * bar * div;
                 }
             };
-            createTrackedParameter  (*factory, time, "Time",  "Time  (ms)",  range, defaultTimeMS, mapping, attributes);
+            createTrackedParameter  (*factory, time, "Time",  "Time  (ms)",  getDurationRange(), defaultTimeMS, mapping, getDurationAttributes());
         }
 
         // SyncedNumerator
@@ -571,6 +568,18 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
             positionInfo.setBpm(positionInfo_->getBpm());
         else
             positionInfo.setBpm(120);
+    }
+
+    juce::NormalisableRange<float> getDurationRange() const
+    {
+        auto range = juce::NormalisableRange<float>{ minTimeMS, maxTimeMS, 0.01f };
+        range.setSkewForCentre(skewForCentre);
+        return range;
+    }
+
+    static juce::AudioParameterFloatAttributes getDurationAttributes()
+    {
+        return juce::AudioParameterFloatAttributes{}   .withLabel("ms");
     }
 
     AudioPlayHead::PositionInfo positionInfo;
@@ -606,9 +615,7 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
 
         // Frequency
         {
-            auto range = juce::NormalisableRange<float>{ minFrequency, maxFrequency, 0.01f };
-            range.setSkewForCentre(skewForCentre);
-            const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("Hz");
+
             const auto mapping = [&](const float x)
             {
                 if (!sync.currentValue)
@@ -625,7 +632,8 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
                     return 1.0f/ (bar * div);
                 }
             };
-            createTrackedParameter  (*factory, frequency, "Frequency",  "Frequency  (Hz)",  range, defaultFrequency, mapping, attributes);
+
+            createTrackedParameter  (*factory, frequency, "Frequency",  "Frequency  (Hz)",  getFrequencyRange(), defaultFrequency, mapping, getFrequencyAttributes());
         }
 
         // SyncedNumerator
@@ -649,6 +657,18 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
             positionInfo.setBpm(positionInfo_->getBpm());
         else
             positionInfo.setBpm(120);
+    }
+
+    juce::NormalisableRange<float> getFrequencyRange() const
+    {
+        auto range = juce::NormalisableRange<float>{ minFrequency, maxFrequency, 0.01f };
+        range.setSkewForCentre(skewForCentre);
+        return range;
+    }
+
+    static juce::AudioParameterFloatAttributes getFrequencyAttributes()
+    {
+        return juce::AudioParameterFloatAttributes{}   .withLabel("Hz");
     }
 
     AudioPlayHead::PositionInfo positionInfo;

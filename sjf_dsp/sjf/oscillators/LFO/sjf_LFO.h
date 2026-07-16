@@ -43,7 +43,7 @@ public:
 
     struct Parameters : public helpers::AudioParametersBase
     {
-        SyncedFrequencyParameter<> frequency;
+        helpers::SyncedFrequencyParameter<> frequency;
 
         [[maybe_unused]] FloatState depth, phaseOffset;
 

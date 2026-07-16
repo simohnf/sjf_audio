@@ -41,7 +41,8 @@ public:
 
     struct Parameters : public helpers::AudioParametersBase
     {
-        std::array<oscillators::SyncedDurationParameter<>, NUM_CHANNELS> delayTimes{oscillators::SyncedDurationParameter<>{1.0f, 10000.0f, 100.0f, 1000.0f}, oscillators::SyncedDurationParameter<>(1.0f, 10000.0f, 100.0f, 1000.0f)};
+        std::array<helpers::SyncedDurationParameter<>, NUM_CHANNELS> delayTimes{helpers::SyncedDurationParameter<>{1.0f, 10000.0f, 100.0f, 1000.0f},
+                                                                                helpers::SyncedDurationParameter<>(1.0f, 10000.0f, 100.0f, 1000.0f)};
         std::array<FloatState, NUM_CHANNELS> detune;
         FloatState feedback, drive;
 

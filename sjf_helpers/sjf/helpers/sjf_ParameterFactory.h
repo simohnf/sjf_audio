@@ -572,7 +572,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 
     juce::NormalisableRange<float> getDurationRange() const
     {
-        auto range = juce::NormalisableRange<float>{ minTimeMS, maxTimeMS, 0.01f };
+        auto range = juce::NormalisableRange<float>{ minTimeMS, maxTimeMS, 0.001f };
         range.setSkewForCentre(skewForCentre);
         return range;
     }
@@ -661,7 +661,7 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
 
     juce::NormalisableRange<float> getFrequencyRange() const
     {
-        auto range = juce::NormalisableRange<float>{ minFrequency, maxFrequency, 0.01f };
+        auto range = juce::NormalisableRange<float>{ minFrequency, maxFrequency, 0.001f };
         range.setSkewForCentre(skewForCentre);
         return range;
     }

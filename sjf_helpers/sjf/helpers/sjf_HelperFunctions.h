@@ -25,8 +25,49 @@ namespace utilities
     }
 
 
+    // template parameter pack helpers
+
+    struct DummyStruct{};
+
     template <typename TargetConfig, typename... Configurations>
     forcedinline constexpr bool configurationAvailable = (std::is_same_v<Configurations, TargetConfig> || ...);
+
+    // 1. Base case: By default, a type T is NOT an instantiation of the template
+    template <template <typename...> class Template, typename T>
+    struct is_instantiation_of : std::false_type {};
+
+    // 2. Specialization: If the type matches the structure Template<Args...>, it IS an instantiation
+    template <template <typename...> class Template, typename... Args>
+    struct is_instantiation_of<Template, Template<Args...>> : std::true_type {};
+
+    // Helper alias for convenience (similar to std::is_same_v)
+    template <template <typename...> class Template, typename T>
+    inline constexpr bool is_instantiation_of_v = is_instantiation_of<Template, T>::value;
+
+    template <template <typename...> class TargetTemplate, typename... Configurations>
+    inline constexpr bool has_any_instantiation = (is_instantiation_of_v<TargetTemplate, std::decay_t<Configurations>> || ...);
+
+    // 1. Base case: If the pack is empty, return the Default type
+    template <template <typename...> class Template, typename Default, typename... Types>
+    struct find_instantiation_of
+    {
+        using type = Default;
+    };
+
+    // 2. Recursive case: Check the Head of the pack; if it matches, return it. Otherwise, search the Tail.
+    template <template <typename...> class Template, typename Default, typename Head, typename... Tail>
+    struct find_instantiation_of<Template, Default, Head, Tail...>
+    {
+        using type = std::conditional_t<
+            is_instantiation_of_v<Template, std::decay_t<Head>>,
+            Head,
+            typename find_instantiation_of<Template, Default, Tail...>::type
+        >;
+    };
+
+    // Helper alias for clean syntax (yields the actual type directly)
+    template <template <typename...> class Template, typename Default, typename... Types>
+    using find_instantiation_of_t = typename find_instantiation_of<Template, Default, Types...>::type;
 
 }
 

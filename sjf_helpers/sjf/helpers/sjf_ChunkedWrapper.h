@@ -57,6 +57,7 @@ public:
 
         size_t samplesProcessed = 0;
 
+        // TODO: positionInfo needs to be updated for each subblock....
         while (samplesProcessed < numSamples)
         {
             const auto chunkSize = std::min (MAX_CHUNK_SIZE, numSamples - samplesProcessed);

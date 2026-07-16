@@ -175,9 +175,9 @@ namespace sjf::helpers
             for ( auto head = 0ul; head < NUM_HEADS; ++head)
             {
                 const auto dt = t*windowSizeSamps + delayTimeSamps + 2.0f;
-                const auto e = helpers::Functions::getHannWindow(t + 0.5f);
+                const auto e = helpers::functions::waveforms::getHannWindow(t + 0.5f);
                 sum += delayLine.readSample<InterpType>(dt) * e;
-                t = helpers::Functions::wrapPhase(t, headOffset);
+                t = helpers::functions::waveforms::wrapPhase(t, headOffset);
             }
             return sum * outputScale;
         }
@@ -189,7 +189,7 @@ namespace sjf::helpers
         {
             auto sum = 0.0f;
             for ( auto head = 0ul; head < NUM_HEADS; ++head)
-                sum += helpers::Functions::getHannWindow(static_cast<float>(head)*headOffset);
+                sum += helpers::functions::waveforms::getHannWindow(static_cast<float>(head)*headOffset);
             if (EQUAL_POWER)
                 return 1.0f / sqrt(sum);
             return 1.0f/sum;

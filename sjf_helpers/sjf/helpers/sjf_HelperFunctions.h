@@ -6,29 +6,37 @@
 
 #include "sjf_Waveshapers.h"
 
-namespace sjf::helpers
+namespace sjf::helpers::functions
 {
-    struct Functions
-    {
-            /**
-    * Obviously not a waveform but helpful to not have to constantly retype this...
-    */
-
-    forcedinline static float floor( const float value )
+namespace utilities
+{
+    forcedinline float floor( const float value )
     {
         return static_cast<float>(static_cast<int>( value ) );
     }
 
+
+    template <typename Tuple, typename Callable>
+    forcedinline void forEach(Tuple&& tuple, Callable&& func)
+    {
+        std::apply([&]<typename... T0>(T0&&... items) {
+            (func(std::forward<T0>(items)), ...);
+        }, std::forward<Tuple>(tuple));
+    }
+}
+
+namespace waveforms
+{
     /**
      * Wraps input phase to 0-->1. Not a waveform, but useful to avoid retyping.
      * @param phase value must be >= 0
      * @return phase 0-->1
      */
 
-    forcedinline static float wrapPhase( const float phase )
+    forcedinline float wrapPhase( const float phase )
     {
         jassert ( phase >= 0 );
-        return phase - floor(phase );
+        return phase - utilities::floor(phase );
     }
 
     /**
@@ -38,12 +46,12 @@ namespace sjf::helpers
      * @return phase 0-->1
      */
 
-    forcedinline static float wrapPhase( float phase, const float shift )
+    forcedinline float wrapPhase( float phase, const float shift )
     {
         jassert ( shift >= 0 );
         jassert ( phase >= 0 );
         phase += shift;
-        return phase - floor(phase);
+        return phase - utilities::floor(phase);
     }
 
     /**
@@ -54,10 +62,10 @@ namespace sjf::helpers
      * @return sawtooth wave -1-->1
      */
 
-    forcedinline static float getSaw( float phase, const float startingPoint = 0.5f )
+    forcedinline float getSaw( float phase, const float startingPoint = 0.5f )
     {
         phase += startingPoint;
-        phase -= floor( phase );
+        phase -= utilities::floor( phase );
         phase *= 2.0f;
         phase -= 1.0f;
         jassert( phase >= -1.0f );
@@ -73,7 +81,7 @@ namespace sjf::helpers
      * @return sawtooth wave 1-->-1
      */
 
-    forcedinline static float getSawDescending(const float phase, const float startingPoint = 0.5 )
+    forcedinline float getSawDescending(const float phase, const float startingPoint = 0.5 )
     {
         return getSaw(1.0f - phase, startingPoint);
     }
@@ -85,7 +93,7 @@ namespace sjf::helpers
      * @return sin( 2 * pi * phase )
      */
 
-    forcedinline static float getSin( const float phase )
+    forcedinline float getSin( const float phase )
     {
         return juce::dsp::FastMathApproximations::sin( getSaw(phase) * juce::MathConstants<float>::pi);
     }
@@ -97,7 +105,7 @@ namespace sjf::helpers
      * @return cos( 2 * pi * phase )
      */
 
-    forcedinline static float getCos( const float phase )
+    forcedinline float getCos( const float phase )
     {
         return juce::dsp::FastMathApproximations::cos( getSaw(phase) * juce::MathConstants<float>::pi);
     }
@@ -109,9 +117,9 @@ namespace sjf::helpers
      * @return triangle wave between -1-->1
      */
 
-    static float getTriangle( const float phase ) // no duty cycle .... need to add that!!!
+    forcedinline float getTriangle( const float phase ) // no duty cycle .... need to add that!!!
     {
-        return abs( phase - floor(phase + 0.75f)  + 0.25f ) * 4.0f- 1.0f;
+        return abs( phase - utilities::floor(phase + 0.75f)  + 0.25f ) * 4.0f- 1.0f;
     }
 
     /**
@@ -122,7 +130,7 @@ namespace sjf::helpers
      * @return -1 or 1, with ramp between values
      */
 
-    static float getSlopedSquare( const float phase, const float squareness )
+    forcedinline float getSlopedSquare( const float phase, const float squareness )
     {
         jassert( squareness >= 0 );
         const auto p = getTriangle(phase) * (1 + squareness);
@@ -137,7 +145,7 @@ namespace sjf::helpers
      * @return -1 or 1, with ramp between values
      */
 
-    static float getRoundedSquare( const float phase, const float squareness )
+    forcedinline float getRoundedSquare( const float phase, const float squareness )
     {
         return juce::dsp::FastMathApproximations::cos( 0.5f*(getSlopedSquare(phase, squareness) + 1.0f) * MathConstants<float>::pi);
     }
@@ -148,7 +156,7 @@ namespace sjf::helpers
      * @param phase input phase 0-->1
      * @return -1 or 1
      */
-    forcedinline static float getSquare( const float phase )
+    forcedinline float getSquare( const float phase )
     {
         return phase < 0.5 ? - 1 : 1;
     }
@@ -159,7 +167,7 @@ namespace sjf::helpers
      * @return -1 <--> 1
      */
 
-    forcedinline static float getExponential2( const float phase )
+    forcedinline float getExponential2( const float phase )
     {
         const auto tri = getTriangle(phase );
         const auto sign = std::signbit(tri) ? -1.0f : 1.0f;
@@ -172,7 +180,7 @@ namespace sjf::helpers
      * @return -1 <--> 1
      */
 
-    forcedinline static float getExponential3( const float phase )
+    forcedinline float getExponential3( const float phase )
     {
         const auto tri = getTriangle(phase );
         return tri*tri*tri;
@@ -184,7 +192,7 @@ namespace sjf::helpers
      * @param offset offsets the phase, the default 0.25 is so that this waveform hits its peaks and troughs at the same phase input as the sin calculation...
      * @return -1 <--> 1
      */
-    forcedinline static float getExponentialSweep( const float phase, const float offset = 0.25f )
+    forcedinline float getExponentialSweep( const float phase, const float offset = 0.25f )
     {
         jassert( phase + offset >= 0);
         const auto saw = getSaw( phase + offset );
@@ -196,19 +204,19 @@ namespace sjf::helpers
      * @param phase input phase 0-->1
      * @return -1 <--> 1
      */
-    forcedinline static float getExponentialSweep2( const float phase )
+    forcedinline float getExponentialSweep2( const float phase )
     {
         const auto sin = getSin( phase ) *0.5f + 0.5f;
         return 2.0f*sin*sin - 1.0f;
     }
-    
+
     /**
      * A waveform that can be used to shift between a sine and triangle wave
      * @param phase input phse 0-->1
      * @param triangleness at three the output will be a sinewave (or there abouts), the higher this value the more triangle-like the output
      * @return -1 <--> 1
      */
-    forcedinline static float getRoundedTriangle( const float phase, const size_t triangleness )
+    forcedinline float getRoundedTriangle( const float phase, const size_t triangleness )
     {
         jassert( triangleness >= 3 );
         const auto tri = getTriangle(phase);
@@ -222,7 +230,7 @@ namespace sjf::helpers
      *
      * see @getCos @getSin
      */
-    forcedinline static float calculateSinCosError(const size_t count = 1000000)
+    forcedinline float calculateSinCosError(const size_t count = 1000000)
     {
         float max = 1.0f;
         for( auto i = 0ul; i < count; ++i )
@@ -242,11 +250,14 @@ namespace sjf::helpers
     }
 
 
-    forcedinline static float getHannWindow(const float phase)
+    forcedinline float getHannWindow(const float phase)
     {
         return getCos(phase) * 0.5f + 0.5f;
     }
-
-};
-    
 }
+
+
+
+
+}
+

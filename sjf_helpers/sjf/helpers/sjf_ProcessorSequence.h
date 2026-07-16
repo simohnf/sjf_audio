@@ -6,6 +6,8 @@
 #include <JuceHeader.h>
 
 #include <sjf/helpers/sjf_ParameterFactory.h>
+
+#include "sjf_HelperFunctions.h"
 #include "sjf_OptionalCalls.h"
 
 namespace sjf::helpers
@@ -62,42 +64,26 @@ public:
             return nullptr;
         }
 
-        // Unpack the processors and configurations in tandem using an index sequence
-        createParametersInternal (mainFactory.get(),
-                                  std::make_index_sequence<sizeof...(Processors)>{},
-                                  std::forward<Configs> (subConfigs)...);
+        auto configTuple = std::forward_as_tuple (std::forward<Configs> (subConfigs)...);
+
+        [&]<std::size_t... Is>(std::index_sequence<Is...>)
+        {
+            (invokeCreateParameters (
+                std::get<Is> (processors),
+                mainFactory.get(),
+                std::forward<std::tuple_element_t<Is, decltype(configTuple)>> (std::get<Is> (configTuple))
+             ), ...);
+        }(std::make_index_sequence<sizeof...(Processors)>{});
 
         return mainFactory;
     }
 
     //==============================================================================
-    /**
-        Executes a callable utility on each processor in strict sequential order.
-        The lambda should take a single 'auto&' argument.
-    */
-    template <typename Callable>
-    void forEach (Callable&& callable)
-    {
-        std::apply ([&callable](auto&... proc) {
-            (callable (proc), ...);
-        }, processors);
-    }
-
-    /** Const overload for read-only operations */
-    template <typename Callable>
-    void forEach (Callable&& callable) const
-    {
-        std::apply ([&callable](const auto&... proc) {
-            (callable (proc), ...);
-        }, processors);
-    }
-
-    //==============================================================================
-    void prepare (const juce::dsp::ProcessSpec& spec)   { forEach ([&spec](auto& proc) { proc.prepare (spec); }); }
-    void reset()                                        { forEach ([](auto& proc) { proc.reset(); }); }
+    void prepare (const juce::dsp::ProcessSpec& spec)   { sjf::helpers::functions::utilities::forEach (processors, [&spec](auto& proc) { proc.prepare (spec); }); }
+    void reset()                                        { sjf::helpers::functions::utilities::forEach (processors,[](auto& proc) { proc.reset(); }); }
 
     template <typename ProcessContextType>
-    void process (const ProcessContextType& context)    { forEach ([&context](auto& proc) { proc.process (context); }); }
+    void process (const ProcessContextType& context)    { sjf::helpers::functions::utilities::forEach (processors,[&context](auto& proc) { proc.process (context); }); }
 
     //==============================================================================
     /** Access an individual processor by index at compile-time */
@@ -106,36 +92,23 @@ public:
 
     void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
     {
-        forEach([&](auto& proc){ sjf::optional_calls::setPositionInfo(proc, positionInfo); });
+        sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){ sjf::optional_calls::setPositionInfo(proc, positionInfo); });
     }
 
 private:
-    /** Internal dispatcher that pairs tuple indices with variadic function arguments */
-    template <size_t... Indices, typename... Configs>
-    void createParametersInternal (ParameterFactory* mainFactory,
-                                   std::index_sequence<Indices...>,
-                                   Configs&&... subConfigs)
-    {
-        // C++17 fold expression expanding elements in parallel
-        (..., invokeCreateParameters (std::get<Indices> (processors),
-                                     mainFactory,
-                                     std::forward<Configs> (subConfigs)));
-    }
-
-    /** Case 1: The configuration is a flat SubFactoryConfig */
+    // Case 1: The configuration is a flat SubFactoryConfig
     template <typename ProcessorType, typename ConfigType>
-    std::enable_if_t<std::is_same_v<std::decay_t<ConfigType>, processor_sequence::SubFactoryConfig>>
-    invokeCreateParameters (ProcessorType& proc, ParameterFactory* parent, ConfigType&& config)
+    requires std::is_same_v<std::decay_t<ConfigType>, processor_sequence::SubFactoryConfig>
+    void invokeCreateParameters (ProcessorType& proc, ParameterFactory* parent, ConfigType&& config)
     {
         if (auto sub = proc.createParameters (config.id, config.name))
             parent->addChildFactory (std::move (sub));
     }
 
-    /** Case 2: The configuration is wrapped in a 'NestedConfig' token */
+    // Case 2: The configuration is wrapped in a 'NestedConfig' token
     template <typename ProcessorType, typename... Args>
     void invokeCreateParameters (ProcessorType& proc, ParameterFactory* parent, const processor_sequence::NestedConfig<Args...>& nestedPackage)
     {
-        // Unpack the nested elements as multi-argument parameters to the sub-processor
         std::apply ([&](auto&&... nestedArgs) {
             if (auto sub = proc.createParameters (std::forward<decltype (nestedArgs)> (nestedArgs)...))
                 parent->addChildFactory (std::move (sub));

@@ -176,7 +176,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
                 }
                 else
                 {
-                    const auto beat = 60.0f/(*positionInfo.getBpm());
+                    const auto beat = 60.0f/static_cast<float>(*positionInfo.getBpm());
                     const auto bar = 4.0f * beat;
                     const auto numerator = static_cast<float>(SyncRatesProvider::getNumerators()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
                     const auto denominator = static_cast<float>(SyncRatesProvider::getDenominators()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
@@ -254,7 +254,7 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
                 }
                 else
                 {
-                    const auto beat = 60.0f/(*positionInfo.getBpm());
+                    const auto beat = 60.0f/static_cast<float>(*positionInfo.getBpm());
                     const auto bar = 4.0f * beat;
                     const auto numerator = static_cast<float>(SyncRatesProvider::getNumerators()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
                     const auto denominator = static_cast<float>(SyncRatesProvider::getDenominators()[static_cast<size_t>(syncedDenominator.getParameterValue())]);

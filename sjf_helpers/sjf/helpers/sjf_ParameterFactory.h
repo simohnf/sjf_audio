@@ -429,58 +429,76 @@ private:
 
 struct DefaultSyncRatesProvider
 {
-    const static std::vector<int>& getDenominators()
+    struct Numerator
     {
-        static const auto denominators = []()
+        const static std::vector<int>& getValues()
         {
-            const std::vector<int> vals {1, 2, 3, 4, 5, 6, 7};
-            std::vector<int> ret{};
-            for (auto i = 0; i < 5; ++i)
+            static const auto values = []()
             {
-                const auto p = static_cast<int>(pow(2, i));
-                for (const auto d : vals)
+                const std::vector<int> vals {1, 2, 3, 4, 5, 6, 7};
+                std::vector<int> ret{};
+                for (auto i = 0; i < 5; ++i)
                 {
-                    const auto next = p*d;
-                    if (std::find(ret.begin(), ret.end(), next) == ret.end())
-                        ret.push_back(next);
+                    const auto p = static_cast<int>(pow(2, i));
+                    for (const auto d : vals)
+                    {
+                        const auto next = p*d;
+                        if (std::find(ret.begin(), ret.end(), next) == ret.end())
+                            ret.push_back(next);
+                    }
                 }
-            }
-            return ret;
-        }();
+                return ret;
+            }();
 
-        return denominators;
-    }
+            return values;
+        }
 
-    const static StringArray& getDenominatorStrings()
-    {
-        const static StringArray denominatorStrings =[]()
+        const static StringArray& getStrings()
         {
-           auto arr = StringArray();
-            for (auto& d : getDenominators())
-                arr.add(String(d));
-            return arr;
-        }();
-        return denominatorStrings;
-    }
+            const static StringArray strings =[]()
+            {
+                auto arr = StringArray();
+                for (auto& d : getValues())
+                    arr.add(String(d));
+                return arr;
+            }();
+            return strings;
+        }
 
-    const static std::vector<int>& getNumerators()
-    {
-        const static std::vector<int> numerators {1, 2, 3, 4, 5, 6, 7, 8};
-        return numerators;
-    }
-
-    const static StringArray& getNumeratorStrings()
-    {
-        const static StringArray numeratorStrings =[]()
+        static int getDefault()
         {
-            auto arr = StringArray();
-            for (const auto i : getNumerators())
-                arr.add(String(i));
-            return arr;
-        }();
+            static const auto defaultValue = getStrings().indexOf("1");
+            return defaultValue;
+        }
+    };
 
-        return numeratorStrings;
-    }
+    struct Denominator
+    {
+        const static std::vector<int>& getValues()
+        {
+            const static std::vector<int> values {1, 2, 3, 4, 5, 6, 7, 8};
+            return values;
+        }
+
+        const static StringArray& getStrings()
+        {
+            const static StringArray strings =[]()
+            {
+                auto arr = StringArray();
+                for (const auto i : getValues())
+                    arr.add(String(i));
+                return arr;
+            }();
+
+            return strings;
+        }
+
+        static int getDefault()
+        {
+            static const auto defaultValue = getStrings().indexOf("8");
+            return defaultValue;
+        }
+    };
 };
 
 template<typename SyncRatesProvider = DefaultSyncRatesProvider>
@@ -523,8 +541,8 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
                 {
                     const auto beat = 60.0f/static_cast<float>(*positionInfo.getBpm());
                     const auto bar = 4.0f * beat;
-                    const auto numerator = static_cast<float>(SyncRatesProvider::getNumerators()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
-                    const auto denominator = static_cast<float>(SyncRatesProvider::getDenominators()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
+                    const auto numerator = static_cast<float>(SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
+                    const auto denominator = static_cast<float>(SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
                     const auto div = numerator / denominator;
                     return spec.sampleRate * bar * div;
                 }
@@ -534,13 +552,13 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 
         // SyncedNumerator
         {
-            auto mapping = [&](const int indx){ return SyncRatesProvider::getNumerators()[static_cast<size_t>(indx)];};
-            createTrackedParameter  (*factory, syncedNumerator, "NumDivisions", "NumDivisions", SyncRatesProvider::getNumeratorStrings(), 0, mapping);
+            auto mapping = [&](const int indx){ return SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(indx)];};
+            createTrackedParameter  (*factory, syncedNumerator, "NumDivisions", "NumDivisions", SyncRatesProvider::Numerator::getStrings(), SyncRatesProvider::Numerator::getDefault(), mapping);
         }
         //syncedDenominator
         {
-            auto mapping = [&](const int indx){ return SyncRatesProvider::getDenominators()[static_cast<size_t>(indx)];};
-            createTrackedParameter (*factory, syncedDenominator, "Division", "Division", SyncRatesProvider::getDenominatorStrings(), 0, mapping);
+            auto mapping = [&](const int indx){ return SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(indx)];};
+            createTrackedParameter (*factory, syncedDenominator, "Division", "Division", SyncRatesProvider::Denominator::getStrings(), SyncRatesProvider::Denominator::getDefault(), mapping);
         }
 
 
@@ -590,7 +608,7 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
         {
             auto range = juce::NormalisableRange<float>{ minFrequency, maxFrequency, 0.01f };
             range.setSkewForCentre(skewForCentre);
-            const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("ms");
+            const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("Hz");
             const auto mapping = [&](const float x)
             {
                 if (!sync.currentValue)
@@ -601,8 +619,8 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
                 {
                     const auto beat = 60.0f/static_cast<float>(*positionInfo.getBpm());
                     const auto bar = 4.0f * beat;
-                    const auto numerator = static_cast<float>(SyncRatesProvider::getNumerators()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
-                    const auto denominator = static_cast<float>(SyncRatesProvider::getDenominators()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
+                    const auto numerator = static_cast<float>(SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
+                    const auto denominator = static_cast<float>(SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
                     const auto div = numerator / denominator;
                     return 1.0f/ (bar * div);
                 }
@@ -612,13 +630,13 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
 
         // SyncedNumerator
         {
-            auto mapping = [&](const int indx){ return SyncRatesProvider::getNumerators()[static_cast<size_t>(indx)];};
-            createTrackedParameter  (*factory, syncedNumerator, "NumDivisions", "NumDivisions", SyncRatesProvider::getNumeratorStrings(), 0, mapping);
+            auto mapping = [&](const int indx){ return SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(indx)];};
+            createTrackedParameter  (*factory, syncedNumerator, "NumDivisions", "NumDivisions", SyncRatesProvider::Numerator::getStrings(), SyncRatesProvider::Numerator::getDefault(), mapping);
         }
         //syncedDenominator
         {
-            auto mapping = [&](const int indx){ return SyncRatesProvider::getDenominators()[static_cast<size_t>(indx)];};
-            createTrackedParameter (*factory, syncedDenominator, "Division", "Division", SyncRatesProvider::getDenominatorStrings(), 0, mapping);
+            auto mapping = [&](const int indx){ return SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(indx)];};
+            createTrackedParameter (*factory, syncedDenominator, "Division", "Division", SyncRatesProvider::Denominator::getStrings(), SyncRatesProvider::Denominator::getDefault(), mapping);
         }
 
 

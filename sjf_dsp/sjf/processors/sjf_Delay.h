@@ -11,6 +11,7 @@
 #include "sjf/helpers/sjf_DCBlock.h"
 #include "sjf/helpers/sjf_ProcessDuplicator.h"
 #include "sjf/helpers/sjf_Waveshapers.h"
+#include "sjf/oscillators/LFO/sjf_LFO.h"
 
 namespace sjf::dsp
 {
@@ -19,6 +20,11 @@ class Delay
     static constexpr auto MAX_DELAY_MS = 10000.0f;
     static constexpr auto NUM_CHANNELS = 2;
 
+    using LFO = sjf::dsp::oscillators::lfo::LFO<oscillators::lfo::DefaultWaveformProvider,
+                                                oscillators::lfo::configurations::Depth,
+                                                oscillators::lfo::configurations::Invert,
+                                                oscillators::lfo::configurations::PhaseOffset,
+                                                oscillators::lfo::configurations::Smooth>;
     using Filter = sjf::helpers::BypassWrapper<sjf::dsp::SVF<true, true>, helpers::bypass_wrapper_config::Bypass>;
 
 public:
@@ -142,6 +148,7 @@ public:
         dcBlocker.prepare(spec);
 
         filter.prepare(spec);
+        lfo.prepare(spec);
 
         reset();
     }
@@ -154,6 +161,7 @@ public:
         dcBlocker.reset();
 
         filter.reset();
+        lfo.reset();
     }
 
     template <typename ProcessContext>
@@ -168,6 +176,7 @@ public:
         auto factory = parameters.createParameters (factoryID, factoryName);
         factory->addChild(filter.createParameters("Filter", "Filter"));
         factory->addChild(dcBlocker.createParameters("DCBlock", "DCBlock"));
+        factory->addChild(lfo.createParameters("Mod", "Modulation "));
         return factory;
     }
 
@@ -234,6 +243,11 @@ private:
             return channel;
         };
 
+        lfo.process(context);
+
+        const auto lfoBlock = lfo.getLfoOutput().getSubBlock(0, numSamples);
+
+
         for (size_t i = 0; i < numSamples; ++i)
         {
             // Remember to tick the smoothers!!! for every sample
@@ -246,7 +260,8 @@ private:
             for (auto channel = 0ul; channel < numChannels; ++channel)
             {
                 auto& sample = wptrs[channel][0];
-                const auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].time.currentValue : parameters.delayTimes[channel].time.currentValue;
+                auto delayTime = parameters.link.currentValue ? parameters.delayTimes[0].time.currentValue : parameters.delayTimes[channel].time.currentValue;
+                delayTime += delayTime * lfoBlock.getSample(static_cast<int>(channel), static_cast<int>(i));
                 const auto detune = parameters.detune[channel].currentValue;
                 delayLine[channel].setPitchShift(detune);
                 sample = delayLine[channel].readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
@@ -325,6 +340,7 @@ private:
 
     juce::dsp::ProcessSpec spec{};
     std::array<sjf::helpers::PitchShiftDelayLine<>, NUM_CHANNELS> delayLine;
+    LFO lfo;
     sjf::helpers::ProcessorDuplicator<helpers::DCBlocker<>> dcBlocker;
     Filter filter;
     std::array<const float*, NUM_CHANNELS> inputChannelPointers;

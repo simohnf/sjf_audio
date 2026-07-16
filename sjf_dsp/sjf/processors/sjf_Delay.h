@@ -25,6 +25,7 @@ class Delay
                                                 oscillators::lfo::configurations::Invert,
                                                 oscillators::lfo::configurations::PhaseOffset,
                                                 oscillators::lfo::configurations::Smooth>;
+
     using Filter = sjf::helpers::BypassWrapper<sjf::dsp::SVF<true, true>, helpers::bypass_wrapper_config::Bypass>;
 
 public:

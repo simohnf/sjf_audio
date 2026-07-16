@@ -1,7 +1,7 @@
 //
 // Created by Simon Fay on 15/07/2026.
 //
-
+#pragma once
 #include <JuceHeader.h>
 namespace sjf::optional_calls
 {

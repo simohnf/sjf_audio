@@ -51,10 +51,10 @@ namespace delay_config
     template<size_t minMS = 1, size_t maxMS = 10000,  size_t defaultMS = 500, size_t skew = 1000>
     struct TimeValues
     {
-        static constexpr float minTimeMS_       = minMS;
-        static constexpr float maxTimeMS_       = maxMS;
-        static constexpr float defaultTimeMS_   = defaultMS;
-        static constexpr float skewForCentre_   = skew;
+        static constexpr float minTimeMS       = minMS;
+        static constexpr float maxTimeMS       = maxMS;
+        static constexpr float defaultTimeMS   = defaultMS;
+        static constexpr float skewForCentre   = skew;
     };
 }
 
@@ -154,19 +154,18 @@ public:
     struct Parameters : public helpers::AudioParametersBase
     {
         using Duration = helpers::SyncedDurationParameter<>;
-        std::array<FloatState, NUM_CHANNELS> detunes;
-        std::array<FloatState, NUM_CHANNELS> offsets;
+        std::array<FloatState, NUM_CHANNELS> times, detunes, offsets;
         FloatState feedback, drive;
-        std::array<Duration, NUM_CHANNELS> delayTimes;
-
-
         BoolState link, pingPong, saturation;
+        std::array<BoolState, NUM_CHANNELS> tempoSyncs;
+        std::array<ChoiceState, NUM_CHANNELS> syncedNumerators, syncedDenominators;
         ChoiceState saturationType;
 
-
+        std::array<Duration, NUM_CHANNELS> delayTimes;
 
         Parameters() :
-        delayTimes(sjf::helpers::functions::utilities::makeFilledArray<Duration, NUM_CHANNELS>(DelayTimes::minTimeMS_, DelayTimes::maxTimeMS_, DelayTimes::defaultTimeMS_, DelayTimes::skewForCentre_))
+        delayTimes(Duration::template createArray<NUM_CHANNELS>(times, tempoSyncs, syncedNumerators, syncedDenominators,
+                                                                DelayTimes::minTimeMS, DelayTimes::maxTimeMS, DelayTimes::defaultTimeMS, DelayTimes::skewForCentre))
         {}
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override

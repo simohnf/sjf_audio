@@ -57,7 +57,7 @@ struct Square
 {
     static const juce::String& getName()
     {
-        static const juce::String name = "Sawtooth";
+        static const juce::String name = "Square";
         return name;
     }
 

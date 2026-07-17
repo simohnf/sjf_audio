@@ -1,40 +1,123 @@
 # sjf_audio
 
+A high-performance C++20 DSP utility library designed specifically for the **JUCE** framework. This library provides compile-time abstractions to eliminate allocation overhead, structure hierarchical plugin parameters, and maximize compiler vectorization via automated fast-path branching.
 
-This folder contains a collection of header files comprising classes and functions used within my plugins. 
-There are a variety of DSP and interface objects as well as some utility functions.
+---
 
-Uses the [Juce](https://juce.com/) framework.
-sjf_fftConvo uses [Apple's Accelerate](https://developer.apple.com/documentation/accelerate) (so is currently MacOS only)
-Some of the classes also use the [gcem compile time math library](https://github.com/kthohr/gcem)
+## Key Architectural Concepts
 
-...The organisation and some of the code needs some improvement and some of the files just need to be removed...
+*   **Fast-Path Evaluation:** State changes are evaluated once per *block*. If parameters are stationary, the engine routes processing to a completely static lane, allowing the compiler to auto-vectorize loops.
+*   **Zero Runtime-Allocation Chains:** Sequential processing chains are unrolled at compile time using C++ variadic templates, completely eliminating runtime overhead or virtual function table penalties.
+*   **Strict Parameter Namespacing:** Hierarchical parameter tree building eliminates ID collisions across complex multi-module setups while preserving clean automation paths in the host DAW.
 
-### OLD NOTES
+---
 
-                    SJF AUDIO
-This is a collection of classes and functions used in my VST projects
-As I often reuse the same classes in multiple projects I found that this was a convenient(ish) way of organising them
-I have included only header files, rather than header and cpp files... sometimes this makes it easier, sometimes it is makes the files longer than they might otherwise be, but I just decided to work this way to keep everything uniform
-I have attempted to keep as much of the code necessary for my vsts within these files as possible. This means the actual source for each VST is reliant on these files 
-Many of the files still need additional work. e.g. some classes include overloaded functions I used when developing that may, or may not, be useful in future. Some of these will probably be removed in time.
-Much of the code could probably do with some refactoring... particularly some of the older classes/functions
+## Component Overview
 
+| Component                 | Purpose | Technical Highlights                                                                                                                                                                                 |
+|:--------------------------| :--- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **`ParameterFactory`**    | Strict hierarchical parameter generation | Extends `juce::AudioProcessorParameterGroup` to safely map and isolate nested sub-module automation strings.                                                                                         |
+| **`AudioParametersBase`** | State management & block divergence engine | Decouples the audio thread from host parameter listeners. Drives fast-path optimization switches via block-rate divergence checking. Handles automatic linear parameter value mapping and smoothing. |
+| **`ProcessorSequence`**   | Compile-time serial processing chain | Binds an arbitrary series of DSP blocks into a single cache-friendly `std::tuple`. Unrolls all lifecycle steps at compile time.                                                                      |
+| **`OversamplingWrapper`** | Dynamic runtime oversampling | Wraps any DSP processor to add dynamic, automated upsampling/downsampling channels mid-stream based on parameter targets.                                                                            |
+| **`ChunkedWrapper`**      | Fixed-size block segmentation layout | Subdivides arbitrary host processing audio buffers into predictable, uniform chunks. Ideal for stabilizing feedback loops, maintaining small-cache consistency, or optimizing SIMD loops.                                                                            |
 
+---
 
-## TO DO                    
-- refactor sampler... currently not the most logical way of doing things --> would be better to have a simpler basic sampler (with loading and playback etc), and then break out mangler specific code...
-- further develop drummachine
-- make some enums anytime I'm using switch cases
+## Quick Start Example
 
+Below is a brief look at how these architectural pieces interconnect inside a standard JUCE processor.
 
-# To Clone
-In Terminal
+### 1. Define Sub-Modules & Parameters
+```cpp
+struct DistortionModule
+{
+    struct Parameters : sjf::helpers::AudioParametersBase
+    {
+        FloatState drive;
+
+        std::unique_ptr<ParameterFactory> createParameters(const juce::String& id, const juce::String& name) override {
+            auto factory = ParameterFactory::create(id, name);
+            // Tracks drive and maps 0-100% smoothly
+            createTrackedParameter(*factory, drive, "Drive", "Drive Amount", {0.0f, 1.0f}, 0.5f);
+            return factory;
+        }
+    } parameters;
+
+    void prepare(const juce::dsp::ProcessSpec& spec) {}
+    void reset() {}
+    
+    template <typename Context>
+    void process(const Context& context) {
+        // Implement fast-path optimized or smoothed path using parameters.drive.currentValue
+    }
+    
+    std::unique_ptr<ParameterFactory> createParameters(const juce::String& id, const juce::String& name)
+    {
+        return parameters.createParameters(id, name);
+    }
+};
 ```
-git clone https://github.com/simohnf/sjf_audio
 
-cd sjf_audio
+### 2. Compose the Master Pipeline
+   Using ProcessorSequence and OversamplingWrapper, you can cleanly chain individual components together while auto-generating a complex nested parameter tree.
+   
+```c++
+using namespace sjf::helpers;
 
-git submodule update --init --recursive
+// A sequence chaining an oversampled distortion module into a standard delay
+using MyDSPChain = ProcessorSequence<
+    OversamplingWrapper<DistortionModule>,
+    Delay
+>;
 
+class MyAudioProcessor : public juce::AudioProcessor
+{
+    MyDSPChain dspChain;
+    std::unique_ptr<ParameterFactory> rootParameters;
+
+public:
+    MyAudioProcessor() 
+    {
+        // Recursively structures the hierarchy for the host DAW:
+        // Main Group -> Distortion (with 16x Oversampling controls) -> Delay Group
+        rootParameters = dspChain.createParameters("MainID", "MyPlugin",
+            processor_sequence::NestedConfig(
+                processor_sequence::SubFactoryConfig{"Dist", "Distortion"}
+            ),
+            processor_sequence::SubFactoryConfig{"Delay", "Echo Delay"}
+        );
+        
+        // Pass the structural layout to APVTS or AudioProcessor
+        addParameterGroup(std::move(rootParameters));
+    }
+
+    void prepareToPlay(double sampleRate, int samplesPerBlock) override {
+        juce::dsp::ProcessSpec spec{ sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)getTotalNumOutputChannels() };
+        dspChain.prepare(spec);
+    }
+
+    void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override {
+        
+    if ( auto playHead = getPlayHead())
+    {
+        auto positionInfo = playHead->getPosition();
+        if (positionInfo.hasValue())
+            processor.setPositionInfo(positionInfo);
+    }
+
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing<float> context(block);
+    processor.process(context);
+    }
+};
 ```
+
+---
+
+### Integration Requirements
+Language Standard: C++20 or higher.
+
+Framework Dependency: JUCE 7+.
+
+Compiler Target: Highly compatible with optimization flags (-O3, /O2, -ffast-math) to take full advantage of static-loop unrolling.

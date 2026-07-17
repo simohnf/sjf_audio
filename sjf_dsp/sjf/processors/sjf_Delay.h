@@ -25,7 +25,6 @@ namespace delay_config
     struct Filter{};
     struct Detune{};
     struct TempoSync{};
-    struct LFOTempoSync{};
     struct Link{};
 
 }

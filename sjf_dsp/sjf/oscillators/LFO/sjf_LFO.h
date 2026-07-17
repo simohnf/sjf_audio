@@ -163,11 +163,13 @@ public:
         {
             dispatch(0, std::make_index_sequence<numWaveforms>{}, context);
         }
+
         if constexpr (hasInvert)
         {
             if (parameters.invert.currentValue > 0)
                 lfoOutput.applyGain(parameters.invert.currentValue-1, 0, static_cast<int>(context.getOutputBlock().getNumSamples()), -1.0f);
         }
+
         if constexpr(hasSmooth)
         {
             for ( auto i = 0ul; i < smoothingFilter.size(); ++i)

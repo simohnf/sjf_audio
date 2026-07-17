@@ -214,7 +214,7 @@ private:
     template <std::size_t... Indices, typename ProcessContext>
     void dispatch (const size_t targetIndex, std::index_sequence<Indices...>, const ProcessContext& context) noexcept
     {
-        (void)((targetIndex == static_cast<int>(Indices) ? (executeProcessWithIndex<Indices>(context), true) : false) || ...);
+        (void)((targetIndex == static_cast<size_t>(Indices) ? (executeProcessWithIndex<Indices>(context), true) : false) || ...);
     }
 
     template<size_t WaveformIndex, typename ProcessContext>

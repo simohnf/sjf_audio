@@ -229,7 +229,7 @@ public:
 
         if constexpr (hasSaturation)
         {
-            lastSaturationType = parameters.saturationType.currentValue;
+            lastSaturationType = static_cast<size_t>(parameters.saturationType.currentValue);
             saturation.reset();
         }
     }
@@ -284,10 +284,10 @@ private:
     template <bool SaturationActive, std::size_t... Indices, typename ProcessContext>
     void dispatch (const size_t targetIndex, std::index_sequence<Indices...>, const ProcessContext& context) noexcept
     {
-        (void)((targetIndex == static_cast<int>(Indices) ? (processInternal<Indices, SaturationActive>(context), true) : false) || ...);
+        (void)((targetIndex == static_cast<size_t>(Indices) ? (processInternal<Indices, SaturationActive>(context), true) : false) || ...);
     }
 
-    template <int SaturationIndex, bool SaturationActive, typename ProcessContext>
+    template <size_t SaturationIndex, bool SaturationActive, typename ProcessContext>
     void processInternal (const ProcessContext& context) noexcept
     {
         const auto& inputBlock = context.getInputBlock();
@@ -447,6 +447,6 @@ private:
     [[maybe_unused]] Saturation saturation;
     std::array<const float*, NUM_CHANNELS> inputChannelPointers;
     std::array<float*, NUM_CHANNELS> outputChannelPointers;
-    int lastSaturationType = -1;
+    size_t lastSaturationType = 0;
 };
 }

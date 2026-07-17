@@ -111,8 +111,8 @@ template<typename ... Configurations>
 class Delay
 {
 public:
-    static constexpr auto MAX_DELAY_MS = 10000.0f;
 
+    static constexpr auto ModulationDepthScale = 0.499f;
 
     static constexpr auto hasMono = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Mono, Configurations...>;
     static constexpr auto NUM_CHANNELS = hasMono ? 1 : 2;
@@ -298,7 +298,8 @@ public:
         for (auto& dl : delayLine)
         {
             dl.prepare(spec);
-            dl.setMaxDelayTimeMS(MAX_DELAY_MS);
+            if constexpr (hasModulation)
+                dl.setMaxDelayTimeMS(DelayTimes::maxTimeMS * ModulationDepthScale + 1);
         }
 
         dcBlocker.prepare(spec);
@@ -492,7 +493,7 @@ private:
         {
             const auto numSamples = context.getOutputBlock().getNumSamples();
             lfo.process(context);
-            return lfo.getLfoOutput().getSubBlock(0, numSamples);
+            return lfo.getLfoOutput().getSubBlock(0, numSamples).multiplyBy(ModulationDepthScale);
         }
         else
         {

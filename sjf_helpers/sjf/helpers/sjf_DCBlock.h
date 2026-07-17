@@ -57,6 +57,9 @@ public:
         auto& outputBlock      = context.getOutputBlock();
         const auto numChannels = outputBlock.getNumChannels();
         const auto numSamples  = outputBlock.getNumSamples();
+        ignoreUnused(numSamples);
+        ignoreUnused(numChannels);
+        ignoreUnused(inputBlock);
 
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);

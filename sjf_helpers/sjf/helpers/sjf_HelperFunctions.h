@@ -150,7 +150,7 @@ namespace utilities
      * @tparam Configurations The parameter pack of types to inspect.
      */
     template <typename TargetConfig, typename... Configurations>
-    forcedinline constexpr bool configurationAvailable = (std::is_same_v<Configurations, TargetConfig> || ...);
+    constexpr bool configurationAvailable = (std::is_same_v<Configurations, TargetConfig> || ...);
 
     /**
      * @brief Compile-time trait that checks if a parameter pack contains an instantiation of a specific class template.

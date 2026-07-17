@@ -278,11 +278,8 @@ private:
     template <size_t WaveformIndex, typename ProcessContext>
     void processStaticState (const ProcessContext& context) noexcept
     {
-        const auto& inputBlock = context.getInputBlock();
         auto& outputBlock      = context.getOutputBlock();
         const auto numSamples  = outputBlock.getNumSamples();
-
-        jassert (inputBlock.getNumSamples() == numSamples);
 
         auto wptrs = lfoOutput.getArrayOfWritePointers();
 
@@ -316,11 +313,9 @@ private:
     void processSmoothedState (const ProcessContext& context) noexcept
     {
 
-        const auto& inputBlock = context.getInputBlock();
         auto& outputBlock      = context.getOutputBlock();
         const auto numSamples  = outputBlock.getNumSamples();
 
-        jassert (inputBlock.getNumSamples() == numSamples);
 
         auto wptrs = lfoOutput.getArrayOfWritePointers();
 

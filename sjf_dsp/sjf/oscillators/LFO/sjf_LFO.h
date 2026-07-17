@@ -88,17 +88,20 @@ public:
     {
 
         using FrequencyParam = helpers::SyncedFrequencyParameter<>;
+        FloatState freq;
         [[maybe_unused]] FloatState depth, phaseOffset;
 
-        FrequencyParam frequency;
+        BoolState sync;
 
         [[maybe_unused]] ChoiceState waveform, invert;
+        [[maybe_unused]] ChoiceState syncedNumerator, syncedDenominator;
 
+        FrequencyParam frequency;
 
 
 
         explicit Parameters(const float minFrequency_ = 0.001f, const float maxFrequency_ = 20.0f, const float defaultFrequency_ = 1.0f)
-        : frequency(minFrequency_, maxFrequency_, defaultFrequency_)
+        : frequency(freq, sync, syncedNumerator, syncedDenominator, FrequencyParam::makeFrequencyRange(minFrequency_, maxFrequency_), defaultFrequency_)
         {}
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
@@ -114,7 +117,7 @@ public:
             }
             else
             {
-                createTrackedParameter(*factory, frequency.frequency, "Frequency", "Frequency", frequency.getFrequencyRange(), frequency.defaultFrequency, nullptr, FrequencyParam::getFrequencyAttributes());
+                createTrackedParameter(*factory, frequency.frequency, "Frequency", "Frequency", frequency.frequencyRange, frequency.defaultFrequency, nullptr, FrequencyParam::getFrequencyAttributes());
             }
 
             if constexpr (hasWaveformChoice)
@@ -170,7 +173,7 @@ public:
             for (auto& filter : smoothingFilter)
             {
                 filter.prepare(spec);
-                filter.coefficients = juce::dsp::IIR::Coefficients<float>::makeFirstOrderLowPass(spec.sampleRate, jmin(static_cast<float>(spec.sampleRate * 0.4999), parameters.frequency.maxFrequency * 2.5f));
+                filter.coefficients = juce::dsp::IIR::Coefficients<float>::makeFirstOrderLowPass(spec.sampleRate, jmin(static_cast<float>(spec.sampleRate * 0.4999), parameters.frequency.frequencyRange.end * 2.5f));
             }
         }
         reset();

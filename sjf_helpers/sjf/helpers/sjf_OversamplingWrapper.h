@@ -10,6 +10,23 @@
 
 namespace sjf::helpers
 {
+    /**
+     * @brief A compile-time wrapper that adds dynamic, runtime-configurable oversampling
+     *        to any compatible DSP processor.
+     *
+     * This wrapper transparently handles the upsampling, downsampling, and block sizing requirements
+     * of a nested `Processor` instance. It leverages the `AudioParametersBase` architecture to watch
+     * for live host changes to the oversampling factor or filter choices.
+     *
+     * If a parameter change is intercepted at the boundary of a processing block, the wrapper
+     * dynamically tears down and reinitializes the underlying `juce::dsp::Oversampling` object
+     * and recalculates the upsampled `juce::dsp::ProcessSpec` allocations on-the-fly.
+     *
+     * @tparam Processor A DSP class type that implements the standard JUCE lifecycle methods:
+     *                   `prepare(const juce::dsp::ProcessSpec&)`, `reset()`, and `process(const Context&)`.
+     *                   And also provides a std::unique_ptr<ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) method
+     *                      (see @sjf::helpers::DummyProcessor)
+     */
     template <typename Processor>
     class OversamplingWrapper
     {

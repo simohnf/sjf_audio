@@ -9,14 +9,37 @@
 
 namespace sjf::helpers
 {
+/**
+ * @brief Configuration tags used to customise the behaviour and parameter set of sjf::helpers::BypassWrapper at compile time.
+ *
+ * Passing these tags into the BypassWrapper template parameter pack selectively enables parameters
+ * and internal signal calculation logic (such as smooth dry/wet mixing, soft bypassing, or total muting)
+ * with zero runtime overhead.
+ */
 namespace bypass_wrapper_config
 {
+    /** @brief Configuration tag enabling a soft-bypass control parameter with a click-free 50ms ramp transition. */
     struct Bypass{};
+
+    /** @brief Configuration tag enabling an adjustable Dry/Wet Mix parameter using constant-power crossfading curves. */
     struct Mix{};
+
+    /** @brief Configuration tag enabling a hard mute switch parameter with a 50ms gain ramp down. */
     struct Mute{};
-    // more to come ?
 }
 
+/**
+ * @brief A compile-time configurable wrapper that adds smooth bypassing, mixing, and muting capabilities to any DSP processor.
+ *
+ * The `BypassWrapper` wraps a raw mono or multi-channel DSP processor and overlays mixing controls
+ * without modifying the wrapped class's core DSP code. By evaluating the template configurations,
+ * it conditionally instantiates and updates target parameters (`Bypass`, `Mix`, `Mute`).
+ *
+ *
+ * @tparam Processor The underlying DSP class to wrap (which must implement standard `prepare()`, `reset()`,
+ *                   `process()`, and `createParameters()` interfaces).
+ * @tparam Configs A variadic parameter pack consisting of configuration tags from `bypass_wrapper_config`.
+ */
 template <typename Processor, typename... Configs>
 class BypassWrapper
 {
@@ -212,7 +235,7 @@ private:
 
         if constexpr (hasBypass)
             if (parameters.bypass.currentValue)
-                return 1.0f; 
+                return 1.0f;
 
         if constexpr (hasMix)
             return std::sqrt (1.0f - parameters.mix.currentValue);

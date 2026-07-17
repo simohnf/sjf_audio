@@ -8,6 +8,12 @@
 
 namespace sjf::helpers
 {
+/**
+ * @brief A high-pass filter module designed to remove low-frequency DC offset transients from an audio signal.
+ *
+ *
+ * @tparam FIRST_ORDER Configures the filter order. Defaults to `true` (first-order / 6 dB/octave high-pass).
+ */
 template<bool FIRST_ORDER = true> // second order if false
 class DCBlocker
 {

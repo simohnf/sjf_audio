@@ -15,21 +15,88 @@
 
 namespace sjf::dsp
 {
-
+/**
+ * @brief Configuration tags used to customise the features of sjf::dsp::Delay at compile time.
+ *
+ * Passing these tags into the Delay template parameter pack selectively enables parameters,
+ * internal processors, and DSP routing options with zero runtime overhead.
+ */
 namespace delay_config
 {
+    /** @brief Forces the delay processor to run in single-channel mono mode. */
     struct Mono{};
-    struct Offset{};
-    struct Feedback{};
-    struct PingPong{};
-    struct Filter{};
-    struct Detune{};
-    struct TempoSync{};
-    struct Link{};
 
+    /** @brief Enables independent delay time offsets (percentage-based scaling) per channel. */
+    struct Offset{};
+
+    /** @brief Enables a feedback path for repeating echoes, complete with a smooth parameter control. */
+    struct Feedback{};
+
+    /** @brief Enables ping-pong style stereo echo routing (requires stereo mode). */
+    struct PingPong{};
+
+    /** @brief Inserts an internal State Variable Filter (SVF) directly into the feedback loop. */
+    struct Filter{};
+
+    /** @brief Enables pitch-shifting delay lines for micro-tonal pitch detuning per channel. */
+    struct Detune{};
+
+    /** @brief Switches the delay time controls to synchronise with the host tempo (musical grid). */
+    struct TempoSync{};
+
+    /** @brief Enables a parameter to link the delay timings of both stereo channels together. */
+    struct Link{};
 }
 
-
+/**
+ * @brief A highly flexible, compile-time optimized stereo/mono delay line processor.
+ *
+ * The `Delay` class utilizes modern template metaprogramming techniques to parse features
+ * directly out of its variadic parameter pack. It accepts structural configuration flags from the
+ * `delay_config` namespace alongside fully instantiated processing engines.
+ *
+ * ### Advanced Ecosystem Component Resolution:
+ *
+ * 1. **Dynamic LFO Modulation Engine Detection:**
+ *    Instead of relying on a simplified boolean flag layout, this class introspects its template
+ *    parameters using `has_any_instantiation`. If any configured instance of **sjf::dsp::oscillators::lfo::LFO**
+ *    is found inside the template parameters, `hasModulation` evaluates to `true`. The delay line will then
+ *    extract the precise type mapping automatically to instantiate the underlying LFO engine. This engine
+ *    modulates the fractional delay time pointers on a per-sample basis for chorus, flanging, or vibrato effects.
+ *
+ * 2. **Dynamic Feedback Loop Saturation Detection:**
+ *    The class searches the parameter pack for an instantiation of the **sjf::dsp::waveshaper::WaveshaperTypeProvider**
+ *    container. If discovered, `hasSaturation` evaluates to `true` and the type map is drawn out. This integrates the
+ *    waveshaper provider's multi-algorithmic clipping/saturation layers directly into the delay lines feedback accumulation path.
+ *    If missing, it safe-defaults to a clean `WaveshaperTypeProvider<sjf::dsp::waveshaper::None>` profile.
+ *
+ * ### Example Configurations:
+ * @code
+ * // Example 1: High-performance, clean stereo digital delay (No LFO or Saturation)
+ * using DigitalDelay = sjf::dsp::Delay<
+ *     sjf::dsp::delay_config::Feedback,
+ *     sjf::dsp::delay_config::Filter
+ * >;
+ *
+ * // Example 2: Vintage modulated tape echo featuring internal LFO and warm saturation choices
+ * using CustomLFO = sjf::dsp::oscillators::lfo::LFO<
+ *     sjf::dsp::oscillators::lfo::DefaultWaveformProvider,
+ *     sjf::dsp::oscillators::lfo::lfo_config::PhaseOffset
+ * >;
+ * using CustomSaturator = sjf::dsp::waveshaper::WaveshaperTypeProvider<Tape, SoftClip>;
+ *
+ * using ModulatedTapeEcho = sjf::dsp::Delay<
+ *     sjf::dsp::delay_config::Feedback,
+ *     sjf::dsp::delay_config::PingPong,
+ *     CustomLFO,       // Instantiated LFO config type activates modulation
+ *     CustomSaturator  // Instantiated Waveshaper type activates saturation options
+ * >;
+ * @endcode
+ *
+ * @tparam Configurations A variadic parameter pack containing `delay_config` tags, an optional
+ *                        `sjf::dsp::oscillators::lfo::LFO` template type instantiation, and an optional
+ *                        `sjf::dsp::waveshaper::WaveshaperTypeProvider` template type instantiation.
+ */
 template<typename ... Configurations>
 class Delay
 {
@@ -38,7 +105,7 @@ public:
 
 
     static constexpr auto hasMono = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Mono, Configurations...>;
-    static constexpr auto NUM_CHANNELS = hasMono ? 1 : 2; // TO DO: Enable Mono Delay
+    static constexpr auto NUM_CHANNELS = hasMono ? 1 : 2;
 
 
 
@@ -364,7 +431,6 @@ private:
 
         for (size_t i = 0; i < numSamples; ++i)
         {
-            // Remember to tick the smoothers!!! for every sample
             parameters.tickSmoothers();
 
             const auto feedback = getFeedback();

@@ -102,7 +102,41 @@ struct ComplexSine
     }
 };
 
-
+/**
+ * @brief A compile-time collection manager and dispatcher for low-frequency oscillator waveforms.
+ *
+ * This template aggregates a custom set of LFO waveform generators into a static tuple.
+ * It provides a clean, unified interface to query their user-facing display names,
+ * prepare or reset stateful generators, and process phase signals through the selected index.
+ *
+ * Using C++20 constraints (`requires` clauses), the class automatically identifies and
+ * invokes initialisation or reset sequences only on the underlying waveform structs
+ * that implement them. Unused sequences are completely compiled out, yielding excellent
+ * runtime performance.
+ *
+ * ### Example Usage:
+ * @code
+ * // Configure an LFO provider offering simple Sine and advanced ComplexSine shapes
+ * using MyLfoShapes = sjf::dsp::oscillators::lfo::LFOWaveformProvider<
+ *     sjf::dsp::oscillators::lfo::Sine,
+ *     sjf::dsp::oscillators::lfo::ComplexSine
+ * >;
+ *
+ * MyLfoShapes provider;
+ *
+ * // Retrieve the name list: {"Sine", "Complex Sine"}
+ * const auto& names = MyLfoShapes::getNames();
+ *
+ * // Prepare all internal stateful shapes
+ * provider.prepare(spec);
+ *
+ * // Evaluate the Sine shape (Index 0) at the current phase
+ * float lfoVal = provider.processSample<0>(0.25f);
+ * @endcode
+ *
+ * @tparam Waveforms A parameter pack containing the waveform classes to compile into
+ *                   this provider instance.
+ */
 template <typename... Waveforms>
 struct LFOWaveformProvider
 {
@@ -157,5 +191,6 @@ struct LFOWaveformProvider
     }
 };
 
+using DefaultWaveformProvider = LFOWaveformProvider<Sine, Triangle, Sawtooth, Square>;
 
 }

@@ -10,17 +10,59 @@
 
 namespace sjf::dsp::oscillators::lfo
 {
+
+/**
+ * @brief Configuration tags used to customise the features of sjf::dsp::oscillators::lfo::LFO at compile time.
+ *
+ * Passing these tags into the LFO template parameter pack selectively enables parameters,
+ * smoothing filters, phase offsets, and channel routing options with zero runtime overhead.
+ */
 namespace lfo_config
 {
+    /** @brief Configuration tag enabling a Phase Offset parameter (-180º to 180º) between LFO channels. */
     struct PhaseOffset{};
+
+    /** @brief Configuration tag enabling an Invert choice parameter to invert the output phase of the left or right channel. */
     struct Invert{};
+
+    /** @brief Configuration tag enabling an internal low-pass filter to smooth out sudden jumps or discontinuities in the LFO signal. */
     struct Smooth{};
+
+    /** @brief Configuration tag enabling an adjustable Depth parameter (0% to 100%) to scale the LFO output amplitude. */
     struct Depth{};
+
+    /** @brief Configuration tag enabling DAW tempo synchronization features for the LFO frequency. */
     struct TempoSync{};
 }
 
-using DefaultWaveformProvider = LFOWaveformProvider<Sine, Triangle, Sawtooth, Square>;
-
+/**
+ * @brief A highly configurable, compile-time optimized Low Frequency Oscillator (LFO) for audio processing.
+ *
+ * The `LFO` class utilizes C++ variadic templates to compile only the requested feature sets, parameters,
+ * and internal variables specified via `lfo_config` tags. Unconfigured capabilities are completely
+ * scrubbed from runtime execution.
+ *
+ * ### LFOWaveformProvider Integration
+ * To functionalize, the `LFO` requires an instance of an `LFOWaveformProvider` (such as `DefaultWaveformProvider`)
+ * inside its template arguments. The class automatically discovers this type using meta-programming.
+ * * If only a single waveform is included in the provider, the selection UI parameter is compiled out entirely.
+ * * If multiple waveforms are provided, an automated runtime selection parameter is exposed, executing optimized
+ *   compile-time dispatch loops via `processSample<Index>()`.
+ *
+ * ### Example Configuration:
+ * @code
+ * // Configure a stereo LFO featuring variable depth and phase offsetting
+ * using MyLFO = sjf::dsp::oscillators::lfo::LFO<
+ *     sjf::dsp::oscillators::lfo::DefaultWaveformProvider,
+ *     sjf::dsp::oscillators::lfo::lfo_config::Depth,
+ *     sjf::dsp::oscillators::lfo::lfo_config::PhaseOffset
+ * >;
+ *
+ * MyLFO lfo;
+ * @endcode
+ *
+ * @tparam Configurations A variadic pack consisting of `lfo_config` tags and a single `LFOWaveformProvider` type.
+ */
 template<typename... Configurations>
 class LFO
 {
@@ -312,4 +354,5 @@ private:
     Filters smoothingFilter;
     size_t lastWaveform = 0;
 };
+
 }

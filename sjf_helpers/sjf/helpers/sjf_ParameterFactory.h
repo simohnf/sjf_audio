@@ -6,6 +6,16 @@
 
 namespace sjf::helpers
 {
+
+/**
+ * @brief A factory wrapper around juce::AudioProcessorParameterGroup that automatically enforces
+ *        hierarchical parameter naming and component ID separation.
+ *
+ * This class captures a base string identifier (`baseID`) and a human-readable prefix (`baseName`)
+ * upon creation. Every parameter instantiated through this factory automatically appends its
+ * local ID and local display name to these roots, producing grouped parameters with standardized
+ * prefixes (e.g., ID: "baseID.paramID", Name: "baseName: paramName").
+ */
 class ParameterFactory : public juce::AudioProcessorParameterGroup
 {
 private:
@@ -106,6 +116,23 @@ private:
 };
 
 //===========//===========//===========//===========//===========//===========
+/**
+ * @brief State management engine that tracks host parameters and coordinates
+ *        sample-accurate linear parameter smoothing.
+ *
+ * This abstract base class decouples audio-rate threads from standard JUCE parameters
+ * to facilitate optimal fast-path DSP processing. It provides the following key workflows:
+ *
+ * 1. **State Isolation:** Translates raw host values into clean thread-safe targets,
+ *    applying inline functional value transforms (e.g., mapping decibels to linear gain values).
+ * 2. **Divergence Detection:** Automatically flags whether any tracked parameter has
+ *    changed relative to its previous target inside `checkForStateChange()`.
+ * 3. **Execution Routing:** Drives the high-level branch topology within processors.
+ *    If parameters change, it activates a central `masterRamp` to smoothly interpolate values;
+ *    if parameters remain static, it skips interpolator overhead to maximize compiler vectorization.
+ *
+ *    see sjf::helpers::DummyProcessor for basic usage
+ */
 class AudioParametersBase
 {
 public:
@@ -181,6 +208,23 @@ public:
         masterRamp.reset(spec.sampleRate, rampLengthInMS * 0.001);
     }
 
+
+    /**
+     * @brief Evaluates host automation activity to determine the optimal processing topology
+     *        for the current audio block.
+     *
+     * This method must be called exactly once at the beginning of each processing block
+     * (e.g., inside `DummyProcessor::process`). It compares current host parameter values
+     * against previously captured thread-safe targets.
+     *
+     * If a divergence is detected, it latches the new targets and triggers an internal
+     * master ramp to begin smoothing.
+     *
+     * @return true  If any parameter is actively interpolating or has just changed,
+     *               signaling that the sample-by-sample smoothed processing path must be used.
+     * @return false If all parameters are completely stationary, allowing the processor to
+     *               switch safely to an optimized, highly vectorizable static processing path.
+     */
     bool checkForStateChange() {
         if (masterRamp.isSmoothing()) return true;
 
@@ -200,6 +244,19 @@ public:
         return false;
     }
 
+    /**
+     * @brief Advances internal linear interpolation ramps by exactly one sample step.
+     *
+     * This method **must be called exactly once per sample** inside your audio-rate loop
+     * when executing the smoothed processing path (i.e., when `checkForStateChange()` returns true).
+     *
+     * It increments the shared `masterRamp` and updates the active `currentValue` fields
+     * for all tracked float parameters. Non-smoothed types (int, bool, choice) are snapped
+     * immediately to their target states upon the first tick.
+     *
+     * @note This method runs inside the critical real-time rendering path and executes
+     *       with constant $O(N)$ time complexity relative to the number of tracked states.
+     */
     inline void tickSmoothers() noexcept {
         if (masterRamp.isSmoothing()) {
             const float alpha = masterRamp.getNextValue();
@@ -501,6 +558,11 @@ struct DefaultSyncRatesProvider
     };
 };
 
+
+/**
+ * @brief Parameters group container managing a parameter that outputs durations in samples,
+ *        which can switch between millisecond durations or BPM-calculated durations.
+ */
 template<typename SyncRatesProvider = DefaultSyncRatesProvider>
 struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 {
@@ -587,7 +649,10 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 };
 
 
-
+/**
+ * @brief Parameter group container managing a parameter that outputs frequency in Hz,
+ *        which can switch between absolute values or values derived from tempo.
+ */
 template<typename SyncRatesProvider = DefaultSyncRatesProvider>
 struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
 {

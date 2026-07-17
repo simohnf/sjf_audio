@@ -12,6 +12,15 @@
 
 namespace sjf::helpers
 {
+/**
+ * @brief A utility wrapper that chops large processing blocks into smaller, fixed-size chunks before processing.
+ *
+ * The `ChunkedWrapper` intercept-slices incoming audio blocks of arbitrary sizes into smaller sub-blocks
+ * (capped at a maximum size of `MAX_CHUNK_SIZE = 32` samples) before forwarding them to the wrapped processor.
+ *
+ *
+ * @tparam Processor The target DSP module class to wrap.
+ */
 template <typename Processor>
 class ChunkedWrapper
 {

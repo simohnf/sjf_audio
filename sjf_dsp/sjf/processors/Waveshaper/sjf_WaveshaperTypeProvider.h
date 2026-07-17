@@ -105,7 +105,39 @@ namespace sjf::dsp::waveshaper
     };
 
 
-
+    /**
+     * @brief A compile-time collection manager and dispatcher for different waveshaper algorithms.
+     *
+     * This class aggregates multiple waveshaper types into a static tuple at compile time.
+     * It provides a unified interface to query their display names, initialise/reset those
+     * that require state tracking, and dispatch sample processing dynamically or statically
+     * via index template parameters.
+     *
+     * By using compile-time dispatching and template constraints (via C++20 `requires` clauses),
+     * unused initialisation and reset functions are completely compiled out, generating
+     * highly optimised machine code.
+     *
+     * ### Example Usage:
+     * @code
+     * // Define the selection of saturators available to the system
+     * using MySaturator = sjf::dsp::waveshaper::WaveshaperTypeProvider<
+     *     sjf::dsp::waveshaper::None,
+     *     sjf::dsp::waveshaper::SoftClip,
+     *     sjf::dsp::waveshaper::Tape
+     * >;
+     *
+     * MySaturator saturator;
+     *
+     * // Retrieve the list of names: {"None", "Soft", "Tape"}
+     * const auto& names = MySaturator::getNames();
+     *
+     * // Process a sample through the "SoftClip" stage (Index 1)
+     * float saturatedSample = saturator.processSample<1>(inputSample);
+     * @endcode
+     *
+     * @tparam SaturatorTypes A parameter pack containing the waveshaping structures to compile
+     *                        into this provider instance.
+     */
     template<typename ... SaturatorTypes>
     struct WaveshaperTypeProvider
     {

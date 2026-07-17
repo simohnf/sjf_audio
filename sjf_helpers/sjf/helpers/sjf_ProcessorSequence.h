@@ -12,25 +12,55 @@
 
 namespace sjf::helpers
 {
-
-    namespace processor_sequence
+namespace processor_sequence
+{
+    /**
+     * @brief Configuration descriptor for standard, non-nested child processors.
+     *
+     * Used to pass single-level namespaces directly down to individual processors inside
+     * the compile-time sequence layout.
+     */
+    struct SubFactoryConfig
     {
-        /** Simple configuration structure for flat, non-nested processors */
-        struct SubFactoryConfig
-        {
-            juce::String id;
-            juce::String name;
-        };
+        juce::String id;   /**< The localized ID prefix for the target processor. */
+        juce::String name; /**< The localized display label prefix for the target processor. */
+    };
 
-        /** A structural token that cleanly marks and holds nested configurations */
-        template <typename... Args>
-        struct NestedConfig
-        {
-            std::tuple<Args...> args;
-            NestedConfig (Args... inputs) : args (std::move (inputs)...) {}
-        };
-    }
+    /**
+     * @brief A type-safe packaging container used to wrap multiple multi-tiered
+     *        arguments for nested sub-processors.
+     *
+     * Use this structural token when a processor within your sequence is *itself* a compound
+     * processor (like another nested `ProcessorSequence` or an `OversamplingWrapper`) that
+     * expects complex construction parameters in its `createParameters` overload.
+     *
+     * @tparam Args Variadic types matching the signature expected by the target child processor.
+     */
+    template <typename... Args>
+    struct NestedConfig
+    {
+        std::tuple<Args...> args;
+        NestedConfig (Args... inputs) : args (std::move (inputs)...) {}
+    };
+}
 
+
+/**
+ * @brief A static, compile-time variadic chain container that sequences multiple execution
+ *        processors into a unified DSP pipeline.
+ *
+ * This class eliminates runtime allocation overheads by packing all underlying modules into a
+ * contiguous `std::tuple`. Lifecycle functions (`prepare`, `reset`, `process`, and `setPositionInfo`)
+ * are executed sequentially across all nodes using unrolled compile-time loop expansions.
+ *
+ * It provides a powerful parameter reflection driver (`createParameters`) that matches the
+ * sequential type signature of your processors, dynamically assembling an interconnected
+ * hierarchy of nested parameter trees for the host DAW.
+ *
+ * @tparam Processors Variadic list of class types to compose into the serial audio lane.
+ *                    Each type must expose standard JUCE-style `prepare`, `reset`, `process`,
+ *                    and `createParameters` interfaces.
+ */
 template <typename... Processors>
 class ProcessorSequence
 {

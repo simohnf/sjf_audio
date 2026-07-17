@@ -6,7 +6,7 @@
 
 #include "sjf/helpers/sjf_HelperFunctions.h"
 
-namespace sjf::dsp::waveshapers
+namespace sjf::dsp::waveshaper
 {
     struct None
     {
@@ -107,10 +107,10 @@ namespace sjf::dsp::waveshapers
 
 
     template<typename ... SaturatorTypes>
-    struct Waveshaper
+    struct WaveshaperTypeProvider
     {
         static constexpr std::size_t numSaturators = sizeof...(SaturatorTypes);
-        static_assert(numSaturators > 0, "Waveshaper requires at least one saturation type!");
+        static_assert(numSaturators > 0, "WaveshaperTypeProvider requires at least one saturation type!");
 
         using Saturators = std::tuple<SaturatorTypes...>;
         Saturators saturators;
@@ -143,18 +143,24 @@ namespace sjf::dsp::waveshapers
             return names;
         }
 
-        template <std::size_t Index>
+        template <std::size_t Index, bool On = true>
         float processSample(const float x)
         {
             static_assert(Index < numSaturators, "Saturation type index out of bounds!");
-            return std::get<Index>(saturators).processSample(x);
+            if constexpr (On)
+                return std::get<Index>(saturators).processSample(x);
+            else
+                return x;
         }
 
-        template <std::size_t Index>
+        template <std::size_t Index, bool On = true>
         float processSample(const float x) const
         {
             static_assert(Index < numSaturators, "Saturation type index out of bounds!");
-            return std::get<Index>(saturators).processSample(x);
+            if constexpr (On)
+                return std::get<Index>(saturators).processSample(x);
+            else
+                return x;
         }
 
     };

@@ -64,17 +64,6 @@ public:
     using Filter = sjf::helpers::BypassWrapper<sjf::dsp::SVF<true, true>, helpers::bypass_wrapper_config::Bypass>;
     using DelayLine = std::conditional_t<hasDetune, sjf::helpers::PitchShiftDelayLine<>, sjf::helpers::DelayLine>;
 
-    struct SaturationTypes
-    {
-        enum class Enum {None, Soft, Overdrive, Tape, BucketBrigade, Hard, COUNT, DEFAULT = None};
-
-        static StringArray getNames(){ return {"None", "Soft", "Overdrive", "Tape", "BucketBrigade", "Hard"};}
-
-        static int getIndex(Enum e){ return static_cast<int>(e); }
-        static Enum asEnum(int index){ return static_cast<Enum>(index); }
-        static int getDefaultIndex(){ return getIndex(Enum::DEFAULT);}
-    };
-
     struct Parameters : public helpers::AudioParametersBase
     {
         using Duration = helpers::SyncedDurationParameter<>;
@@ -180,7 +169,7 @@ public:
             {
                 createTrackedParameter(*factory, saturation, "Saturation",  "Saturation",  false);
 
-                createTrackedParameter(*factory, saturationType, "SaturationType", "Saturation Type", SaturationTypes::getNames(), SaturationTypes::getDefaultIndex());
+                createTrackedParameter(*factory, saturationType, "SaturationType", "Saturation Type", Saturation::getNames(), 0);
                 const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
                 const auto attributes = juce::AudioParameterFloatAttributes{}
                 .withLabel("%");

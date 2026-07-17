@@ -15,7 +15,24 @@ namespace utilities
         return static_cast<float>(static_cast<int>( value ) );
     }
 
-
+    /**
+     * @brief Iterates over each element of a std::tuple and applies a callable function to it.
+     *
+     * ### Example Usage:
+     * @code
+     * auto myTuple = std::make_tuple(10, 3.14f, std::string("Hello"));
+     *
+     * // Prints: 10 | 3.14 | Hello |
+     * forEach(myTuple, [](const auto& item) {
+     *     std::cout << item << " | ";
+     * });
+     * @endcode
+     *
+     * @tparam Tuple The std::tuple type (or a type compatible with std::apply).
+     * @tparam Callable The type of the callable function or lambda.
+     * @param tuple The tuple whose elements will be iterated over.
+     * @param func The callable to apply to each element. Must accept any type present in the tuple.
+     */
     template <typename Tuple, typename Callable>
     forcedinline void forEach(Tuple&& tuple, Callable&& func)
     {
@@ -27,47 +44,155 @@ namespace utilities
 
     // template parameter pack helpers
 
-    struct DummyStruct{};
+    /**
+     * @internal
+     * @brief Private helper utilities for parameter pack inspection and manipulation.
+     *
+     * These templates are implementation details and must not be used directly in
+     * user code. Use the public aliases instead.
+     */
+    namespace parameter_pack_helpers
+    {
+        /**
+         * @internal
+         * @brief Base case: Evaluates to std::false_type for types that do not match the template.
+         */
+        template <template <typename...> class Template, typename T>
+        struct is_instantiation_of : std::false_type {};
 
+        /**
+         * @internal
+         * @brief Specialisation: Evaluates to std::true_type when T is an instantiation of Template.
+         */
+        template <template <typename...> class Template, typename... Args>
+        struct is_instantiation_of<Template, Template<Args...>> : std::true_type {};
+
+        /**
+         * @internal
+         * @brief Helper variable template for is_instantiation_of.
+         */
+        template <template <typename...> class Template, typename T>
+        inline constexpr bool is_instantiation_of_v = is_instantiation_of<Template, T>::value;
+
+        /**
+         * @internal
+         * @brief Base case: Returns the Default fallback type when the search pack is empty.
+         */
+        template <template <typename...> class Template, typename Default, typename... Types>
+        struct find_instantiation_of
+        {
+            using type = Default;
+        };
+
+        /**
+         * @internal
+         * @brief Recursive case: Checks the Head type; if it matches, returns it. Otherwise, searches the Tail.
+         */
+        template <template <typename...> class Template, typename Default, typename Head, typename... Tail>
+        struct find_instantiation_of<Template, Default, Head, Tail...>
+        {
+            using type = std::conditional_t<
+                is_instantiation_of_v<Template, std::decay_t<Head>>,
+                Head,
+                typename find_instantiation_of<Template, Default, Tail...>::type
+            >;
+        };
+    }
+
+    /**
+     * @brief Checks if a specific target type exists within a parameter pack.
+     *
+     * ### Example Usage:
+     * @code
+     * struct Mono {};
+     * struct Stereo {};
+     * struct Surround {};
+     *
+     * // Evaluates to true
+     * constexpr bool isStereoSupported = configurationAvailable<Stereo, Mono, Stereo>;
+     *
+     * // Evaluates to false
+     * constexpr bool isSurroundSupported = configurationAvailable<Surround, Mono, Stereo>;
+     * @endcode
+     *
+     * @tparam TargetConfig The exact type to search for in the pack.
+     * @tparam Configurations The parameter pack of types to inspect.
+     */
     template <typename TargetConfig, typename... Configurations>
     forcedinline constexpr bool configurationAvailable = (std::is_same_v<Configurations, TargetConfig> || ...);
 
-    // 1. Base case: By default, a type T is NOT an instantiation of the template
-    template <template <typename...> class Template, typename T>
-    struct is_instantiation_of : std::false_type {};
-
-    // 2. Specialization: If the type matches the structure Template<Args...>, it IS an instantiation
-    template <template <typename...> class Template, typename... Args>
-    struct is_instantiation_of<Template, Template<Args...>> : std::true_type {};
-
-    // Helper alias for convenience (similar to std::is_same_v)
-    template <template <typename...> class Template, typename T>
-    inline constexpr bool is_instantiation_of_v = is_instantiation_of<Template, T>::value;
-
+    /**
+     * @brief Compile-time trait that checks if a parameter pack contains an instantiation of a specific class template.
+     *
+     * ### Example Usage:
+     * @code
+     * template <typename T> struct Filter {};
+     * template <typename T> struct Gain {};
+     *
+     * // Evaluates to true
+     * constexpr bool test1 = has_any_instantiation<Filter, Gain<float>, Filter<int>>;
+     *
+     * // Evaluates to false
+     * constexpr bool test2 = has_any_instantiation<Filter, Gain<float>, int>;
+     * @endcode
+     *
+     * @tparam TargetTemplate The class template to search for in the pack.
+     * @tparam Configurations The parameter pack of types to inspect.
+     */
     template <template <typename...> class TargetTemplate, typename... Configurations>
-    inline constexpr bool has_any_instantiation = (is_instantiation_of_v<TargetTemplate, std::decay_t<Configurations>> || ...);
+    inline constexpr bool has_any_instantiation = (parameter_pack_helpers::is_instantiation_of_v<TargetTemplate, std::decay_t<Configurations>> || ...);
 
-    // 1. Base case: If the pack is empty, return the Default type
+
+
+
+    /**
+     * @brief Search helper to extract a matching instantiation of a class template from a parameter pack.
+     *
+     * ### Example Usage:
+     * @code
+     * template <typename... State> struct LfoState {};
+     * template <typename T> struct Gain {};
+     * struct Dummy {};
+     *
+     * using PackA = find_instantiation_of_t<LfoState, Dummy, Gain<float>, LfoState<int, double>>;
+     * // PackA resolves to: LfoState<int, double>
+     *
+     * using PackB = find_instantiation_of_t<LfoState, Dummy, Gain<float>>;
+     * // PackB resolves to: Dummy (not found fallback)
+     * @endcode
+     *
+     * @tparam Template The target class template (which itself accepts a parameter pack) to look for.
+     * @tparam Default The fallback type to return if no matching instantiation is found in the pack.
+     * @tparam Types The parameter pack of types to search through.
+     */
     template <template <typename...> class Template, typename Default, typename... Types>
-    struct find_instantiation_of
-    {
-        using type = Default;
-    };
+    using find_instantiation_of_t = typename parameter_pack_helpers::find_instantiation_of<Template, Default, Types...>::type;
 
-    // 2. Recursive case: Check the Head of the pack; if it matches, return it. Otherwise, search the Tail.
-    template <template <typename...> class Template, typename Default, typename Head, typename... Tail>
-    struct find_instantiation_of<Template, Default, Head, Tail...>
-    {
-        using type = std::conditional_t<
-            is_instantiation_of_v<Template, std::decay_t<Head>>,
-            Head,
-            typename find_instantiation_of<Template, Default, Tail...>::type
-        >;
-    };
 
-    // Helper alias for clean syntax (yields the actual type directly)
-    template <template <typename...> class Template, typename Default, typename... Types>
-    using find_instantiation_of_t = typename find_instantiation_of<Template, Default, Types...>::type;
+    /**
+     * @brief A lightweight placeholder type used as a default fallback.
+     *
+     * This empty struct is designed to serve as the fallback type for template search traits
+     * like `find_instantiation_of_t`. By checking if the resolved type is `DummyStruct`,
+     * you can determine at compile time whether a target template instantiation was missing
+     * from a parameter pack.
+     *
+     * ### Example Usage:
+     * @code
+     * template <typename T> struct MyConfig {};
+     * struct UnsupportedType {};
+     *
+     * using Resolved = find_instantiation_of_t<MyConfig, DummyStruct, UnsupportedType>;
+     *
+     * // Compile-time check to see if MyConfig was found
+     * constexpr bool found = !std::is_same_v<Resolved, DummyStruct>;
+     * static_assert(!found, "MyConfig was not provided in the configurations pack!");
+     * @endcode
+     */
+    struct DummyStruct{};
+
+
+
 
 }
 

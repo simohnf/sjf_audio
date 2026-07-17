@@ -192,7 +192,48 @@ namespace utilities
     struct DummyStruct{};
 
 
+    template <typename T>
+    constexpr decltype(auto) discardIndex(size_t /*unused*/, T&& val) {
+        return std::forward<T>(val);
+    }
 
+    /**
+     * @brief Creates a std::array filled with elements initialised using the same set of arguments.
+     *
+     * ### Example Usage:
+     * @code
+     * struct AudioBuffer {
+     *     AudioBuffer(int samples, float sampleRate) : size(samples), sr(sampleRate) {}
+     *     const int size;
+     *     const float sr;
+     * };
+     *
+     * // Creates std::array<AudioBuffer, 4> with all elements initialised to (512, 44100.0f)
+     * auto buffers = makeFilledArray<AudioBuffer, 4>(512, 44100.0f);
+     * @endcode
+     *
+     * @tparam T The element type of the destination std::array. Must be constructible from Args...
+     * @tparam size The compile-time size of the std::array to create.
+     * @tparam Args The parameter pack of constructor argument types.
+     *
+     * @param args The arguments to perfectly forward to the constructor of every T in the array.
+     * @return A constexpr std::array<T, size> fully initialised with the forwarded arguments.
+     */
+    template<typename T, size_t size, typename... Args>
+    constexpr std::array<T, size> makeFilledArray(Args&&... args)
+    {
+        auto argsTuple = std::forward_as_tuple(std::forward<Args>(args)...);
+
+        auto createArray = [&]<size_t... Is>(std::index_sequence<Is...>) {
+            return std::array<T, size>{
+                std::apply([]<typename... T0>(T0&&... unpackedArgs) {
+                    return T{ std::forward<T0>(unpackedArgs)... };
+                }, discardIndex(Is, argsTuple))...
+            };
+        };
+
+        return createArray(std::make_index_sequence<size>{});
+    }
 
 }
 

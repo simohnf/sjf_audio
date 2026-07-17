@@ -566,20 +566,19 @@ struct DefaultSyncRatesProvider
 template<typename SyncRatesProvider = DefaultSyncRatesProvider>
 struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 {
-    SyncedDurationParameter(const float minTimeMS_, const float maxTimeMS_, const float defaultTimeMS_, const float skewForCentre_)
-    : minTimeMS(jmin(minTimeMS_, maxTimeMS_))
-    , maxTimeMS(jmax(minTimeMS_, maxTimeMS_))
-    , defaultTimeMS((defaultTimeMS_ > minTimeMS && defaultTimeMS_ < maxTimeMS ? defaultTimeMS_ : jmap(0.5f, minTimeMS, maxTimeMS)))
-    , skewForCentre(((skewForCentre_ > minTimeMS && skewForCentre_ < maxTimeMS ? skewForCentre_ : jmap(0.5f, minTimeMS, maxTimeMS))))
+    SyncedDurationParameter(FloatState& time_, BoolState& sync_, ChoiceState& syncedNumerator_, ChoiceState& syncedDenominator_, const juce::NormalisableRange<float>& timeRange_, const float defaultTimeMS_)
+    : time(time_), sync(sync_), syncedNumerator(syncedNumerator_), syncedDenominator(syncedDenominator_)
+    , timeRange(timeRange_)
+    , defaultTimeMS((defaultTimeMS_ > timeRange.start && defaultTimeMS_ < timeRange.end ? defaultTimeMS_ :  timeRange.convertFrom0to1(0.5f)))
     {
         positionInfo.setBpm(120);
     }
 
-    FloatState  time;
-    BoolState   sync;
-    ChoiceState syncedNumerator, syncedDenominator;
-
-    const float minTimeMS, maxTimeMS, defaultTimeMS, skewForCentre;
+    FloatState  &time;
+    BoolState   &sync;
+    ChoiceState &syncedNumerator, &syncedDenominator;
+    const juce::NormalisableRange<float> timeRange;
+    const float defaultTimeMS;
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
     {
@@ -606,7 +605,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
                     return spec.sampleRate * bar * div;
                 }
             };
-            createTrackedParameter  (*factory, time, "Time",  "Time  (ms)",  getDurationRange(), defaultTimeMS, mapping, getDurationAttributes());
+            createTrackedParameter  (*factory, time, "Time",  "Time  (ms)",  timeRange, defaultTimeMS, mapping, getDurationAttributes());
         }
 
         // SyncedNumerator
@@ -632,16 +631,37 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
             positionInfo.setBpm(120);
     }
 
-    juce::NormalisableRange<float> getDurationRange() const
+    static juce::NormalisableRange<float> makeTimeRange(const float minMS, const float maxMS, const float skewForCentre_)
     {
-        auto range = juce::NormalisableRange<float>{ minTimeMS, maxTimeMS, 0.001f };
-        range.setSkewForCentre(skewForCentre);
+        const auto min = jmin(minMS, maxMS);
+        const auto max = jmax(minMS, maxMS);
+        const auto skew = ((skewForCentre_ > min && skewForCentre_ < max ? skewForCentre_ : jmap(0.5f, min, max)));
+        auto range = juce::NormalisableRange<float>(minMS, maxMS, 0.001f);
+        range.setSkewForCentre(skew);
         return range;
     }
+
 
     static juce::AudioParameterFloatAttributes getDurationAttributes()
     {
         return juce::AudioParameterFloatAttributes{}   .withLabel("ms");
+    }
+
+    /** @brief Helper factory to batch-construct an array of wrappers from separate configuration state arrays. */
+    template <size_t N>
+    static std::array<SyncedDurationParameter, N> createArray(
+        std::array<FloatState, N>& times, std::array<BoolState, N>& syncs, std::array<ChoiceState, N>& numerators, std::array<ChoiceState, N>& denominators,
+        const float minMS, const float maxMS, float defaultMS, const float skew)
+    {
+        const auto range = makeTimeRange(minMS, maxMS, skew);
+
+        auto zip = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            return std::array<SyncedDurationParameter, N>{
+                SyncedDurationParameter{ times[Is], syncs[Is], numerators[Is], denominators[Is], range, defaultMS }...
+            };
+        };
+
+        return zip(std::make_index_sequence<N>{});
     }
 
     AudioPlayHead::PositionInfo positionInfo;

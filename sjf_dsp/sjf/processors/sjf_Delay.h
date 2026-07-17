@@ -19,6 +19,7 @@ namespace sjf::dsp
 namespace delay_config
 {
     struct Offset{};
+    struct Feedback{};
     struct PingPong{};
     struct Filter{};
     struct Detune{};
@@ -39,6 +40,7 @@ public:
 
 
     static constexpr auto hasOffset = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Offset, Configurations...>;
+    static constexpr auto hasFeedback = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Feedback, Configurations...>;
     static constexpr auto hasPingPong = sjf::helpers::functions::utilities::configurationAvailable<delay_config::PingPong, Configurations...>;
     static constexpr auto hasFilter = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Filter, Configurations...>;
     static constexpr auto hasDetune = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Detune, Configurations...>;
@@ -165,6 +167,7 @@ public:
             }
 
             // Feedback
+            if constexpr (hasFeedback)
             {
                 const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
                 const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("%");
@@ -370,7 +373,7 @@ private:
             // Remember to tick the smoothers!!! for every sample
             parameters.tickSmoothers();
 
-            const auto feedback = parameters.feedback.currentValue;
+            const auto feedback = getFeedback();
             const auto drive = getDrive<SaturationActive>();
             const auto norm = drive > 0.0f ? 1.0f / saturation.template processSample<SaturationIndex, SaturationActive>(drive) : 1.0f;
 
@@ -465,6 +468,14 @@ private:
             return parameters.offsets[channel].currentValue;
         else
             return 1.0f;
+    }
+
+    float getFeedback()
+    {
+        if constexpr (hasFeedback)
+            return parameters.feedback.currentValue;
+        else
+            return 0.0f;
     }
 
     juce::dsp::ProcessSpec spec{};

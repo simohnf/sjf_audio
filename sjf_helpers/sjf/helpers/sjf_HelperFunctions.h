@@ -97,6 +97,37 @@ namespace utilities
                 typename find_instantiation_of<Template, Default, Tail...>::type
             >;
         };
+
+
+        /**
+         * @internal
+         * @brief Base case: Returns the Default fallback type when the search pack is empty.
+         */
+        template <template <auto...> class Template, typename Default, typename... Types>
+        struct find_value_instantiation_of
+        {
+            using type = Default;
+        };
+
+        /**
+         * @internal
+         * @brief Recursive case: Checks the Head type; if it matches, returns it. Otherwise, searches the Tail.
+         */
+        template <template <auto...> class Template, typename Default, typename Head, typename... Tail>
+        struct find_value_instantiation_of<Template, Default, Head, Tail...>
+        {
+        private:
+            // Helper to check if a single type is an instantiation of a template<auto...>
+            template <typename T> struct is_value_instantiation : std::false_type {};
+            template <auto... Values> struct is_value_instantiation<Template<Values...>> : std::true_type {};
+
+        public:
+            using type = std::conditional_t<
+                is_value_instantiation<std::decay_t<Head>>::value,
+                Head,
+                typename find_value_instantiation_of<Template, Default, Tail...>::type
+            >;
+        };
     }
 
     /**
@@ -168,6 +199,31 @@ namespace utilities
     template <template <typename...> class Template, typename Default, typename... Types>
     using find_instantiation_of_t = typename parameter_pack_helpers::find_instantiation_of<Template, Default, Types...>::type;
 
+
+    /**
+     * @brief Search helper to extract a matching instantiation of a non-type (value) class template from a parameter pack.
+     *
+     * ### Example Usage:
+     * @code
+     * template <size_t Min = 0, size_t Max = 100> struct TimeValues {};
+     * template <typename T> struct Gain {};
+     * struct Dummy {};
+     *
+     * // Find an explicit configuration inside the pack
+     * using PackA = find_value_instantiation_of_t<TimeValues, Dummy, Gain<float>, TimeValues<10, 500>>;
+     * // PackA resolves to: TimeValues<10, 500>
+     *
+     * // Omitted case triggers fallback type
+     * using PackB = find_value_instantiation_of_t<TimeValues, Dummy, Gain<float>>;
+     * // PackB resolves to: Dummy (not found fallback)
+     * @endcode
+     *
+     * @tparam Template The target value-based class template (which itself accepts a value parameter pack) to look for.
+     * @tparam Default The fallback type to return if no matching instantiation is found in the pack.
+     * @tparam Types The parameter pack of types to search through.
+     */
+    template <template <auto...> class Template, typename Default, typename... Types>
+    using find_value_instantiation_of_t = typename parameter_pack_helpers::find_value_instantiation_of<Template, Default, Types...>::type;
 
     /**
      * @brief A lightweight placeholder type used as a default fallback.

@@ -13,6 +13,7 @@ namespace bypass_wrapper_config
 {
     struct Bypass{};
     struct Mix{};
+    struct Mute{};
     // more to come ?
 }
 
@@ -21,6 +22,7 @@ class BypassWrapper
 {
     static constexpr auto hasBypass = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Bypass, Configs...>;
     static constexpr auto hasMix = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mix, Configs...>;
+    static constexpr auto hasMute = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mute, Configs...>;
 public:
     BypassWrapper() = default;
     ~BypassWrapper() = default;
@@ -31,7 +33,7 @@ public:
     struct Parameters : public helpers::AudioParametersBase
     {
         FloatState mix;
-        BoolState bypass;
+        BoolState bypass, mute;
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String&, const juce::String&) override
         {
@@ -60,7 +62,16 @@ public:
                 }
                 else
                 {
-                    bypass.currentValue = true;
+                    bypass.currentValue = false;
+                }
+
+                if constexpr (hasMute)
+                {
+                    createTrackedParameter (*targetFactory, mute, "Mute", "Mute", false);
+                }
+                else
+                {
+                    mute.currentValue = false;
                 }
             }
             else
@@ -99,18 +110,8 @@ public:
     {
         processor.reset();
         parameters.reset();
-        if (parameters.bypass.currentValue)
-        {
-            dryRamp.setCurrentAndTargetValue(1.0f);
-            wetRamp.setCurrentAndTargetValue(0.0f);
-        }
-        else
-        {
-            auto dry = sqrt(1.0f - parameters.mix.currentValue);
-            auto wet = sqrt(parameters.mix.currentValue);
-            dryRamp.setCurrentAndTargetValue(dry);
-            wetRamp.setCurrentAndTargetValue(wet);
-        }
+        dryRamp.setCurrentAndTargetValue(getDryTargetLevel());
+        wetRamp.setCurrentAndTargetValue(getWetTargetLevel());
     }
 
     //==============================================================================
@@ -128,16 +129,8 @@ public:
         if (!wetRamp.isSmoothing() && !dryRamp.isSmoothing())
         {
             parameters.reset(); // we only have bool parameter so we can snap and do our thing
-            if (parameters.bypass.currentValue)
-            {
-                wetRamp.setTargetValue(0.0f);
-                dryRamp.setTargetValue(1.0f);
-            }
-            else
-            {
-                wetRamp.setTargetValue(sqrt(parameters.mix.currentValue));
-                dryRamp.setTargetValue(sqrt(1.0f - parameters.mix.currentValue));
-            }
+            wetRamp.setTargetValue(getWetTargetLevel());
+            dryRamp.setTargetValue(getDryTargetLevel());
         }
 
         if (wetRamp.getCurrentValue() == 0.0f)
@@ -194,6 +187,40 @@ public:
         sjf::optional_calls::setPositionInfo(processor, positionInfo);
     }
 private:
+
+    float getWetTargetLevel()
+    {
+        if constexpr (hasMute)
+            if (parameters.mute.currentValue)
+                return 0.0f;
+
+        if constexpr (hasBypass)
+            if (parameters.bypass.currentValue)
+                return 0.0f; // Bypassed = no wet signal
+
+        if constexpr (hasMix)
+            return std::sqrt (parameters.mix.currentValue);
+
+        return 1.0f;
+    }
+
+    float getDryTargetLevel()
+    {
+        if constexpr (hasMute)
+            if (parameters.mute.currentValue)
+                return 0.0f;
+
+        if constexpr (hasBypass)
+            if (parameters.bypass.currentValue)
+                return 1.0f; 
+
+        if constexpr (hasMix)
+            return std::sqrt (1.0f - parameters.mix.currentValue);
+
+        return 0.0f;
+    }
+
+
     juce::dsp::ProcessSpec spec{};
     Processor processor;
 

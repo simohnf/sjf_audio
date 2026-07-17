@@ -560,8 +560,41 @@ struct DefaultSyncRatesProvider
 
 
 /**
- * @brief Parameters group container managing a parameter that outputs durations in samples,
- *        which can switch between millisecond durations or BPM-calculated durations.
+ * @brief Parameter group container managing a parameter that outputs durations in samples,
+ *        dynamically switching between millisecond durations or tempo-derived calculations.
+ *
+ * This class operates as a lightweight structural layout layer. Instead of managing its
+ * own data memory allocation, it safely holds modern lvalue references to raw configuration
+ * tracking states (`FloatState`, `BoolState`, `ChoiceState`) that reside natively within
+ * the parent processor's parameters layout.
+ *
+ * @note Because this component stores internal lvalue references (`&`), its lifecycle is
+ *       strictly bound to the parent class. The tracking states passed into its constructor
+ *       must be declared **above** this class instance in the parent's layout to guarantee
+ *       valid instantiation order.
+ *
+ * ### Example Component Setup:
+ * @code
+ * struct MyParameters : public sjf::helpers::AudioParametersBase
+ * {
+ *     // 1. Backing states declared first
+ *     FloatState  myTime;
+ *     BoolState   mySync;
+ *     ChoiceState myNumerator, myDenominator;
+ *
+ *     // 2. Reference-bound wrapper declared next
+ *     sjf::helpers::SyncedDurationParameter<> delayTime;
+ *
+ *     MyParameters()
+ *     : delayTime (myTime, mySync, myNumerator, myDenominator,
+ *                  SyncedDurationParameter<>::makeTimeRange(1.0f, 2000.0f, 500.0f), 500.0f)
+ *     {}
+ * };
+ * @endcode
+ *
+ * @tparam SyncRatesProvider Timing definition layout providing arrays of musical division
+ *                           numerators, denominators, and text representations. Defaults
+ *                           to `DefaultSyncRatesProvider`.
  */
 template<typename SyncRatesProvider = DefaultSyncRatesProvider>
 struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
@@ -667,9 +700,44 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
     AudioPlayHead::PositionInfo positionInfo;
 };
 
+
+
 /**
  * @brief Parameter group container managing a parameter that outputs frequency in Hz,
- *        which can switch between absolute values or values derived from tempo.
+ *        dynamically switching between absolute values or tempo-derived calculations.
+ *
+ * This class operates as a lightweight structural layout layer. Instead of managing its
+ * own data memory allocation, it safely holds modern lvalue references to raw configuration
+ * tracking states (`FloatState`, `BoolState`, `ChoiceState`) that reside natively within
+ * the parent processor's parameters layout.
+ *
+ * @note Because this component stores internal lvalue references (`&`), its lifecycle is
+ *       strictly bound to the parent class. The tracking states passed into its constructor
+ *       must be declared **above** this class instance in the parent's layout to guarantee
+ *       valid instantiation order.
+ *
+ * ### Example Component Setup:
+ * @code
+ * struct MyParameters : public sjf::helpers::AudioParametersBase
+ * {
+ *     // 1. Backing states declared first
+ *     FloatState  myFreq;
+ *     BoolState   mySync;
+ *     ChoiceState myNumerator, myDenominator;
+ *
+ *     // 2. Reference-bound wrapper declared next
+ *     sjf::helpers::SyncedFrequencyParameter<> frequency;
+ *
+ *     MyParameters()
+ *     : frequency (myFreq, mySync, myNumerator, myDenominator,
+ *                  SyncedFrequencyParameter<>::makeFrequencyRange(0.1f, 20.0f), 1.0f)
+ *     {}
+ * };
+ * @endcode
+ *
+ * @tparam SyncRatesProvider Timing definition layout providing arrays of musical division
+ *                           numerators, denominators, and text representations. Defaults
+ *                           to `DefaultSyncRatesProvider`.
  */
 template<typename SyncRatesProvider = DefaultSyncRatesProvider>
 struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase

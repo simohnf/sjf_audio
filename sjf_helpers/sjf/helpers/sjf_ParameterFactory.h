@@ -665,9 +665,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
     }
 
     AudioPlayHead::PositionInfo positionInfo;
-
 };
-
 
 /**
  * @brief Parameter group container managing a parameter that outputs frequency in Hz,
@@ -676,20 +674,19 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 template<typename SyncRatesProvider = DefaultSyncRatesProvider>
 struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
 {
-    SyncedFrequencyParameter(const float minFrequency_, const float maxFrequency_, const float defaultFrequency_)
-    : minFrequency(jmin(minFrequency_, maxFrequency_) > 0 ? jmin(minFrequency_, maxFrequency_) : 0.001f)
-    , maxFrequency(jmax(minFrequency_, maxFrequency_) > minFrequency && jmax(minFrequency_, maxFrequency_) <= 20000.0f ? jmax(minFrequency_, maxFrequency_) : 20000.0f)
-    , defaultFrequency((defaultFrequency_ > minFrequency_ && defaultFrequency_ < maxFrequency_ ? defaultFrequency_ : jmap(0.5f, minFrequency, maxFrequency)))
-    , skewForCentre(sqrt(minFrequency * maxFrequency))
+    SyncedFrequencyParameter(FloatState& frequency_, BoolState& sync_, ChoiceState& syncedNumerator_, ChoiceState& syncedDenominator_, const juce::NormalisableRange<float>& frequencyRange_, const float defaultFrequency_)
+    : frequency(frequency_), sync(sync_), syncedNumerator(syncedNumerator_), syncedDenominator(syncedDenominator_)
+    , frequencyRange(frequencyRange_)
+    , defaultFrequency((defaultFrequency_ > frequencyRange.start && defaultFrequency_ < frequencyRange.end ? defaultFrequency_ : frequencyRange.convertFrom0to1(0.5f)))
     {
         positionInfo.setBpm(120);
     }
 
-    FloatState  frequency;
-    BoolState   sync;
-    ChoiceState syncedNumerator, syncedDenominator;
-
-    const float minFrequency, maxFrequency, defaultFrequency, skewForCentre;
+    FloatState  &frequency;
+    BoolState   &sync;
+    ChoiceState &syncedNumerator, &syncedDenominator;
+    const juce::NormalisableRange<float> frequencyRange;
+    const float defaultFrequency;
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
     {
@@ -700,7 +697,6 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
 
         // Frequency
         {
-
             const auto mapping = [&](const float x)
             {
                 if (!sync.currentValue)
@@ -714,24 +710,24 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
                     const auto numerator = static_cast<float>(SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
                     const auto denominator = static_cast<float>(SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
                     const auto div = numerator / denominator;
-                    return 1.0f/ (bar * div);
+                    return 1.0f / (bar * div);
                 }
             };
 
-            createTrackedParameter  (*factory, frequency, "Frequency",  "Frequency  (Hz)",  getFrequencyRange(), defaultFrequency, mapping, getFrequencyAttributes());
+            createTrackedParameter (*factory, frequency, "Frequency", "Frequency  (Hz)", frequencyRange, defaultFrequency, mapping, getFrequencyAttributes());
         }
 
         // SyncedNumerator
         {
             auto mapping = [&](const int indx){ return SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(indx)];};
-            createTrackedParameter  (*factory, syncedNumerator, "NumDivisions", "NumDivisions", SyncRatesProvider::Numerator::getStrings(), SyncRatesProvider::Numerator::getDefault(), mapping);
+            createTrackedParameter (*factory, syncedNumerator, "NumDivisions", "NumDivisions", SyncRatesProvider::Numerator::getStrings(), SyncRatesProvider::Numerator::getDefault(), mapping);
         }
-        //syncedDenominator
+
+        // SyncedDenominator
         {
             auto mapping = [&](const int indx){ return SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(indx)];};
             createTrackedParameter (*factory, syncedDenominator, "Division", "Division", SyncRatesProvider::Denominator::getStrings(), SyncRatesProvider::Denominator::getDefault(), mapping);
         }
-
 
         return factory;
     }
@@ -744,20 +740,39 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
             positionInfo.setBpm(120);
     }
 
-    juce::NormalisableRange<float> getFrequencyRange() const
+    static juce::NormalisableRange<float> makeFrequencyRange(const float minHz, const float maxHz)
     {
-        auto range = juce::NormalisableRange<float>{ minFrequency, maxFrequency, 0.001f };
-        range.setSkewForCentre(skewForCentre);
+        const auto min = jmin(minHz, maxHz) > 0 ? jmin(minHz, maxHz) : 0.001f;
+        const auto max = jmax(minHz, maxHz) > min && jmax(minHz, maxHz) <= 20000.0f ? jmax(minHz, maxHz) : 20000.0f;
+        const auto skew = std::sqrt(min * max);
+
+        auto range = juce::NormalisableRange<float>(min, max, 0.001f);
+        range.setSkewForCentre(skew);
         return range;
     }
 
     static juce::AudioParameterFloatAttributes getFrequencyAttributes()
     {
-        return juce::AudioParameterFloatAttributes{}   .withLabel("Hz");
+        return juce::AudioParameterFloatAttributes{}.withLabel("Hz");
+    }
+
+    /** @brief Helper factory to batch-construct an array of wrappers from separate configuration state arrays. */
+    template <size_t N>
+    static std::array<SyncedFrequencyParameter, N> createArray(
+        std::array<FloatState, N>& frequencies, std::array<BoolState, N>& syncs, std::array<ChoiceState, N>& numerators, std::array<ChoiceState, N>& denominators,
+        const float minHz, const float maxHz, const float defaultHz)
+    {
+        const auto range = makeFrequencyRange(minHz, maxHz);
+
+        auto zip = [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            return std::array<SyncedFrequencyParameter, N>{
+                SyncedFrequencyParameter{ frequencies[Is], syncs[Is], numerators[Is], denominators[Is], range, defaultHz }...
+            };
+        };
+
+        return zip(std::make_index_sequence<N>{});
     }
 
     AudioPlayHead::PositionInfo positionInfo;
 };
-
-
 }

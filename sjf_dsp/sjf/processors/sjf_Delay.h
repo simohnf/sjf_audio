@@ -10,7 +10,7 @@
 #include "sjf_Filter_juce.h"
 #include "sjf/helpers/sjf_DCBlock.h"
 #include "sjf/helpers/sjf_ProcessDuplicator.h"
-#include "sjf/helpers/sjf_Waveshapers.h"
+#include <sjf/processors/Waveshaper/sjf_WaveshaperTypeProvider.h>
 #include "sjf/oscillators/LFO/sjf_LFO.h"
 
 namespace sjf::dsp
@@ -19,7 +19,6 @@ namespace sjf::dsp
 namespace delay_config
 {
     struct PingPong{};
-    struct Saturation{};
     struct Filter{};
     struct Detune{};
     struct TempoSync{};
@@ -39,7 +38,6 @@ public:
 
 
     static constexpr auto hasPingPong = sjf::helpers::functions::utilities::configurationAvailable<delay_config::PingPong, Configurations...>;
-    static constexpr auto hasSaturation = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Saturation, Configurations...>;
     static constexpr auto hasFilter = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Filter, Configurations...>;
     static constexpr auto hasDetune = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Detune, Configurations...>;
     static constexpr auto hasTempoSync = sjf::helpers::functions::utilities::configurationAvailable<delay_config::TempoSync, Configurations...>;
@@ -51,6 +49,13 @@ public:
                                                                                 helpers::functions::utilities::DummyStruct,
                                                                                 Configurations...
                                                                             >;
+
+    static constexpr auto hasSaturation = sjf::helpers::functions::utilities::has_any_instantiation<sjf::dsp::waveshaper::WaveshaperTypeProvider, Configurations...>;
+    using Saturation = sjf::helpers::functions::utilities::find_instantiation_of_t <
+                                                                                        sjf::dsp::waveshaper::WaveshaperTypeProvider,
+                                                                                        sjf::dsp::waveshaper::WaveshaperTypeProvider<sjf::dsp::waveshaper::None>,
+                                                                                        Configurations...
+                                                                                    >;
 
     using Filter = sjf::helpers::BypassWrapper<sjf::dsp::SVF<true, true>, helpers::bypass_wrapper_config::Bypass>;
     using DelayLine = std::conditional_t<hasDetune, sjf::helpers::PitchShiftDelayLine<>, sjf::helpers::DelayLine>;
@@ -75,7 +80,7 @@ public:
                                                       Duration(1.0f, 10000.0f, 100.0f, 1000.0f)};
 
 
-        BoolState link, pingPong;
+        BoolState link, pingPong, saturation;
         ChoiceState saturationType;
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
@@ -152,6 +157,8 @@ public:
             // Saturation
             if constexpr (hasSaturation)
             {
+                createTrackedParameter(*factory, saturation, "Saturation",  "Saturation",  false);
+
                 createTrackedParameter(*factory, saturationType, "SaturationType", "Saturation Type", SaturationTypes::getNames(), SaturationTypes::getDefaultIndex());
                 const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
                 const auto attributes = juce::AudioParameterFloatAttributes{}
@@ -198,7 +205,9 @@ public:
 
         if constexpr (hasModulation)
             lfo.prepare(spec);
-        else
+
+        if constexpr (hasSaturation)
+            saturation.prepare(spec);
 
 
         reset();
@@ -217,13 +226,35 @@ public:
 
         if constexpr (hasModulation)
             lfo.reset();
+
+        if constexpr (hasSaturation)
+        {
+            lastSaturationType = parameters.saturationType.currentValue;
+            saturation.reset();
+        }
     }
 
     template <typename ProcessContext>
     void process (const ProcessContext& context) noexcept
     {
         parameters.checkForStateChange();
-        processInternal(context);
+
+        if constexpr (hasSaturation)
+        {
+            const auto currentSaturationType = static_cast<size_t>(parameters.saturationType.currentValue);
+            if (currentSaturationType != lastSaturationType)
+                saturation.reset();
+            lastSaturationType = currentSaturationType;
+
+            if (parameters.saturation.currentValue)
+                dispatch<true>(currentSaturationType, std::make_index_sequence<Saturation::numSaturators>{}, context);
+            else
+                dispatch<false>(currentSaturationType, std::make_index_sequence<Saturation::numSaturators>{}, context);
+        }
+        else
+        {
+            dispatch<false>(0, std::make_index_sequence<Saturation::numSaturators>{}, context);
+        }
 
         dcBlocker.process(context);
     }
@@ -249,7 +280,14 @@ public:
     }
 
 private:
-    template <typename ProcessContext>
+
+    template <bool SaturationActive, std::size_t... Indices, typename ProcessContext>
+    void dispatch (const size_t targetIndex, std::index_sequence<Indices...>, const ProcessContext& context) noexcept
+    {
+        (void)((targetIndex == static_cast<int>(Indices) ? (processInternal<Indices, SaturationActive>(context), true) : false) || ...);
+    }
+
+    template <int SaturationIndex, bool SaturationActive, typename ProcessContext>
     void processInternal (const ProcessContext& context) noexcept
     {
         const auto& inputBlock = context.getInputBlock();
@@ -271,8 +309,6 @@ private:
             inputChannelPointers[channel] = inputBlock.getChannelPointer (channel);
             outputChannelPointers[channel] = outputBlock.getChannelPointer (channel);
         }
-
-        const auto saturationType = getSaturationType();
 
         const auto pingPong = getPingPongActive();
 
@@ -316,8 +352,8 @@ private:
             parameters.tickSmoothers();
 
             const auto feedback = parameters.feedback.currentValue;
-            const auto drive = getDrive();
-            const auto norm = drive > 0.0f ? 1.0f / applySaturation(drive, saturationType) : 1.0f;
+            const auto drive = getDrive<SaturationActive>();
+            const auto norm = drive > 0.0f ? 1.0f / saturation.template processSample<SaturationIndex, SaturationActive>(drive) : 1.0f;
 
             for (auto channel = 0ul; channel < numChannels; ++channel)
             {
@@ -330,7 +366,7 @@ private:
                     delayLine[channel].setPitchShift(detune);
                 }
                 sample = delayLine[channel].template readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
-                sample = applySaturation(sample * drive, saturationType) * norm;
+                sample = saturation.template processSample<SaturationIndex, SaturationActive>(sample * drive) * norm;
             }
 
             if constexpr (hasFilter)
@@ -394,83 +430,23 @@ private:
             return false;
     }
 
-    SaturationTypes::Enum getSaturationType()
-    {
-        if constexpr (hasSaturation)
-            return SaturationTypes::asEnum(parameters.saturationType.currentValue);
-        else
-            return SaturationTypes::Enum::None;
-    }
-
+    template<bool SaturationActive>
     float getDrive()
     {
-        if constexpr (hasSaturation)
-            return getSaturationType() != SaturationTypes::Enum::None ? parameters.drive.currentValue : 1.0f;
+        if constexpr (hasSaturation && SaturationActive)
+            return parameters.drive.currentValue;
         else
             return 1.0f;
     }
-
-    static float applySaturation(const float x, const SaturationTypes::Enum type)
-    {
-        using Types = SaturationTypes::Enum;
-        switch (type)
-        {
-        case Types::None:
-            return applySaturationTagged<Types::None>(x);
-        case SaturationTypes::Enum::Soft:
-            return applySaturationTagged<Types::Soft>(x);
-        case SaturationTypes::Enum::Overdrive:
-            return applySaturationTagged<Types::Overdrive>(x);
-        case SaturationTypes::Enum::Tape:
-            return applySaturationTagged<Types::Tape>(x);
-        case SaturationTypes::Enum::BucketBrigade:
-            return applySaturationTagged<Types::BucketBrigade>(x);
-        case SaturationTypes::Enum::Hard:
-            return applySaturationTagged<Types::Hard>(x);
-        case SaturationTypes::Enum::COUNT:
-            return applySaturationTagged<Types::COUNT>(x);
-        default:
-            return applySaturationTagged<Types::None>(x);
-        }
-    }
-
-    template <typename SaturationTypes::Enum type>
-    static float applySaturationTagged(const float x)
-    {
-        if constexpr (type == SaturationTypes::Enum::Soft)
-        {
-            return sjf::helpers::Waveshapers::Clippers::soft(x);
-        }
-        else if constexpr (type == SaturationTypes::Enum::Overdrive)
-        {
-            return sjf::helpers::Waveshapers::Clippers::tanh(x);
-        }
-        else if constexpr (type == SaturationTypes::Enum::Tape)
-        {
-            return sjf::helpers::Waveshapers::Sigmoids::xOverOnePlusAbsX(x);
-        }
-        else if constexpr (type == SaturationTypes::Enum::BucketBrigade)
-        {
-            return sjf::helpers::Waveshapers::Misc::bucketBrigade(x);
-        }
-        else if constexpr (type == SaturationTypes::Enum::Hard)
-        {
-            return sjf::helpers::Waveshapers::Clippers::hard(x);
-        }
-        else // if constexpr (type == SaturationTypes::Enum::None)
-        {
-            return x;
-        }
-
-    }
-
 
     juce::dsp::ProcessSpec spec{};
     std::array<DelayLine, NUM_CHANNELS> delayLine;
     [[maybe_unused]] LFO lfo;
     sjf::helpers::ProcessorDuplicator<helpers::DCBlocker<false>> dcBlocker;
     [[maybe_unused]] Filter filter;
+    [[maybe_unused]] Saturation saturation;
     std::array<const float*, NUM_CHANNELS> inputChannelPointers;
     std::array<float*, NUM_CHANNELS> outputChannelPointers;
+    int lastSaturationType = -1;
 };
 }

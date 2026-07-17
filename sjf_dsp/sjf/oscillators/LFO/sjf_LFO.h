@@ -10,7 +10,7 @@
 
 namespace sjf::dsp::oscillators::lfo
 {
-namespace config
+namespace lfo_config
 {
     struct PhaseOffset{};
     struct Invert{};
@@ -31,11 +31,11 @@ public:
                                                                                 Configurations...
                                                                             >;
 
-    static constexpr auto hasDepth = helpers::functions::utilities::configurationAvailable<config::Depth, Configurations...>;
-    static constexpr auto hasPhaseOffset = helpers::functions::utilities::configurationAvailable<config::PhaseOffset, Configurations...>;
-    static constexpr auto hasInvert = helpers::functions::utilities::configurationAvailable<config::Invert, Configurations...>;
-    static constexpr auto hasSmooth = helpers::functions::utilities::configurationAvailable<config::Smooth, Configurations...>;
-    static constexpr auto hasTempoSync = helpers::functions::utilities::configurationAvailable<config::TempoSync, Configurations...>;
+    static constexpr auto hasDepth = helpers::functions::utilities::configurationAvailable<lfo_config::Depth, Configurations...>;
+    static constexpr auto hasPhaseOffset = helpers::functions::utilities::configurationAvailable<lfo_config::PhaseOffset, Configurations...>;
+    static constexpr auto hasInvert = helpers::functions::utilities::configurationAvailable<lfo_config::Invert, Configurations...>;
+    static constexpr auto hasSmooth = helpers::functions::utilities::configurationAvailable<lfo_config::Smooth, Configurations...>;
+    static constexpr auto hasTempoSync = helpers::functions::utilities::configurationAvailable<lfo_config::TempoSync, Configurations...>;
     static constexpr auto numChannels = hasPhaseOffset || hasInvert ? 2 : 1;
     static constexpr auto numWaveforms = WaveformProvider::numWaveforms;
     static constexpr auto hasWaveformChoice = numWaveforms > 1;

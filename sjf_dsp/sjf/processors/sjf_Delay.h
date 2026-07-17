@@ -18,6 +18,7 @@ namespace sjf::dsp
 
 namespace delay_config
 {
+    struct Mono{};
     struct Offset{};
     struct Feedback{};
     struct PingPong{};
@@ -35,7 +36,10 @@ class Delay
 {
 public:
     static constexpr auto MAX_DELAY_MS = 10000.0f;
-    static constexpr auto NUM_CHANNELS = 2; // TO DO: Enable Mono Delay
+
+
+    static constexpr auto hasMono = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Mono, Configurations...>;
+    static constexpr auto NUM_CHANNELS = hasMono ? 1 : 2; // TO DO: Enable Mono Delay
 
 
 
@@ -70,12 +74,15 @@ public:
         std::array<FloatState, NUM_CHANNELS> detunes;
         std::array<FloatState, NUM_CHANNELS> offsets;
         FloatState feedback, drive;
-        std::array<Duration, NUM_CHANNELS> delayTimes{Duration{1.0f, 10000.0f, 100.0f, 1000.0f},
-                                                      Duration(1.0f, 10000.0f, 100.0f, 1000.0f)};
+        std::array<Duration, NUM_CHANNELS> delayTimes;
 
 
         BoolState link, pingPong, saturation;
         ChoiceState saturationType;
+
+        Parameters() :
+        delayTimes(sjf::helpers::functions::utilities::makeFilledArray<Duration, NUM_CHANNELS>(1.0f, 10000.0f, 100.0f, 1000.0f))
+        {}
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
@@ -303,7 +310,6 @@ private:
     {
         const auto& inputBlock = context.getInputBlock();
         auto& outputBlock      = context.getOutputBlock();
-        const auto numChannels = outputBlock.getNumChannels();
         const auto numSamples  = outputBlock.getNumSamples();
 
         jassert (inputBlock.getNumChannels() == NUM_CHANNELS);
@@ -315,7 +321,7 @@ private:
         const juce::dsp::ProcessContextReplacing<float> oneSampleContext(oneSampleBlock);
 
 
-        for (auto channel = 0ul; channel < numChannels; ++channel)
+        for (auto channel = 0ul; channel < NUM_CHANNELS; ++channel)
         {
             inputChannelPointers[channel] = inputBlock.getChannelPointer (channel);
             outputChannelPointers[channel] = outputBlock.getChannelPointer (channel);
@@ -366,7 +372,7 @@ private:
             const auto drive = getDrive<SaturationActive>();
             const auto norm = drive > 0.0f ? 1.0f / saturation.template processSample<SaturationIndex, SaturationActive>(drive) : 1.0f;
 
-            for (auto channel = 0ul; channel < numChannels; ++channel)
+            for (auto channel = 0ul; channel < NUM_CHANNELS; ++channel)
             {
                 auto& sample = wptrs[channel][0];
                 auto delayTime = link ? parameters.delayTimes[0].time.currentValue : parameters.delayTimes[channel].time.currentValue;
@@ -384,7 +390,7 @@ private:
             if constexpr (hasFilter)
                 filter.process(oneSampleContext);
 
-            for (auto channel = 0ul; channel < numChannels; ++channel)
+            for (auto channel = 0ul; channel < NUM_CHANNELS; ++channel)
             {
                 const auto& sample = wptrs[channel][0];
                 const auto wc = calculateWriteChannel(channel);

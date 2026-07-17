@@ -18,6 +18,7 @@ namespace sjf::dsp
 
 namespace delay_config
 {
+    struct Offset{};
     struct PingPong{};
     struct Filter{};
     struct Detune{};
@@ -37,6 +38,7 @@ public:
 
 
 
+    static constexpr auto hasOffset = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Offset, Configurations...>;
     static constexpr auto hasPingPong = sjf::helpers::functions::utilities::configurationAvailable<delay_config::PingPong, Configurations...>;
     static constexpr auto hasFilter = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Filter, Configurations...>;
     static constexpr auto hasDetune = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Detune, Configurations...>;
@@ -74,7 +76,8 @@ public:
     struct Parameters : public helpers::AudioParametersBase
     {
         using Duration = helpers::SyncedDurationParameter<>;
-        std::array<FloatState, NUM_CHANNELS> detune;
+        std::array<FloatState, NUM_CHANNELS> detunes;
+        std::array<FloatState, NUM_CHANNELS> offsets;
         FloatState feedback, drive;
         std::array<Duration, NUM_CHANNELS> delayTimes{Duration{1.0f, 10000.0f, 100.0f, 1000.0f},
                                                       Duration(1.0f, 10000.0f, 100.0f, 1000.0f)};
@@ -97,34 +100,49 @@ public:
 
             // Delay Times
             {
-                auto strIndex = 0ul;
-                for (auto& delayTime : delayTimes)
+                auto createTrackedOffsetParameter = [&](helpers::ParameterFactory& factoryToUse, size_t channel){
+                    auto offsetRange = NormalisableRange<float>{-33.0f, 33.0f, 0.001f};
+                    offsetRange.setSkewForCentre(0.0f);
+                    auto offsetMapping = [&](const float x) {
+                        return std::pow(2.0f, x * 0.01f);
+                    };
+                    const auto offsetAttributes = juce::AudioParameterFloatAttributes{}.withLabel("%");
+                    createTrackedParameter(factoryToUse, offsets[channel], "Offset", "Offset", offsetRange, 0.0f, offsetMapping, offsetAttributes);
+                };
+
+                for (auto i = 0ul; i < NUM_CHANNELS; i++)
                 {
-                    const auto& str = delayTimeStrings[strIndex++];
+                    auto& delayTime = delayTimes[i];
+                    const auto& str = delayTimeStrings[i];
+
                     if constexpr (hasTempoSync)
                     {
-                        factory->addChild(delayTime.createParameters("Time" + str.substring(0, 1), "Time " + str));
+                        auto delayFactory_ = delayTime.createParameters("Time" + str.substring(0, 1), "Time " + str);
+                        auto& delayFactory = *delayFactory_;
+                        factory->addChild(std::move(delayFactory_));
+
+                        if constexpr (hasOffset)
+                            createTrackedOffsetParameter(delayFactory, i);
+
                         addTrackedChildParameters(delayTime);
                     }
                     else
                     {
                         const auto mapping = [this](const float x) { return  x * spec.sampleRate * 0.001f;};
                         createTrackedParameter(*factory, delayTime.time, "Time" + str.substring(0, 1),  "Time " + str, delayTime.getDurationRange(), delayTime.defaultTimeMS, mapping, Duration::getDurationAttributes());
+                        if constexpr (hasOffset)
+                            createTrackedOffsetParameter(*factory, i);
                     }
-                }
-            }
 
-            // Detune
-            if constexpr (hasDetune)
-            {
-                auto strIndex = 0ul;
-                for (auto& d : detune)
-                {
-                    auto range = juce::NormalisableRange<float>{ -100.0f, 100.0f, 0.01f };
-                    const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("cents");
-                    const auto mapping = [&](const float x){ return x * 0.01f;};
-                    const auto& str = delayTimeStrings[strIndex++];
-                    createTrackedParameter  (*factory, d, "Detune" + str.substring(0, 1),  "Detune "+ str +" (cents)",  range, 0.0f, mapping, attributes);
+                    // Detune
+                    if constexpr (hasDetune)
+                    {
+                        auto& detune = detunes[i];
+                        auto range = juce::NormalisableRange<float>{ -100.0f, 100.0f, 0.01f };
+                        const auto attributes = juce::AudioParameterFloatAttributes{}   .withLabel("cents");
+                        const auto mapping = [&](const float x){ return x * 0.01f;};
+                        createTrackedParameter  (*factory, detune, "Detune" + str.substring(0, 1),  "Detune "+ str +" (cents)",  range, 0.0f, mapping, attributes);
+                    }
                 }
             }
 
@@ -182,6 +200,7 @@ public:
     {
         static_assert(NUM_CHANNELS > 1 || !hasPingPong, "Can't have PingPong with a mono delay");
         static_assert(NUM_CHANNELS > 1 || !hasLink, "Can't Link timings with a mono delay");
+        static_assert((NUM_CHANNELS > 1 && hasLink) || hasTempoSync || !hasOffset, "Having offset when you only have time based values and one channel/no link doesn't make sense");
     }
 
 
@@ -359,10 +378,11 @@ private:
             {
                 auto& sample = wptrs[channel][0];
                 auto delayTime = link ? parameters.delayTimes[0].time.currentValue : parameters.delayTimes[channel].time.currentValue;
+                delayTime *= getDelayTimeOffset(channel);
                 delayTime += delayTime * getLFOSample(static_cast<int>(channel), static_cast<int>(i), lfoBlock);
                 if constexpr (hasDetune)
                 {
-                    const auto detune = parameters.detune[channel].currentValue;
+                    const auto detune = parameters.detunes[channel].currentValue;
                     delayLine[channel].setPitchShift(detune);
                 }
                 sample = delayLine[channel].template readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
@@ -435,6 +455,14 @@ private:
     {
         if constexpr (hasSaturation && SaturationActive)
             return parameters.drive.currentValue;
+        else
+            return 1.0f;
+    }
+
+    float getDelayTimeOffset(const size_t channel)
+    {
+        if constexpr (hasOffset)
+            return parameters.offsets[channel].currentValue;
         else
             return 1.0f;
     }

@@ -46,6 +46,16 @@ namespace delay_config
 
     /** @brief Enables a parameter to link the delay timings of both stereo channels together. */
     struct Link{};
+
+    /** @brief Enables a overriding of the default min, max, default, and centre values for delay time. */
+    template<size_t minMS = 1, size_t maxMS = 10000,  size_t defaultMS = 500, size_t skew = 1000>
+    struct TimeValues
+    {
+        static constexpr float minTimeMS_       = minMS;
+        static constexpr float maxTimeMS_       = maxMS;
+        static constexpr float defaultTimeMS_   = defaultMS;
+        static constexpr float skewForCentre_   = skew;
+    };
 }
 
 /**
@@ -134,6 +144,13 @@ public:
     using Filter = sjf::helpers::BypassWrapper<sjf::dsp::SVF<true, true>, helpers::bypass_wrapper_config::Bypass>;
     using DelayLine = std::conditional_t<hasDetune, sjf::helpers::PitchShiftDelayLine<>, sjf::helpers::DelayLine>;
 
+    using DefaultTimes = delay_config::TimeValues<>;
+    using DelayTimes = sjf::helpers::functions::utilities::find_value_instantiation_of_t<
+                                                                                             delay_config::TimeValues,
+                                                                                             DefaultTimes,
+                                                                                             Configurations...
+                                                                                         >;
+
     struct Parameters : public helpers::AudioParametersBase
     {
         using Duration = helpers::SyncedDurationParameter<>;
@@ -146,8 +163,10 @@ public:
         BoolState link, pingPong, saturation;
         ChoiceState saturationType;
 
+
+
         Parameters() :
-        delayTimes(sjf::helpers::functions::utilities::makeFilledArray<Duration, NUM_CHANNELS>(1.0f, 10000.0f, 100.0f, 1000.0f))
+        delayTimes(sjf::helpers::functions::utilities::makeFilledArray<Duration, NUM_CHANNELS>(DelayTimes::minTimeMS_, DelayTimes::maxTimeMS_, DelayTimes::defaultTimeMS_, DelayTimes::skewForCentre_))
         {}
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
@@ -261,7 +280,8 @@ public:
     } parameters;
 
     Delay()
-    : inputChannelPointers({}), outputChannelPointers({})
+    : inputChannelPointers({})
+    , outputChannelPointers({})
     {
         static_assert(NUM_CHANNELS > 1 || !hasPingPong, "Can't have PingPong with a mono delay");
         static_assert(NUM_CHANNELS > 1 || !hasLink, "Can't Link timings with a mono delay");

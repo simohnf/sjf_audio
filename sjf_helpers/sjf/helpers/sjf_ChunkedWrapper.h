@@ -21,11 +21,9 @@ namespace sjf::helpers
  *
  * @tparam Processor The target DSP module class to wrap.
  */
-template <typename Processor>
+template <typename Processor, size_t MAX_CHUNK_SIZE = 32>
 class ChunkedWrapper
 {
-    static constexpr size_t MAX_CHUNK_SIZE = 32;
-
 public:
     template <typename... Args>
     ChunkedWrapper (Args&&... args) : processor (std::forward<Args> (args)...) {}

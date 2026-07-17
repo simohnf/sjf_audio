@@ -107,7 +107,7 @@ namespace sjf::helpers
         }
 
         std::unique_ptr<juce::dsp::Oversampling<float>> oversampling;
-        sjf::helpers::ChunkedWrapper<Processor> processor;
+        Processor processor;
         juce::dsp::ProcessSpec spec{};
     };
 }

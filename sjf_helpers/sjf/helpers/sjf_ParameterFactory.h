@@ -225,7 +225,12 @@ public:
      * @return false If all parameters are completely stationary, allowing the processor to
      *               switch safely to an optimized, highly vectorizable static processing path.
      */
-    bool checkForStateChange() {
+    bool checkForStateChange()
+    {
+        #if JUCE_DEBUG
+        checkForStateChangeWasCalled = true;
+        #endif
+
         if (masterRamp.isSmoothing()) return true;
 
         const bool parametersHaveChanged = anyStatesDiverged (floatStates, floatMappings) || anyStatesDiverged (intStates, intMappings)
@@ -233,9 +238,9 @@ public:
 
         if (parametersHaveChanged) {
             latchAllStates (floatStates, floatMappings);
-            latchAllStates (intStates, intMappings);
-            latchAllStates (boolStates, boolMappings);
-            latchAllStates (choiceStates, choiceMappings);
+            resetAllStates (intStates, intMappings);
+            resetAllStates (boolStates, boolMappings);
+            resetAllStates (choiceStates, choiceMappings);
 
             masterRamp.setCurrentAndTargetValue (0.0f);
             masterRamp.setTargetValue (1.0f);
@@ -258,16 +263,21 @@ public:
      *       with constant $O(N)$ time complexity relative to the number of tracked states.
      */
     inline void tickSmoothers() noexcept {
+        #if JUCE_DEBUG
+        /*
+         * If you hit this assertion it means you have never called checkForStateChange
+         * only FloatStates are updated via tickSmoothers, all other states are snapped to the target value
+         * as soon as a change is registered
+         *
+         * You should call parameters.checkForStateChange() at the beginning of each process block
+         */
+        jassert(checkForStateChangeWasCalled);
+        #endif
+
         if (masterRamp.isSmoothing()) {
             const float alpha = masterRamp.getNextValue();
             for (const auto state : floatStates)
                 state.get().currentValue = state.get().startValue + alpha * (state.get().targetValue - state.get().startValue);
-            for (const auto state : intStates)
-                state.get().currentValue = state.get().targetValue;
-            for (const auto state : boolStates)
-                state.get().currentValue = state.get().targetValue;
-            for (const auto state : choiceStates)
-                state.get().currentValue = state.get().targetValue;
 
             if (!masterRamp.isSmoothing())
                 checkForStateChange();
@@ -469,6 +479,9 @@ private:
 
     juce::LinearSmoothedValue<float> masterRamp;
 
+    #if JUCE_DEBUG
+    bool checkForStateChangeWasCalled = false;
+    #endif
 };
 
 

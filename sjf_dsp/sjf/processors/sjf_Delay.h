@@ -209,7 +209,7 @@ public:
 
                     if constexpr (hasTempoSync)
                     {
-                        auto delayFactory_ = delayTime.createParameters("Time" + str.substring(0, 1), "Time " + str);
+                        auto delayFactory_ = delayTime.createParameters(factoryID+"Time" + str.substring(0, 1), factoryName + " Time " + str);
                         auto& delayFactory = *delayFactory_;
                         factory->addChild(std::move(delayFactory_));
 
@@ -376,12 +376,12 @@ public:
         auto factory = parameters.createParameters (factoryID, factoryName);
 
         if constexpr (hasFilter)
-            factory->addChild(filter.createParameters("Filter", "Filter"));
+            factory->addChild(filter.createParameters(factoryID +"Filter", factoryName + " Filter"));
 
-        factory->addChild(dcBlocker.createParameters("DCBlock", "DCBlock"));
+        factory->addChild(dcBlocker.createParameters(factoryID + "DCBlock", factoryName+" DC Block"));
 
         if constexpr (hasModulation)
-            factory->addChild(lfo.createParameters("Mod", "Modulation "));
+            factory->addChild(lfo.createParameters(factoryID + "Mod", factoryName + " Modulation"));
 
         return factory;
     }

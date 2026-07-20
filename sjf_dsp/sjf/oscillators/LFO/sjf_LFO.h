@@ -121,7 +121,7 @@ public:
 
             if constexpr (hasTempoSync)
             {
-                factory->addChild(frequency.createParameters("Frequency" , "Frequency"));
+                factory->addChild(frequency.createParameters(factoryID+"Frequency" , factoryName + " Frequency"));
                 addTrackedChildParameters(frequency);
             }
             else

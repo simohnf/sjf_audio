@@ -289,8 +289,6 @@ public:
     } parameters;
 
     Delay()
-    : inputChannelPointers({})
-    , outputChannelPointers({})
     {
         static_assert(NUM_CHANNELS > 1 || !hasPingPong, "Can't have PingPong with a mono delay");
         static_assert(NUM_CHANNELS > 1 || !hasLink, "Can't Link timings with a mono delay");
@@ -416,6 +414,9 @@ private:
         juce::dsp::AudioBlock<float> oneSampleBlock(oneSampleBuffer);
         const juce::dsp::ProcessContextReplacing<float> oneSampleContext(oneSampleBlock);
 
+
+        std::array<const float*, NUM_CHANNELS> inputChannelPointers;
+        std::array<float*, NUM_CHANNELS> outputChannelPointers;
 
         for (auto channel = 0ul; channel < NUM_CHANNELS; ++channel)
         {
@@ -574,8 +575,6 @@ private:
     sjf::helpers::ProcessorDuplicator<helpers::DCBlocker<false>> dcBlocker;
     [[maybe_unused]] Filter filter;
     [[maybe_unused]] Saturation saturation;
-    std::array<const float*, NUM_CHANNELS> inputChannelPointers;
-    std::array<float*, NUM_CHANNELS> outputChannelPointers;
     size_t lastSaturationType = 0;
 };
 }

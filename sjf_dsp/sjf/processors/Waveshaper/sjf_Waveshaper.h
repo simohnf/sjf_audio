@@ -221,4 +221,59 @@ private:
 
 
 
+/**
+ * @class FilteredWaveshaper
+ * @brief A composite audio processor combining pre/post state-variable filters with an oversampled waveshaper.
+ *
+ * Utilizes a `ProcessorSequence` to chain a pre-filter, an oversampled `Waveshaper`, and a post-filter.
+ * Provides hierarchical parameter registration and transport state management.
+ *
+ * @tparam WaveshaperTypes A type provider supplying saturator types for the core waveshaper.
+ * @tparam NUM_CHANNELS The number of audio channels to process concurrently (defaults to 2).
+ */
+template <typename WaveshaperTypes, size_t NUM_CHANNELS = 2>
+class FilteredWaveshaper
+{
+public:
+    void prepare(const juce::dsp::ProcessSpec& spec_)
+    {
+        sequence.prepare(spec_);
+    }
+
+    void reset()
+    {
+        sequence.reset();
+    }
+
+    template<typename ProcessContext>
+    void process(const ProcessContext& context) noexcept
+    {
+        sequence.process(context);
+    }
+
+    std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
+    {
+        return sequence.createParameters (factoryID, factoryName,
+                                            helpers::processor_sequence::SubFactoryConfig("PreFilter", "Pre Filter"),
+                                            helpers::processor_sequence::SubFactoryConfig("Waveshaper", "Waveshaper"),
+                                            helpers::processor_sequence::SubFactoryConfig("PostFilter", "Post Filter")
+                                            );
+    }
+
+
+    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+    {
+        sequence.setPositionInfo(positionInfo);
+    }
+
+private:
+
+    using Filter = helpers::BypassWrapper<SVF<>, helpers::bypass_wrapper_config::Bypass>;
+
+    /**
+     * @brief Internal DSP processing sequence: [Pre-Filter] -> [Oversampled Waveshaper] -> [Post-Filter].
+     */
+    sjf::helpers::ProcessorSequence<Filter, helpers::OversamplingWrapper<Waveshaper<WaveshaperTypes, NUM_CHANNELS>>, Filter> sequence;
+};
+
 }

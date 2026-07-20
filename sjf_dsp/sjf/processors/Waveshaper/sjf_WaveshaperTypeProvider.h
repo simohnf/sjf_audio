@@ -174,6 +174,17 @@ namespace sjf::dsp::waveshaper
             });
         }
 
+        template <std::size_t Index, bool On = true>
+        float getCompensationGain(const float drive)
+        {
+            if constexpr (!On )
+                return 1.0f;
+            else if constexpr (requires {std::get<Index>(saturators).getCompensationGain(drive);})
+                return std::get<Index>(saturators).getCompensationGain(drive);
+            else
+                return 1.0f / std::get<Index>(saturators).processSample(drive);
+        }
+
         static const juce::StringArray& getNames()
         {
             static const juce::StringArray names = [] {

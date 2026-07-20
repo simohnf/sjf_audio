@@ -1,4 +1,11 @@
-# sjf_audio
+```
+███████╗     ██╗███████╗    █████╗ ██╗   ██╗██████╗ ██╗ ██████╗
+██╔════╝     ██║██╔════╝   ██╔══██╗██║   ██║██╔══██╗██║██╔═══██╗
+███████╗     ██║█████╗     ███████║██║   ██║██║  ██║██║██║   ██║
+╚════██║██   ██║██╔══╝     ██╔══██║██║   ██║██║  ██║██║██║   ██║
+███████║╚█████╔╝██║███████╗██║  ██║╚██████╔╝██████╔╝██║╚██████╔╝
+╚══════╝ ╚════╝ ╚═╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝ ╚═════╝
+```
 
 A high-performance C++20 DSP utility library designed specifically for the **JUCE** framework. This library provides compile-time abstractions to eliminate allocation overhead, structure hierarchical plugin parameters, and maximize compiler vectorization via automated fast-path branching.
 

@@ -57,7 +57,7 @@ namespace delay_config
     struct Link{};
 
     /** @brief Enables a overriding of the default min, max, default, and centre values for delay time. */
-    template<size_t minMS = 1, size_t maxMS = 10000,  size_t defaultMS = 500, size_t skew = 1000>
+    template<size_t minMS = 1, size_t maxMS = 5000,  size_t defaultMS = 500, size_t skew = 1000>
     struct TimeValues
     {
         static constexpr float minTimeMS       = minMS;

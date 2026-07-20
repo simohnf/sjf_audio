@@ -657,7 +657,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
                     const auto numerator = static_cast<float>(SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
                     const auto denominator = static_cast<float>(SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
                     const auto div = numerator / denominator;
-                    return spec.sampleRate * bar * div;
+                    return spec.sampleRate * jlimit(timeRange.start, timeRange.end, bar * div);
                 }
             };
             createTrackedParameter  (*factory, time, "Time",  "Time  (ms)",  timeRange, defaultTimeMS, mapping, getDurationAttributes());
@@ -800,7 +800,7 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
                     const auto numerator = static_cast<float>(SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
                     const auto denominator = static_cast<float>(SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
                     const auto div = numerator / denominator;
-                    return 1.0f / (bar * div);
+                    return jlimit(frequencyRange.start, frequencyRange.end, 1.0f / (bar * div));
                 }
             };
 

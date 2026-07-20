@@ -464,7 +464,7 @@ private:
 
             const auto feedback = getFeedback();
             const auto drive = getDrive<SaturationActive>();
-            const auto norm = drive > 0.0f ? 1.0f / saturation.template processSample<SaturationIndex, SaturationActive>(drive) : 1.0f;
+            const auto norm = drive > 0.0f ? saturation.template getCompensationGain<SaturationIndex, SaturationActive>(drive) : 1.0f;
 
             for (auto channel = 0ul; channel < NUM_CHANNELS; ++channel)
             {

@@ -183,6 +183,8 @@ namespace utilities
     inline constexpr bool has_any_instantiation = (parameter_pack_helpers::is_instantiation_of_v<TargetTemplate, std::decay_t<Configurations>> || ...);
 
 
+    template<template <typename...> class TargetTemplate, typename TypeToCheck>
+    inline constexpr bool is_instantiation_of = (parameter_pack_helpers::is_instantiation_of_v<TargetTemplate, std::decay_t<TypeToCheck>>);
 
 
     /**

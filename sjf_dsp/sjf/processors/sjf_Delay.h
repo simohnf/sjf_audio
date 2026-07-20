@@ -115,6 +115,7 @@ namespace delay_config
  * @tparam Configurations A variadic parameter pack containing `delay_config` tags, an optional
  *                        `sjf::dsp::oscillators::lfo::LFO` template type instantiation, and an optional
  *                        `sjf::dsp::waveshaper::WaveshaperTypeProvider` template type instantiation.
+ *                        NOTE: This processor only works with STATELESS saturation algorithms...
  */
 template<typename ... Configurations>
 class Delay

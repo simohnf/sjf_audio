@@ -52,7 +52,7 @@ public:
         const auto versionHint = parameterID.getVersionHint() != 0 ? parameterID.getVersionHint() : sjf::version_hints::getVersionHint(id);
         auto p = std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID (id, versionHint),
-            baseName + ": " + parameterName,
+            baseName + " " + parameterName,
             normalisableRange,
             defaultValue,
             attributes
@@ -72,7 +72,7 @@ public:
         const auto versionHint = parameterID.getVersionHint() != 0 ? parameterID.getVersionHint() : sjf::version_hints::getVersionHint(id);
         auto p = std::make_unique<juce::AudioParameterInt> (
             juce::ParameterID (id, versionHint),
-            baseName + ": " + parameterName,
+            baseName + " " + parameterName,
             minValue, maxValue, defaultValue,
             attributes
         );
@@ -91,7 +91,7 @@ public:
         const auto versionHint = parameterID.getVersionHint() != 0 ? parameterID.getVersionHint() : sjf::version_hints::getVersionHint(id);
         auto p = std::make_unique<juce::AudioParameterBool> (
             juce::ParameterID (id, versionHint),
-            baseName + ": " + parameterName,
+            baseName + " " + parameterName,
             defaultValue,
             attributes
         );
@@ -111,7 +111,7 @@ public:
         const auto versionHint = parameterID.getVersionHint() != 0 ? parameterID.getVersionHint() : sjf::version_hints::getVersionHint(id);
         auto p = std::make_unique<juce::AudioParameterChoice> (
             juce::ParameterID (id, versionHint),
-            baseName + ": " + parameterName,
+            baseName + " " + parameterName,
             choices,
             defaultChoiceIndex,
             attributes

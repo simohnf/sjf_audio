@@ -22,6 +22,12 @@ namespace sjf::helpers
         const static juce::Identifier presetNameId{"preset"};
         const static juce::Identifier value{"value"};
         const static juce::Identifier param{"Param"};
+        const static juce::Identifier savedPreset{"SavedPreset"};
+    }
+
+	namespace preset_manager::strings
+    {
+    	const static juce::String savePreset = "Save Preset";
     }
 
 class PresetManager
@@ -103,12 +109,12 @@ class PresetManager
             m.addSeparator();
             auto save = PopupMenu::Item();
             save.itemID = itemId;
-            save.text = "Save Preset";
+            save.text = preset_manager::strings::savePreset;
             save.isEnabled = true;
             save.isTicked = false;
             save.action = [&, ext = extension]()
             {
-                auto* alert = new juce::AlertWindow ("Save Preset", "Please enter a name for your preset:", juce::MessageBoxIconType::NoIcon);
+                auto* alert = new juce::AlertWindow (preset_manager::strings::savePreset, "Please enter a name for your preset:", juce::MessageBoxIconType::NoIcon);
 
                 alert->addTextEditor ("presetName", "My Preset", "Preset Name:");
                 alert->addButton ("Save", 1, juce::KeyPress (juce::KeyPress::returnKey));

@@ -211,7 +211,7 @@ public:
                     {
                         auto delayFactory_ = delayTime.createParameters(factoryID+"Time" + str.substring(0, 1), factoryName + " Time " + str);
                         auto& delayFactory = *delayFactory_;
-                        factory->addChild(std::move(delayFactory_));
+                        factory->addChildFactory(std::move(delayFactory_));
 
                         if constexpr (hasOffset)
                             createTrackedOffsetParameter(delayFactory, i);
@@ -376,12 +376,12 @@ public:
         auto factory = parameters.createParameters (factoryID, factoryName);
 
         if constexpr (hasFilter)
-            factory->addChild(filter.createParameters(factoryID +"Filter", factoryName + " Filter"));
+            factory->addChildFactory(filter.createParameters(factoryID +"Filter", factoryName + " Filter"));
 
-        factory->addChild(dcBlocker.createParameters(factoryID + "DCBlock", factoryName+" DC Block"));
+        factory->addChildFactory(dcBlocker.createParameters(factoryID + "DCBlock", factoryName+" DC Block"));
 
         if constexpr (hasModulation)
-            factory->addChild(lfo.createParameters(factoryID + "Mod", factoryName + " Modulation"));
+            factory->addChildFactory(lfo.createParameters(factoryID + "Mod", factoryName + " Modulation"));
 
         return factory;
     }

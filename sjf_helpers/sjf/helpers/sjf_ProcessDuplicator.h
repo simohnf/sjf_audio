@@ -111,7 +111,7 @@ private:
     {
         for ( auto* p : processors)
         {
-            dummyParameterFactory->addChild(p->createParameters (id, name));
+            dummyParameterFactory->addChildFactory(p->createParameters (id, name));
             p->parameters.setMasterAudioParameters(&parameters);
         }
     }

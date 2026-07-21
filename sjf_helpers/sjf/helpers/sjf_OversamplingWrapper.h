@@ -108,7 +108,7 @@ namespace sjf::helpers
         std::unique_ptr<ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
         {
             auto factory = processor.createParameters (factoryID, factoryName);
-            factory->addChild(parameters.createParameters (factoryID + "OS", factoryName + " Oversampling"));
+            factory->addChildFactory(parameters.createParameters (factoryID + "OS", factoryName + " Oversampling"));
             return factory;
         }
 

@@ -16,6 +16,8 @@
 #include <sjf/processors/Waveshaper/sjf_WaveshaperTypeProvider.h>
 #include <sjf/helpers/sjf_HelperFunctions.h>
 
+#include "sjf/processors/sjf_Filter_juce.h"
+
 namespace sjf::dsp::waveshaper
 {
 

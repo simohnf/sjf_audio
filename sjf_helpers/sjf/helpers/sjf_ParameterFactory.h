@@ -124,6 +124,9 @@ public:
 
     void addChildFactory (std::unique_ptr<ParameterFactory> child)
     {
+        jassert(child->getID().startsWith(baseID));
+        jassert(child->getName().startsWith(baseName));
+
         if (child != nullptr)
             addChild (std::move (child));
     }

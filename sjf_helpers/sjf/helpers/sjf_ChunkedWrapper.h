@@ -79,7 +79,7 @@ public:
 
             const auto chunkSize = std::min (MAX_CHUNK_SIZE, numSamples - samplesProcessed);
         	if (positionInfo.getTimeInSamples().hasValue())
-				positionInfo.setTimeInSamples(*positionInfo.getTimeInSamples() + chunkSize);
+				positionInfo.setTimeInSamples(*positionInfo.getTimeInSamples() + static_cast<int64_t>(chunkSize));
         	if (positionInfo.getPpqPosition().hasValue() && positionInfo.getBpm().hasValue())
 				positionInfo.setPpqPosition(*positionInfo.getPpqPosition() + (chunkSize * *positionInfo.getBpm()) /(spec.sampleRate * 60.0f));
 

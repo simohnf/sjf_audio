@@ -92,7 +92,7 @@ struct ProcessorDuplicator
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
     {
-        dummyParameterFactory = ParameterFactory::create("Dummy", "Dummy");
+        dummyParameterFactory = ParameterFactory::create(factoryID, factoryName);
 
         id = factoryID;
         name = factoryName;

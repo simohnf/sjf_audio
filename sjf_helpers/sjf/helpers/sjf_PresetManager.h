@@ -58,7 +58,7 @@ class PresetManager
         {
             jassert(extension.startsWith ("."));
 
-            const auto folderName = getGroupFolderName(group);
+            const auto folderName = getGroupIDWithNoSpaces(group);
             auto targetDir = getProjectWriteableRoot().getChildFile(folderName);
 
             if (targetDir.createDirectory())
@@ -79,7 +79,7 @@ class PresetManager
         {
             jassert(extension.startsWith ("."));
 
-            const auto folderName = getGroupFolderName(group);
+            const auto folderName = getGroupIDWithNoSpaces(group);
             auto presetFile = getProjectWriteableRoot().getChildFile(folderName).getChildFile(presetName + extension);
 
             if (presetFile.existsAsFile())
@@ -93,10 +93,47 @@ class PresetManager
                 jassertfalse;
             }
         }
+        
+        
+        static juce::PopupMenu getPresetPopupMenu(const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf")
+        {
+            juce::PopupMenu m;
+
+            auto itemId = populatePresetPopupMenu(1, m, group, extension);
+            m.addSeparator();
+            auto save = PopupMenu::Item();
+            save.itemID = itemId;
+            save.text = "Save Preset";
+            save.isEnabled = true;
+            save.isTicked = false;
+            save.action = [&, ext = extension]()
+            {
+                auto* alert = new juce::AlertWindow ("Save Preset", "Please enter a name for your preset:", juce::MessageBoxIconType::NoIcon);
+
+                alert->addTextEditor ("presetName", "My Preset", "Preset Name:");
+                alert->addButton ("Save", 1, juce::KeyPress (juce::KeyPress::returnKey));
+                alert->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+
+                alert->enterModalState (true, juce::ModalCallbackFunction::create (
+                    [alert, &group, e = ext] (int result)
+                    {
+                        if (result == 1) // User clicked Save
+                        {
+                            auto presetName = alert->getTextEditorContents ("presetName");
+                            PresetManager::savePreset(group, presetName, e);
+                        }
+                        delete alert;
+                    }));
+            };
+            m.addItem(save);
+
+            itemId ++;
+            return m;
+        }
 
     private:
         // Helper to guarantee savePreset and loadPreset resolve the directory identically
-        static juce::String getGroupFolderName(const juce::AudioProcessorParameterGroup& group)
+        static juce::String getGroupIDWithNoSpaces(const juce::AudioProcessorParameterGroup& group)
         {
             auto id = ParameterFactory::getIDWithoutParentPrefix(group);
             if (id.isEmpty())
@@ -106,8 +143,8 @@ class PresetManager
 
         static ValueTree getValueTree(const AudioProcessorParameterGroup& group, bool recursive = true)
         {
-            const auto id = ParameterFactory::getIDWithoutParentPrefix(group);
-            auto vt = ValueTree{ id.isEmpty() ? juce::String(JucePlugin_Name).replace(" ", "") : id };
+            const auto id = getGroupIDWithNoSpaces(group);
+            auto vt = ValueTree{id};
 
             for (const auto& param : group.getParameters(false))
             {
@@ -167,6 +204,41 @@ class PresetManager
             }
 
             return {};
+        }
+
+
+        static int populatePresetPopupMenu(int startId, PopupMenu& m, const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf")
+        {
+            auto id = getGroupIDWithNoSpaces(group);
+            auto dir = getProjectWriteableRoot().getChildFile(id);
+            if (dir.isDirectory())
+            {
+                auto whatToLookFor = juce::File::TypesOfFileToFind::findFiles | juce::File::TypesOfFileToFind::ignoreHiddenFiles;
+                auto arr = dir.findChildFiles(whatToLookFor, false, "*"+extension, File::FollowSymlinks::noCycles);
+                for (const auto& file : arr)
+                {
+                    auto item = PopupMenu::Item();
+                    item.action = [&, name = file.getFileNameWithoutExtension(), e = extension](){
+                        loadPreset(group, name, e);
+                    };
+                    item.itemID = startId;
+                    item.text = file.getFileNameWithoutExtension();
+                    item.isTicked = false;
+                    item.isEnabled = true;
+                    m.addItem(item);
+
+                    startId++;
+
+                }
+
+                for ( const auto& subDir : dir.findChildFiles(juce::File::TypesOfFileToFind::findDirectories, false, "*"+extension, File::FollowSymlinks::noCycles))
+                {
+                    auto subMenu = PopupMenu();
+                    startId = populatePresetPopupMenu(startId, subMenu, group, extension);
+                    m.addSubMenu(subDir.getFileName(), subMenu);
+                }
+            }
+            return startId;
         }
     };
 }

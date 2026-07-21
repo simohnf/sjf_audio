@@ -101,7 +101,7 @@ class PresetManager
         }
         
         
-        static juce::PopupMenu getPresetPopupMenu(const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf")
+        static juce::PopupMenu getPresetPopupMenu(const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf", juce::Component::SafePointer<ComboBox> parent = nullptr)
         {
             juce::PopupMenu m;
 
@@ -112,7 +112,7 @@ class PresetManager
             save.text = preset_manager::strings::savePreset;
             save.isEnabled = true;
             save.isTicked = false;
-            save.action = [&, ext = extension]()
+            save.action = [&, ext = extension, parent]()
             {
                 auto* alert = new juce::AlertWindow (preset_manager::strings::savePreset, "Please enter a name for your preset:", juce::MessageBoxIconType::NoIcon);
 
@@ -121,12 +121,14 @@ class PresetManager
                 alert->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
 
                 alert->enterModalState (true, juce::ModalCallbackFunction::create (
-                    [alert, &group, e = ext] (int result)
+                    [alert, &group, e = ext, parent] (int result)
                     {
                         if (result == 1) // User clicked Save
                         {
                             auto presetName = alert->getTextEditorContents ("presetName");
                             PresetManager::savePreset(group, presetName, e);
+                        	if (parent)
+                        		parent->getProperties().set(preset_manager::ids::savedPreset, presetName);
                         }
                         delete alert;
                     }));

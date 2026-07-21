@@ -12,6 +12,7 @@
 
 #pragma once
 #include <JuceHeader.h>
+#include <sjf/widgets/sjf_PresetPanel.h>
 
 namespace sjf::generic_editor
 {
@@ -20,7 +21,8 @@ namespace sjf::generic_editor
      public:
          explicit GenericEditor(AudioProcessor& processor_)
         : AudioProcessorEditor(processor_)
-        , mainEditor(processor_)
+        , mainEditor(processor)
+     	, presets(processor.getParameterTree())
         {
             addAndMakeVisible(mainEditor);
              addAndMakeVisible(presets);
@@ -39,14 +41,8 @@ namespace sjf::generic_editor
          }
 
      private:
-         void timerCallback()
-         {
-             auto menu = presets.getRootMenu();
-             *menu = sjf::helpers::PresetManager::getPresetPopupMenu(processor.getParameterTree());
-         }
          juce::GenericAudioProcessorEditor mainEditor;
-         juce::ComboBox presets;
-         VBlankAttachment vBlankAttachment{this, [&](){timerCallback();}};
+         sjf::gui::PresetPanel presets;
      };
 }
 

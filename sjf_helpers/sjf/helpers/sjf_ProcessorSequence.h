@@ -140,7 +140,7 @@ private:
     requires std::is_same_v<std::decay_t<ConfigType>, processor_sequence::SubFactoryConfig>
     void invokeCreateParameters (ProcessorType& proc, ParameterFactory* parent, ConfigType&& config)
     {
-        if (auto sub = proc.createParameters (config.id, config.name))
+        if (auto sub = proc.createParameters (parent->getID() + config.id,parent->getName() + " " + config.name))
             parent->addChildFactory (std::move (sub));
     }
 

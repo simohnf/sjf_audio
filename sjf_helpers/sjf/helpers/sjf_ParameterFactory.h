@@ -131,6 +131,55 @@ public:
             addChild (std::move (child));
     }
 
+    [[nodiscard]] static String getIDWithoutParentPrefix(const juce::AudioProcessorParameterGroup& group)
+    {
+        const auto groupID = group.getID();
+        if (const auto parent = group.getParent())
+            return groupID.substring(parent->getID().length()).trim();
+        else
+            return groupID;
+    }
+
+    [[nodiscard]] static String getIDWithoutParentPrefix(const ParameterFactory& group)
+    {
+        return getIDWithoutParentPrefix(*dynamic_cast<const AudioProcessorParameterGroup*>(&group));
+    }
+
+    [[nodiscard]] static String getNameWithoutParentPrefix(const juce::AudioProcessorParameterGroup& group)
+    {
+        const auto groupName = group.getName();
+        if (const auto parent = group.getParent())
+            return groupName.substring(parent->getName().length()).trim();
+        else
+            return groupName;
+    }
+
+    [[nodiscard]] static String getNameWithoutParentPrefix(const ParameterFactory& group)
+    {
+        return getNameWithoutParentPrefix(*dynamic_cast<const AudioProcessorParameterGroup*>(&group));
+    }
+
+    [[nodiscard]] static String getIDWithoutParentPrefix(const juce::RangedAudioParameter& param, const juce::AudioProcessorParameterGroup& group)
+    {
+        jassert(param.paramID.startsWith(group.getID()));
+        return param.paramID.substring(group.getID().length());
+    }
+
+    [[nodiscard]] static String getIDWithoutParentPrefix(const juce::RangedAudioParameter& param, const ParameterFactory& group)
+    {
+        return getIDWithoutParentPrefix(param, *dynamic_cast<const AudioProcessorParameterGroup*>(&group));
+    }
+
+    [[nodiscard]] static String getNameWithoutParentPrefix(const juce::RangedAudioParameter& param, const juce::AudioProcessorParameterGroup& group)
+    {
+        jassert(param.name.startsWith(group.getName()));
+        return param.name.substring(group.getName().length()).trim();
+    }
+
+    [[nodiscard]] static String getNameWithoutParentPrefix(const juce::RangedAudioParameter& param, const ParameterFactory& group)
+    {
+        return getNameWithoutParentPrefix(param, *dynamic_cast<const AudioProcessorParameterGroup*>(&group));
+    }
 private:
     const juce::String baseID, baseName;
 };

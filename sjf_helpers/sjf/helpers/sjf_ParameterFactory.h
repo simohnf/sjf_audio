@@ -738,10 +738,10 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
         return factory;
     }
 
-    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo_)
+    void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo_)
     {
-        if (positionInfo_.hasValue() && positionInfo_->getBpm().hasValue())
-            positionInfo.setBpm(positionInfo_->getBpm());
+        if (positionInfo_.getBpm().hasValue())
+            positionInfo.setBpm(positionInfo_.getBpm());
         else
             positionInfo.setBpm(120);
     }
@@ -882,10 +882,10 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
         return factory;
     }
 
-    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo_)
+    void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo_)
     {
-        if (positionInfo_.hasValue() && positionInfo_->getBpm().hasValue())
-            positionInfo.setBpm(positionInfo_->getBpm());
+        if (positionInfo_.getBpm().hasValue())
+            positionInfo.setBpm(positionInfo_.getBpm());
         else
             positionInfo.setBpm(120);
     }

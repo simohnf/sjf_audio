@@ -104,12 +104,14 @@ public:
     Processor& getProcessor() { return processor; }
     const Processor& getProcessor() const { return processor; }
 
-    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+    void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo_)
     {
+    	positionInfo = positionInfo_;
         sjf::optional_calls::setPositionInfo(processor, positionInfo);
     }
 private:
     Processor processor;
     juce::dsp::ProcessSpec spec{};
+	juce::AudioPlayHead::PositionInfo positionInfo{};
 };
 }

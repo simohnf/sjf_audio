@@ -129,7 +129,7 @@ public:
     template <size_t Index> [[nodiscard]] decltype(auto) get() noexcept       { return std::get<Index> (processors); }
     template <size_t Index> [[nodiscard]] decltype(auto) get() const noexcept { return std::get<Index> (processors); }
 
-    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+    void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
     {
         sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){ sjf::optional_calls::setPositionInfo(proc, positionInfo); });
     }

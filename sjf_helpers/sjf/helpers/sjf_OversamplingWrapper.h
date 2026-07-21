@@ -112,7 +112,7 @@ namespace sjf::helpers
             return factory;
         }
 
-        void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+        void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
         {
             sjf::optional_calls::setPositionInfo(processor, positionInfo);
         }

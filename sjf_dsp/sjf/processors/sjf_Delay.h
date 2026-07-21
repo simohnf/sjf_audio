@@ -281,7 +281,7 @@ public:
             return factory;
         }
 
-        void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+        void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
         {
             for ( auto& dt : delayTimes)
                 dt.setPositionInfo(positionInfo);
@@ -386,7 +386,7 @@ public:
         return factory;
     }
 
-    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+    void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
     {
         parameters.setPositionInfo(positionInfo);
     }

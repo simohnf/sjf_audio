@@ -128,7 +128,7 @@ public:
      * @brief Updates the processor with timing and transport metadata from the host daw playhead.
      * @param positionInfo_ An optional structure containing metrics like BPM, time signature, and play-state.
      */
-    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>&)
+    void setPositionInfo(const juce::AudioPlayHead::PositionInfo&)
     {
 
     }

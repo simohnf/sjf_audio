@@ -27,7 +27,7 @@ namespace internal
 {
     /** @brief Compiles and executes the member function call if the target processor supports it. */
     template <typename T>
-    auto setPositionInfo(T& processor, const Optional<juce::AudioPlayHead::PositionInfo>& info, int)
+    auto setPositionInfo(T& processor, const juce::AudioPlayHead::PositionInfo& info, int)
     -> decltype(processor.setPositionInfo(info), void())
     {
         processor.setPositionInfo(info);
@@ -35,7 +35,7 @@ namespace internal
 
     /** @brief Fallback pass-through that silences compilation errors if the target processor lacks the method. */
     template <typename T>
-    void setPositionInfo(T&, const Optional<juce::AudioPlayHead::PositionInfo>&, long)
+    void setPositionInfo(T&, const juce::AudioPlayHead::PositionInfo&, long)
     {
         // Do nothing
     }
@@ -61,7 +61,7 @@ namespace internal
  * @param info An optional layout containing the host's playhead state details.
  */
 template <typename T>
-auto setPositionInfo(T& processor, const Optional<juce::AudioPlayHead::PositionInfo>& info)
+auto setPositionInfo(T& processor, const juce::AudioPlayHead::PositionInfo& info)
 {
     optional_calls::internal::setPositionInfo(processor, info, 0);
 }

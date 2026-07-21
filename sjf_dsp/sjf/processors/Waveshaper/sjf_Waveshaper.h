@@ -263,7 +263,7 @@ public:
     }
 
 
-    void setPositionInfo(const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo)
+    void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
     {
         sequence.setPositionInfo(positionInfo);
     }

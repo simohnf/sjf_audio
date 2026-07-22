@@ -32,6 +32,7 @@ namespace sjf::helpers
         void prepare(const juce::dsp::ProcessSpec& spec_)
         {
             spec = spec_;
+        	reset();
         }
 
         void setMaxDelayTimeMS(const float ms)

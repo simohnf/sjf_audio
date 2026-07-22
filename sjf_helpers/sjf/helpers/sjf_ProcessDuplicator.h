@@ -10,6 +10,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
+#include <sjf_helpers/sjf/helpers/sjf_OptionalCalls.h>
 
 namespace sjf::helpers
 {

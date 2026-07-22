@@ -21,6 +21,7 @@
 #include "sjf/helpers/sjf_ProcessDuplicator.h"
 #include <sjf/processors/Waveshaper/sjf_WaveshaperTypeProvider.h>
 #include "sjf/oscillators/LFO/sjf_LFO.h"
+#include <sjf/helpers/sjf_BypassWrapper.h>
 
 namespace sjf::dsp
 {

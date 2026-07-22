@@ -13,6 +13,7 @@
 #pragma once
 #include <JuceHeader.h>
 
+#include "sjf_HelperFunctions.h"
 namespace sjf::helpers
 {
 

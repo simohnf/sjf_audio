@@ -221,7 +221,7 @@ public:
                     else
                     {
                         const auto mapping = [this](const float x) { return  x * spec.sampleRate * 0.001f;};
-                        createTrackedParameter(*factory, delayTime.time, "Time" + str.substring(0, 1),  "Time " + str, delayTime.getDurationRange(), delayTime.defaultTimeMS, mapping, Duration::getDurationAttributes());
+                        createTrackedParameter(*factory, delayTime.time, "Time" + str.substring(0, 1),  "Time " + str, delayTime.timeRange, delayTime.defaultTimeMS, mapping, Duration::getDurationAttributes());
                         if constexpr (hasOffset)
                             createTrackedOffsetParameter(*factory, i);
                     }

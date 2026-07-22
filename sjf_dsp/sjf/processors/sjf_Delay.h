@@ -389,6 +389,10 @@ public:
     void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
     {
         parameters.setPositionInfo(positionInfo);
+
+    	if constexpr (hasModulation)
+    		lfo.setPositionInfo(positionInfo);
+
     }
 
 private:

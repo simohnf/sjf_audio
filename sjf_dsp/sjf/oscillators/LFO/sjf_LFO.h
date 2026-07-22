@@ -160,6 +160,11 @@ public:
 
             return factory;
         }
+
+    	void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
+        {
+	        frequency.setPositionInfo(positionInfo);
+        }
     } parameters;
 
 
@@ -244,6 +249,11 @@ public:
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
     {
         return parameters.createParameters (factoryID, factoryName);
+    }
+
+	void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
+    {
+	    parameters.setPositionInfo(positionInfo);
     }
 
 private:

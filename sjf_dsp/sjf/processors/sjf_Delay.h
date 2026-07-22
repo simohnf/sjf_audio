@@ -308,7 +308,9 @@ public:
         {
             dl.prepare(spec);
             if constexpr (hasModulation)
-                dl.setMaxDelayTimeMS(DelayTimes::maxTimeMS * ModulationDepthScale + 1);
+                dl.setMaxDelayTimeMS(DelayTimes::maxTimeMS + DelayTimes::maxTimeMS * ModulationDepthScale + 2);
+        	else
+        		dl.setMaxDelayTimeMS(DelayTimes::maxTimeMS + 2);
         }
 
         dcBlocker.prepare(spec);

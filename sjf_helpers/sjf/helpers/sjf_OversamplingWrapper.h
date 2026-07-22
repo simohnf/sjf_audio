@@ -95,7 +95,7 @@ namespace sjf::helpers
             if (parameters.ratio.currentValue != 0 /* OFF!!! */)
             {
                 auto upsampledBlock = oversampling->processSamplesUp(context.getInputBlock());
-                dsp::ProcessContextReplacing<float> upsampledContext{upsampledBlock};
+                juce::dsp::ProcessContextReplacing<float> upsampledContext{upsampledBlock};
                 processor.process(upsampledContext);
                 oversampling->processSamplesDown(context.getOutputBlock());
             }
@@ -125,7 +125,7 @@ namespace sjf::helpers
     private:
         void createOversampling()
         {
-            oversampling = std::make_unique<juce::dsp::Oversampling<float>>(spec.numChannels, parameters.ratio.currentValue, static_cast<dsp::Oversampling<float>::FilterType>(parameters.filterType.currentValue));
+            oversampling = std::make_unique<juce::dsp::Oversampling<float>>(spec.numChannels, parameters.ratio.currentValue, static_cast<juce::dsp::Oversampling<float>::FilterType>(parameters.filterType.currentValue));
             oversampling->initProcessing(spec.maximumBlockSize);
         	oversampling->setUsingIntegerLatency(true);
         }

@@ -9,6 +9,8 @@
 
 A high-performance C++20 DSP utility library designed specifically for the **JUCE** framework. This library provides compile-time abstractions to eliminate allocation overhead, structure hierarchical plugin parameters, and maximize compiler vectorization via automated fast-path branching.
 
+[You can find an example project here](https://github.com/simohnf/sjf_DummyPlugin)
+
 ---
 
 ## Key Architectural Concepts
@@ -128,3 +130,11 @@ Language Standard: C++20 or higher.
 Framework Dependency: JUCE 7+.
 
 Compiler Target: Highly compatible with optimization flags (-O3, /O2, -ffast-math) to take full advantage of static-loop unrolling.
+
+---
+
+
+### TO DO
+
+- Return latency from processors
+- Make tempo synced phasor actually linked to host position

@@ -53,7 +53,7 @@ namespace internal
  * @note To opt-in to receiving playhead data, the child processor `T` must implement
  *       the following exact public member function signature:
  *       @code
- *       void setPositionInfo (const Optional<juce::AudioPlayHead::PositionInfo>& positionInfo);
+ *       void setPositionInfo (const juce::AudioPlayHead::PositionInfo& positionInfo);
  *       @endcode
  *
  * @tparam T The type of the audio processor.

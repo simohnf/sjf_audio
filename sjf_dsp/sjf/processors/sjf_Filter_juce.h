@@ -132,7 +132,7 @@ public:
     void updateFilterParameters()
     {
         filter.setType(static_cast<juce::dsp::StateVariableTPTFilterType>(parameters.type.currentValue));
-        filter.setCutoffFrequency(parameters.cutoff.currentValue);
+        filter.setCutoffFrequency(jmin(static_cast<float>(spec.sampleRate) * 0.499f, parameters.cutoff.currentValue));
         filter.setResonance(parameters.resonance.currentValue);
     }
 

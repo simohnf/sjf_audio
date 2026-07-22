@@ -117,11 +117,17 @@ namespace sjf::helpers
             sjf::optional_calls::setPositionInfo(processor, positionInfo);
         }
 
+    	int getLatencySamples()
+        {
+        	return static_cast<int>(oversampling->getLatencyInSamples()) + sjf::optional_calls::getLatencySamples(processor);
+        }
+
     private:
         void createOversampling()
         {
             oversampling = std::make_unique<juce::dsp::Oversampling<float>>(spec.numChannels, parameters.ratio.currentValue, static_cast<dsp::Oversampling<float>::FilterType>(parameters.filterType.currentValue));
             oversampling->initProcessing(spec.maximumBlockSize);
+        	oversampling->setUsingIntegerLatency(true);
         }
 
         void prepareProcessorUpsampled()

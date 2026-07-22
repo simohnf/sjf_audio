@@ -116,6 +116,11 @@ public:
     	positionInfo = positionInfo_;
         sjf::optional_calls::setPositionInfo(processor, positionInfo);
     }
+
+	int getLatencySamples()
+    {
+	    return sjf::optional_calls::getLatencySamples(processor);
+    }
 private:
     Processor processor;
     juce::dsp::ProcessSpec spec{};

@@ -134,6 +134,13 @@ public:
         sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){ sjf::optional_calls::setPositionInfo(proc, positionInfo); });
     }
 
+	int getLatencySamples()
+    {
+    	auto sum = 0;
+    	sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){ sum += sjf::optional_calls::getLatencySamples(proc); });
+    	return sum;
+    }
+
 private:
     // Case 1: The configuration is a flat SubFactoryConfig
     template <typename ProcessorType, typename ConfigType>

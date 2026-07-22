@@ -105,6 +105,11 @@ struct ProcessorDuplicator
         return factory;
     }
 
+	int getLatencySamples()
+    {
+    	return sjf::optional_calls::getLatencySamples(processors[0]);
+    }
+
 private:
 
     void updateMasterParameters()

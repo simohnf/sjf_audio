@@ -218,6 +218,12 @@ public:
     {
         sjf::optional_calls::setPositionInfo(processor, positionInfo);
     }
+
+	int getLatencySamples()
+    {
+    	return sjf::optional_calls::getLatencySamples(processor);
+    }
+
 private:
 
     float getWetTargetLevel()

@@ -39,6 +39,19 @@ namespace internal
     {
         // Do nothing
     }
+
+	template <typename T>
+	auto getLatencySamples(T& processor, int)
+	-> decltype(processor.getLatencySamples())
+    {
+    	return processor.getLatencySamples();
+    }
+
+	template <typename T>
+    int getLatencySamples(T&, long)
+    {
+        return 0;
+    }
 }
 
 /**
@@ -64,6 +77,31 @@ template <typename T>
 auto setPositionInfo(T& processor, const juce::AudioPlayHead::PositionInfo& info)
 {
     optional_calls::internal::setPositionInfo(processor, info, 0);
+}
+
+
+
+/**
+ * @brief Template utility that conditionally queries whether a processor reports any latency.
+ *
+ * This wrapper acts as a compile-time safety boundary. It allows a container class
+ * (like `ProcessorSequence`) to query all child nodes
+ * even if some of those nodes are simple, static components (like filters or gain utilities)
+ * that do not introduce latency.
+ *
+ * @note To report latency, the child processor `T` must implement
+ *       the following exact public member function signature:
+ *       @code
+ *       int getLatencySamples ();
+ *       @endcode
+ *
+ * @tparam T The type of the audio processor.
+ * @param processor The active processor block instance.
+ */
+template <typename T>
+auto getLatencySamples(T& processor)
+{
+	return optional_calls::internal::getLatencySamples(processor, 0);
 }
 
 }

@@ -662,7 +662,6 @@ struct DefaultSyncRatesProvider
     };
 };
 
-
 /**
  * @brief Parameter group container managing a parameter that outputs durations in samples,
  *        dynamically switching between millisecond durations or tempo-derived calculations.
@@ -762,9 +761,8 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 
     void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo_)
     {
-        if (positionInfo_.getBpm().hasValue())
-            positionInfo.setBpm(positionInfo_.getBpm());
-        else
+        positionInfo = positionInfo_;
+        if (!positionInfo.getBpm().hasValue())
             positionInfo.setBpm(120);
     }
 
@@ -906,9 +904,8 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
 
     void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo_)
     {
-        if (positionInfo_.getBpm().hasValue())
-            positionInfo.setBpm(positionInfo_.getBpm());
-        else
+    	positionInfo = positionInfo_;
+        if (!positionInfo_.getBpm().hasValue())
             positionInfo.setBpm(120);
     }
 

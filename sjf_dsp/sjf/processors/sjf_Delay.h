@@ -200,7 +200,15 @@ public:
                         return std::pow(2.0f, x * 0.01f);
                     };
                     const auto offsetAttributes = juce::AudioParameterFloatAttributes{}.withLabel("%");
-                    createTrackedParameter(factoryToUse, offsets[channel], "Offset", "Offset", offsetRange, 0.0f, offsetMapping, offsetAttributes);
+                	if constexpr (hasTempoSync)
+                	{
+                		createTrackedParameter(factoryToUse, offsets[channel], "Offset", "Offset", offsetRange, 0.0f, offsetMapping, offsetAttributes);
+                	}
+                	else
+                	{
+                		const auto& str = delayTimeStrings[channel];
+                		createTrackedParameter(factoryToUse, offsets[channel], "Offset"+str.substring(0, 1), "Offset "+str, offsetRange, 0.0f, offsetMapping, offsetAttributes);
+                	}
                 };
 
                 for (auto i = 0ul; i < NUM_CHANNELS; i++)

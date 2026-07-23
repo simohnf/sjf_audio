@@ -38,15 +38,17 @@ public:
                 const auto attributes = AudioParameterFloatAttributes().withLabel("Hz");
                 createTrackedParameter  (*factory, cutoff, "Cutoff",  "Cutoff Frequency",  range, 1000.0f, {}, attributes);
             }
+
             if constexpr (NoResonance)
             {
                 resonance.currentValue = 0.7071f;
             }
             else
             {
-                const auto range = NormalisableRange<float>{ 0.1f,  18.0f, 0.01f};
+                auto range = NormalisableRange<float>{ 0.1f,  18.0f, 0.001f};
+            	range.setSkewForCentre(1.0f);
                 const auto attributes = AudioParameterFloatAttributes();
-                createTrackedParameter  (*factory, resonance, "Q",  "Q",  range, 0.7071f, {}, attributes);
+                createTrackedParameter  (*factory, resonance, "Q",  "Q",  range, 0.707f, {}, attributes);
             }
 
             if (FixedType)

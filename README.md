@@ -132,9 +132,3 @@ Framework Dependency: JUCE 7+.
 Compiler Target: Highly compatible with optimization flags (-O3, /O2, -ffast-math) to take full advantage of static-loop unrolling.
 
 ---
-
-
-### TO DO
-
-- Return latency from processors
-- Make tempo synced phasor actually linked to host position

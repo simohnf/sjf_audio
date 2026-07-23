@@ -93,6 +93,8 @@ public:
 
     using Filters = std::array<juce::dsp::IIR::Filter<float>, numChannels>;
 
+	using Phasor = TempoSyncedPhasor<>;
+
     struct Parameters : public helpers::AudioParametersBase
     {
 
@@ -170,6 +172,7 @@ public:
 
     explicit LFO(const float minFrequency_ = 0.001f, const float maxFrequency_ = 20.0f, const float defaultFrequency_ = 1.0f)
     : parameters(minFrequency_, maxFrequency_, defaultFrequency_)
+	, phasor(parameters.frequency)
     {
         static_assert(!std::is_same_v<helpers::functions::utilities::DummyStruct, LFO>, "You have not included an instance of LFOWaveformProvider in the template arguments");
     }
@@ -198,7 +201,7 @@ public:
         parameters.reset();
         waveformProvider.reset();
         lastWaveform = static_cast<size_t>(parameters.waveform.currentValue);
-        phasor.setFrequency(parameters.frequency.frequency.currentValue);
+        phasor.updateFrequency();
         phasor.reset();
         if constexpr (hasSmooth)
             for (auto& filter : smoothingFilter)
@@ -253,7 +256,7 @@ public:
 
 	void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
     {
-	    parameters.setPositionInfo(positionInfo);
+	    phasor.setPositionInfo(positionInfo);
     }
 
 private:
@@ -309,12 +312,12 @@ private:
                 return phase;
         };
 
-        phasor.setFrequency(parameters.frequency.frequency.currentValue);
+        phasor.updateFrequency();
 
 
         for (size_t i = 0; i < numSamples; ++i)
         {
-            const auto phase = phasor.process();
+            const auto phase = phasor.template process<false>();
             for ( auto channel = 0ul; channel < numChannels; ++channel)
             {
                 // per channel changes if necessary
@@ -350,8 +353,7 @@ private:
             // Remember to tick the smoothers!!! for every sample
             parameters.tickSmoothers();
 
-            phasor.setFrequency(parameters.frequency.frequency.currentValue);
-            const auto phase = phasor.process();
+            const auto phase = phasor.template process<true>();
             const auto phaseOffset = getPhaseOffsetValue();
             const auto depth = getDepthValue();
             for ( auto channel = 0ul; channel < numChannels; ++channel)
@@ -367,7 +369,7 @@ private:
 
     juce::dsp::ProcessSpec spec{};
     WaveformProvider waveformProvider;
-    sjf::dsp::oscillators::Phasor phasor;
+    Phasor phasor;
     Filters smoothingFilter;
     size_t lastWaveform = 0;
 };

@@ -85,6 +85,76 @@ private:
 };
 
 
+template<typename SyncedRatesProvider = helpers::DefaultSyncRatesProvider>
+struct TempoSyncedPhasor
+{
+	using FrequencyParameter = helpers::SyncedFrequencyParameter<SyncedRatesProvider>;
+
+	explicit TempoSyncedPhasor(FrequencyParameter& frequency_)
+	: frequency(frequency_)
+	{}
+
+	void prepare(const  juce::dsp::ProcessSpec& spec_)
+	{
+		phasor.prepare(spec_);
+		reset();
+	}
+
+	void reset()
+	{
+		updateFrequency();
+		phasor.reset();
+	}
+
+
+	/**
+	 Output one sample from the phasor
+	 */
+	template<bool UpdateFrequency>
+	float process()
+	{
+		if  constexpr (UpdateFrequency)
+			updateFrequency();
+
+		return phasor.process();
+	}
+
+	void updateFrequency()
+	{
+		phasor.setFrequency(frequency.frequency.currentValue);
+	}
+
+	void skip(const size_t numSamplesToSkip)
+	{
+		phasor.skip(numSamplesToSkip);
+	}
+
+	void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo_)
+	{
+		frequency.setPositionInfo(positionInfo_);
+		if (frequency.sync.currentValue)
+		{
+			auto ppq = frequency.positionInfo.getPpqPosition();
+			if (ppq.hasValue() && frequency.positionInfo.getIsPlaying())
+			{
+				const auto barLength = static_cast<float>(frequency.syncedNumerator.currentValue * 4) / static_cast<float>(frequency.syncedDenominator.currentValue);
+				auto p =  static_cast<float>(*ppq) / barLength;
+				phasor.m_phase = sjf::helpers::functions::waveforms::wrapPhase(p);
+			}
+		}
+	}
+
+	float getPhase() const
+	{
+		return phasor.m_phase;
+	}
+
+private:
+	FrequencyParameter& frequency;
+	Phasor phasor;
+
+};
+
 
 }
 

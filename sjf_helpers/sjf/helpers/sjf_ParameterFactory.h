@@ -739,7 +739,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
                     const auto numerator = static_cast<float>(SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
                     const auto denominator = static_cast<float>(SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
                     const auto div = numerator / denominator;
-                    return spec.sampleRate * jlimit(timeRange.start, timeRange.end, bar * div);
+                    return spec.sampleRate * jlimit(timeRange.start, timeRange.end, bar * div) * 0.001f;
                 }
             };
             createTrackedParameter  (*factory, time, "Time",  "Time  (ms)",  timeRange, defaultTimeMS, mapping, getDurationAttributes());

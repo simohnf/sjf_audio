@@ -191,6 +191,12 @@ public:
     {
         return getNameWithoutParentPrefix(param, *dynamic_cast<const AudioProcessorParameterGroup*>(&group));
     }
+
+	void setAllToDefault(const bool recursive = true)
+    {
+	    for (auto p : getParameters(recursive))
+	    	p->setValue(p->getDefaultValue());
+    }
 private:
     const juce::String baseID, baseName;
 };

@@ -40,8 +40,15 @@ namespace lfo_config
     /** @brief Configuration tag enabling an adjustable Depth parameter (0% to 100%) to scale the LFO output amplitude. */
     struct Depth{};
 
-    /** @brief Configuration tag enabling DAW tempo synchronization features for the LFO frequency. */
-    struct TempoSync{};
+	/** @brief Configuration tag enabling DAW tempo synchronization features for the LFO frequency. */
+	struct TempoSync{};
+
+	/** @brief Configuration tag enabling configuration of synced rates used.
+	 * NOTE: must adhere to layout as per DefaultSyncedRatesProvider
+	 * NOTE: including this will automatically enable tempo syncing, without the need to include TempoSync tag
+	 */
+	template<typename SyncRatesProvider>
+	struct SyncRates : public SyncRatesProvider{};
 }
 
 /**
@@ -86,19 +93,25 @@ public:
     static constexpr auto hasPhaseOffset = helpers::functions::utilities::configurationAvailable<lfo_config::PhaseOffset, Configurations...>;
     static constexpr auto hasInvert = helpers::functions::utilities::configurationAvailable<lfo_config::Invert, Configurations...>;
     static constexpr auto hasSmooth = helpers::functions::utilities::configurationAvailable<lfo_config::Smooth, Configurations...>;
-    static constexpr auto hasTempoSync = helpers::functions::utilities::configurationAvailable<lfo_config::TempoSync, Configurations...>;
+
     static constexpr auto numChannels = hasPhaseOffset || hasInvert ? 2 : 1;
     static constexpr auto numWaveforms = WaveformProvider::numWaveforms;
     static constexpr auto hasWaveformChoice = numWaveforms > 1;
 
+	using SyncedRatesProvider = sjf::helpers::functions::utilities::find_instantiation_of_t<lfo_config::SyncRates,
+																							lfo_config::SyncRates<helpers::DefaultSyncRatesProvider>,
+																							Configurations...>;
+
+	static constexpr auto hasTempoSync =   helpers::functions::utilities::has_any_instantiation<lfo_config::SyncRates, Configurations...>
+										|| helpers::functions::utilities::configurationAvailable<lfo_config::TempoSync, Configurations...>;
     using Filters = std::array<juce::dsp::IIR::Filter<float>, numChannels>;
 
-	using Phasor = TempoSyncedPhasor<>;
+	using Phasor = TempoSyncedPhasor<SyncedRatesProvider>;
 
     struct Parameters : public helpers::AudioParametersBase
     {
 
-        using FrequencyParam = helpers::SyncedFrequencyParameter<>;
+        using FrequencyParam = helpers::SyncedFrequencyParameter<SyncedRatesProvider>;
         FloatState freq;
         [[maybe_unused]] FloatState depth, phaseOffset;
 

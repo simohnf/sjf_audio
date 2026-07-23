@@ -54,6 +54,13 @@ namespace delay_config
     /** @brief Switches the delay time controls to synchronise with the host tempo (musical grid). */
     struct TempoSync{};
 
+	/** @brief Configuration tag enabling configuration of synced rates used.
+	 * NOTE: must adhere to layout as per DefaultSyncedRatesProvider
+	 * NOTE: including this will automatically enable tempo syncing, without the need to include TempoSync tag
+	 */
+	template<typename SyncRatesProvider>
+	struct SyncRates : public SyncRatesProvider{};
+
     /** @brief Enables a parameter to link the delay timings of both stereo channels together. */
     struct Link{};
 
@@ -135,8 +142,14 @@ public:
     static constexpr auto hasPingPong = sjf::helpers::functions::utilities::configurationAvailable<delay_config::PingPong, Configurations...>;
     static constexpr auto hasFilter = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Filter, Configurations...>;
     static constexpr auto hasDetune = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Detune, Configurations...>;
-    static constexpr auto hasTempoSync = sjf::helpers::functions::utilities::configurationAvailable<delay_config::TempoSync, Configurations...>;
     static constexpr auto hasLink = sjf::helpers::functions::utilities::configurationAvailable<delay_config::Link, Configurations...>;
+
+	using SyncedRatesProvider = sjf::helpers::functions::utilities::find_instantiation_of_t<delay_config::SyncRates,
+																							delay_config::SyncRates<helpers::DefaultSyncRatesProvider>,
+																							Configurations...>;
+
+	static constexpr auto hasTempoSync =   helpers::functions::utilities::has_any_instantiation<delay_config::SyncRates, Configurations...>
+										|| helpers::functions::utilities::configurationAvailable<delay_config::TempoSync, Configurations...>;
 
     static constexpr auto hasModulation = sjf::helpers::functions::utilities::has_any_instantiation<sjf::dsp::oscillators::lfo::LFO, Configurations...>;
     using LFO = sjf::helpers::functions::utilities::find_instantiation_of_t<
@@ -164,7 +177,7 @@ public:
 
     struct Parameters : public helpers::AudioParametersBase
     {
-        using Duration = helpers::SyncedDurationParameter<>;
+        using Duration = helpers::SyncedDurationParameter<SyncedRatesProvider>;
         std::array<FloatState, NUM_CHANNELS> times, detunes, offsets;
         FloatState feedback, drive;
         BoolState link, pingPong, saturation;

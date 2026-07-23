@@ -135,6 +135,9 @@ public:
         dryRamp.reset(spec.sampleRate, 0.05); // 50ms
 
         inputBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
+
+    	latencyDelay.prepare(spec);
+    	latencyDelay.setMaximumDelayInSamples(getLatencySamples()+10);
         reset();
     }
 
@@ -144,6 +147,7 @@ public:
         parameters.reset();
         dryRamp.setCurrentAndTargetValue(getDryTargetLevel());
         wetRamp.setCurrentAndTargetValue(getWetTargetLevel());
+    	latencyDelay.reset();
     }
 
     //==============================================================================
@@ -165,14 +169,22 @@ public:
             dryRamp.setTargetValue(getDryTargetLevel());
         }
 
+    	latencyDelay.setDelay(getLatencySamples());
+
         if (wetRamp.getCurrentValue() == 0.0f)
         {
-            outputBlock.copyFrom(inputBlock);
+        	if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
+        		outputBlock.copyFrom(inputBlock);
+
+        	juce::dsp::ProcessContextReplacing<float> delayContext(outputBlock);
+        	latencyDelay.process(context);
+
             dryRamp.skip(static_cast<int>(inputBlock.getNumSamples()));
             wetRamp.skip(static_cast<int>(inputBlock.getNumSamples()));
         }
         else
         {
+        	latencyDelay.reset();
             juce::dsp::AudioBlock<float> dryBlock(inputBuffer);
             dryBlock.copyFrom(inputBlock);
             processor.process (context);
@@ -264,6 +276,7 @@ private:
 
     juce::AudioBuffer<float> inputBuffer;
     juce::LinearSmoothedValue<float> wetRamp, dryRamp;
+	juce::dsp::DelayLine<float> latencyDelay;
 };
 
 } // namespace sjf::helpers

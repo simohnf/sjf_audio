@@ -69,7 +69,7 @@ class PresetManager
 
             if (targetDir.createDirectory())
             {
-                auto preset = getValueTree(group, true);
+                auto preset = saveToVT(group, true);
                 preset.setProperty(preset_manager::ids::presetNameId, presetName, nullptr);
 
                 auto presetFile = targetDir.getChildFile(presetName + extension);
@@ -139,17 +139,7 @@ class PresetManager
             return m;
         }
 
-    private:
-        // Helper to guarantee savePreset and loadPreset resolve the directory identically
-        static juce::String getGroupIDWithNoSpaces(const juce::AudioProcessorParameterGroup& group)
-        {
-            auto id = ParameterFactory::getIDWithoutParentPrefix(group);
-            if (id.isEmpty())
-                id = juce::String(JucePlugin_Name).replace(" ", "");
-            return id;
-        }
-
-        static ValueTree getValueTree(const AudioProcessorParameterGroup& group, bool recursive = true)
+    	static ValueTree saveToVT(const AudioProcessorParameterGroup& group, bool recursive = true)
         {
             const auto id = getGroupIDWithNoSpaces(group);
             auto vt = ValueTree{id};
@@ -169,7 +159,7 @@ class PresetManager
                 for (const auto* child : group.getSubgroups(false))
                 {
                     if (child != nullptr)
-                        vt.addChild(getValueTree(*child, true), -1, nullptr);
+                        vt.addChild(saveToVT(*child, true), -1, nullptr);
                 }
             }
 
@@ -195,6 +185,17 @@ class PresetManager
                 }
             }
         }
+
+    private:
+        // Helper to guarantee savePreset and loadPreset resolve the directory identically
+        static juce::String getGroupIDWithNoSpaces(const juce::AudioProcessorParameterGroup& group)
+        {
+            auto id = ParameterFactory::getIDWithoutParentPrefix(group);
+            if (id.isEmpty())
+                id = juce::String(JucePlugin_Name).replace(" ", "");
+            return id;
+        }
+
 
         static void saveToFile(const juce::ValueTree& vt, const juce::File& targetFile)
         {

@@ -14,6 +14,16 @@
 #include <JuceHeader.h>
 
 #include "sjf_HelperFunctions.h"
+#if __has_include("VersionHints.h")
+	#include "VersionHints.h"
+#else
+namespace sjf::version_hints
+{
+	template <typename T>
+	constexpr int getVersionHint(T&&) { return 0; }
+}
+#endif
+
 namespace sjf::helpers
 {
 

@@ -254,6 +254,15 @@ public:
         inline void reset( ValueType mappedTargetValue ) noexcept {
             startValue = currentValue = targetValue = mappedTargetValue;
         }
+
+    	bool isSmoothing()
+        {
+        	if constexpr (std::is_same_v<JuceParamType, juce::AudioParameterFloat>)
+				return !approximatelyEqual(currentValue, targetValue);
+        	else
+				return currentValue != targetValue;
+
+        }
     private:
         inline void latchTarget( ValueType mappedTargetValue ) noexcept {
             jassert (juceParameter != nullptr);

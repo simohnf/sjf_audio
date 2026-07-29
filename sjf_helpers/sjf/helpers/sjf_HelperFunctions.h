@@ -19,7 +19,7 @@ namespace sjf::helpers::functions
 {
 namespace utilities
 {
-    forcedinline float floor( const float value )
+    constexpr forcedinline float floor( const float value )
     {
         return static_cast<float>(static_cast<int>( value ) );
     }
@@ -312,7 +312,7 @@ namespace waveforms
      * @return phase 0-->1
      */
 
-    forcedinline float wrapPhase( const float phase )
+    constexpr forcedinline float wrapPhase( const float phase )
     {
         jassert ( phase >= 0 );
         return phase - utilities::floor(phase );
@@ -325,7 +325,7 @@ namespace waveforms
      * @return phase 0-->1
      */
 
-    forcedinline float wrapPhase( float phase, const float shift )
+    constexpr forcedinline float wrapPhase( float phase, const float shift )
     {
         jassert ( shift >= 0 );
         jassert ( phase >= 0 );

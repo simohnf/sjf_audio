@@ -111,8 +111,84 @@ namespace sjf::helpers
         juce::dsp::ProcessSpec spec{};
         size_t writeIndex{}, MASK{};
 
-
+		friend class MultiTapRingBuffer;
     };
+
+	class MultiTapRingBuffer : public DelayLine
+	{
+	public:
+		/// All-Pass Filter Stage
+		/// @param input Incoming signal to this stage
+		/// @param startOffset Accumulated offset WHERE THIS STAGE STARTS (write head for this stage)
+		/// @param delaySamps Delay length of this stage
+		/// @param feedback Allpass feedback gain
+		template<sjf::interpolation::InterpolatorTypes InterpType = sjf::interpolation::InterpolatorTypes::none>
+		[[nodiscard]] forcedinline float applyAllPass(const float input, const float startOffset, const float delaySamps, const float feedback) noexcept
+		{
+			const float readOffset = startOffset + delaySamps;
+			const float delayedSample = readSample<InterpType>(readOffset);
+
+			const float v = input - (delayedSample * feedback);
+
+			writeSampleAtOffset(v, static_cast<size_t>(lround(startOffset)));
+
+			return (feedback * v) + delayedSample;
+		}
+
+		/// Pure Delay Stage
+		template<sjf::interpolation::InterpolatorTypes InterpType = sjf::interpolation::InterpolatorTypes::none>
+		[[nodiscard]] forcedinline float applyDelay(const float input, const float startOffset, const float delaySamps) noexcept
+		{
+			const float readOffset = startOffset + delaySamps;
+			const float delayedSample = readSample<InterpType>(readOffset);
+
+			// Write input signal at the start of this stage's buffer window
+			writeSampleAtOffset(input, static_cast<size_t>(lround(startOffset)));
+
+			return delayedSample;
+		}
+
+		/// Pure Delay Stage, with feedback
+		template<sjf::interpolation::InterpolatorTypes InterpType = sjf::interpolation::InterpolatorTypes::none>
+		[[nodiscard]] forcedinline float applyDelay(const float input, const float startOffset, const float delaySamps, const float feedback) noexcept
+		{
+			const float readOffset = startOffset + delaySamps;
+			const float delayedSample = readSample<InterpType>(readOffset);
+
+			writeSampleAtOffset(input + delayedSample * feedback, static_cast<size_t>(lround(startOffset)));
+
+			return delayedSample;
+		}
+
+		/// One-Pole Low-Pass Filter Stage (1-sample unit delay z^-1 slot)
+		[[nodiscard]] forcedinline float applyLowPass(const float input, const size_t startOffset, const float alpha) noexcept
+		{
+			const size_t readOffset = startOffset + 1;
+			const float prevOutput = readSample(readOffset);
+
+			const float output = prevOutput + alpha * (input - prevOutput);
+
+			writeSampleAtOffset(output, startOffset);
+
+			return output;
+		}
+
+		// Call once at the end of each sample process
+		void advanceWritePointer()
+		{
+			writeIndex =  (writeIndex+1) & MASK;
+		}
+
+	private:
+		void writeSampleAtOffset(const float val, const size_t offsetFromWriteHead) noexcept
+		{
+			jassert(std::isfinite(val));
+			jassert(std::abs(val) < 10.0f);
+			const auto targetIndex = (delayLine.size() + writeIndex - offsetFromWriteHead) & MASK;
+			delayLine[targetIndex] = Waveshapers::Clippers::hard(val, 2.0f);
+		}
+	};
+
 }
 
 #if JUCE_MODULE_AVAILABLE_sjf_dsp
@@ -124,94 +200,93 @@ namespace sjf::helpers
 #include <sjf/oscillators/sjf_Phasor.h>
 namespace sjf::helpers
 {
-    template <size_t NUM_HEADS = 3, bool EQUAL_POWER = true> // uses amplitude scaling if false
-    class PitchShiftDelayLine
-    {
-    public:
-        void prepare(const juce::dsp::ProcessSpec& spec_) noexcept
-        {
-            spec = spec_;
-            delayLine.prepare(spec);
-            phasor.prepare(spec);
-            setWindowSizeMS(windowSizeMS);
-        }
+	template <size_t NUM_HEADS = 3, bool EQUAL_POWER = true> // uses amplitude scaling if false
+	class PitchShiftDelayLine
+	{
+	public:
+		void prepare(const juce::dsp::ProcessSpec& spec_) noexcept
+		{
+			spec = spec_;
+			delayLine.prepare(spec);
+			phasor.prepare(spec);
+			setWindowSizeMS(windowSizeMS);
+		}
 
-        void reset() noexcept
-        {
-            phasor.reset();
-            delayLine.reset();
-        }
+		void reset() noexcept
+		{
+			phasor.reset();
+			delayLine.reset();
+		}
 
-        void setMaxDelayTimeMS(const float ms)
-        {
-            delayLine.setMaxDelayTimeMS(ms);
-        }
+		void setMaxDelayTimeMS(const float ms)
+		{
+			delayLine.setMaxDelayTimeMS(ms);
+		}
 
-        void setMaxDelayTimeSamps(const int samps)
-        {
-            delayLine.setMaxDelayTimeSamps(samps);
-        }
+		void setMaxDelayTimeSamps(const int samps)
+		{
+			delayLine.setMaxDelayTimeSamps(samps);
+		}
 
-        void writeSample(const float x)
-        {
-            delayLine.writeSample(x);
-        }
+		void writeSample(const float x)
+		{
+			delayLine.writeSample(x);
+		}
 
-        void setPitchShift(const float pitchShiftInSemiTones)
-        {
-            setPlayBackRate(std::pow(2.0f, pitchShiftInSemiTones/12.0f));
-        }
+		void setPitchShift(const float pitchShiftInSemiTones)
+		{
+			setPlayBackRate(std::pow(2.0f, pitchShiftInSemiTones/12.0f));
+		}
 
-        void setPlayBackRate(const float rate)
-        {
-            phasor.setFrequency(-1.0f*(rate - 1.0f)*invWindowSizeS);
-        }
+		void setPlayBackRate(const float rate)
+		{
+			phasor.setFrequency(-1.0f*(rate - 1.0f)*invWindowSizeS);
+		}
 
-        void setWindowSizeMS(const float windowSizeMS_)
-        {
-            windowSizeMS = windowSizeMS_;
-            invWindowSizeS = 1.0f / (windowSizeMS_ / 1000.0f);
-            windowSizeSamps = windowSizeMS_ * static_cast<float>(spec.sampleRate) * 0.001f;
-        }
+		void setWindowSizeMS(const float windowSizeMS_)
+		{
+			windowSizeMS = windowSizeMS_;
+			invWindowSizeS = 1.0f / (windowSizeMS_ / 1000.0f);
+			windowSizeSamps = windowSizeMS_ * static_cast<float>(spec.sampleRate) * 0.001f;
+		}
 
-        template<sjf::interpolation::InterpolatorTypes InterpType>
-        [[nodiscard]] float readSample(const float delayTimeSamps)
-        {
-            jassert(roundToIntAccurate(windowSizeMS * 0.001f * spec.sampleRate + delayTimeSamps) + 2 < static_cast<int>(delayLine.getMaxDelayTimeSamps()));
-            auto sum = 0.0f;
-            auto t = phasor.process();
-
-
-            for ( auto head = 0ul; head < NUM_HEADS; ++head)
-            {
-                const auto dt = t*windowSizeSamps + delayTimeSamps + 2.0f;
-                const auto e = helpers::functions::waveforms::getHannWindow(t + 0.5f);
-                sum += delayLine.readSample<InterpType>(dt) * e;
-                t = helpers::functions::waveforms::wrapPhase(t, headOffset);
-            }
-            return sum * outputScale;
-        }
+		template<sjf::interpolation::InterpolatorTypes InterpType>
+		[[nodiscard]] float readSample(const float delayTimeSamps)
+		{
+			jassert(roundToIntAccurate(windowSizeMS * 0.001f * spec.sampleRate + delayTimeSamps) + 2 < static_cast<int>(delayLine.getMaxDelayTimeSamps()));
+			auto sum = 0.0f;
+			auto t = phasor.process();
 
 
+			for ( auto head = 0ul; head < NUM_HEADS; ++head)
+			{
+				const auto dt = t*windowSizeSamps + delayTimeSamps + 2.0f;
+				const auto e = helpers::functions::waveforms::getHannWindow(t + 0.5f);
+				sum += delayLine.readSample<InterpType>(dt) * e;
+				t = helpers::functions::waveforms::wrapPhase(t, headOffset);
+			}
+			return sum * outputScale;
+		}
 
-    private:
-        static float calculatedOutputScaling()
-        {
-            auto sum = 0.0f;
-            for ( auto head = 0ul; head < NUM_HEADS; ++head)
-                sum += helpers::functions::waveforms::getHannWindow(static_cast<float>(head)*headOffset);
-            if (EQUAL_POWER)
-                return 1.0f / sqrt(sum);
-            return 1.0f/sum;
-        }
 
-        sjf::helpers::DelayLine delayLine;
-        sjf::dsp::oscillators::Phasor phasor{};
-        juce::dsp::ProcessSpec spec{};
 
-        float windowSizeMS{20}, windowSizeSamps{}, invWindowSizeS{}, outputScale{calculatedOutputScaling()};
-        static constexpr float headOffset{1.0f/static_cast<float>(NUM_HEADS)};
-    };
+	private:
+		static float calculatedOutputScaling()
+		{
+			auto sum = 0.0f;
+			for ( auto head = 0ul; head < NUM_HEADS; ++head)
+				sum += helpers::functions::waveforms::getHannWindow(static_cast<float>(head)*headOffset);
+			if (EQUAL_POWER)
+				return 1.0f / sqrt(sum);
+			return 1.0f/sum;
+		}
 
-#endif
+		sjf::helpers::DelayLine delayLine;
+		sjf::dsp::oscillators::Phasor phasor{};
+		juce::dsp::ProcessSpec spec{};
+
+		float windowSizeMS{20}, windowSizeSamps{}, invWindowSizeS{}, outputScale{calculatedOutputScaling()};
+		static constexpr float headOffset{1.0f/static_cast<float>(NUM_HEADS)};
+	};
 }
+#endif

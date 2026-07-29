@@ -535,7 +535,14 @@ namespace waveforms
     }
 }
 
-
+namespace dsp_functions
+{
+	forcedinline float calculateOnepoleCoefficient(const float cutOffFrequency, const float sampleRate)
+	{
+		const float omega = juce::MathConstants<float>::twoPi * (jmin(cutOffFrequency, sampleRate) / sampleRate);
+		return 1.0f - std::expf(-omega);
+	}
+}
 
 
 }

@@ -182,10 +182,8 @@ namespace sjf::helpers
 	private:
 		void writeSampleAtOffset(const float val, const size_t offsetFromWriteHead) noexcept
 		{
-			jassert(std::isfinite(val));
-			jassert(std::abs(val) < 10.0f);
 			const auto targetIndex = (delayLine.size() + writeIndex - offsetFromWriteHead) & MASK;
-			delayLine[targetIndex] = Waveshapers::Clippers::hard(val, 2.0f);
+			delayLine[targetIndex] = val;
 		}
 	};
 

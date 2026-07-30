@@ -16,11 +16,10 @@
 
 namespace sjf::dsp
 {
-template<size_t MaxNumTaps = 64, size_t NumChannels = 2>
+template<size_t MaxNumTaps = 64, size_t NumChannels = 2, size_t MaxEarlyReflectionTimeMS = 100>
 class MultiTapDiffuser
 {
 public:
-	static constexpr auto MaxEarlyReflectionTimeMS = 60.0f;
 
 	struct Parameters : public helpers::AudioParametersBase
     {
@@ -39,7 +38,7 @@ public:
         	tapGroup = helpers::ParameterFactory::create(factoryID+"Taps", factoryName+"Taps");
         	for ( auto i = 0ul; i < MaxNumTaps; ++i )
         	{
-        		auto mapping = [this, i](const float){ return tapAmplitudesPreCompute[i] * amplitudeScale; };
+        		auto mapping = [this, i](const float){ return tapAmplitudesPreCompute[i]; };
         		createTrackedParameter(*tapGroup, tapAmplitudes[i], "Amplitude"+String(i), "Amplitude "+String(i), {0.0f, 1.0f}, 0.0f, mapping);
         	}
 
@@ -60,11 +59,10 @@ public:
         {
 	        for ( auto t = 0ul; t < MaxNumTaps; ++t)
 	        {
-	        	const auto exponent = juce::MathConstants<float>::euler * ((1.0f-diffusion.getParameterValue()*0.01f));
+	        	const auto scale = pow(2.0f, jmap(1.0f-diffusion.getParameterValue()*0.01f, -1.0f, 1.0f ));
+	        	const auto exponent = juce::MathConstants<float>::euler * scale;
 	        	const auto polarity = helpers::functions::waveforms::wrapPhase(static_cast<float>(t) * juce::MathConstants<float>::sqrt2 / juce::MathConstants<float>::euler) > 0.75f ? -1.0f : 1.0f;
 	        	tapAmplitudesPreCompute[t] =  polarity * std::pow(1.0f - static_cast<float>(t) / static_cast<float>(MaxNumTaps), exponent);
-
-	        	amplitudeScale = 1.0f / std::accumulate(tapAmplitudesPreCompute.begin(), tapAmplitudesPreCompute.end(), 0.0f);
 	        }
 
         	return AudioParametersBase::checkForStateChange();
@@ -73,7 +71,7 @@ public:
 		static constexpr std::array<std::array<float, MaxNumTaps>, NumChannels> tapTimesMS = [](){
 			std::array<std::array<float, MaxNumTaps>, NumChannels> arr{};
 
-			constexpr auto rangePerTap = MaxEarlyReflectionTimeMS/ static_cast<float>(MaxNumTaps);
+			constexpr auto rangePerTap = static_cast<float>(MaxEarlyReflectionTimeMS) / static_cast<float>(MaxNumTaps);
 			constexpr auto rangeScaled = juce::MathConstants<float>::pi * juce::MathConstants<float>::euler * juce::MathConstants<float>::sqrt2 * rangePerTap;
 			for ( auto i = 0ul; i < NumChannels; ++i)
 			{
@@ -93,7 +91,6 @@ public:
 		std::array<std::array<float, MaxNumTaps>, NumChannels> tapTimes{};
 	private:
 		std::array<float, MaxNumTaps> tapAmplitudesPreCompute{};
-		float amplitudeScale = 1.0f;
     } parameters;
 
 
@@ -105,7 +102,7 @@ public:
     	for ( auto& dl : delayLine)
     	{
     		dl.prepare(spec);
-    		dl.setMaxDelayTimeMS(MaxEarlyReflectionTimeMS*1.1f);
+    		dl.setMaxDelayTimeMS(static_cast<float>(MaxEarlyReflectionTimeMS) *1.1f);
     	}
         reset();
     }
@@ -128,7 +125,6 @@ public:
 
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);
-
         if (parameters.checkForStateChange())
         {
             processSmoothedState(context);
@@ -159,7 +155,7 @@ private:
 		{
 			auto inSamples = inputBlock.getChannelPointer(chan);
 			auto outSamples = outputBlock.getChannelPointer(chan);
-			for (size_t i = 0; i < numSamples; ++i)
+			for (auto i = 0ul; i < numSamples; ++i)
 			{
 				outSamples[i] = [&](float x){
 					delayLine[chan].writeSample(x);

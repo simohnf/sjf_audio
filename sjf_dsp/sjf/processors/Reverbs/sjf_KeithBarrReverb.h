@@ -192,6 +192,8 @@ public:
     	for (auto& m : modulators)
     		m.reset();
     	delayLine.reset();
+    	calculateResizedDelayTimesAndOffsets();
+    	std::fill(taps.begin(), taps.end(), 0.0f);
     }
 
 

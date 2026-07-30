@@ -17,11 +17,14 @@
 
 namespace sjf::tests
 {
-template<typename Processor>
+template<typename Processor, typename... Args>
 class GenericTests : juce::UnitTest
 {
 public:
-	GenericTests(const String& processorName) : juce::UnitTest(processorName, "sjf_audio Unit Tests") { }
+	GenericTests(const String& processorName, Args&&... args_)
+	: juce::UnitTest(processorName, "sjf_audio Unit Tests")
+	, args(args_...)
+	{ }
 
 	void runTest() override
 	{
@@ -103,7 +106,7 @@ private:
 		//============//============//============//============//==========*/
 		Processor processor;
 
-		auto params = processor.createParameters("Test", "Test");
+		auto params = createParameters(processor, "Test", "Test");
 		processor.prepare(spec);
 		// params->setAllToDefault();
 
@@ -142,7 +145,7 @@ private:
 	{
 		Processor processor;
 		auto rng = getRandom();
-		auto params = processor.createParameters("Test", "Test");
+		auto params = createParameters(processor, "Test", "Test");
 		if (!params)
 			return true;
 		processor.prepare(spec);
@@ -250,6 +253,22 @@ private:
 			buffer.copyFrom(i, 0, buffer, 0, 0, numSamples);
 	}
 
+	auto createParameters(Processor& processor, const String& factoryId, const String& factoryName)
+	{
+		if constexpr (sizeof...(Args) > 0)
+		{
+			// std::apply expands all tuple elements into 'unpackedArgs...' at once
+			return std::apply([&](auto&&... unpackedArgs) {
+				return processor.createParameters(factoryId, factoryName, std::forward<decltype(unpackedArgs)>(unpackedArgs)...);
+			}, args);
+		}
+		else
+		{
+			return processor.createParameters(factoryId, factoryName);
+		}
+	}
+
+	const std::tuple<Args...> args;
 };
 }
 

@@ -16,7 +16,7 @@
 
 namespace sjf::dsp
 {
-template<size_t MaxNumTaps, size_t NumChannels = 2>
+template<size_t MaxNumTaps = 64, size_t NumChannels = 2>
 class MultiTapDiffuser
 {
 public:
@@ -112,6 +112,7 @@ public:
 
     void reset()
     {
+    	parameters.checkForStateChange();
         parameters.reset();
     	for ( auto& dl : delayLine)
 			dl.reset();

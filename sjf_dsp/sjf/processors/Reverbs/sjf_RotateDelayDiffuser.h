@@ -17,7 +17,7 @@
 #include <sjf/helpers/sjf_ParameterFactory.h>
 namespace sjf::dsp
 {
-	template<size_t RotationsOrder, size_t NumDiffusionSteps>
+	template<size_t RotationsOrder = 3, size_t NumDiffusionSteps = 3>
 	class RotateDelayDiffuser {
 	public:
 		static constexpr auto MaxDiffusionLengthMS = 60.0f;
@@ -135,6 +135,9 @@ namespace sjf::dsp
 		void reset()
 		{
 			parameters.reset();
+			for ( auto s = 0ul; s < NumDiffusionSteps; s++)
+				for (auto c = 0ul; c < NumChannels; c++)
+					delayLines[s][c].reset();
 		}
 
 

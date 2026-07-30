@@ -25,129 +25,6 @@
 
 namespace sjf::dsp
 {
-
-	class PreDelay
-	{
-	public:
-		static constexpr auto MaxPreDelayMS = 100.0f;
-		struct Parameters : public helpers::AudioParametersBase
-		{
-			FloatState  time;
-
-			std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
-			{
-				auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
-				createTrackedParameter  (*factory, time, "Time",  "Time",  { 0.0f, MaxPreDelayMS, 0.01f }, 0.0f, [&](const float x){ return x * 0.001f * static_cast<float>(spec.sampleRate); });
-
-				return factory;
-			}
-		} parameters;
-
-		void prepare (const juce::dsp::ProcessSpec& spec_)
-		{
-			spec = spec_;
-			parameters.prepare(spec);
-
-			delayLine.resize(spec.numChannels, {});
-			for (auto & dl : delayLine)
-			{
-				dl.prepare(spec);
-				dl.setMaxDelayTimeMS(MaxPreDelayMS * 1.1f);
-			}
-
-			reset();
-		}
-
-		void reset()
-		{
-			parameters.reset();
-			for (auto & dl : delayLine)
-				dl.reset();
-		}
-
-		template <typename ProcessContext>
-		void process (const ProcessContext& context) noexcept
-		{
-			const auto& inputBlock = context.getInputBlock();
-			auto& outputBlock      = context.getOutputBlock();
-			const auto numChannels = outputBlock.getNumChannels();
-			const auto numSamples  = outputBlock.getNumSamples();
-
-			jassert (inputBlock.getNumChannels() == numChannels);
-			jassert (inputBlock.getNumSamples() == numSamples);
-
-			if (parameters.checkForStateChange())
-			{
-				processSmoothedState(context);
-			}
-			else
-			{
-				processStaticState(context);
-			}
-		}
-
-		std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
-		{
-			return parameters.createParameters (factoryID, factoryName);
-		}
-
-	private:
-		template <typename ProcessContext>
-		void processStaticState (const ProcessContext& context) noexcept
-		{
-			const auto& inputBlock = context.getInputBlock();
-			auto& outputBlock      = context.getOutputBlock();
-			const auto numChannels = outputBlock.getNumChannels();
-			const auto numSamples  = outputBlock.getNumSamples();
-
-			jassert (inputBlock.getNumChannels() == numChannels);
-			jassert (inputBlock.getNumSamples() == numSamples);
-
-			const auto delayTime = parameters.time.currentValue;
-
-			for (size_t channel = 0; channel < numChannels; ++channel)
-			{
-				auto* inputSamples  = inputBlock.getChannelPointer (channel);
-				auto* outputSamples = outputBlock.getChannelPointer (channel);
-
-				auto& dl = delayLine[channel];
-				for (size_t i = 0; i < numSamples; ++i)
-				{
-					dl.writeSample(inputSamples[i]);
-					outputSamples[i] = dl.readSample<sjf::interpolation::InterpolatorTypes::linear>(delayTime);
-				}
-			}
-		}
-
-		template <typename ProcessContext>
-		void processSmoothedState (const ProcessContext& context) noexcept
-		{
-			const auto& inputBlock = context.getInputBlock();
-			auto& outputBlock      = context.getOutputBlock();
-			const auto numChannels = outputBlock.getNumChannels();
-			const auto numSamples  = outputBlock.getNumSamples();
-
-			jassert (inputBlock.getNumChannels() == numChannels);
-			jassert (inputBlock.getNumSamples() == numSamples);
-
-			for (size_t i = 0; i < numSamples; ++i)
-			{
-				parameters.tickSmoothers();
-				const auto delayTime = parameters.time.currentValue;
-				for (size_t channel = 0; channel < numChannels; ++channel)
-				{
-					auto& dl = delayLine[channel];
-					dl.writeSample(inputBlock.getChannelPointer(channel)[i]);
-					outputBlock.getChannelPointer(channel)[i] = dl.readSample<sjf::interpolation::InterpolatorTypes::linear>(delayTime);
-				}
-			}
-		}
-
-		juce::dsp::ProcessSpec spec{};
-		std::vector<sjf::helpers::DelayLine> delayLine;
-	};
-
-
 	struct Reverb
 	{
 	public:
@@ -200,9 +77,9 @@ namespace sjf::dsp
 		/**
 		 * @brief Internal DSP processing sequence: Filter >> Input Diffuser >> Reverb Tank.
 		 */
-		PreDelay preDelay;
+		SimpleDelay<0, 100, 0, 50> preDelay;
 		SVF<true, true> filter;
-		sjf::helpers::ProcessorSelector<MultiTapDiffuser<64>, RotateDelayDiffuser<3, 3>> inputDiffuser;
+		sjf::helpers::ProcessorSelector<MultiTapDiffuser<>, RotateDelayDiffuser<>> inputDiffuser;
 		helpers::BypassWrapper<keith_barr::reverb::Tank<>, helpers::bypass_wrapper_config::Mix> tank;
 	};
 }

@@ -9,9 +9,12 @@
 //
 // Created by Simon Fay on 22/07/2026.
 //
-#include "../processors/sjf_Delay.h"
-#include "sjf/processors/Waveshaper/sjf_Waveshaper.h"
+#include <sjf/processors/sjf_Delay.h>
+#include <sjf/processors/Waveshaper/sjf_Waveshaper.h>
 #include "sjf_UnitTester/sjf_GenericTests.h"
+#include <sjf/processors/Reverbs/sjf_KeithBarrReverb.h>
+#include <sjf/processors/Reverbs/sjf_MultitapDiffuser.h>
+#include <sjf/processors/Reverbs/sjf_RotateDelayDiffuser.h>
 
 namespace
 {
@@ -51,10 +54,18 @@ namespace sjf::tests
 	static GenericTests<Delay> delayTestMaximal("Maximal Delay");
 	static GenericTests<sjf::dsp::Delay<>> delayTestMinimal("Minimal Delay");
 
+	static GenericTests<dsp::SimpleDelay<0, 100, 0, 50>> delay1("SimpleDelay");
+
 	static GenericTests<sjf::dsp::SVF<>> filter{"SVF Filter"};
 
 	static GenericTests<dsp::waveshaper::FilteredWaveshaper<Saturator>> filteredSaturator("Filtered Saturator");
 	static GenericTests<dsp::waveshaper::Waveshaper<Saturator>> saturator("Saturator");
+
+	static GenericTests<dsp::keith_barr::reverb::Tank<>> rev1 ("KeithBarrReverb");
+	static GenericTests<dsp::MultiTapDiffuser<>> diff1("MTDiffuser");
+	static GenericTests<dsp::RotateDelayDiffuser<>> diff2("RotateDelayDiffuser");
+
+
 
 
 }

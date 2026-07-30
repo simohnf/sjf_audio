@@ -167,7 +167,7 @@ public:
     {
         spec = spec_;
         parameters.prepare(spec);
-    	// parameters.setSmootherLength(100.0f);
+    	parameters.setSmootherLength(100.0f);
     	delayLine.prepare(spec);
 
     	inputScaling = 1.0f / (sqrtf(NumStages) * sqrt(2.0f));
@@ -255,7 +255,7 @@ private:
 
     	for (size_t i = 0; i < numSamples; ++i)
     	{
-    		processSample<sjf::interpolation::InterpolatorTypes::none>(inputSamples[i]);
+    		processSample<sjf::interpolation::InterpolatorTypes::none, true>(inputSamples[i]);
 
     		mixTapsForOutput(outputBlock, numChannels, i);
     	}
@@ -280,7 +280,7 @@ private:
     		{
     			parameters.tickSmoothers();
     			calculateResizedDelayTimesAndOffsets();
-    			processSample<sjf::interpolation::InterpolatorTypes::cubic>(inputSamples[i]);
+    			processSample<sjf::interpolation::InterpolatorTypes::cubic, false>(inputSamples[i]);
 
     			mixTapsForOutput(outputBlock, numChannels, i);
     		}
@@ -291,14 +291,14 @@ private:
     		{
     			parameters.tickSmoothers();
     			calculateResizedDelayTimesAndOffsets();
-    			processSample<sjf::interpolation::InterpolatorTypes::none>(inputSamples[i]);
+    			processSample<sjf::interpolation::InterpolatorTypes::none, true>(inputSamples[i]);
 
     			mixTapsForOutput(outputBlock, numChannels, i);
     		}
     	}
     }
 
-	template<sjf::interpolation::InterpolatorTypes InterpType>
+	template<sjf::interpolation::InterpolatorTypes InterpType, bool StaticSize>
 	void processSample(float input)
     {
     	auto sample = taps.back() * parameters.decay.currentValue;
@@ -322,18 +322,30 @@ private:
     		using namespace config;
 
     		sample += input; // each stage adds the input again
-    		auto mod_ = modulators[i]();
-    		const auto mod = (i & 1 ? mod_.sinOut : mod_.cosOut) * modDepth;
     		if constexpr (NumAllpassPerStage > 0)
     		{
-    			sample = AllPass::process<InterpType>(delayLine, sample, delayOffsets[processNum], delayTimesResized[processNum], modFold(diffusion + mod));
-    			jassert(!std::isnan(sample) && !std::isinf(sample));
-    			processNum++;
-    			for ( auto j = 1ul; j < NumAllpassPerStage; ++j)
+    			auto mod_ = modulators[i]();
+    			const auto mod = (i & 1 ? mod_.sinOut : mod_.cosOut) * modDepth;
+    			if constexpr (StaticSize)
     			{
-    				sample = AllPass::process<InterpType>(delayLine, sample, delayOffsets[processNum], delayTimesResized[processNum], diffusion);
-    				jassert(!std::isnan(sample) && std::isfinite(sample));
+    				sample = AllPass::process<InterpType>(delayLine, sample, delayOffsets[processNum], delayTimesResized[processNum], modFold(diffusion + mod));
+    				jassert(!std::isnan(sample) && !std::isinf(sample));
     				processNum++;
+    				for ( auto j = 1ul; j < NumAllpassPerStage; ++j)
+    				{
+    					sample = AllPass::process<InterpType>(delayLine, sample, delayOffsets[processNum], delayTimesResized[processNum], diffusion);
+    					jassert(!std::isnan(sample) && std::isfinite(sample));
+    					processNum++;
+    				}
+    			}
+    			else
+    			{
+    				for ( auto j = 0ul; j < NumAllpassPerStage; ++j)
+    				{
+    					sample = Delay::process<InterpType>(delayLine, sample, delayOffsets[processNum], delayTimesResized[processNum]);
+    					jassert(!std::isnan(sample) && !std::isinf(sample));
+    					processNum++;
+    				}
     			}
     		}
 
@@ -347,21 +359,46 @@ private:
 
     		if constexpr (NumFBCombPerStage > 0)
     		{
-    			for ( auto j = 0ul; j < NumFBCombPerStage; ++j)
+    			if constexpr (StaticSize)
     			{
-    				sample = FBComb::process<InterpType>(delayLine, sample, delayOffsets[processNum], delayTimesResized[processNum], 0.0f);
-    				jassert(!std::isnan(sample) && !std::isinf(sample));
-    				processNum++;
+    				for ( auto j = 0ul; j < NumFBCombPerStage; ++j)
+    				{
+    					sample = FBComb::process<InterpType>(delayLine, sample, delayOffsets[processNum], delayTimesResized[processNum], 0.0f);
+    					jassert(!std::isnan(sample) && !std::isinf(sample));
+    					processNum++;
+    				}
     			}
+    			else
+    			{
+    				for ( auto j = 0ul; j < NumFBCombPerStage; ++j)
+    				{
+    					sample = Delay::process<InterpType>(delayLine, sample, delayOffsets[processNum], delayTimesResized[processNum]);
+    					jassert(!std::isnan(sample) && !std::isinf(sample));
+    					processNum++;
+    				}
+    			}
+
     		}
 
     		if constexpr (NumLowpassPerStage > 0)
     		{
-    			for ( auto j = 0ul; j < NumLowpassPerStage; ++j)
+    			if constexpr (StaticSize)
     			{
-    				sample = LowPass::process<interpolation::InterpolatorTypes::none>(delayLine, sample, static_cast<size_t>(roundToInt(delayOffsets[processNum])), parameters.damping.currentValue);
-    				jassert(!std::isnan(sample) && !std::isinf(sample));
-    				processNum++;
+    				for ( auto j = 0ul; j < NumLowpassPerStage; ++j)
+    				{
+    					sample = LowPass::process<interpolation::InterpolatorTypes::none>(delayLine, sample, static_cast<size_t>(roundToInt(delayOffsets[processNum])), parameters.damping.currentValue);
+    					jassert(!std::isnan(sample) && !std::isinf(sample));
+    					processNum++;
+    				}
+    			}
+    			else
+    			{
+    				for ( auto j = 0ul; j < NumLowpassPerStage; ++j)
+    				{
+    					sample = Delay::process<interpolation::InterpolatorTypes::none>(delayLine, sample, delayOffsets[processNum], 1);
+    					jassert(!std::isnan(sample) && !std::isinf(sample));
+    					processNum++;
+    				}
     			}
     		}
 

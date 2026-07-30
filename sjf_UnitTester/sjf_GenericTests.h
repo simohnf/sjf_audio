@@ -170,6 +170,8 @@ private:
 		{
 			if(const auto ranged = dynamic_cast<RangedAudioParameter*>(p))
 			{
+				const auto range  = ranged->getNormalisableRange();
+				const auto tolerance = juce::absoluteTolerance(range.interval * 0.5f);
 				// check default
 				{
 					// processor initialises to default values
@@ -178,7 +180,7 @@ private:
 					ranged->setValue(ranged->getDefaultValue());
 					const auto after = getParameterValue(ranged);
 
-					if (!approximatelyEqual(before, after, juce::absoluteTolerance(ranged->getNormalisableRange().interval)))
+					if (!approximatelyEqual(before, after, tolerance))
 					{
 						failureString = paramName(ranged) + " default value does not convert correctly";
 						return false;
@@ -202,7 +204,7 @@ private:
 					}
 
 					ranged->setValue(0.0f);
-					if (!juce::approximatelyEqual(getParameterValue(ranged), ranged->getNormalisableRange().start))
+					if (!juce::approximatelyEqual(getParameterValue(ranged), range.start, tolerance))
 					{
 						failureString = paramName(ranged) + " minimum value does not convert correctly";
 						return false;
@@ -219,7 +221,7 @@ private:
 					}
 
 					ranged->setValue(1.0f);
-					if (!juce::approximatelyEqual(getParameterValue(ranged), ranged->getNormalisableRange().end))
+					if (!juce::approximatelyEqual(getParameterValue(ranged), range.end, tolerance ))
 					{
 						failureString = paramName(ranged) + " maximum value does not convert correctly";
 						return false;

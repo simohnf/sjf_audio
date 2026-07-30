@@ -14,6 +14,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <sjf/helpers/sjf_ParameterFactory.h>
 namespace sjf::helpers
 {
     namespace preset_manager::ids

@@ -24,6 +24,84 @@ namespace utilities
         return static_cast<float>(static_cast<int>( value ) );
     }
 
+	constexpr forcedinline float constexpr_ln(float x)
+    {
+    	if (x <= 0.0f) return 0.0f;
+
+    	// Range reduction: bring x into [0.5, 1.5] by scaling by e (~2.7182818f)
+    	int e_count = 0;
+    	while (x > 1.5f) { x /= 2.718281828459045f; e_count++; }
+    	while (x < 0.5f) { x *= 2.718281828459045f; e_count--; }
+
+    	// Taylor series around 1.0 using y = (x - 1) / (x + 1)
+    	const float y = (x - 1.0f) / (x + 1.0f);
+    	const float y2 = y * y;
+
+    	float term = y;
+    	float sum = 0.0f;
+
+    	// 7 terms give sub-float precision errors
+    	for (int k = 1; k <= 13; k += 2)
+    	{
+    		sum += term / static_cast<float>(k);
+    		term *= y2;
+    	}
+
+    	return 2.0f * sum + static_cast<float>(e_count);
+    }
+
+
+	constexpr forcedinline float constexpr_exp(float x)
+    {
+    	// Range reduction for larger x to prevent slow convergence
+    	if (x > 1.0f)
+    	{
+    		const float half = constexpr_exp(x * 0.5f);
+    		return half * half;
+    	}
+    	if (x < -1.0f)
+    	{
+    		return 1.0f / constexpr_exp(-x);
+    	}
+
+    	float sum = 1.0f;
+    	float term = 1.0f;
+
+    	for (int i = 1; i <= 12; ++i)
+    	{
+    		term *= x / static_cast<float>(i);
+    		sum += term;
+    	}
+
+    	return sum;
+    }
+
+	static constexpr size_t gcd(size_t a, size_t b) noexcept
+    {
+    	while (b != 0)
+    	{
+			const size_t t = b;
+    		b = a % b;
+    		a = t;
+    	}
+    	return a;
+    }
+
+	static constexpr bool isPrime(size_t n) noexcept
+    {
+    	if (n <= 1) return false;
+    	if (n <= 3) return true;
+    	if (n % 2 == 0 || n % 3 == 0) return false;
+
+    	for (size_t i = 5; i * i <= n; i += 6)
+    	{
+    		if (n % i == 0 || n % (i + 2) == 0)
+    			return false;
+    	}
+    	return true;
+    }
+
+
     /**
      * @brief Iterates over each element of a std::tuple and applies a callable function to it.
      *

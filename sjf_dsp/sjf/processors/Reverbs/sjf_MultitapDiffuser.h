@@ -13,13 +13,15 @@
 #pragma once
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_DelayLine.h>
-
+#include <sjf/processors/Reverbs/sjf_ReverbHelpers.h>
 namespace sjf::dsp
 {
-template<size_t MaxNumTaps = 64, size_t NumChannels = 2, size_t MaxEarlyReflectionTimeMS = 100>
+template<size_t MaxNumTaps = 128, size_t NumChannels = 2, size_t MaxEarlyReflectionTimeMS = 100>
 class MultiTapDiffuser
 {
 public:
+	static constexpr auto TotalNumDelayTimes = NumChannels*MaxNumTaps;
+	static constexpr auto tapTimesMS = reverb_helpers::ReverbDelayTimeCalculator::calculateMsDelayTimes<TotalNumDelayTimes, 1.0f, static_cast<float>(MaxEarlyReflectionTimeMS), reverb_helpers::ReverbDelayTimeCalculator::SpacingType::Logarithmic>();
 
 	struct Parameters : public helpers::AudioParametersBase
     {
@@ -48,11 +50,9 @@ public:
 		void prepare(const juce::dsp::ProcessSpec& spec_)
         {
 	        AudioParametersBase::prepare(spec_);
-        	for ( auto chan = 0ul; chan < NumChannels; ++chan )
-        	{
-        		for (auto i = 0ul; i < MaxNumTaps; ++i)
-        			tapTimes[chan][i] = static_cast<float>(spec.sampleRate)*0.001f*tapTimesMS[chan][i];
-        	}
+        	reverb_helpers::ReverbDelayTimeCalculator::calculateCoprimeSampleTimes< reverb_helpers::ReverbDelayTimeCalculator::FillMode::Row,
+        																			reverb_helpers::ReverbDelayTimeCalculator::ShuffleMode::Both>
+        												(tapTimesMS, tapTimes, spec.sampleRate);
         }
 
 		bool checkForStateChange()
@@ -68,27 +68,8 @@ public:
         	return AudioParametersBase::checkForStateChange();
         }
 
-		static constexpr std::array<std::array<float, MaxNumTaps>, NumChannels> tapTimesMS = [](){
-			std::array<std::array<float, MaxNumTaps>, NumChannels> arr{};
 
-			constexpr auto rangePerTap = static_cast<float>(MaxEarlyReflectionTimeMS) / static_cast<float>(MaxNumTaps);
-			constexpr auto rangeScaled = juce::MathConstants<float>::pi * juce::MathConstants<float>::euler * juce::MathConstants<float>::sqrt2 * rangePerTap;
-			for ( auto i = 0ul; i < NumChannels; ++i)
-			{
-				for (size_t tap = 0; tap < MaxNumTaps; ++tap)
-				{
-					arr[i][tap] = static_cast<float>(tap) * rangePerTap;
-					auto frac = static_cast<float>(i + 1)*static_cast<float>(tap + 1) / static_cast<float>(MaxNumTaps + 1);
-					frac *= rangeScaled;
-					frac /= rangePerTap;
-					frac -= static_cast<float>(static_cast<int>(frac));
-					arr[i][tap] += frac * rangePerTap;
-				}
-			}
-			return arr;
-        }();
-
-		std::array<std::array<float, MaxNumTaps>, NumChannels> tapTimes{};
+		std::array<std::array<size_t, MaxNumTaps>, NumChannels> tapTimes{};
 	private:
 		std::array<float, MaxNumTaps> tapAmplitudesPreCompute{};
     } parameters;

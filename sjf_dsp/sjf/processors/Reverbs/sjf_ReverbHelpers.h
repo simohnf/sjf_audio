@@ -146,7 +146,7 @@ struct  ReverbDelayTimeCalculator
 	enum class FillMode { Column, Row };
 	enum class ShuffleMode { Column, Row, Both };
 
-	template <size_t NumRows, size_t NumColumns, FillMode Fill, ShuffleMode Shuffle>
+	template <FillMode Fill, ShuffleMode Shuffle, size_t NumRows, size_t NumColumns>
 	static constexpr void calculateCoprimeSampleTimes( const std::array<float, NumRows * NumColumns>& msTimes, std::array<std::array<size_t, NumColumns>, NumRows>& samples, const double sampleRate, const float sizeScale = 1.0f) noexcept
 	{
 		std::array<size_t, NumRows * NumColumns> flatSamplesArray{};
@@ -200,7 +200,7 @@ private:
 
 
 
-	template <typename T, size_t NumRows, size_t NumColumns, FillMode Fill, ShuffleMode Shuffle>
+	template <size_t NumRows, size_t NumColumns, FillMode Fill, ShuffleMode Shuffle, typename T>
 	static constexpr void apply2DIndexMap(
 	const std::array<T, NumRows * NumColumns>& flatArray,
 	std::array<std::array<size_t, NumColumns>, NumRows>& samples)

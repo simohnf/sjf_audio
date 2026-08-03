@@ -239,8 +239,6 @@ public:
     	// std::copy(delayTimes.begin(), delayTimes.end(), delayTimesResized.begin());
 
     	constexpr auto LPs = static_cast<float>(NumStages * NumLowpassPerStage);
-    	auto sum = std::accumulate(DelayTimesMs.begin(), DelayTimesMs.end(), 0.0f);
-    	auto s = sum * 0.001f;
     	delayLine.setMaxDelayTimeSamps(static_cast<int>((std::accumulate(DelayTimesMs.begin(), DelayTimesMs.end(), 0.0f) * spec.sampleRate * 0.001f + LPs) * 2.0f + 3.0f));
 
         reset();

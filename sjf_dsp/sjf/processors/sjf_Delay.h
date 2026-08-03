@@ -668,7 +668,10 @@ public:
 		}
 		else
 		{
-			processStaticState(context);
+			if ( parameters.time.currentValue > 1)
+				processStaticState<ProcessContext, false>(context);
+			else
+				processStaticState<ProcessContext, true>(context);
 		}
 	}
 
@@ -678,7 +681,7 @@ public:
 	}
 
 private:
-	template <typename ProcessContext>
+	template <typename ProcessContext, bool SkipRead = false>
 	void processStaticState (const ProcessContext& context) noexcept
 	{
 		const auto& inputBlock = context.getInputBlock();
@@ -700,7 +703,17 @@ private:
 			for (size_t i = 0; i < numSamples; ++i)
 			{
 				dl.writeSample(inputSamples[i]);
-				outputSamples[i] = dl.template readSample<sjf::interpolation::InterpolatorTypes::linear>(delayTime);
+				if constexpr (SkipRead)
+				{
+					if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
+					{
+						outputSamples[i] = inputSamples[i];
+					}
+				}
+				else
+				{
+					outputSamples[i] = dl.template readSample<sjf::interpolation::InterpolatorTypes::linear>(delayTime);
+				}
 			}
 		}
 	}

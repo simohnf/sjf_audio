@@ -102,6 +102,14 @@ namespace utilities
     }
 
 
+	constexpr size_t XORShift(size_t state)
+    {
+    	state ^= state << 13;
+    	state ^= state >> 17;
+    	state ^= state << 5;
+    	return state;
+    }
+
     /**
      * @brief Iterates over each element of a std::tuple and applies a callable function to it.
      *

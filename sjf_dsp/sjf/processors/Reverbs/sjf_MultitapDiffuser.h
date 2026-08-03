@@ -96,7 +96,7 @@ public:
     	{
     		dl.prepare(spec);
 
-    		dl.setMaxDelayTimeSamps(max*2);
+    		dl.setMaxDelayTimeSamps(static_cast<int>(max * 2));
     	}
         reset();
     }

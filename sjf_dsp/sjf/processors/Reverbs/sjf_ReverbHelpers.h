@@ -11,6 +11,7 @@
 //
 
 #pragma once
+#include <source_location>
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_HelperFunctions.h>
 
@@ -19,15 +20,36 @@ namespace sjf::dsp::reverb_helpers
 {
 struct  ReverbDelayTimeCalculator
 {
+private:
+	// Compile-time FNV-1a 64-bit hash
+	static constexpr size_t hashString(std::string_view str) noexcept
+	{
+		size_t hash = 14695981039346656037ULL;
+		for (char c : str)
+		{
+			hash ^= static_cast<size_t>(c);
+			hash *= 1099511628211ULL;
+		}
+		return hash;
+	}
+
+	// Default argument evaluates at the CALLER's location!
+	static constexpr size_t generateRandomSeed( const std::source_location location = std::source_location::current()) noexcept
+	{
+		return hashString(location.function_name());
+	}
+
+public:
 	enum class SpacingType
 	{
+		Stochastic,
 		Linear,
 		Logarithmic,
-		PowerRatio // e.g., Golden Ratio spacing
+		PowerRatio, // e.g., Golden Ratio spacing
 	};
 
 	template<size_t NumDelayTimes, float MinMs, float MaxMs, SpacingType Spacing>
-	static constexpr std::array<float, NumDelayTimes> calculateMsDelayTimes()
+	static constexpr std::array<float, NumDelayTimes> calculateMsDelayTimes(size_t randomSeed = generateRandomSeed())
 	{
 		static_assert(NumDelayTimes > 0, "NumDelayTimes must be greater than 0");
 		static_assert(MaxMs > MinMs + 1.0f, "MaxMs must be greater than MinMs + 1");
@@ -88,6 +110,18 @@ struct  ReverbDelayTimeCalculator
 				currentPhiPower *= phi; // Advance to next power: phi^0, phi^1, phi^2...
 			}
 		}
+		else if constexpr (Spacing == SpacingType::Stochastic)
+		{
+			const auto spacing = 1.0f / static_cast<float>(NumDelayTimes);
+			for ( auto i = 0ul; i < NumDelayTimes; ++i )
+			{
+				randomSeed = helpers::functions::utilities::XORShift(randomSeed);
+				const auto frac = static_cast<float>(i) / static_cast<float>(NumDelayTimes);
+				const auto stoch = static_cast<float>(randomSeed) / static_cast<float>(std::numeric_limits<decltype(randomSeed)>::max());
+				times[i] = MinMs + (frac + stoch*spacing) * range;
+			}
+		}
+
 		return times;
 	}
 

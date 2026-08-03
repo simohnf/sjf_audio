@@ -112,7 +112,7 @@ namespace sjf::dsp
 				{
 					auto& dl = delayLines[s][c];
 					dl.prepare(spec);
-					dl.setMaxDelayTimeMS(MaxDiffusionLengthMS);
+					dl.setMaxDelayTimeMS(MaxDiffusionLengthMS * 2.0f);
 				}
 			}
 

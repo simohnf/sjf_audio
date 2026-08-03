@@ -203,6 +203,17 @@ public:
         	return AudioParametersBase::checkForStateChange();
         }
 
+    	void reset()
+        {
+        	const auto mappedSize = sizeMapping(size.getParameterValue());
+        	using namespace reverb_helpers;
+        	reverb_helpers::ReverbDelayTimeCalculator::calculateCoprimeSampleTimes< ReverbDelayTimeCalculator::FillMode::Row,
+																					ReverbDelayTimeCalculator::ShuffleMode::Both>
+																					(DelayTimesMs, delayTimeSampsPreCompute, spec.sampleRate, mappedSize);
+        	lastSize = mappedSize;
+        	helpers::AudioParametersBase::reset();
+        }
+
     	std::array<std::array<size_t, ScaleablePerStage>, NumStages> delayTimeSampsPreCompute;
     	std::function<float(float)> sizeMapping = [](const float x){return pow(2.0f, jmap(2.0f*x*0.01f - 1.0f, -1.0f, 1.0f, -0.8f, 0.8f));};
     	float lastSize = 0.0f;
@@ -228,6 +239,8 @@ public:
     	// std::copy(delayTimes.begin(), delayTimes.end(), delayTimesResized.begin());
 
     	constexpr auto LPs = static_cast<float>(NumStages * NumLowpassPerStage);
+    	auto sum = std::accumulate(DelayTimesMs.begin(), DelayTimesMs.end(), 0.0f);
+    	auto s = sum * 0.001f;
     	delayLine.setMaxDelayTimeSamps(static_cast<int>((std::accumulate(DelayTimesMs.begin(), DelayTimesMs.end(), 0.0f) * spec.sampleRate * 0.001f + LPs) * 2.0f + 3.0f));
 
         reset();

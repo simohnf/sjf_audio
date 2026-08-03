@@ -47,12 +47,20 @@ public:
             return factory;
         }
 
-		void prepare(const juce::dsp::ProcessSpec& spec_)
+		void prepare (const juce::dsp::ProcessSpec& spec_)
         {
 	        AudioParametersBase::prepare(spec_);
         	reverb_helpers::ReverbDelayTimeCalculator::calculateCoprimeSampleTimes< reverb_helpers::ReverbDelayTimeCalculator::FillMode::Column,
-        																			reverb_helpers::ReverbDelayTimeCalculator::ShuffleMode::Row>
-        												(tapTimesMS, tapTimes, spec.sampleRate);
+																		reverb_helpers::ReverbDelayTimeCalculator::ShuffleMode::Row>
+											(tapTimesMS, tapTimes, spec.sampleRate);
+        }
+
+		void reset()
+        {
+        	reverb_helpers::ReverbDelayTimeCalculator::calculateCoprimeSampleTimes< reverb_helpers::ReverbDelayTimeCalculator::FillMode::Column,
+																		reverb_helpers::ReverbDelayTimeCalculator::ShuffleMode::Row>
+											(tapTimesMS, tapTimes, spec.sampleRate);
+        	AudioParametersBase::reset();
         }
 
 		bool checkForStateChange()
@@ -80,10 +88,15 @@ public:
     {
         spec = spec_;
         parameters.prepare(spec);
+    	auto max = 0ul;
+    	for ( auto& dt : parameters.tapTimes)
+    		max = jmax(max, dt.back());
+
     	for ( auto& dl : delayLine)
     	{
     		dl.prepare(spec);
-    		dl.setMaxDelayTimeMS(static_cast<float>(MaxEarlyReflectionTimeMS) *1.1f);
+
+    		dl.setMaxDelayTimeSamps(max*2);
     	}
         reset();
     }

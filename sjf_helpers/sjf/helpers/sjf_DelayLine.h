@@ -173,6 +173,23 @@ namespace sjf::helpers
 			return output;
 		}
 
+
+		/// FB COmb with One-Pole Low-Pass Filter Stage
+		template<sjf::interpolation::InterpolatorTypes InterpType = sjf::interpolation::InterpolatorTypes::none>
+		[[nodiscard]] forcedinline float applyLPFBComb(const float input, const float startOffset, const float delaySamps, const float feedback, const float alpha) noexcept
+		{
+			const float readOffset = startOffset + delaySamps;
+			const float delayedSample = readSample<InterpType>(readOffset);
+
+			const float loopMix = input + (delayedSample * feedback);
+
+			ignoreUnused(applyLowPass(loopMix, static_cast<size_t>(lround(startOffset)), alpha));
+
+			return delayedSample;
+		}
+
+
+
 		// Call once at the end of each sample process
 		void advanceWritePointer()
 		{

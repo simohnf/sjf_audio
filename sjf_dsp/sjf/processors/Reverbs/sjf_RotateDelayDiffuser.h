@@ -22,6 +22,7 @@ namespace sjf::dsp
 	public:
 		static constexpr auto MaxDiffusionLengthMS = 60.0f;
 
+
 		static constexpr auto NumChannels = [](){
 			static_assert(RotationsOrder > 0, "There must be at least 2 channels to rotate");
 			static_assert(NumDiffusionSteps > 0, "There must be at least 1 diffusion step");
@@ -35,6 +36,8 @@ namespace sjf::dsp
 			}
 			return ret;
 		}();
+
+		static constexpr auto DelayTimesMS = reverb_helpers::ReverbDelayTimeCalculator::calculateMsDelayTimes<NumChannels*NumDiffusionSteps, 1.0f, 60.0f, reverb_helpers::ReverbDelayTimeCalculator::SpacingType::Stochastic>();
 
 
 		static constexpr std::array<std::array<size_t, NumChannels>, NumDiffusionSteps> shuffledIndices = [](){
@@ -70,24 +73,6 @@ namespace sjf::dsp
 			return arr;
 		}();
 
-
-		static constexpr std::array<std::array<float, NumChannels>, NumDiffusionSteps> delayTimesMS = [](){
-			std::array<std::array<float, NumChannels>, NumDiffusionSteps> arr{};
-			auto offset = juce::MathConstants<float>::euler * juce::MathConstants<float>::sqrt2 * juce::MathConstants<float>::pi;
-			for ( auto s = 0ul; s < NumDiffusionSteps; s++)
-			{
-				for (auto c = 0ul; c < NumChannels; c++)
-				{
-					const auto unwrapped = offset * juce::MathConstants<float>::pi /MaxDiffusionLengthMS;
-					const auto wrapped = unwrapped - static_cast<float>(static_cast<int>(unwrapped));
-					arr[s][c] = wrapped * MaxDiffusionLengthMS;
-					offset += c & 1 ? juce::MathConstants<float>::sqrt2 : juce::MathConstants<float>::euler;
-				}
-			}
-			return arr;
-		}();
-
-
 		static constexpr std::array<std::array<bool, NumChannels>, NumDiffusionSteps> polarityFlip = [](){
 			std::array<std::array<bool, NumChannels>, NumDiffusionSteps> arr{};
 			auto offset = juce::MathConstants<float>::euler * juce::MathConstants<float>::sqrt2 * juce::MathConstants<float>::pi;
@@ -118,6 +103,9 @@ namespace sjf::dsp
 			parameters.prepare(spec);
 			diffusionBuffer.setSize(NumChannels, static_cast<int>(spec.maximumBlockSize));
 
+			reverb_helpers::ReverbDelayTimeCalculator::calculateCoprimeSampleTimes< reverb_helpers::ReverbDelayTimeCalculator::FillMode::Column,
+																					reverb_helpers::ReverbDelayTimeCalculator::ShuffleMode::Row>
+																						(DelayTimesMS, delayTimesSamps, spec.sampleRate);
 			for ( auto s = 0ul; s < NumDiffusionSteps; s++)
 			{
 				for (auto c = 0ul; c < NumChannels; c++)
@@ -125,10 +113,9 @@ namespace sjf::dsp
 					auto& dl = delayLines[s][c];
 					dl.prepare(spec);
 					dl.setMaxDelayTimeMS(MaxDiffusionLengthMS);
-
-					delayTimesSamps[s][c] = static_cast<size_t>(delayTimesMS[s][c] * static_cast<float>(spec.sampleRate) * 0.001f);
 				}
 			}
+
 			reset();
 		}
 

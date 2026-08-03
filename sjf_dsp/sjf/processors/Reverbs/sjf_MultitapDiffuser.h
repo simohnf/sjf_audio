@@ -16,12 +16,12 @@
 #include <sjf/processors/Reverbs/sjf_ReverbHelpers.h>
 namespace sjf::dsp
 {
-template<size_t MaxNumTaps = 128, size_t NumChannels = 2, size_t MaxEarlyReflectionTimeMS = 100>
+template<size_t MaxNumTaps = 128, size_t NumChannels = 2, size_t MaxEarlyReflectionTimeMS = 60>
 class MultiTapDiffuser
 {
 public:
 	static constexpr auto TotalNumDelayTimes = NumChannels*MaxNumTaps;
-	static constexpr auto tapTimesMS = reverb_helpers::ReverbDelayTimeCalculator::calculateMsDelayTimes<TotalNumDelayTimes, 1.0f, static_cast<float>(MaxEarlyReflectionTimeMS), reverb_helpers::ReverbDelayTimeCalculator::SpacingType::Logarithmic>();
+	static constexpr auto tapTimesMS = reverb_helpers::ReverbDelayTimeCalculator::calculateMsDelayTimes<TotalNumDelayTimes, 1.0f, static_cast<float>(MaxEarlyReflectionTimeMS), reverb_helpers::ReverbDelayTimeCalculator::SpacingType::Stochastic>();
 
 	struct Parameters : public helpers::AudioParametersBase
     {
@@ -50,8 +50,8 @@ public:
 		void prepare(const juce::dsp::ProcessSpec& spec_)
         {
 	        AudioParametersBase::prepare(spec_);
-        	reverb_helpers::ReverbDelayTimeCalculator::calculateCoprimeSampleTimes< reverb_helpers::ReverbDelayTimeCalculator::FillMode::Row,
-        																			reverb_helpers::ReverbDelayTimeCalculator::ShuffleMode::Both>
+        	reverb_helpers::ReverbDelayTimeCalculator::calculateCoprimeSampleTimes< reverb_helpers::ReverbDelayTimeCalculator::FillMode::Column,
+        																			reverb_helpers::ReverbDelayTimeCalculator::ShuffleMode::Row>
         												(tapTimesMS, tapTimes, spec.sampleRate);
         }
 

@@ -129,7 +129,7 @@ class Tank
 	static constexpr size_t NumScaleableStages = (NumFBCombPerStage + NumDelayPerStage + NumAllpassPerStage) * NumStages;
 	static constexpr size_t ScaleablePerStage = ProcessesPerStage - NumLowpassPerStage;
 
-	static constexpr auto DelayTimesMs = reverb_helpers::ReverbDelayTimeCalculator::calculateMsDelayTimes<NumScaleableStages, 10.0f, 80.0f, reverb_helpers::ReverbDelayTimeCalculator::SpacingType::Linear>();
+	static constexpr auto DelayTimesMs = reverb_helpers::ReverbDelayTimeCalculator::calculateMsDelayTimes<NumScaleableStages, 10.0f, 80.0f, reverb_helpers::ReverbDelayTimeCalculator::SpacingType::Stochastic>();
 
 	// Compile-time array containing ONLY the indices of Delay/FBComb processes
 	static constexpr std::array<size_t, NumScaleableStages> scaleableIndices = []() {
@@ -192,18 +192,20 @@ public:
         {
 
         	const auto mappedSize = sizeMapping(size.getParameterValue());
-        	if (!approximatelyEqual(mappedSize, size.currentValue) && !size.isSmoothing()) // size just changed
+        	if (!approximatelyEqual(mappedSize, lastSize) && !size.isSmoothing()) // size just changed
         	{
         		using namespace reverb_helpers;
         		reverb_helpers::ReverbDelayTimeCalculator::calculateCoprimeSampleTimes< ReverbDelayTimeCalculator::FillMode::Row,
 																						ReverbDelayTimeCalculator::ShuffleMode::Both>
 																						(DelayTimesMs, delayTimeSampsPreCompute, spec.sampleRate, mappedSize);
+        		lastSize = mappedSize;
         	}
         	return AudioParametersBase::checkForStateChange();
         }
 
     	std::array<std::array<size_t, ScaleablePerStage>, NumStages> delayTimeSampsPreCompute;
     	std::function<float(float)> sizeMapping = [](const float x){return pow(2.0f, jmap(2.0f*x*0.01f - 1.0f, -1.0f, 1.0f, -0.8f, 0.8f));};
+    	float lastSize = 0.0f;
     } parameters;
 
 
@@ -237,7 +239,6 @@ public:
     	for (auto& m : modulators)
     		m.reset();
     	delayLine.reset();
-    	// calculateResizedDelayTimesAndOffsets();
     	std::fill(taps.begin(), taps.end(), 0.0f);
     }
 

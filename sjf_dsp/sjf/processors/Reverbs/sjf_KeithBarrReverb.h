@@ -16,6 +16,7 @@
 #include <sjf/helpers/sjf_DelayLine.h>
 #include <sjf/oscillators/sjf_SinCos.h>
 #include <sjf/processors/Reverbs/sjf_ReverbHelpers.h>
+#include <sjf/processors/Reverbs/sjf_MultiTapRingBufferConfig.h>
 
 
 
@@ -23,83 +24,16 @@ namespace sjf::dsp::keith_barr::reverb
 {
 
 
-namespace config
-{
-    enum class ProcessType
-    {
-        AllPass,
-        Delay,
-        FBComb,
-        LowPass
-    };
 
-    struct AllPass
-    {
-        static constexpr auto type = ProcessType::AllPass;
-
-        template<sjf::interpolation::InterpolatorTypes InterpType>
-        static forcedinline float process(sjf::helpers::MultiTapRingBuffer& delayLine, const float input,
-										  const float offset, const float length, const float feedback) noexcept
-        {
-            return delayLine.applyAllPass<InterpType>(input, offset, length, feedback);
-        }
-    };
-
-    struct Delay
-    {
-        static constexpr auto type = ProcessType::Delay;
-
-        template<sjf::interpolation::InterpolatorTypes InterpType>
-        static forcedinline float process(sjf::helpers::MultiTapRingBuffer& delayLine, const float input,
-        								  const float offset, const float length) noexcept
-        {
-            return delayLine.applyDelay<InterpType>(input, offset, length);
-        }
-    };
-
-    struct FBComb
-    {
-        static constexpr auto type = ProcessType::FBComb;
-
-        template<sjf::interpolation::InterpolatorTypes InterpType>
-        static forcedinline float process(sjf::helpers::MultiTapRingBuffer& delayLine, const float input,
-										  const float offset, const float length, const float feedback) noexcept
-        {
-            return delayLine.applyDelay<InterpType>(input, offset, length, feedback);
-        }
-    };
-
-    struct LowPass
-    {
-        static constexpr auto type = ProcessType::LowPass;
-
-        template<sjf::interpolation::InterpolatorTypes InterpType>
-        static forcedinline float process(sjf::helpers::MultiTapRingBuffer& delayLine, const float input,
-										  const float offset, const float alpha) noexcept
-        {
-            return delayLine.applyLowPass(input, static_cast<size_t>(juce::roundToInt(offset)), alpha);
-        }
-    };
-
-    template<typename... Processes>
-    struct StageConfig
-    {
-        static constexpr size_t numProcesses = sizeof...(Processes);
-        using ProcessesTuple = std::tuple<Processes...>;
-
-        static constexpr std::array<ProcessType, numProcesses> processTypes = { Processes::type... };
-    };
-}
-
-template<typename StageConfiguration = config::StageConfig<config::AllPass, config::AllPass, config::Delay, config::LowPass>, size_t NumStages = 8>
+template<typename StageConfiguration = ringbuffer_config::StageConfig<ringbuffer_config::AllPass, ringbuffer_config::AllPass, ringbuffer_config::Delay, ringbuffer_config::LowPass>, size_t NumStages = 8>
 class Tank
 {
 	static constexpr auto ProcessesPerStage = StageConfiguration::numProcesses;
 	static constexpr auto TotalNumProcesses = NumStages * ProcessesPerStage;
 
 	// Helper to construct the full compile-time array across all stages
-	static constexpr std::array<config::ProcessType, TotalNumProcesses> processTypes = []() {
-		std::array<config::ProcessType, TotalNumProcesses> arr{};
+	static constexpr std::array<ringbuffer_config::ProcessType, TotalNumProcesses> processTypes = []() {
+		std::array<ringbuffer_config::ProcessType, TotalNumProcesses> arr{};
 		for (size_t stage = 0; stage < NumStages; ++stage)
 		{
 			for (size_t proc = 0; proc < ProcessesPerStage; ++proc)
@@ -110,7 +44,7 @@ class Tank
 		return arr;
 	}();
 
-	template<config::ProcessType TypeToCount>
+	template<ringbuffer_config::ProcessType TypeToCount>
 	static constexpr size_t NumOfTypePerStage()
 	{
 		size_t count = 0;
@@ -120,13 +54,14 @@ class Tank
 		return count;
 	}
 
-	static constexpr size_t NumAllpassPerStage = NumOfTypePerStage<config::ProcessType::AllPass>();
-	static constexpr size_t NumDelayPerStage = NumOfTypePerStage<config::ProcessType::Delay>();
-	static constexpr size_t NumFBCombPerStage = NumOfTypePerStage<config::ProcessType::FBComb>();
-	static constexpr size_t NumLowpassPerStage = NumOfTypePerStage<config::ProcessType::LowPass>();
+	static constexpr size_t NumAllpassPerStage = NumOfTypePerStage<ringbuffer_config::ProcessType::AllPass>();
+	static constexpr size_t NumDelayPerStage = NumOfTypePerStage<ringbuffer_config::ProcessType::Delay>();
+	static constexpr size_t NumFBCombPerStage = NumOfTypePerStage<ringbuffer_config::ProcessType::FBComb>();
+	static constexpr size_t NumLPFBCombPerStage = NumOfTypePerStage<ringbuffer_config::ProcessType::LPFBComb>();
+	static constexpr size_t NumLowpassPerStage = NumOfTypePerStage<ringbuffer_config::ProcessType::LowPass>();
 
 
-	static constexpr size_t NumScaleableStages = (NumFBCombPerStage + NumDelayPerStage + NumAllpassPerStage) * NumStages;
+	static constexpr size_t NumScaleableStages = (NumFBCombPerStage + NumDelayPerStage + NumAllpassPerStage + NumLPFBCombPerStage) * NumStages;
 	static constexpr size_t ScaleablePerStage = ProcessesPerStage - NumLowpassPerStage;
 
 	static constexpr auto DelayTimesMs = reverb_helpers::ReverbDelayTimeCalculator::calculateMsDelayTimes<NumScaleableStages, 10.0f, 80.0f, reverb_helpers::ReverbDelayTimeCalculator::SpacingType::Stochastic>();
@@ -137,7 +72,7 @@ class Tank
 		size_t writeIdx = 0;
 		for (size_t i = 0; i < TotalNumProcesses; ++i)
 		{
-			if (processTypes[i] != config::ProcessType::LowPass)
+			if (processTypes[i] != ringbuffer_config::ProcessType::LowPass)
 				indices[writeIdx++] = i;
 		}
 		return indices;
@@ -374,10 +309,11 @@ private:
 
     	auto offset = 0.0f;
     	const auto decay = 0.0f; /// TODO: add parameter for decay, or link to diffusion
+
     	for ( auto i = 0ul; i < NumStages; ++i)
     	{
     		auto processNum = 0ul;
-    		using namespace config;
+    		using namespace ringbuffer_config;
 
     		sample += input; // each stage adds the input again
     		if constexpr (NumAllpassPerStage > 0)
@@ -405,7 +341,7 @@ private:
     				for ( auto j = 0ul; j < NumAllpassPerStage; ++j)
     				{
     					const auto dt = delayTime(i, processNum);
-    					sample = Delay::process<InterpType>(delayLine, sample, offset, dt);
+    					sample = ringbuffer_config::Delay::process<InterpType>(delayLine, sample, offset, dt);
     					offset += dt;
     					jassert(!std::isnan(sample) && !std::isinf(sample));
     					processNum++;
@@ -417,7 +353,7 @@ private:
     		for ( auto j = 0ul; j < NumDelayPerStage; ++j)
     		{
     			const auto dt = delayTime(i, processNum);
-    			sample = Delay::process<InterpType>(delayLine, sample, offset, dt);
+    			sample = ringbuffer_config::Delay::process<InterpType>(delayLine, sample, offset, dt);
     			offset += dt;
     			jassert(!std::isnan(sample) && !std::isinf(sample));
     			processNum++;
@@ -441,13 +377,40 @@ private:
     				for ( auto j = 0ul; j < NumFBCombPerStage; ++j)
     				{
     					const auto dt = delayTime(i, processNum);
-    					sample = Delay::process<InterpType>(delayLine, sample, offset, dt);
+    					sample = ringbuffer_config::Delay::process<InterpType>(delayLine, sample, offset, dt);
     					offset += dt;
     					jassert(!std::isnan(sample) && !std::isinf(sample));
     					processNum++;
     				}
     			}
 
+    		}
+
+
+    		if constexpr (NumLPFBCombPerStage > 0)
+    		{
+    			if constexpr (StaticSize)
+    			{
+    				for ( auto j = 0ul; j < NumLPFBCombPerStage; ++j)
+    				{
+    					const auto dt = delayTime(i, processNum);
+    					sample = LPFBComb::process<interpolation::InterpolatorTypes::none>(delayLine, sample, offset, dt, decay, parameters.damping.currentValue);
+    					offset += dt;
+    					jassert(!std::isnan(sample) && !std::isinf(sample));
+    					processNum++;
+    				}
+    			}
+    			else
+    			{
+    				for ( auto j = 0ul; j < NumLPFBCombPerStage; ++j)
+    				{
+    					const auto dt = delayTime(i, processNum);
+    					sample = ringbuffer_config::Delay::process<interpolation::InterpolatorTypes::none>(delayLine, sample, offset, dt);
+    					offset += dt;
+    					jassert(!std::isnan(sample) && !std::isinf(sample));
+    					processNum++;
+    				}
+    			}
     		}
 
     		if constexpr (NumLowpassPerStage > 0)
@@ -466,7 +429,7 @@ private:
     			{
     				for ( auto j = 0ul; j < NumLowpassPerStage; ++j)
     				{
-    					sample = Delay::process<interpolation::InterpolatorTypes::none>(delayLine, sample, offset, 1);
+    					sample = ringbuffer_config::Delay::process<interpolation::InterpolatorTypes::none>(delayLine, sample, offset, 1);
     					offset += 1;
     					jassert(!std::isnan(sample) && !std::isinf(sample));
     					processNum++;

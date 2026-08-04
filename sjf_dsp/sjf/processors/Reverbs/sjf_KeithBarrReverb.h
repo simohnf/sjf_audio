@@ -394,7 +394,7 @@ private:
     				for ( auto j = 0ul; j < NumLPFBCombPerStage; ++j)
     				{
     					const auto dt = delayTime(i, processNum);
-    					sample = LPFBComb::process<interpolation::InterpolatorTypes::none>(delayLine, sample, offset, dt, decay, parameters.damping.currentValue);
+    					sample = ringbuffer_config::LPFBComb::process<interpolation::InterpolatorTypes::none>(delayLine, sample, offset, dt, decay, parameters.damping.currentValue);
     					offset += dt;
     					jassert(!std::isnan(sample) && !std::isinf(sample));
     					processNum++;

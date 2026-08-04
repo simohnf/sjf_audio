@@ -497,65 +497,6 @@ private:
     	}
     }
 
-	// void calculateDelayTimes()
- //    {
- //    	auto calculate = [count = 1.0f](const size_t index, const size_t stepsPerStage, const float low, const float high) mutable{
- //    		const auto frac = count / static_cast<float>(stepsPerStage);
- //    		const auto range = high - low;
- //    		const auto mult = (count + static_cast<float>(index + 1)) * juce::MathConstants<float>::pi;
- //    		count*= juce::MathConstants<float>::euler;
- //    		return low + fmod(range * frac + mult * range, range);
- //    	};
- //
-	// 	const auto sampsPerMS = static_cast<float>(spec.sampleRate) * 0.001f;
- //
- //    	auto processNum = 0ul;
- //    	for ( auto i = 0ul; i < NumStages; ++i)
- //    	{
- //    		for ( auto j = 0ul; j < NumAllpassPerStage; ++j)
- //    		{
- //    			delayTimes[processNum] =  (sampsPerMS * calculate(j, NumAllpassPerStage, 1.0f, 40.0f));
- //    			processNum++;
- //    		}
- //
- //    		for ( auto j = 0ul; j < NumDelayPerStage; ++j)
- //    		{
- //    			delayTimes[processNum] =  (sampsPerMS * calculate(j, NumDelayPerStage, 10.0f, 50.0f));
- //    			processNum++;
- //    		}
- //
- //    		for ( auto j = 0ul; j < NumFBCombPerStage; ++j)
- //    		{
- //    			delayTimes[processNum] =  (sampsPerMS * calculate(j, NumFBCombPerStage, 10.0f, 50.0f));
- //    			processNum++;
- //    		}
- //
- //    		for ( auto j = 0ul; j < NumLowpassPerStage; ++j)
- //    		{
- //    			delayTimes[processNum] = 1.0f;
- //    			processNum++;
- //    		}
- //    	}
- //    }
-
-	// void calculateResizedDelayTimesAndOffsets()
-    // {
-    	// // Only scale pure Delay and FBComb stages with the size parameter
-    	// const auto size = parameters.size.currentValue;
-    	// for ( auto scaleableIndex : scaleableIndices)
-    	// 	delayTimesResized[scaleableIndex] = jmax(1.0f, delayTimes[scaleableIndex] * size);
-
-
-    	// auto acc = 0.0f;
-    	// for (size_t i = 0ul; i < TotalNumProcesses; ++i)
-    	// {
-    	// 	delayOffsets[i] = acc;
-    	// 	acc += delayTimesResized[i];
-    	// }
-    // }
-
-	// std::array<float, TotalNumProcesses> delayTimes{}, delayTimesResized{};
-	// std::array<float, TotalNumProcesses> delayOffsets{};
 	std::array<float, NumStages> taps{};
 	std::array<dsp::oscillators::SinCos, NumStages> modulators;
 	sjf::helpers::MultiTapRingBuffer delayLine;

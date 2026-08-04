@@ -373,6 +373,7 @@ private:
     	};
 
     	auto offset = 0.0f;
+    	const auto decay = 0.0f; /// TODO: add parameter for decay, or link to diffusion
     	for ( auto i = 0ul; i < NumStages; ++i)
     	{
     		auto processNum = 0ul;
@@ -429,7 +430,7 @@ private:
     				for ( auto j = 0ul; j < NumFBCombPerStage; ++j)
     				{
     					const auto dt = delayTime(i, processNum);
-    					sample = FBComb::process<InterpType>(delayLine, sample, offset, dt, 0.0f);
+    					sample = FBComb::process<InterpType>(delayLine, sample, offset, dt, decay);
     					offset += dt;
     					jassert(!std::isnan(sample) && !std::isinf(sample));
     					processNum++;

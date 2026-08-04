@@ -289,7 +289,6 @@ private:
 	void processSample(float input)
     {
     	auto sample = taps.back() * parameters.decay.currentValue;
-    	input *= inputScaling;
 
     	auto modFold = [](const float x){
     		if (x < 0.0f)

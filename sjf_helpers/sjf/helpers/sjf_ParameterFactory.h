@@ -42,6 +42,76 @@ private:
     struct ConstructorToken { explicit ConstructorToken (int) {} };
 
 public:
+	struct GroupMetadata
+	{
+		juce::String groupID;
+		bool supportsSubPresets = false;
+		const juce::AudioParameterChoice* selectorParameter = nullptr;
+		std::vector<GroupMetadata> children;
+
+
+		[[nodiscard]] bool isSelectorGroup() const noexcept
+		{
+			return selectorParameter != nullptr;
+		}
+
+		[[nodiscard]] const GroupMetadata* findChild (const juce::String& targetID) const noexcept
+		{
+			for (const auto& child : children)
+			{
+				if (child.groupID == targetID)
+					return &child;
+			}
+			return nullptr;
+		}
+
+	};
+
+	[[nodiscard]] static GroupMetadata createMetadataTree (const ParameterFactory& rootFactory)
+	{
+		GroupMetadata node;
+		node.groupID = rootFactory.getID();
+		node.supportsSubPresets = rootFactory.supportsSubPresets();
+
+		if (!rootFactory.childFactories.empty())
+		{
+			for (const auto rangedParam : rootFactory.getParameters(false))
+			{
+				if (const auto* choiceParam = dynamic_cast<const juce::AudioParameterChoice*> (rangedParam))
+				{
+					const auto& choices = choiceParam->choices;
+
+					if (static_cast<size_t>(choices.size()) == rootFactory.childFactories.size())
+					{
+						bool matchesAll = true;
+						for (auto i = 0; i < choices.size(); ++i)
+						{
+							const auto relativeName = getNameWithoutParentPrefix (*rootFactory.childFactories[static_cast<size_t>(i)]);
+							if (choices[i] != rootFactory.childFactories[static_cast<size_t>(i)]->getName() && choices[i] != relativeName)
+							{
+								matchesAll = false;
+								break;
+							}
+						}
+
+						if (matchesAll)
+						{
+							node.selectorParameter = choiceParam;
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		for (const auto* childFactory : rootFactory.childFactories)
+		{
+			if (childFactory != nullptr)
+				node.children.push_back (createMetadataTree (*childFactory));
+		}
+		return node;
+	}
+
     static std::unique_ptr<ParameterFactory> create (const juce::String& factoryID, const juce::String& factoryName)
     {
         return std::make_unique<ParameterFactory> (ConstructorToken{0}, factoryID, factoryName);
@@ -70,7 +140,7 @@ public:
         );
 
         auto* rawPtr = p.get();
-        addChild (std::move (p));
+        AudioProcessorParameterGroup::addChild (std::move (p));
         return rawPtr;
     }
 
@@ -89,7 +159,7 @@ public:
         );
 
         auto* rawPtr = p.get();
-        addChild (std::move (p));
+        AudioProcessorParameterGroup::addChild (std::move (p));
         return rawPtr;
     }
 
@@ -108,7 +178,7 @@ public:
         );
 
         auto* rawPtr = p.get();
-        addChild (std::move (p));
+        AudioProcessorParameterGroup::addChild (std::move (p));
         return rawPtr;
     }
 
@@ -129,9 +199,21 @@ public:
         );
 
         auto* rawPtr = p.get();
-        addChild (std::move (p));
+        AudioProcessorParameterGroup::addChild (std::move (p));
         return rawPtr;
     }
+
+	template <typename ParameterOrGroup>
+	void addChild (std::unique_ptr<ParameterOrGroup>)
+	{
+		static_assert(false, "You should not call this method, instead use createTrackedParameter or use addChildFactory to add a subgroup");
+	}
+
+	template <typename ParameterOrGroup, typename... Args>
+	void addChild (std::unique_ptr<ParameterOrGroup>, Args&&...)
+	{
+		static_assert(false, "You should not call this method, instead use createTrackedParameter or use addChildFactory to add a subgroup");
+	}
 
     void addChildFactory (std::unique_ptr<ParameterFactory> child)
     {
@@ -139,7 +221,10 @@ public:
         jassert(child->getName().startsWith(baseName));
 
         if (child != nullptr)
-            addChild (std::move (child));
+        {
+        	childFactories.push_back(child.get());
+	        AudioProcessorParameterGroup::addChild (std::move (child));
+        }
     }
 
     [[nodiscard]] static String getIDWithoutParentPrefix(const juce::AudioProcessorParameterGroup& group)
@@ -197,8 +282,16 @@ public:
 	    for (auto p : getParameters(recursive))
 	    	p->setValue(p->getDefaultValue());
     }
+
+	bool supportsSubPresets() const
+    {
+	    return supportsPresets;
+    }
+
 private:
+	std::vector<const ParameterFactory*> childFactories;
     const juce::String baseID, baseName;
+	const bool supportsPresets{false};
 };
 
 //===========//===========//===========//===========//===========//===========

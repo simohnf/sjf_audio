@@ -28,3 +28,5 @@
     END_JUCE_MODULE_DECLARATION
  ==============================================================================
 */
+
+#include "sjf/widgets/sjf_GenericEditor.cpp"

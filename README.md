@@ -18,6 +18,7 @@ A high-performance C++20 DSP utility library designed specifically for the **JUC
 *   **Fast-Path Evaluation:** State changes are evaluated once per *block*. If parameters are stationary, the engine routes processing to a completely static lane, allowing the compiler to auto-vectorize loops.
 *   **Zero Runtime-Allocation Chains:** Sequential processing chains are unrolled at compile time using C++ variadic templates, completely eliminating runtime overhead or virtual function table penalties.
 *   **Strict Parameter Namespacing:** Hierarchical parameter tree building eliminates ID collisions across complex multi-module setups while preserving clean automation paths in the host DAW.
+*   **Automatic parameter smoothing:** Once parameters are added to a class derived from AudioParametersBase, state smoothing is handled automatically via one call to check for state changes and one call per sample to increment smoothers.
 
 ---
 

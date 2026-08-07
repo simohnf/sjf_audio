@@ -11,14 +11,14 @@
 //
 
 #pragma once
-#include "sjf/helpers/sjf_PresetManager.h"
+#include <sjf/helpers/sjf_PresetManager.h>
 
 namespace sjf::gui
 {
 class PresetPanel : public juce::ComboBox
 {
 public:
-	PresetPanel(const AudioProcessorParameterGroup& parameters_, const String& extension_ = ".sjf")
+	PresetPanel(const juce::AudioProcessorParameterGroup& parameters_, const juce::String& extension_ = ".sjf")
 	: parameters(parameters_)
 	, extension(extension_.startsWith(".") ? extension_ : "."+extension_)
 	{}
@@ -42,10 +42,10 @@ private:
 		}
 	}
 
-	const AudioProcessorParameterGroup& parameters;
-	const String extension;
-	String text;
-	VBlankAttachment vBlankAttachment{this, [&](){timerCallback();}};
+	const juce::AudioProcessorParameterGroup& parameters;
+	const juce::String extension;
+	juce::String text;
+	juce::VBlankAttachment vBlankAttachment{this, [&](){timerCallback();}};
 };
 }
 

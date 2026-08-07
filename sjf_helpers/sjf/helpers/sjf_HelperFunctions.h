@@ -512,7 +512,7 @@ namespace waveforms
 
     forcedinline float getRoundedSquare( const float phase, const float squareness )
     {
-        return juce::dsp::FastMathApproximations::cos( 0.5f*(getSlopedSquare(phase, squareness) + 1.0f) * MathConstants<float>::pi);
+        return juce::dsp::FastMathApproximations::cos( 0.5f*(getSlopedSquare(phase, squareness) + 1.0f) * juce::MathConstants<float>::pi);
     }
 
     /**
@@ -625,7 +625,7 @@ namespace dsp_functions
 {
 	forcedinline float calculateOnepoleCoefficient(const float cutOffFrequency, const float sampleRate)
 	{
-		const float omega = juce::MathConstants<float>::twoPi * (jmin(cutOffFrequency, sampleRate) / sampleRate);
+		const float omega = juce::MathConstants<float>::twoPi * (juce::jmin(cutOffFrequency, sampleRate) / sampleRate);
 		return 1.0f - std::expf(-omega);
 	}
 }

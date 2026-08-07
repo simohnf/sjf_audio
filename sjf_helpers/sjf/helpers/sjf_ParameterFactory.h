@@ -227,7 +227,7 @@ public:
         }
     }
 
-    [[nodiscard]] static String getIDWithoutParentPrefix(const juce::AudioProcessorParameterGroup& group)
+    [[nodiscard]] static juce::String getIDWithoutParentPrefix(const juce::AudioProcessorParameterGroup& group)
     {
         const auto groupID = group.getID();
         if (const auto parent = group.getParent())
@@ -236,12 +236,12 @@ public:
             return groupID;
     }
 
-    [[nodiscard]] static String getIDWithoutParentPrefix(const ParameterFactory& group)
+    [[nodiscard]] static juce::String getIDWithoutParentPrefix(const ParameterFactory& group)
     {
         return getIDWithoutParentPrefix(*dynamic_cast<const AudioProcessorParameterGroup*>(&group));
     }
 
-    [[nodiscard]] static String getNameWithoutParentPrefix(const juce::AudioProcessorParameterGroup& group)
+    [[nodiscard]] static juce::String getNameWithoutParentPrefix(const juce::AudioProcessorParameterGroup& group)
     {
         const auto groupName = group.getName();
         if (const auto parent = group.getParent())
@@ -250,29 +250,29 @@ public:
             return groupName;
     }
 
-    [[nodiscard]] static String getNameWithoutParentPrefix(const ParameterFactory& group)
+    [[nodiscard]] static juce::String getNameWithoutParentPrefix(const ParameterFactory& group)
     {
         return getNameWithoutParentPrefix(*dynamic_cast<const AudioProcessorParameterGroup*>(&group));
     }
 
-    [[nodiscard]] static String getIDWithoutParentPrefix(const juce::RangedAudioParameter& param, const juce::AudioProcessorParameterGroup& group)
+    [[nodiscard]] static juce::String getIDWithoutParentPrefix(const juce::RangedAudioParameter& param, const juce::AudioProcessorParameterGroup& group)
     {
         jassert(param.paramID.startsWith(group.getID()));
         return param.paramID.substring(group.getID().length());
     }
 
-    [[nodiscard]] static String getIDWithoutParentPrefix(const juce::RangedAudioParameter& param, const ParameterFactory& group)
+    [[nodiscard]] static juce::String getIDWithoutParentPrefix(const juce::RangedAudioParameter& param, const ParameterFactory& group)
     {
         return getIDWithoutParentPrefix(param, *dynamic_cast<const AudioProcessorParameterGroup*>(&group));
     }
 
-    [[nodiscard]] static String getNameWithoutParentPrefix(const juce::RangedAudioParameter& param, const juce::AudioProcessorParameterGroup& group)
+    [[nodiscard]] static juce::String getNameWithoutParentPrefix(const juce::RangedAudioParameter& param, const juce::AudioProcessorParameterGroup& group)
     {
         jassert(param.name.startsWith(group.getName()));
         return param.name.substring(group.getName().length()).trim();
     }
 
-    [[nodiscard]] static String getNameWithoutParentPrefix(const juce::RangedAudioParameter& param, const ParameterFactory& group)
+    [[nodiscard]] static juce::String getNameWithoutParentPrefix(const juce::RangedAudioParameter& param, const ParameterFactory& group)
     {
         return getNameWithoutParentPrefix(param, *dynamic_cast<const AudioProcessorParameterGroup*>(&group));
     }
@@ -351,7 +351,7 @@ public:
     	bool isSmoothing()
         {
         	if constexpr (std::is_same_v<JuceParamType, juce::AudioParameterFloat>)
-				return !approximatelyEqual(currentValue, targetValue);
+				return !juce::approximatelyEqual(currentValue, targetValue);
         	else
 				return currentValue != targetValue;
 
@@ -716,13 +716,13 @@ struct DefaultSyncRatesProvider
             return values;
         }
 
-        const static StringArray& getStrings()
+        const static juce::StringArray& getStrings()
         {
-            const static StringArray strings =[]()
+            const static juce::StringArray strings =[]()
             {
-                auto arr = StringArray();
+                auto arr = juce::StringArray();
                 for (auto& d : getValues())
-                    arr.add(String(d));
+                    arr.add(juce::String(d));
                 return arr;
             }();
             return strings;
@@ -743,13 +743,13 @@ struct DefaultSyncRatesProvider
             return values;
         }
 
-        const static StringArray& getStrings()
+        const static juce::StringArray& getStrings()
         {
-            const static StringArray strings =[]()
+            const static juce::StringArray strings =[]()
             {
-                auto arr = StringArray();
+                auto arr = juce::StringArray();
                 for (const auto i : getValues())
-                    arr.add(String(i));
+                    arr.add(juce::String(i));
                 return arr;
             }();
 
@@ -840,7 +840,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
                     const auto numerator = static_cast<float>(SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
                     const auto denominator = static_cast<float>(SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
                     const auto div = numerator / denominator;
-                    return spec.sampleRate * jlimit(timeRange.start, timeRange.end, bar * div) * 0.001f;
+                    return spec.sampleRate * juce::jlimit(timeRange.start, timeRange.end, bar * div) * 0.001f;
                 }
             };
             createTrackedParameter  (*factory, time, "Time",  "Time  (ms)",  timeRange, defaultTimeMS, mapping, getDurationAttributes());
@@ -870,9 +870,9 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
 
     static juce::NormalisableRange<float> makeTimeRange(const float minMS, const float maxMS, const float skewForCentre_)
     {
-        const auto min = jmin(minMS, maxMS);
-        const auto max = jmax(minMS, maxMS);
-        const auto skew = ((skewForCentre_ > min && skewForCentre_ < max ? skewForCentre_ : jmap(0.5f, min, max)));
+        const auto min = juce::jmin(minMS, maxMS);
+        const auto max = juce::jmax(minMS, maxMS);
+        const auto skew = ((skewForCentre_ > min && skewForCentre_ < max ? skewForCentre_ : juce::jmap(0.5f, min, max)));
         auto range = juce::NormalisableRange<float>(minMS, maxMS, 0.001f);
         range.setSkewForCentre(skew);
         return range;
@@ -901,7 +901,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
         return zip(std::make_index_sequence<N>{});
     }
 
-    AudioPlayHead::PositionInfo positionInfo;
+    juce::AudioPlayHead::PositionInfo positionInfo;
 };
 
 
@@ -982,7 +982,7 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
                     const auto numerator = static_cast<float>(SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(syncedNumerator.getParameterValue())]);
                     const auto denominator = static_cast<float>(SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(syncedDenominator.getParameterValue())]);
                     const auto div = numerator / denominator;
-                    return jlimit(frequencyRange.start, frequencyRange.end, 1.0f / (bar * div));
+                    return juce::jlimit(frequencyRange.start, frequencyRange.end, 1.0f / (bar * div));
                 }
             };
 
@@ -1013,8 +1013,8 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
 
     static juce::NormalisableRange<float> makeFrequencyRange(const float minHz, const float maxHz)
     {
-        const auto min = jmin(minHz, maxHz) > 0 ? jmin(minHz, maxHz) : 0.001f;
-        const auto max = jmax(minHz, maxHz) > min && jmax(minHz, maxHz) <= 20000.0f ? jmax(minHz, maxHz) : 20000.0f;
+        const auto min = juce::jmin(minHz, maxHz) > 0 ? juce::jmin(minHz, maxHz) : 0.001f;
+        const auto max = juce::jmax(minHz, maxHz) > min && juce::jmax(minHz, maxHz) <= 20000.0f ? juce::jmax(minHz, maxHz) : 20000.0f;
         const auto skew = std::sqrt(min * max);
 
         auto range = juce::NormalisableRange<float>(min, max, 0.001f);
@@ -1044,6 +1044,6 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
         return zip(std::make_index_sequence<N>{});
     }
 
-    AudioPlayHead::PositionInfo positionInfo;
+    juce::AudioPlayHead::PositionInfo positionInfo;
 };
 }

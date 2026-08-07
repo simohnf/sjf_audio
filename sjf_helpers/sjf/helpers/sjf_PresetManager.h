@@ -42,18 +42,18 @@ class PresetManager
             return projectDir;
         }
 
-        static ValueTree toValueTree(const MemoryBlock& mb)
+        static juce::ValueTree toValueTree(const juce::MemoryBlock& mb)
         {
             juce::MemoryInputStream stream (mb, false);
             return juce::ValueTree::readFromStream (stream);
         }
 
-        static ValueTree toValueTree(const void* data, const int sizeInBytes)
+        static juce::ValueTree toValueTree(const void* data, const int sizeInBytes)
         {
             return toValueTree(juce::MemoryBlock(data, static_cast<size_t>(sizeInBytes)));
         }
 
-        static MemoryBlock toMemoryBlock(const ValueTree& vt)
+        static juce::MemoryBlock toMemoryBlock(const juce::ValueTree& vt)
         {
             auto mb = juce::MemoryBlock();
             juce::MemoryOutputStream stream (mb, false);
@@ -102,13 +102,13 @@ class PresetManager
         }
         
         
-        static juce::PopupMenu getPresetPopupMenu(const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf", juce::Component::SafePointer<ComboBox> parent = nullptr)
+        static juce::PopupMenu getPresetPopupMenu(const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf", juce::Component::SafePointer<juce::ComboBox> parent = nullptr)
         {
             juce::PopupMenu m;
 
             auto itemId = populatePresetPopupMenu(1, m, group, extension);
             m.addSeparator();
-            auto save = PopupMenu::Item();
+            auto save = juce::PopupMenu::Item();
             save.itemID = itemId;
             save.text = preset_manager::strings::savePreset;
             save.isEnabled = true;
@@ -140,16 +140,16 @@ class PresetManager
             return m;
         }
 
-    	static ValueTree saveToVT(const AudioProcessorParameterGroup& group, bool recursive = true)
+    	static juce::ValueTree saveToVT(const juce::AudioProcessorParameterGroup& group, bool recursive = true)
         {
             const auto id = getGroupIDWithNoSpaces(group);
-            auto vt = ValueTree{id};
+            auto vt = juce::ValueTree{id};
 
             for (const auto& param : group.getParameters(false))
             {
-                if (const auto rangedParam = dynamic_cast<RangedAudioParameter*>(param))
+                if (const auto rangedParam = dynamic_cast<juce::RangedAudioParameter*>(param))
                 {
-                    auto paramVT = ValueTree{ ParameterFactory::getIDWithoutParentPrefix(*rangedParam, group) };
+                    auto paramVT = juce::ValueTree{ ParameterFactory::getIDWithoutParentPrefix(*rangedParam, group) };
                     paramVT.setProperty(preset_manager::ids::value, rangedParam->convertFrom0to1(rangedParam->getValue()), nullptr);
                     vt.addChild(paramVT, -1, nullptr);
                 }
@@ -167,13 +167,13 @@ class PresetManager
             return vt;
         }
 
-        static void loadFromVT(const AudioProcessorParameterGroup& group, const ValueTree& vt, bool recursive = true)
+        static void loadFromVT(const juce::AudioProcessorParameterGroup& group, const juce::ValueTree& vt, bool recursive = true)
         {
             for (auto* node : group)
             {
                 if (auto* parameter = node->getParameter())
                 {
-                    if (const auto ranged = dynamic_cast<RangedAudioParameter*>(parameter))
+                    if (const auto ranged = dynamic_cast<juce::RangedAudioParameter*>(parameter))
                         if (auto pVT = vt.getChildWithName(ParameterFactory::getIDWithoutParentPrefix(*ranged, group)); pVT.isValid())
                             if (pVT.hasProperty(preset_manager::ids::value))
                                 ranged->setValueNotifyingHost(ranged->convertTo0to1(pVT.getProperty(preset_manager::ids::value)));
@@ -217,17 +217,17 @@ class PresetManager
         }
 
 
-        static int populatePresetPopupMenu(int startId, PopupMenu& m, const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf")
+        static int populatePresetPopupMenu(int startId, juce::PopupMenu& m, const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf")
         {
             auto id = getGroupIDWithNoSpaces(group);
             auto dir = getProjectWriteableRoot().getChildFile(id);
             if (dir.isDirectory())
             {
                 auto whatToLookFor = juce::File::TypesOfFileToFind::findFiles | juce::File::TypesOfFileToFind::ignoreHiddenFiles;
-                auto arr = dir.findChildFiles(whatToLookFor, false, "*"+extension, File::FollowSymlinks::noCycles);
+                auto arr = dir.findChildFiles(whatToLookFor, false, "*"+extension, juce::File::FollowSymlinks::noCycles);
                 for (const auto& file : arr)
                 {
-                    auto item = PopupMenu::Item();
+                    auto item = juce::PopupMenu::Item();
                     item.action = [&, name = file.getFileNameWithoutExtension(), e = extension](){
                         loadPreset(group, name, e);
                     };
@@ -241,9 +241,9 @@ class PresetManager
 
                 }
 
-                for ( const auto& subDir : dir.findChildFiles(juce::File::TypesOfFileToFind::findDirectories, false, "*"+extension, File::FollowSymlinks::noCycles))
+                for ( const auto& subDir : dir.findChildFiles(juce::File::TypesOfFileToFind::findDirectories, false, "*"+extension, juce::File::FollowSymlinks::noCycles))
                 {
-                    auto subMenu = PopupMenu();
+                    auto subMenu = juce::PopupMenu();
                     startId = populatePresetPopupMenu(startId, subMenu, group, extension);
                     m.addSubMenu(subDir.getFileName(), subMenu);
                 }

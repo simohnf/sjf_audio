@@ -199,7 +199,6 @@ public:
     		stateTree.removeListener(this);
 
     	apvtsTree = parentTree;
-    	apvtsTree.addListener(this);
 
 		stateTree = parentTree.getOrCreateChildWithName(factoryId+sequenceTreeId, nullptr);
 
@@ -207,15 +206,15 @@ public:
 
     	if (MessageManager::existsAndIsCurrentThread())
     	{
-    		stateTree.addListener(this);
+    		apvtsTree.addListener(this);
     		publishSequenceUpdate();
     	}
     	else if (auto mm = MessageManager::getInstanceWithoutCreating())
     	{
     		mm->callAsync([this, g = std::weak_ptr(guard)](){
-    			if (!g.expired() && stateTree.isValid())
+    			if (!g.expired() && apvtsTree.isValid() && stateTree.isValid())
     			{
-    				stateTree.addListener(this);
+    				apvtsTree.addListener(this);
     				publishSequenceUpdate();
     			}
     		});

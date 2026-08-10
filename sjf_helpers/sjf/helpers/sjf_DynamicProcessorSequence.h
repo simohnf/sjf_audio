@@ -372,7 +372,7 @@ private:
     }();
 
     // Lock-free triple buffer used to safely publish sequence updates to the audio thread
-    SPSCTripleBuffer<SequenceOrder> sequenceBuffer;
+    SPSCTripleBuffer<SequenceOrder> sequenceBuffer{activeControlSequence};
 	std::array<std::atomic<bool>, NumProcessors> pendingResets{};
 
 	juce::ValueTree stateTree, apvtsTree;

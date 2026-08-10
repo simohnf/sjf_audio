@@ -169,6 +169,8 @@ public:
     	{
     		if (stateTree.isValid())
     			stateTree.setProperty(sequencePropertyId, sequenceToVar(newOrder), nullptr);
+    		else
+    			jassertfalse; // you need to call attachToState()
     	}
     	else if ( auto mm = MessageManager::getInstanceWithoutCreating())
     	{

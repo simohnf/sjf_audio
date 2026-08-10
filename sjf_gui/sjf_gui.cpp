@@ -3,3 +3,5 @@
 //
 
 #include "sjf_gui.h"
+
+#include "sjf/widgets/sjf_GenericEditor.cpp"

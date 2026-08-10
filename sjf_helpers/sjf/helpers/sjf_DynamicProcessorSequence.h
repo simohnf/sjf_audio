@@ -280,6 +280,9 @@ private:
 							for ( auto i = 0ul; i < jmin(static_cast<size_t>(array.size()), NumProcessors); ++i)
 							{
 								auto processor = static_cast<size_t>(static_cast<int>(array[static_cast<int>(i)]));
+								if (processor == InactiveSlot)
+									break;
+
 								if (!alreadyAdded[processor])
 								{
 									ret[i] = processor;

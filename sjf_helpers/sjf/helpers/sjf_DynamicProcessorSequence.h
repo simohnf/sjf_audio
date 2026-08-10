@@ -254,7 +254,15 @@ private:
 	{
 		auto ret = juce::Array<juce::var>{};
 		for (auto i : order)
-			ret.addIfNotAlreadyThere(juce::var{static_cast<int64>(i)});
+		{
+			if (i == InactiveSlot  || ret.contains(i))
+				break;
+
+			ret.add(juce::var{static_cast<int64>(i)});
+		}
+
+		while (ret.size() < NumProcessors)
+			ret.add(juce::var{static_cast<int64>(InactiveSlot)});
 
 		return juce::var{ret};
 	}

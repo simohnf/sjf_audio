@@ -37,6 +37,10 @@ namespace sjf::helpers
 	class SPSCTripleBuffer
 	{
 		public:
+			SPSCTripleBuffer(const T& initialState = T{})
+			: buffers{PaddedBuffer{initialState}, PaddedBuffer{initialState}, PaddedBuffer{initialState}}
+			{}
+
 			T& getWrite()
 			{
 				return buffers[writeIndex].data;

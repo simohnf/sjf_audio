@@ -46,6 +46,7 @@ public:
 	{
 		juce::String groupID;
 		bool supportsSubPresets = false;
+		bool isDynamicProcessorSequence = false;
 		const juce::AudioParameterChoice* selectorParameter = nullptr;
 		std::vector<GroupMetadata> children;
 
@@ -72,6 +73,7 @@ public:
 		GroupMetadata node;
 		node.groupID = rootFactory.getID();
 		node.supportsSubPresets = rootFactory.supportsSubPresets();
+		node.isDynamicProcessorSequence = rootFactory.isDynamicProcessorSequence();
 
 		if (!rootFactory.childFactories.empty())
 		{
@@ -114,12 +116,17 @@ public:
 
     static std::unique_ptr<ParameterFactory> create (const juce::String& factoryID, const juce::String& factoryName)
     {
-        return std::make_unique<ParameterFactory> (ConstructorToken{0}, factoryID, factoryName);
+        return std::make_unique<ParameterFactory> (ConstructorToken{0}, factoryID, factoryName, false);
     }
 
-    ParameterFactory (ConstructorToken, const juce::String& factoryID, const juce::String& factoryName)
+    static std::unique_ptr<ParameterFactory> createDynamicProcessorSequence (const juce::String& factoryID, const juce::String& factoryName)
+    {
+        return std::make_unique<ParameterFactory> (ConstructorToken{0}, factoryID, factoryName, true);
+    }
+
+    ParameterFactory (ConstructorToken, const juce::String& factoryID, const juce::String& factoryName, const bool isDynamicProcessorSequence_ = false)
         : juce::AudioProcessorParameterGroup (factoryID, factoryName, " "),
-          baseID (factoryID), baseName (factoryName)
+          baseID (factoryID), baseName (factoryName), dynamicProcessorSequence(isDynamicProcessorSequence_)
     {}
 
     //==============================================================================
@@ -288,10 +295,16 @@ public:
 	    return supportsPresets;
     }
 
+	[[nodiscard]] bool isDynamicProcessorSequence() const
+	{
+		return dynamicProcessorSequence;
+	}
+
 private:
 	std::vector<const ParameterFactory*> childFactories;
     const juce::String baseID, baseName;
 	const bool supportsPresets{false};
+	const bool dynamicProcessorSequence{false};
 };
 
 //===========//===========//===========//===========//===========//===========

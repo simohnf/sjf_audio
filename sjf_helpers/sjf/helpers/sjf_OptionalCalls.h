@@ -52,6 +52,18 @@ namespace internal
     {
         return 0;
     }
+
+	template <typename T>
+	auto attachToState(T& processor, juce::ValueTree& apvtsState, int)
+	-> decltype(processor.attachToState(apvtsState), void())
+    {
+    	processor.attachToState(apvtsState);
+    	return;
+    }
+
+	template <typename T>
+    void attachToState(T&, juce::ValueTree&, long)
+    {}
 }
 
 /**
@@ -104,4 +116,30 @@ auto getLatencySamples(T& processor)
 	return optional_calls::internal::getLatencySamples(processor, 0);
 }
 
+
+/**
+ * \brief Template utility that conditionally attaches a processor to a JUCE ValueTree state.
+ *
+ * This wrapper acts as a compile-time safety boundary. It allows a container class
+ * (like `ProcessorSequence`) to safely propagate state tree references to all child nodes
+ * without requiring every node to implement state binding or inherit from a shared base class.
+ *
+ * If the target processor implements `attachToState`, this function invokes it.
+ * If the processor does not implement the method, the call safely falls back to a no-op at compile time.
+ *
+ * \note To bind to state, the child processor `T` must implement
+ *       the following public member function signature:
+ *       \code
+ *       void attachToState (juce::ValueTree& apvtsState);
+ *       \endcode
+ *
+ * \tparam T The type of the audio processor.
+ * \param processor The active processor block instance.
+ * \param apvtsState The JUCE ValueTree node to attach to.
+ */
+template <typename T>
+void attachToState(T& processor, juce::ValueTree& apvtsState)
+{
+	optional_calls::internal::attachToState(processor, apvtsState, 0);
+}
 }

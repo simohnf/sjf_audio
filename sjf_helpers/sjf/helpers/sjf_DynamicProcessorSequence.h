@@ -38,9 +38,7 @@ public:
     // Fixed-capacity sequence payload matching maximum available tuple elements
     using SequenceOrder = std::array<size_t, NumProcessors>;
 
-    DynamicProcessorSequence();
-
-    ~DynamicProcessorSequence()
+    ~DynamicProcessorSequence() override
     {
     	if (stateTree.isValid())
     		stateTree.removeListener(this);
@@ -123,7 +121,7 @@ public:
     			proc.reset();
 
     		proc.process(context);
-    		latency_ += proc.getLatencySamples();
+    		latency_ += sjf::optional_calls::getLatencySamples(proc);
     	};
 
     	for (auto index : activeSequence)
@@ -170,13 +168,13 @@ public:
     	if (MessageManager::existsAndIsCurrentThread())
     	{
     		if (stateTree.isValid())
-    			stateTree.setProperty(sequencePropertyId, sequenceToVar(newOrder));
+    			stateTree.setProperty(sequencePropertyId, sequenceToVar(newOrder), nullptr);
     	}
     	else if ( auto mm = MessageManager::getInstanceWithoutCreating())
     	{
     		mm->callAsync([newOrder, this, g = std::weak_ptr(guard)](){
     			if (!g.expired() && stateTree.isValid())
-    				stateTree.setProperty(sequencePropertyId, sequenceToVar(newOrder));
+    				stateTree.setProperty(sequencePropertyId, sequenceToVar(newOrder), nullptr);
     		});
     	}
     }
@@ -252,7 +250,11 @@ private:
 	// Helper functions to convert between SequenceOrder and juce::var (Array)
 	static juce::var sequenceToVar (const SequenceOrder& order)
 	{
-		return juce::Array{order.data(), NumProcessors};
+		auto ret = juce::Array<juce::var>{};
+		for (auto i : order)
+			ret.addIfNotAlreadyThere(juce::var{static_cast<int64>(i)});
+
+		return juce::var{ret};
 	}
 
 	static SequenceOrder varToSequence (const juce::var& v)
@@ -260,11 +262,21 @@ private:
 		if (v.isArray())
 		{
 			return [&v](){
+							std::array<bool, NumProcessors> alreadyAdded;
+							alreadyAdded.fill(false);
 							SequenceOrder ret{};
+							ret.fill(InactiveSlot);
 							jassert(v.size() == NumProcessors);
-							const auto array = v.getArray();
-							for ( auto i = 0ul; i < jmin(static_cast<size_t>(array->size()), NumProcessors); ++i)
-								ret[i] = array[i];
+							const auto array = *v.getArray();
+							for ( auto i = 0ul; i < jmin(static_cast<size_t>(array.size()), NumProcessors); ++i)
+							{
+								auto processor = static_cast<size_t>(static_cast<int>(array[static_cast<int>(i)]));
+								if (!alreadyAdded[processor])
+								{
+									ret[i] = processor;
+									alreadyAdded[processor] = true;
+								}
+							}
 							return ret;
 						}();
 		}
@@ -306,13 +318,13 @@ private:
     			std::array<bool, NumProcessors> needsReset;
     			needsReset.fill(true);
 
-    			for (auto i = 0; i < NumProcessors; ++i)
+    			for (auto i = 0ul; i < NumProcessors; ++i)
     			{
     				if (activeControlSequence[i]==InactiveSlot)
     					break;
     				needsReset[activeControlSequence[i]] = false;
     			}
-    			for (auto i = 0; i < NumProcessors; ++i)
+    			for (auto i = 0ul; i < NumProcessors; ++i)
     				pendingResets[i] = needsReset[i];
 
     			activeControlSequence = varToSequence(*prop);
@@ -356,6 +368,7 @@ private:
     SequenceOrder activeControlSequence = [&](){
 	    SequenceOrder tmp{};
     	std::fill(tmp.begin(), tmp.end(), InactiveSlot);
+    	return tmp;
     }();
 
     // Lock-free triple buffer used to safely publish sequence updates to the audio thread

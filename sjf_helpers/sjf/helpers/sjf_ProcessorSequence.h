@@ -139,7 +139,7 @@ public:
 
 	    	sjf::optional_calls::setPositionInfo(proc, pos);
 
-	    	latency_ += processors.getLatencySamples();
+	    	latency_ += sjf::optional_calls::getLatencySamples(proc);
 		    proc.process (context);
 	    });
     }

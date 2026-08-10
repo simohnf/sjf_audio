@@ -161,6 +161,14 @@ public:
     	return sum;
     }
 
+
+	void attachToState (juce::ValueTree& parentTree)
+    {
+    	sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){
+    		sjf::optional_calls::attachToState(proc, parentTree);
+    	});
+    }
+
 private:
     // Case 1: The configuration is a flat SubFactoryConfig
     template <typename ProcessorType, typename ConfigType>

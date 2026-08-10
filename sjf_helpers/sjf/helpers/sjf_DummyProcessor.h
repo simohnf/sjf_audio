@@ -133,6 +133,15 @@ public:
 
     }
 
+	/**
+	 * @brief Attach the processor to a JUCE ValueTree state
+	 * @param parentTree The JUCE ValueTree node to attach to
+	 */
+	void attachToState (juce::ValueTree& parentTree)
+    {
+
+    }
+
 private:
     /**
      * @brief Processes audio using vectorizable, channel-by-channel loops when parameters are stationary.

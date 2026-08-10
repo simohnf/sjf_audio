@@ -111,6 +111,12 @@ struct ProcessorDuplicator
     	return sjf::optional_calls::getLatencySamples(processors[0]);
     }
 
+	void attachToState (juce::ValueTree& parentTree)
+    {
+    	sjf::optional_calls::attachToState(processors[0], parentTree);
+    	sjf::optional_calls::attachToState(processors[1], parentTree);
+    }
+
 private:
 
     void updateMasterParameters()

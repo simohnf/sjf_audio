@@ -122,6 +122,10 @@ namespace sjf::helpers
         	return static_cast<int>(oversampling->getLatencyInSamples()) + sjf::optional_calls::getLatencySamples(processor);
         }
 
+    	void attachToState (juce::ValueTree& parentTree)
+        {
+        	sjf::optional_calls::attachToState(processor, parentTree);
+        }
     private:
         void createOversampling()
         {

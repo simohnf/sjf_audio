@@ -206,6 +206,14 @@ public:
         return maxLatencySamples;
     }
 
+
+	void attachToState (juce::ValueTree& parentTree)
+    {
+    	sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc){
+    		sjf::optional_calls::attachToState(proc, parentTree);
+    	});
+    }
+
 private:
 	template<typename ProcessContext>
 	void dispatchAndDelay(const ProcessContext& context, const size_t index, const size_t delayLineIndex)

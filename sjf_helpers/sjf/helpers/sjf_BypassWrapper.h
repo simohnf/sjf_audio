@@ -236,6 +236,10 @@ public:
     	return sjf::optional_calls::getLatencySamples(processor);
     }
 
+	void attachToState (juce::ValueTree& parentTree)
+    {
+    	sjf::optional_calls::attachToState(processor, parentTree);
+    }
 private:
 
     float getWetTargetLevel()

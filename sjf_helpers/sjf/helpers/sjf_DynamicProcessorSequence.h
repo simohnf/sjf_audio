@@ -30,7 +30,7 @@ public:
     static constexpr size_t NumProcessors = sizeof...(Processors);
 
     // Sentinel value indicating an unused/empty slot in the sequence
-    static constexpr size_t InactiveSlot = std::numeric_limits<size_t>::max();
+    static constexpr size_t InactiveSlot = std::numeric_limits<int>::max();
 
 	static_assert(NumProcessors < InactiveSlot,
 			  "DynamicProcessorSequence can not be instantiated that many processors!");

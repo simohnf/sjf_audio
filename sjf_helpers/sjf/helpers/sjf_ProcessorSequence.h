@@ -118,20 +118,45 @@ public:
     }
 
     //==============================================================================
-    void prepare (const juce::dsp::ProcessSpec& spec)   { sjf::helpers::functions::utilities::forEach (processors, [&spec](auto& proc) { proc.prepare (spec); }); }
-    void reset()                                        { sjf::helpers::functions::utilities::forEach (processors,[](auto& proc) { proc.reset(); }); }
+    void prepare (const juce::dsp::ProcessSpec& spec_)
+    {
+    	spec = spec_;
+	    sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc) { proc.prepare (spec); }); reset();
+    }
+
+    void reset()
+    {
+	    sjf::helpers::functions::utilities::forEach (processors,[](auto& proc) { proc.reset(); });
+    }
 
     template <typename ProcessContextType>
-    void process (const ProcessContextType& context)    { sjf::helpers::functions::utilities::forEach (processors,[&context](auto& proc) { proc.process (context); }); }
+    void process (const ProcessContextType& context)
+    {
+    	auto latency_ = 0;
+
+	    sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){
+	    	auto pos = positionInfo;
+
+			if (pos.getTimeInSamples().hasValue())
+				pos.setTimeInSamples(*pos.getTimeInSamples() + static_cast<int64_t>(latency_));
+			if (pos.getPpqPosition().hasValue() && pos.getBpm().hasValue())
+				pos.setPpqPosition(*pos.getPpqPosition() + (latency_ * *pos.getBpm()) /(spec.sampleRate * 60.0));
+
+	    	sjf::optional_calls::setPositionInfo(proc, pos);
+
+	    	latency_ += processors.getLatencySamples();
+		    proc.process (context);
+	    });
+    }
 
     //==============================================================================
     /** Access an individual processor by index at compile-time */
     template <size_t Index> [[nodiscard]] decltype(auto) get() noexcept       { return std::get<Index> (processors); }
     template <size_t Index> [[nodiscard]] decltype(auto) get() const noexcept { return std::get<Index> (processors); }
 
-    void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
+    void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo_)
     {
-        sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){ sjf::optional_calls::setPositionInfo(proc, positionInfo); });
+    	positionInfo = positionInfo_;
     }
 
 	int getLatencySamples()
@@ -163,6 +188,9 @@ private:
 
     //==============================================================================
     std::tuple<Processors...> processors;
+
+	juce::AudioPlayHead::PositionInfo positionInfo{};
+	juce::dsp::ProcessSpec spec{};
 };
 
 }

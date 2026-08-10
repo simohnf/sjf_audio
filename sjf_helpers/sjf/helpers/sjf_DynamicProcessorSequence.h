@@ -20,6 +20,11 @@
 
 namespace sjf::helpers
 {
+namespace dynamic_processor_sequence::ids
+{
+	static const Identifier sequenceTreeId{"Sequence"};
+	static const Identifier sequencePropertyId{"Seq"};
+}
 template <typename... Processors>
 class DynamicProcessorSequence : private juce::ValueTree::Listener
 {
@@ -168,7 +173,7 @@ public:
     	if (MessageManager::existsAndIsCurrentThread())
     	{
     		if (stateTree.isValid())
-    			stateTree.setProperty(sequencePropertyId, sequenceToVar(newOrder), nullptr);
+    			stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(newOrder), nullptr);
     		else
     			jassertfalse; // you need to call attachToState()
     	}
@@ -176,7 +181,7 @@ public:
     	{
     		mm->callAsync([newOrder, this, g = std::weak_ptr(guard)](){
     			if (!g.expired() && stateTree.isValid())
-    				stateTree.setProperty(sequencePropertyId, sequenceToVar(newOrder), nullptr);
+    				stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(newOrder), nullptr);
     		});
     	}
     }
@@ -200,7 +205,7 @@ public:
 
     	apvtsTree = parentTree;
 
-		stateTree = parentTree.getOrCreateChildWithName(factoryId+sequenceTreeId, nullptr);
+		stateTree = parentTree.getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
 
 
 
@@ -231,8 +236,7 @@ private:
 	void valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged,
 								   const juce::Identifier& propertyId) override
 	{
-		const static auto sequencePropertyId_ = juce::Identifier(sequencePropertyId);
-		if (treeWhosePropertyHasChanged == stateTree && propertyId == sequencePropertyId_)
+		if (treeWhosePropertyHasChanged == stateTree && propertyId == dynamic_processor_sequence::ids::sequencePropertyId)
 		{
 			if (MessageManager::existsAndIsCurrentThread())
 				publishSequenceUpdate();
@@ -325,7 +329,7 @@ private:
     	jassert(MessageManager::existsAndIsCurrentThread());
     	if (stateTree.isValid())
     	{
-    		if (const auto prop = stateTree.getPropertyPointer(sequencePropertyId))
+    		if (const auto prop = stateTree.getPropertyPointer(dynamic_processor_sequence::ids::sequencePropertyId))
     		{
     			std::array<bool, NumProcessors> needsReset;
     			needsReset.fill(true);
@@ -344,7 +348,7 @@ private:
     		}
     		else
     		{
-    			stateTree.setProperty(sequencePropertyId, sequenceToVar(activeControlSequence), nullptr);
+    			stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(activeControlSequence), nullptr);
     		}
     	}
     }
@@ -390,7 +394,6 @@ private:
 	juce::ValueTree stateTree, apvtsTree;
 
 	String factoryId{};
-	const Identifier sequenceTreeId{"Sequence"}, sequencePropertyId{"Seq"};
 
 
 

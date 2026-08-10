@@ -388,6 +388,30 @@ namespace utilities
         return createArray(std::make_index_sequence<size>{});
     }
 
+
+	forcedinline juce::AudioPlayHead::PositionInfo advancePositionInfo(juce::AudioPlayHead::PositionInfo pos, const int samplesToAdvanceBy, const juce::dsp::ProcessSpec& spec)
+    {
+    	if (samplesToAdvanceBy == 0)
+    		return pos;
+
+    	if (const auto samples = pos.getTimeInSamples())
+    		pos.setTimeInSamples (*samples + static_cast<int64_t> (samplesToAdvanceBy));
+
+    	if (spec.sampleRate > 0.0)
+    	{
+    		if (const auto ppq = pos.getPpqPosition())
+    		{
+    			if (const auto bpm = pos.getBpm())
+    			{
+    				const double advancePpq = (static_cast<double> (samplesToAdvanceBy) * *bpm)
+											  / (spec.sampleRate * 60.0);
+    				pos.setPpqPosition (*ppq + advancePpq);
+    			}
+    		}
+    	}
+
+    	return pos;
+    }
 }
 
 namespace waveforms

@@ -135,12 +135,7 @@ public:
     	auto latency_ = 0;
 
 	    sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){
-	    	auto pos = positionInfo;
-
-			if (pos.getTimeInSamples().hasValue())
-				pos.setTimeInSamples(*pos.getTimeInSamples() + static_cast<int64_t>(latency_));
-			if (pos.getPpqPosition().hasValue() && pos.getBpm().hasValue())
-				pos.setPpqPosition(*pos.getPpqPosition() + (latency_ * *pos.getBpm()) /(spec.sampleRate * 60.0));
+	    	const auto pos = sjf::helpers::functions::utilities::advancePositionInfo(positionInfo, latency_, spec);
 
 	    	sjf::optional_calls::setPositionInfo(proc, pos);
 

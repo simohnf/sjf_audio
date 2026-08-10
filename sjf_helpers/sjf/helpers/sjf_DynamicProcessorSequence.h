@@ -127,7 +127,7 @@ public:
     	for (auto index : activeSequence)
     	{
     		if (index == InactiveSlot)
-    			return;
+    			break;
 
     		dispatchIndex(index, processDispatch);
     	}

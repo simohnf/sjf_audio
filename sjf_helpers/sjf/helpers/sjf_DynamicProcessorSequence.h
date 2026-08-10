@@ -388,7 +388,7 @@ private:
 	juce::ValueTree stateTree, apvtsTree;
 
 	String factoryId{};
-	const String sequenceTreeId{"Sequence"}, sequencePropertyId{"Seq"};
+	const Identifier sequenceTreeId{"Sequence"}, sequencePropertyId{"Seq"};
 
 
 

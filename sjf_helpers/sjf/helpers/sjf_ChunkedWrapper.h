@@ -78,7 +78,7 @@ public:
         {
 
             const auto chunkSize = std::min (MAX_CHUNK_SIZE, numSamples - samplesProcessed);
-        	positionInfo = sjf::helpers::functions::utilities::advancePositionInfo(positionInfo, chunkSize, spec);
+        	positionInfo = sjf::helpers::functions::utilities::advancePositionInfo(positionInfo, static_cast<int>(chunkSize), spec);
         	
         	sjf::optional_calls::setPositionInfo(processor, positionInfo);
 

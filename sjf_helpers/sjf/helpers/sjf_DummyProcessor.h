@@ -137,7 +137,7 @@ public:
 	 * @brief Attach the processor to a JUCE ValueTree state
 	 * @param parentTree The JUCE ValueTree node to attach to
 	 */
-	void attachToState (juce::ValueTree& parentTree)
+	void attachToState (juce::ValueTree&)
     {
 
     }

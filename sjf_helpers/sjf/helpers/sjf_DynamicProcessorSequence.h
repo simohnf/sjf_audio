@@ -255,13 +255,13 @@ private:
 		auto ret = juce::Array<juce::var>{};
 		for (auto i : order)
 		{
-			if (i == InactiveSlot  || ret.contains(i))
+			if (i == InactiveSlot  || ret.contains(static_cast<int64>(i)))
 				break;
 
 			ret.add(juce::var{static_cast<int64>(i)});
 		}
 
-		while (ret.size() < NumProcessors)
+		while (ret.size() < static_cast<int>(NumProcessors))
 			ret.add(juce::var{static_cast<int64>(InactiveSlot)});
 
 		return juce::var{ret};

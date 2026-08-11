@@ -49,7 +49,7 @@ namespace sjf::generic_editor
 				// will need additional logic if changing from single column...
 				auto heightOfChildren = [&](){
 					const auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()), childEditors.size() - 1);
-					return childEditors[selected]->getRequiredSize().getHeight();
+					return childEditors[selected]->getRequiredSize().getHeight() + VerticalSpacing;
 				};
 
 

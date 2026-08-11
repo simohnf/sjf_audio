@@ -20,10 +20,15 @@
 
 namespace sjf::helpers
 {
-namespace dynamic_processor_sequence::ids
+namespace dynamic_processor_sequence
 {
-	static const Identifier sequenceTreeId{"Sequence"};
-	static const Identifier sequencePropertyId{"Seq"};
+	namespace ids
+	{
+		static const Identifier sequenceTreeId{"Sequence"};
+		static const Identifier sequencePropertyId{"Seq"};
+	}
+	// Sentinel value indicating an unused/empty slot in the sequence
+	static constexpr size_t InactiveSlot = std::numeric_limits<int>::max();
 }
 template <typename... Processors>
 class DynamicProcessorSequence : private juce::ValueTree::Listener
@@ -34,8 +39,7 @@ public:
 
     static constexpr size_t NumProcessors = sizeof...(Processors);
 
-    // Sentinel value indicating an unused/empty slot in the sequence
-    static constexpr size_t InactiveSlot = std::numeric_limits<int>::max();
+	static constexpr auto InactiveSlot = dynamic_processor_sequence::InactiveSlot;
 
 	static_assert(NumProcessors < InactiveSlot,
 			  "DynamicProcessorSequence can not be instantiated that many processors!");

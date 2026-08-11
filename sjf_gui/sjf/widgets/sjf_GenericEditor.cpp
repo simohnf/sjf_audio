@@ -576,12 +576,18 @@ namespace sjf::generic_editor
 				jassert(masterPool.size() <= static_cast<size_t>(subgroups.size()));
 
 				std::vector<std::pair<size_t, juce::String>> ret{};
-
+				juce::StringArray added{};
 				ret.reserve(masterPool.size());
 
 				for ( auto i = 0ul; i < masterPool.size(); ++i)
-					if (!activeStates[i])
-						ret.emplace_back(i, sjf::helpers::ParameterFactory::getNameWithoutParentPrefix(*subgroups[static_cast<int>(i)]));
+				{
+					const auto name = sjf::helpers::ParameterFactory::getNameWithoutParentPrefix(*subgroups[static_cast<int>(i)]);
+					if (!activeStates[i] && !added.contains(name))
+					{
+						ret.emplace_back(i, name);
+						added.add(name);
+					}
+				}
 
 				return ret;
 			}

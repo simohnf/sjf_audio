@@ -233,6 +233,90 @@ public:
 			sjf::optional_calls::attachToState(proc, parentTree);
 		});
 	}
+
+	// Helper functions to convert between SequenceOrder and juce::var (Array)
+	static juce::var sequenceToVar (const SequenceOrder& order)
+    {
+    	auto ret = juce::StringArray{};
+    	for (auto i : order)
+    	{
+    		if (i == InactiveSlot  || ret.contains(static_cast<juce::String>(i)))
+    			break;
+
+    		ret.add(static_cast<juce::String>(i));
+    	}
+
+    	while (ret.size() < static_cast<int>(NumProcessors))
+    		ret.add(juce::var{static_cast<juce::String>(InactiveSlot)});
+
+    	return juce::var{ret.joinIntoString("/")};
+    }
+
+	static SequenceOrder varToSequence (const juce::var& v)
+    {
+    	if (v.isString())
+    	{
+    		return [&v](){
+    			std::array<bool, NumProcessors> alreadyAdded;
+    			alreadyAdded.fill(false);
+    			SequenceOrder ret{};
+    			ret.fill(InactiveSlot);
+    			const auto strArr = StringArray::fromTokens(v.toString(), "/", "");
+    			for ( auto i = 0ul; i < jmin(static_cast<size_t>(strArr.size()), NumProcessors); ++i)
+    			{
+    				auto processor = static_cast<size_t>(strArr[static_cast<int>(i)].getIntValue());
+    				if (processor == InactiveSlot)
+    					break;
+
+    				if (!alreadyAdded[processor])
+    				{
+    					ret[i] = processor;
+    					alreadyAdded[processor] = true;
+    				}
+    			}
+    			return ret;
+    		}();
+    	}
+    	else
+    	{
+    		jassertfalse;
+    		return {};
+    	}
+    }
+
+	static std::vector<size_t> varToVector (const juce::var& v)
+    {
+    	if (v.isArray())
+    	{
+    		return [&v](){
+    			std::array<bool, NumProcessors> alreadyAdded;
+    			alreadyAdded.fill(false);
+    			std::vector<size_t> ret{};
+    			ret.reserve(NumProcessors);
+    			jassert(v.size() == NumProcessors);
+    			const auto array = *v.getArray();
+    			for ( auto i = 0ul; i < jmin(static_cast<size_t>(array.size()), NumProcessors); ++i)
+    			{
+    				auto processor = static_cast<size_t>(static_cast<int>(array[static_cast<int>(i)]));
+    				if (processor == InactiveSlot)
+    					break;
+
+    				if (!alreadyAdded[processor])
+    				{
+    					ret.push_back(processor);
+    					alreadyAdded[processor] = true;
+    				}
+    			}
+    			return ret;
+    		}();
+    	}
+    	else
+    	{
+    		jassertfalse;
+    		return {};
+    	}
+    }
+
 private:
 	//==============================================================================
 	// VALUETREE LISTENER OVERRIDES
@@ -253,58 +337,6 @@ private:
 	{
 		if (treeWhichHasBeenChanged == apvtsTree)
 			attachToState(treeWhichHasBeenChanged);
-	}
-
-
-	// Helper functions to convert between SequenceOrder and juce::var (Array)
-	static juce::var sequenceToVar (const SequenceOrder& order)
-	{
-		auto ret = juce::Array<juce::var>{};
-		for (auto i : order)
-		{
-			if (i == InactiveSlot  || ret.contains(static_cast<int64>(i)))
-				break;
-
-			ret.add(juce::var{static_cast<int64>(i)});
-		}
-
-		while (ret.size() < static_cast<int>(NumProcessors))
-			ret.add(juce::var{static_cast<int64>(InactiveSlot)});
-
-		return juce::var{ret};
-	}
-
-	static SequenceOrder varToSequence (const juce::var& v)
-	{
-		if (v.isArray())
-		{
-			return [&v](){
-							std::array<bool, NumProcessors> alreadyAdded;
-							alreadyAdded.fill(false);
-							SequenceOrder ret{};
-							ret.fill(InactiveSlot);
-							jassert(v.size() == NumProcessors);
-							const auto array = *v.getArray();
-							for ( auto i = 0ul; i < jmin(static_cast<size_t>(array.size()), NumProcessors); ++i)
-							{
-								auto processor = static_cast<size_t>(static_cast<int>(array[static_cast<int>(i)]));
-								if (processor == InactiveSlot)
-									break;
-
-								if (!alreadyAdded[processor])
-								{
-									ret[i] = processor;
-									alreadyAdded[processor] = true;
-								}
-							}
-							return ret;
-						}();
-		}
-		else
-		{
-			jassertfalse;
-			return {};
-		}
 	}
 
     //==============================================================================

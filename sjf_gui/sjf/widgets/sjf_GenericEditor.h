@@ -61,8 +61,8 @@ namespace sjf::generic_editor
 						auto b_ = b;
 						const auto c = paramComponents[i];
 						const auto& l = paramNames[i];
-						l->setBounds(b_.removeFromLeft(ComponentHeight*2));
-						c->setBounds(b_);
+						l->setBounds(b_.removeFromLeft(jmax(ComponentHeight*2, getWidth()/4)));
+						c->setBounds(b_.withWidth(b_.getWidth() - HorizontalSpacing));
 						b = b.withY(b.getY() + ComponentHeight + VerticalSpacing);
 					}
 

@@ -106,4 +106,23 @@ namespace sjf::generic_editor
 		}
 		onLayoutChanged();
 	}
+
+	void GenericEditor::initialiseMainEditor(juce::AudioProcessorValueTreeState& apvts,
+											const juce::AudioProcessorParameterGroup& parameterGroup,
+											const helpers::ParameterFactory::GroupMetadata& metadata)
+	{
+		if (metadata.isSelectorGroup())
+		{
+			mainEditor = std::make_unique<DeviceSelectorEditor>(apvts, parameterGroup, metadata);
+		}
+		else if (metadata.isDynamicProcessorSequenceGroup())
+		{
+			mainEditor = std::make_unique<DynamicProcessorSequenceEditor>(apvts, parameterGroup, metadata);
+		}
+		else
+		{
+			mainEditor = std::make_unique<AutoEditor>(apvts, parameterGroup, metadata);
+		}
+	}
+
 }

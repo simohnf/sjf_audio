@@ -265,20 +265,22 @@ namespace sjf::generic_editor
 				return nullptr;
 			}
 
-			explicit GenericEditor(juce::AudioProcessorValueTreeState& apvts, juce::AudioProcessor& processor_, const helpers::ParameterFactory::GroupMetadata& metadata_)
+			explicit GenericEditor(juce::AudioProcessorValueTreeState& apvts_, juce::AudioProcessor& processor_, const helpers::ParameterFactory::GroupMetadata& metadata_)
 			: AudioProcessorEditor(processor_)
-			, mainEditor(apvts, *getTopLevelParameterGroup(processor.getParameterTree(), metadata_), metadata_)
 			, presets(processor.getParameterTree())
 			{
 				addAndMakeVisible(presets);
 
+				initialiseMainEditor(apvts_, *getTopLevelParameterGroup(processor.getParameterTree(), metadata_), metadata_);
+				jassert(mainEditor != nullptr);
+
 				// 2. Configure Viewport
-				viewport.setViewedComponent (&mainEditor, false);
+				viewport.setViewedComponent (mainEditor.get(), false);
 				viewport.setScrollBarsShown (true, false, true, false);
 				addAndMakeVisible (viewport);
 
 				setResizable (true, false);
-				mainEditor.buildChildEditors();
+				mainEditor->buildChildEditors();
 				setSize (600, 600);
 
 			}
@@ -293,13 +295,17 @@ namespace sjf::generic_editor
 				const auto pos = viewport.getViewPosition();
 				viewport.setBounds (bounds);
 
-				mainEditor.setBounds (0, 0, getWidth(), mainEditor.getRequiredSize().getHeight());
+				mainEditor->setBounds (0, 0, getWidth(), mainEditor->getRequiredSize().getHeight());
 
 				viewport.setViewPosition(pos);
 			}
 
 		private:
-			AutoEditor mainEditor;
+			void initialiseMainEditor(juce::AudioProcessorValueTreeState& apvts,
+											const juce::AudioProcessorParameterGroup& parameterGroup,
+											const helpers::ParameterFactory::GroupMetadata& metadata);
+
+			std::unique_ptr<AutoEditor> mainEditor;
 			juce::Viewport viewport;
 			sjf::gui::PresetPanel presets;
 	};

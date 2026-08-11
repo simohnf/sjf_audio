@@ -82,10 +82,11 @@ namespace sjf::generic_editor
 				}
 			}
 
-			// void paint(juce::Graphics& g) override
-			// {
-			   //   // not sure what we do here yet
-			// }
+			void paint(juce::Graphics& g) override
+			{
+				g.setColour(juce::Colour::greyLevel(0.5f));
+				g.drawRect(getLocalBounds());
+			}
 
 			virtual juce::Rectangle<int> getRequiredSize() const
 			{

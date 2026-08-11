@@ -16,6 +16,11 @@
 
 namespace sjf::generic_editor
 {
+	namespace colours
+	{
+		static const juce::Colour borderColour = juce::Colour::greyLevel(0.5f);
+		static const juce::Colour insertionIndexColour = juce::Colours::cyan.withAlpha(0.5f);
+	}
 	class AutoEditor : public juce::Component
 	{
 		public:
@@ -84,7 +89,7 @@ namespace sjf::generic_editor
 
 			void paint(juce::Graphics& g) override
 			{
-				g.setColour(juce::Colour::greyLevel(0.5f));
+				g.setColour(colours::borderColour);
 				g.drawRect(getLocalBounds());
 			}
 

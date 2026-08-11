@@ -112,6 +112,20 @@ namespace sjf::helpers
             return factory;
         }
 
+    	template <typename... Args>
+		std::unique_ptr<ParameterFactory> createParameters (
+			const juce::String& factoryID,
+			const juce::String& factoryName,
+			Args&&... configArgs)
+        {
+        	// Simply unpacks everything and forwards the arguments down to the child processor
+        	auto factory = processor.createParameters (factoryID,
+											   factoryName,
+											   std::forward<Args> (configArgs)...);
+        	factory->addChildFactory(parameters.createParameters (factoryID + "OS", factoryName + " Oversampling"));
+        	return factory;
+        }
+
         void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
         {
             sjf::optional_calls::setPositionInfo(processor, positionInfo);

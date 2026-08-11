@@ -68,7 +68,7 @@ public:
     	static_assert (sizeof...(Configs) == sizeof...(Processors),
 			"The number of configuration parameters must match the number of processors!");
 
-    	auto mainFactory = ParameterFactory::createDynamicProcessorSequence (factoryID, factoryName);
+    	auto mainFactory = ParameterFactory::createDynamicProcessorSequence (factoryID, factoryName, NumProcessors);
 
     	if (mainFactory == nullptr)
     	{

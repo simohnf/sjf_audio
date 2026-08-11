@@ -44,9 +44,9 @@ private:
 public:
 	struct GroupMetadata
 	{
-		juce::String groupID;
-		bool supportsSubPresets = false;
-		bool isDynamicProcessorSequence = false;
+		const juce::String groupID;
+		const bool supportsSubPresets = false;
+		const size_t numProcessorsInDynamicSequence{0};
 		const juce::AudioParameterChoice* selectorParameter = nullptr;
 		std::vector<GroupMetadata> children;
 
@@ -54,6 +54,11 @@ public:
 		[[nodiscard]] bool isSelectorGroup() const noexcept
 		{
 			return selectorParameter != nullptr;
+		}
+
+		[[nodiscard]] bool isDynamicProcessorSequenceGroup() const noexcept
+		{
+			return numProcessorsInDynamicSequence > 0;
 		}
 
 		[[nodiscard]] const GroupMetadata* findChild (const juce::String& targetID) const noexcept
@@ -70,10 +75,12 @@ public:
 
 	[[nodiscard]] static GroupMetadata createMetadataTree (const ParameterFactory& rootFactory)
 	{
-		GroupMetadata node;
-		node.groupID = rootFactory.getID();
-		node.supportsSubPresets = rootFactory.supportsSubPresets();
-		node.isDynamicProcessorSequence = rootFactory.isDynamicProcessorSequence();
+		GroupMetadata node{
+			.groupID = rootFactory.getID(),
+			.supportsSubPresets = rootFactory.supportsSubPresets(),
+			.numProcessorsInDynamicSequence = rootFactory.getNumProcessorsInDynamicSequence(),
+			.children = {},
+		};
 
 		if (!rootFactory.childFactories.empty())
 		{
@@ -116,17 +123,17 @@ public:
 
     static std::unique_ptr<ParameterFactory> create (const juce::String& factoryID, const juce::String& factoryName)
     {
-        return std::make_unique<ParameterFactory> (ConstructorToken{0}, factoryID, factoryName, false);
+        return std::make_unique<ParameterFactory> (ConstructorToken{0}, factoryID, factoryName, 0);
     }
 
-    static std::unique_ptr<ParameterFactory> createDynamicProcessorSequence (const juce::String& factoryID, const juce::String& factoryName)
+    static std::unique_ptr<ParameterFactory> createDynamicProcessorSequence (const juce::String& factoryID, const juce::String& factoryName, const size_t numProcessors)
     {
-        return std::make_unique<ParameterFactory> (ConstructorToken{0}, factoryID, factoryName, true);
+        return std::make_unique<ParameterFactory> (ConstructorToken{0}, factoryID, factoryName, numProcessors);
     }
 
-    ParameterFactory (ConstructorToken, const juce::String& factoryID, const juce::String& factoryName, const bool isDynamicProcessorSequence_ = false)
+    ParameterFactory (ConstructorToken, const juce::String& factoryID, const juce::String& factoryName, const size_t numProcessorsForDynamicSequence = 0)
         : juce::AudioProcessorParameterGroup (factoryID, factoryName, " "),
-          baseID (factoryID), baseName (factoryName), dynamicProcessorSequence(isDynamicProcessorSequence_)
+          baseID (factoryID), baseName (factoryName), dynamicProcessorSequence(numProcessorsForDynamicSequence)
     {}
 
     //==============================================================================
@@ -295,16 +302,16 @@ public:
 	    return supportsPresets;
     }
 
-	[[nodiscard]] bool isDynamicProcessorSequence() const
+
+	[[nodiscard]] size_t getNumProcessorsInDynamicSequence() const
 	{
 		return dynamicProcessorSequence;
 	}
-
 private:
 	std::vector<const ParameterFactory*> childFactories;
     const juce::String baseID, baseName;
 	const bool supportsPresets{false};
-	const bool dynamicProcessorSequence{false};
+	const size_t dynamicProcessorSequence{0};
 };
 
 //===========//===========//===========//===========//===========//===========

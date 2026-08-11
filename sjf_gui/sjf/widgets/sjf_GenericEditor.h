@@ -69,7 +69,13 @@ namespace sjf::generic_editor
 					y = b.getY();
 					for (auto& c : childEditors)
 					{
-						const auto childWidth = getWidth() - (2 * HorizontalSpacing);
+						const auto narrow = [&](){
+							auto vp =dynamic_cast<Viewport*>(getParentComponent());
+							vp = vp ? vp : getParentComponent()->getParentComponent() ? dynamic_cast<Viewport*>(getParentComponent()->getParentComponent()) : nullptr;
+							return vp != nullptr;
+						}();
+
+						const auto childWidth = getWidth() - ((narrow ? 3 : 2 ) * HorizontalSpacing);
 						c->setBounds(HorizontalSpacing, y, childWidth, c->getRequiredSize().getHeight());
 						y = c->getBottom() + VerticalSpacing;
 					}

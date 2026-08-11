@@ -95,16 +95,16 @@ namespace sjf::generic_editor
 					auto sum = 0;
 					for (const auto& c : childEditors)
 						sum += c->getRequiredSize().getHeight() + VerticalSpacing;
-					return sum;
+					return sum + VerticalSpacing;
 				};
 
 
 				auto w = getWidth();
-				auto h = (!expanded ? 0 : static_cast<int>(sliders.size() + comboBoxes.size() + buttons.size()) * (ComponentHeight + VerticalSpacing))
+				auto h = (!expanded ? VerticalSpacing : static_cast<int>(sliders.size() + comboBoxes.size() + buttons.size()) * (ComponentHeight + VerticalSpacing))
 									+ VerticalSpacing // extra spacing at bottom
 									+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0)
 									+ juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing
-									+ (expanded ? heightOfChildren() : 0);
+									+ (expanded ? heightOfChildren() : VerticalSpacing);
 				return {w, h};
 			}
 

@@ -43,29 +43,30 @@ namespace processor_sequence
      * processor (like another nested `ProcessorSequence` or an `OversamplingWrapper`) that
      * expects complex construction parameters in its `createParameters` overload.
      *
-     * @tparam Args Variadic types matching the signature expected by the target child processor.
+     * @tparam ID FactoryID
+     * @tparam NAME FactoryName
+     * @tparam SubConfigs SubFactoryConfig/NestedConfig for each nested processor
      */
-    template <typename... Args>
-    struct NestedConfig
-    {
-    	static_assert(sizeof...(Args) > 2,
-					 "NestedConfig must have at least 2 arguments (ID and Name).");
+	template <typename ID, typename NAME, typename... SubConfigs>
+	struct NestedConfig
+	{
+		static_assert (std::is_constructible_v<juce::String, ID>,
+					   "The first argument of NestedConfig must be constructible as a juce::String (ID).");
 
-    	using TupleType = std::tuple<Args...>;
+		static_assert (std::is_constructible_v<juce::String, NAME>,
+					   "The second argument of NestedConfig must be constructible as a juce::String (Name).");
 
-    	using Arg0 = std::tuple_element_t<0, TupleType>;
-    	using Arg1 = std::tuple_element_t<1, TupleType>;
+		// Fold directly over the Tail parameter pack!
+		static_assert (((std::is_constructible_v<SubFactoryConfig, SubConfigs> ||
+						sjf::helpers::functions::utilities::is_instantiation_of<NestedConfig, SubConfigs> ) && ...),
+					   "Every argument after ID and Name in NestedConfig must be a SubFactoryConfig or an instantiation of NestedConfig.");
 
-    	static_assert(std::is_constructible_v<juce::String, Arg0>,
-					  "The first argument of NestedConfig must be constructible as a juce::String (ID).");
+		using TupleType = std::tuple<ID, NAME, SubConfigs...>;
+		TupleType args;
 
-    	static_assert(std::is_constructible_v<juce::String, Arg1>,
-					  "The second argument of NestedConfig must be constructible as a juce::String (Name).");
-
-    	TupleType args;
-
-        explicit NestedConfig (Args... inputs) : args (std::move (inputs)...)
-        {}
+		explicit NestedConfig (ID id, NAME name, SubConfigs... subConfigs)
+		: args (std::move (id), std::move (name), std::move (subConfigs)...)
+		{}
 
     	/** Returns a copy of this NestedConfig with updated ID and Name, preserving all remaining arguments. */
     	[[nodiscard]] auto withNewIdAndName (juce::String newId, juce::String newName) const

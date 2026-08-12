@@ -1,25 +1,270 @@
 //
 // Created by Simon Fay on 06/08/2026.
 //
-
 #include <JuceHeader.h>
 #include "sjf_GenericEditor.h"
-
 #include "sjf/helpers/sjf_DynamicProcessorSequence.h"
 
 namespace sjf::generic_editor
 {
 	namespace
 	{
+		class AutoEditor : public juce::Component
+		{
+		public:
+			static constexpr auto ComponentHeight = 30; // not sure about this yet...
+			static constexpr auto VerticalSpacing = 5; // not sure about this yet... space above + below
+			static constexpr auto HorizontalSpacing = 5;
+			static constexpr auto PresetPanelHeight = 30;
+
+			AutoEditor(juce::AudioProcessorValueTreeState& apvts_, const juce::AudioProcessorParameterGroup& group_,
+					   const helpers::ParameterFactory::GroupMetadata& metadata_) :
+				apvts(apvts_), parameterGroup(group_), metadata(metadata_)
+			{
+
+				collapseButton.onClick = [this]() { setExpanded(!isExpanded()); };
+
+
+				buildUIFromGroup();
+			}
+
+			void resized() override
+			{
+				collapseButton.setBounds(HorizontalSpacing, VerticalSpacing, ComponentHeight, ComponentHeight);
+				const auto titleX = collapseButton.getRight() + HorizontalSpacing;
+				titleLabel.setBounds(titleX, VerticalSpacing, getWidth() - HorizontalSpacing - titleX, ComponentHeight);
+				auto y = titleLabel.getBottom() + VerticalSpacing;
+				if (presetPanel)
+				{
+					presetPanel->setBounds(HorizontalSpacing, y, getWidth() - 2 * HorizontalSpacing, PresetPanelHeight);
+					y = presetPanel->getBottom() + VerticalSpacing;
+				}
+
+				auto b =
+					juce::Rectangle<int>(HorizontalSpacing, y, getWidth() - HorizontalSpacing * 2, ComponentHeight);
+				if (expanded)
+				{
+					jassert(paramComponents.size() == paramNames.size());
+					for (auto i = 0ul; i < paramComponents.size(); ++i)
+					{
+						auto b_ = b;
+						const auto c = paramComponents[i];
+						const auto& l = paramNames[i];
+						l->setBounds(b_.removeFromLeft(jmax(ComponentHeight * 2, getWidth() / 4)));
+						c->setBounds(b_.withWidth(b_.getWidth() - HorizontalSpacing));
+						b = b.withY(b.getY() + ComponentHeight + VerticalSpacing);
+					}
+
+					y = b.getY();
+					for (auto& c : childEditors)
+					{
+						const auto narrow = [&]()
+						{
+							auto vp = dynamic_cast<Viewport*>(getParentComponent());
+							vp = vp ? vp
+								: getParentComponent()->getParentComponent()
+								? dynamic_cast<Viewport*>(getParentComponent()->getParentComponent())
+								: nullptr;
+							return vp != nullptr;
+						}();
+
+						const auto childWidth = getWidth() - ((narrow ? 3 : 2) * HorizontalSpacing);
+						c->setBounds(HorizontalSpacing, y, childWidth, c->getRequiredSize().getHeight());
+						y = c->getBottom() + VerticalSpacing;
+					}
+				}
+			}
+
+			void paint(juce::Graphics& g) override
+			{
+				g.setColour(colours::borderColour);
+				g.drawRect(getLocalBounds());
+			}
+
+			virtual juce::Rectangle<int> getRequiredSize() const
+			{
+				// will need additional logic if changing from single column...
+				auto heightOfChildren = [&]()
+				{
+					auto sum = 0;
+					for (const auto& c : childEditors)
+						sum += c->getRequiredSize().getHeight() + VerticalSpacing;
+					return sum;
+				};
+
+
+				auto w = getWidth();
+				auto h = (!expanded ? VerticalSpacing
+									: static_cast<int>(sliders.size() + comboBoxes.size() + buttons.size()) *
+								  (ComponentHeight + VerticalSpacing)) +
+					VerticalSpacing // extra spacing at bottom
+					+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0) +
+					juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
+					(expanded ? heightOfChildren() : VerticalSpacing);
+				return {w, h};
+			}
+
+
+			virtual void onLayoutChanged()
+			{
+				if (const auto parent = findParentComponentOfClass<AutoEditor>())
+				{
+					parent->onLayoutChanged();
+				}
+				else
+				{
+					const auto viewport = findParentComponentOfClass<juce::Viewport>();
+					auto pos = viewport ? viewport->getViewPosition() : juce::Point<int>(0, 0);
+					setBounds(getRequiredSize().withX(0).withY(0));
+					if (viewport)
+						viewport->setViewPosition(pos); // force viewport not to jump all over the place
+				}
+			}
+
+
+			virtual void setExpanded(const bool shouldBeExpanded)
+			{
+				expanded = shouldBeExpanded;
+				for (const auto c : paramComponents)
+					c->setVisible(expanded);
+
+				for (const auto& l : paramNames)
+					l->setVisible(expanded);
+
+				for (const auto& c : childEditors)
+					c->setVisible(expanded);
+
+				onLayoutChanged();
+			}
+
+			[[nodiscard]] bool isExpanded() const noexcept { return expanded; }
+
+
+			void buildChildEditors();
+
+		protected:
+			juce::AudioProcessorValueTreeState& apvts;
+			const juce::AudioProcessorParameterGroup& parameterGroup;
+			const helpers::ParameterFactory::GroupMetadata metadata;
+
+			bool expanded{true};
+
+
+			juce::TextButton collapseButton{"^"};
+			juce::Label titleLabel;
+
+
+			std::vector<std::unique_ptr<juce::Slider>> sliders;
+			std::vector<std::unique_ptr<juce::Button>> buttons;
+			std::vector<std::unique_ptr<juce::ComboBox>> comboBoxes;
+
+			using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
+			using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
+			using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
+			std::vector<std::unique_ptr<SliderAttachment>> sliderAttachments;
+			std::vector<std::unique_ptr<ButtonAttachment>> buttonAttachments;
+			std::vector<std::unique_ptr<ComboBoxAttachment>> comboBoxAttachments;
+
+			std::vector<std::unique_ptr<AutoEditor>> childEditors;
+
+			std::unique_ptr<sjf::gui::PresetPanel> presetPanel;
+
+			std::vector<Component*> paramComponents;
+			std::unordered_map<const juce::AudioProcessorParameter*, Component*> paramMap;
+			std::vector<std::unique_ptr<juce::Label>> paramNames;
+
+		private:
+			void buildUIFromGroup()
+			{
+				auto paramName = [&](juce::AudioProcessorParameter* parameter_)
+				{
+					if (const auto ranged = dynamic_cast<juce::RangedAudioParameter*>(parameter_))
+						return helpers::ParameterFactory::getNameWithoutParentPrefix(*ranged, parameterGroup);
+
+					jassertfalse;
+					return juce::String{};
+				};
+
+				auto paramId = [&](juce::AudioProcessorParameter* parameter_)
+				{
+					if (const auto ranged = dynamic_cast<juce::RangedAudioParameter*>(parameter_))
+						return ranged->getParameterID();
+
+					jassertfalse;
+					return juce::String{};
+				};
+
+				addAndMakeVisible(collapseButton);
+
+				addAndMakeVisible(titleLabel);
+				titleLabel.setText(helpers::ParameterFactory::getNameWithoutParentPrefix(parameterGroup),
+								   juce::sendNotification);
+
+
+				if (metadata.supportsSubPresets)
+				{
+					presetPanel = std::make_unique<sjf::gui::PresetPanel>(parameterGroup);
+					addAndMakeVisible(*presetPanel);
+				}
+
+				for (const auto param : parameterGroup.getParameters(false))
+				{
+					if (auto choice = dynamic_cast<juce::AudioParameterChoice*>(param))
+					{
+						comboBoxes.push_back(std::make_unique<juce::ComboBox>(paramName(param)));
+						comboBoxAttachments.push_back(
+							std::make_unique<ComboBoxAttachment>(apvts, paramId(param), *comboBoxes.back()));
+						comboBoxes.back()->addItemList(choice->choices, 1);
+						comboBoxes.back()->setText(choice->getCurrentValueAsText());
+
+						paramComponents.push_back(comboBoxes.back().get());
+					}
+					else if (dynamic_cast<juce::AudioParameterBool*>(param))
+					{
+						buttons.push_back(std::make_unique<juce::ToggleButton>(paramName(param)));
+						buttonAttachments.push_back(
+							std::make_unique<ButtonAttachment>(apvts, paramId(param), *buttons.back()));
+						paramComponents.push_back(buttons.back().get());
+					}
+					else
+					{
+						jassert(dynamic_cast<juce::AudioParameterInt*>(param) ||
+								dynamic_cast<juce::AudioParameterFloat*>(param));
+						sliders.push_back(std::make_unique<juce::Slider>(paramName(param)));
+						const auto& s = sliders.back();
+						sliderAttachments.push_back(std::make_unique<SliderAttachment>(apvts, paramId(param), *s));
+						s->setTextValueSuffix(" " + dynamic_cast<juce::RangedAudioParameter*>(param)->getLabel());
+						s->setTextBoxStyle(juce::Slider::TextBoxRight, false, s->getTextBoxWidth(),
+										   s->getTextBoxHeight());
+						paramComponents.push_back(s.get());
+					}
+					paramNames.push_back(std::make_unique<juce::Label>(paramName(param) + "Label"));
+					paramNames.back()->setText(paramName(param), juce::sendNotification);
+					paramMap[param] = paramComponents.back();
+				}
+
+				for (const auto c : paramComponents)
+					addAndMakeVisible(*c);
+
+				for (const auto& l : paramNames)
+					addAndMakeVisible(*l);
+
+				for (const auto& c : childEditors)
+					addAndMakeVisible(*c);
+			}
+
+
+			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AutoEditor)
+		};
+
 		class DeviceSelectorEditor : public AutoEditor
 		{
 		public:
 			DeviceSelectorEditor(juce::AudioProcessorValueTreeState& apvts_,
-					   const juce::AudioProcessorParameterGroup& group_,
-					   const helpers::ParameterFactory::GroupMetadata& metadata_)
-			: AutoEditor(apvts_, group_, metadata_)
+								 const juce::AudioProcessorParameterGroup& group_,
+								 const helpers::ParameterFactory::GroupMetadata& metadata_) :
+				AutoEditor(apvts_, group_, metadata_)
 			{
-
 			}
 
 			void resized() override
@@ -29,12 +274,15 @@ namespace sjf::generic_editor
 					childEditors[i]->setBounds(childEditors[i]->getBounds().withY(childEditors[0]->getY()));
 
 
-				const auto selectorComboBox = dynamic_cast<juce::ComboBox*>(paramMap[dynamic_cast<const juce::AudioProcessorParameter*>(metadata.selectorParameter)]);
+				const auto selectorComboBox = dynamic_cast<juce::ComboBox*>(
+					paramMap[dynamic_cast<const juce::AudioProcessorParameter*>(metadata.selectorParameter)]);
 				jassert(selectorComboBox);
 				if (!selectorComboBox->onChange)
 				{
-					selectorComboBox->onChange = [&](){
-						auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()), childEditors.size() - 1);
+					selectorComboBox->onChange = [&]()
+					{
+						auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()),
+												   childEditors.size() - 1);
 						for (auto i = 0ul; i < childEditors.size(); i++)
 						{
 							childEditors[i]->setVisible(i == selected && expanded);
@@ -49,18 +297,22 @@ namespace sjf::generic_editor
 			juce::Rectangle<int> getRequiredSize() const override
 			{
 				// will need additional logic if changing from single column...
-				auto heightOfChildren = [&](){
-					const auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()), childEditors.size() - 1);
+				auto heightOfChildren = [&]()
+				{
+					const auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()),
+													 childEditors.size() - 1);
 					return childEditors[selected]->getRequiredSize().getHeight() + VerticalSpacing;
 				};
 
 
 				auto w = getWidth();
-				auto h = (!expanded ? 0 : static_cast<int>(sliders.size() + comboBoxes.size() + buttons.size()) * (ComponentHeight + VerticalSpacing))
-									+ VerticalSpacing // extra spacing at bottom
-									+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0)
-									+ juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing
-									+ (expanded ? heightOfChildren() : 0);
+				auto h = (!expanded ? 0
+									: static_cast<int>(sliders.size() + comboBoxes.size() + buttons.size()) *
+								  (ComponentHeight + VerticalSpacing)) +
+					VerticalSpacing // extra spacing at bottom
+					+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0) +
+					juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
+					(expanded ? heightOfChildren() : 0);
 				return {w, h};
 			}
 
@@ -82,9 +334,8 @@ namespace sjf::generic_editor
 
 				onLayoutChanged();
 			}
-			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DeviceSelectorEditor)
+			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DeviceSelectorEditor)
 		};
-
 
 
 		class SequenceItemComponent : public juce::Component
@@ -99,15 +350,10 @@ namespace sjf::generic_editor
 				virtual std::vector<std::pair<size_t, juce::String>> getAvailableSwapTypes() = 0;
 			};
 
-			SequenceItemComponent(juce::AudioProcessorValueTreeState&,
-								  const juce::AudioProcessorParameterGroup& group_,
-								  const helpers::ParameterFactory::GroupMetadata& metadata_,
-								  const size_t processorID_,
-								  Listener& listener_)
-			: group(group_)
-			, metadata(metadata_)
-			, processorID(processorID_)
-			, listener(listener_)
+			SequenceItemComponent(juce::AudioProcessorValueTreeState&, const juce::AudioProcessorParameterGroup& group_,
+								  const helpers::ParameterFactory::GroupMetadata& metadata_, const size_t processorID_,
+								  Listener& listener_) :
+				group(group_), metadata(metadata_), processorID(processorID_), listener(listener_)
 			{
 				label.setText(sjf::helpers::ParameterFactory::getNameWithoutParentPrefix(group), dontSendNotification);
 				label.setJustificationType(juce::Justification::centred);
@@ -167,6 +413,7 @@ namespace sjf::generic_editor
 			{
 				label.setBounds(getLocalBounds().reduced(AutoEditor::HorizontalSpacing, AutoEditor::VerticalSpacing));
 			}
+
 		private:
 			void showContextMenu()
 			{
@@ -178,16 +425,20 @@ namespace sjf::generic_editor
 
 				if (availableTypes.empty())
 				{
-					swapMenu.addItem(juce::PopupMenu::Item("No Inactive Processors").setTicked(false).setEnabled(false));
+					swapMenu.addItem(
+						juce::PopupMenu::Item("No Inactive Processors").setTicked(false).setEnabled(false));
 				}
 				else
 				{
 					for (const auto& [typeId, name] : availableTypes)
 					{
-						swapMenu.addItem(name, true, false, [this, id = typeId, safeThis = SafePointer(this)]() {
-							if (!safeThis) return;
-							listener.onItemSwapRequested(processorID, id);
-						});
+						swapMenu.addItem(name, true, false,
+										 [this, id = typeId, safeThis = SafePointer(this)]()
+										 {
+											 if (!safeThis)
+												 return;
+											 listener.onItemSwapRequested(processorID, id);
+										 });
 					}
 				}
 
@@ -195,31 +446,32 @@ namespace sjf::generic_editor
 				menu.addSeparator();
 
 				// 2. Remove / Deactivate Option
-				menu.addItem("Remove", [this, safeThis = SafePointer(this)]() {
-					if (!safeThis) return;
-					listener.onItemRemoveRequested(processorID);
-				});
+				menu.addItem("Remove",
+							 [this, safeThis = SafePointer(this)]()
+							 {
+								 if (!safeThis)
+									 return;
+								 listener.onItemRemoveRequested(processorID);
+							 });
 
 				menu.showMenuAsync(juce::PopupMenu::Options{});
 			}
 
 			const juce::AudioProcessorParameterGroup& group;
 			const helpers::ParameterFactory::GroupMetadata metadata;
-			const size_t processorID{ 0 };
-			bool isSelected{ false };
+			const size_t processorID{0};
+			bool isSelected{false};
 			juce::Label label;
 
 			Listener& listener;
 			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SequenceItemComponent)
-
 		};
 
 
-
-		class SequenceListView :	public juce::Component,
-									public juce::DragAndDropTarget,
-									public SequenceItemComponent::Listener,
-									public juce::ValueTree::Listener
+		class SequenceListView : public juce::Component,
+								 public juce::DragAndDropTarget,
+								 public SequenceItemComponent::Listener,
+								 public juce::ValueTree::Listener
 
 		{
 		public:
@@ -232,21 +484,21 @@ namespace sjf::generic_editor
 
 			SequenceListView(juce::AudioProcessorValueTreeState& apvts_,
 							 const juce::AudioProcessorParameterGroup& group_,
-							 const helpers::ParameterFactory::GroupMetadata& metadata_,
-							 Listener& listener_)
-			: listener(listener_)
-			, apvts(apvts_), group(group_), metadata(metadata_), state(apvts_.state)
-			, sequenceID(group.getID() + sjf::helpers::dynamic_processor_sequence::ids::sequenceTreeId)
+							 const helpers::ParameterFactory::GroupMetadata& metadata_, Listener& listener_) :
+				listener(listener_), apvts(apvts_), group(group_), metadata(metadata_), state(apvts_.state),
+				sequenceID(group.getID() + sjf::helpers::dynamic_processor_sequence::ids::sequenceTreeId)
 			{
 				const auto& subgroups = group.getSubgroups(false);
 				masterPool.reserve(static_cast<size_t>(subgroups.size()));
 
-				for (auto i = 0ul; i < jmin(static_cast<size_t>(subgroups.size()), metadata.numProcessorsInDynamicSequence); ++i)
+				for (auto i = 0ul;
+					 i < jmin(static_cast<size_t>(subgroups.size()), metadata.numProcessorsInDynamicSequence); ++i)
 				{
 					if (auto* subgroup = subgroups[static_cast<int>(i)])
 					{
 						// Construct the item directly into the master pool
-						auto item = std::make_unique<SequenceItemComponent>(apvts, *subgroup, metadata.children[i], i, *this);
+						auto item =
+							std::make_unique<SequenceItemComponent>(apvts, *subgroup, metadata.children[i], i, *this);
 
 						addAndMakeVisible(*item);
 						item->setVisible(false); // Initially hidden until setActiveSequence is called
@@ -280,7 +532,7 @@ namespace sjf::generic_editor
 				activeSequence.clear();
 				std::fill(activeStates.begin(), activeStates.end(), false);
 
-				for (const auto & comp : masterPool)
+				for (const auto& comp : masterPool)
 					comp->setVisible(false);
 
 				for (const auto activeProcessorID : activeProcessorIDs)
@@ -309,8 +561,8 @@ namespace sjf::generic_editor
 			[[nodiscard]] int getCalculatedHeight() const noexcept
 			{
 				constexpr int itemHeight = AutoEditor::ComponentHeight; // or a fixed row height, e.g., 30
-				constexpr int spacing    = AutoEditor::VerticalSpacing;  // e.g., 4
-				const int numItems   = static_cast<int>(activeSequence.size());
+				constexpr int spacing = AutoEditor::VerticalSpacing; // e.g., 4
+				const int numItems = static_cast<int>(activeSequence.size());
 
 				// Height of all active items + addButton + spacing after each element + top/bottom padding
 				const int totalItemRows = numItems + 1; // active items + 1 row for addButton
@@ -320,9 +572,9 @@ namespace sjf::generic_editor
 			void resized() override
 			{
 				const auto x = AutoEditor::HorizontalSpacing;
-				const auto w = getWidth() - AutoEditor::HorizontalSpacing*2;
+				const auto w = getWidth() - AutoEditor::HorizontalSpacing * 2;
 				auto y = AutoEditor::VerticalSpacing;
-				for (const auto & item : activeSequence)
+				for (const auto& item : activeSequence)
 				{
 					item->setBounds(x, y, w, AutoEditor::ComponentHeight);
 					y += AutoEditor::ComponentHeight + AutoEditor::VerticalSpacing;
@@ -332,10 +584,12 @@ namespace sjf::generic_editor
 				if (!activeSequence.empty() && selectedId > masterPool.size())
 				{
 					// just make sure we open the first editor to begin with
-					MessageManager::callAsync([&, safeThis = SafePointer(this)](){
-						if (safeThis)
-							onItemClicked(activeSequence[0]);
-					});
+					MessageManager::callAsync(
+						[&, safeThis = SafePointer(this)]()
+						{
+							if (safeThis)
+								onItemClicked(activeSequence[0]);
+						});
 				}
 			}
 
@@ -371,7 +625,6 @@ namespace sjf::generic_editor
 
 				g.setColour(colours::borderColour);
 				g.drawRect(getLocalBounds());
-
 			}
 
 			// DragAndDropTarget Overrides
@@ -408,7 +661,8 @@ namespace sjf::generic_editor
 			{
 				if (const auto* item = dynamic_cast<SequenceItemComponent*>(dragSourceDetails.sourceComponent.get()))
 				{
-					const auto targetIndex = insertionIndex.value_or(calculateDropIndex(dragSourceDetails.localPosition.y));
+					const auto targetIndex =
+						insertionIndex.value_or(calculateDropIndex(dragSourceDetails.localPosition.y));
 					insertionIndex.reset();
 					repaint();
 
@@ -422,8 +676,7 @@ namespace sjf::generic_editor
 			}
 
 		private:
-			void valueTreePropertyChanged(ValueTree& treeWhosePropertyHasChanged,
-											   const Identifier& property) override
+			void valueTreePropertyChanged(ValueTree& treeWhosePropertyHasChanged, const Identifier& property) override
 			{
 				if (treeWhosePropertyHasChanged.hasType(sequenceID) &&
 					property == sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId)
@@ -450,9 +703,7 @@ namespace sjf::generic_editor
 						state.addListener(this);
 						valueTreeUpdated();
 					}
-
 				}
-
 			}
 
 			void valueTreeUpdated()
@@ -461,7 +712,8 @@ namespace sjf::generic_editor
 
 				if (const auto vt = state.getChildWithName(sequenceID); vt.isValid())
 				{
-					if (const auto propPointer = vt.getPropertyPointer(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId))
+					if (const auto propPointer =
+							vt.getPropertyPointer(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId))
 					{
 						if (propPointer->isString())
 						{
@@ -500,7 +752,8 @@ namespace sjf::generic_editor
 				auto xml = state.toXmlString();
 				if (auto seq = state.getChildWithName(sequenceID); seq.isValid())
 				{
-					seq.setProperty(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId, ret.joinIntoString("/"), nullptr);
+					seq.setProperty(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId,
+									ret.joinIntoString("/"), nullptr);
 				}
 			}
 
@@ -519,7 +772,7 @@ namespace sjf::generic_editor
 			{
 				std::vector<size_t> updatedSequence{};
 				updatedSequence.reserve(masterPool.size());
-				for (const auto & i : activeSequence)
+				for (const auto& i : activeSequence)
 				{
 					if (i->getProcessorID() != processorID)
 						updatedSequence.push_back(i->getProcessorID());
@@ -532,7 +785,7 @@ namespace sjf::generic_editor
 			{
 				std::vector<size_t> updatedSequence{};
 				updatedSequence.reserve(masterPool.size());
-				for (const auto & i : activeSequence)
+				for (const auto& i : activeSequence)
 				{
 					if (i->getProcessorID() == targetProcessorID)
 						updatedSequence.push_back(newProcessorTypeID);
@@ -548,7 +801,7 @@ namespace sjf::generic_editor
 			{
 				std::vector<size_t> updatedSequence{};
 				updatedSequence.reserve(masterPool.size());
-				for (const auto & i : activeSequence)
+				for (const auto& i : activeSequence)
 					updatedSequence.push_back(i->getProcessorID());
 				updatedSequence.push_back(newProcessorTypeID);
 				onItemClicked(masterPool[newProcessorTypeID].get());
@@ -563,7 +816,8 @@ namespace sjf::generic_editor
 					if (activeSequence[i]->getProcessorID() != processorID)
 						updatedSequence.push_back(activeSequence[i]->getProcessorID());
 
-				const auto targetPos = static_cast<std::vector<size_t>::difference_type>(juce::jmin(updatedSequence.size(), newIndex));
+				const auto targetPos =
+					static_cast<std::vector<size_t>::difference_type>(juce::jmin(updatedSequence.size(), newIndex));
 				updatedSequence.insert(updatedSequence.begin() + targetPos, processorID);
 
 				updateValueTree(updatedSequence);
@@ -579,9 +833,10 @@ namespace sjf::generic_editor
 				juce::StringArray added{};
 				ret.reserve(masterPool.size());
 
-				for ( auto i = 0ul; i < masterPool.size(); ++i)
+				for (auto i = 0ul; i < masterPool.size(); ++i)
 				{
-					const auto name = sjf::helpers::ParameterFactory::getNameWithoutParentPrefix(*subgroups[static_cast<int>(i)]);
+					const auto name =
+						sjf::helpers::ParameterFactory::getNameWithoutParentPrefix(*subgroups[static_cast<int>(i)]);
 					if (!activeStates[i] && !added.contains(name))
 					{
 						ret.emplace_back(i, name);
@@ -601,7 +856,7 @@ namespace sjf::generic_editor
 				for (size_t i = 0; i < activeSequence.size(); ++i)
 				{
 					const auto itemBounds = activeSequence[i]->getBounds();
-					const auto itemMidY   = itemBounds.getY() + (itemBounds.getHeight() / 2);
+					const auto itemMidY = itemBounds.getY() + (itemBounds.getHeight() / 2);
 
 					if (dropY < itemMidY)
 						return i;
@@ -619,22 +874,26 @@ namespace sjf::generic_editor
 				const auto availableSwapTypes = getAvailableSwapTypes();
 				for (const auto& [typeID, name] : availableSwapTypes)
 				{
-					menu.addItem(name, [&, typeID, safeThis = SafePointer(this)](){
-						if (!safeThis)
-							return;
+					menu.addItem(name,
+								 [&, typeID, safeThis = SafePointer(this)]()
+								 {
+									 if (!safeThis)
+										 return;
 
-						if (juce::MessageManager::existsAndIsCurrentThread())
-						{
-							onItemAddRequested(typeID);
-						}
-						else
-						{
-							juce::MessageManager::callAsync([this, typeID, safeThis]() {
-								if (safeThis)
-									onItemAddRequested(typeID);
-							});
-						}
-					});
+									 if (juce::MessageManager::existsAndIsCurrentThread())
+									 {
+										 onItemAddRequested(typeID);
+									 }
+									 else
+									 {
+										 juce::MessageManager::callAsync(
+											 [this, typeID, safeThis]()
+											 {
+												 if (safeThis)
+													 onItemAddRequested(typeID);
+											 });
+									 }
+								 });
 				}
 				menu.showMenuAsync({});
 			}
@@ -648,7 +907,7 @@ namespace sjf::generic_editor
 			std::vector<SequenceItemComponent*> activeSequence;
 			std::vector<bool> activeStates;
 
-			juce::TextButton addButton{ "Add Processor" };
+			juce::TextButton addButton{"Add Processor"};
 			std::optional<size_t> insertionIndex;
 			juce::AudioProcessorValueTreeState& apvts;
 			const juce::AudioProcessorParameterGroup& group;
@@ -657,9 +916,7 @@ namespace sjf::generic_editor
 			ValueTree state;
 
 			using Callback = std::function<void()>;
-			sjf::helpers::AsyncCallbackInvoker<Callback> asyncUpdater{[this](){
-				valueTreeUpdated();
-			}};
+			sjf::helpers::AsyncCallbackInvoker<Callback> asyncUpdater{[this]() { valueTreeUpdated(); }};
 
 			size_t selectedId = sjf::helpers::dynamic_processor_sequence::InactiveSlot;
 
@@ -669,16 +926,15 @@ namespace sjf::generic_editor
 		};
 
 
-		class DynamicProcessorSequenceEditor :	public AutoEditor,
-												public SequenceListView::Listener,
-												public juce::DragAndDropContainer
+		class DynamicProcessorSequenceEditor : public AutoEditor,
+											   public SequenceListView::Listener,
+											   public juce::DragAndDropContainer
 		{
 		public:
 			DynamicProcessorSequenceEditor(juce::AudioProcessorValueTreeState& apvts_,
-					   const juce::AudioProcessorParameterGroup& group_,
-					   const helpers::ParameterFactory::GroupMetadata& metadata_)
-			: AutoEditor(apvts_, group_, metadata_)
-			, sequenceListView(apvts, parameterGroup, metadata, *this)
+										   const juce::AudioProcessorParameterGroup& group_,
+										   const helpers::ParameterFactory::GroupMetadata& metadata_) :
+				AutoEditor(apvts_, group_, metadata_), sequenceListView(apvts, parameterGroup, metadata, *this)
 			{
 				viewport.setViewedComponent(&sequenceListView, false);
 				addAndMakeVisible(viewport);
@@ -709,53 +965,64 @@ namespace sjf::generic_editor
 
 				if (mainEditor)
 				{
-					const auto editorWidth = 3*getWidth()/4 - AutoEditor::HorizontalSpacing;
+					const auto editorWidth = 3 * getWidth() / 4 - AutoEditor::HorizontalSpacing;
 					const auto x = childEditors[0]->getBounds().getX();
 					mainEditor->setBounds(mainEditor->getBounds().withX(x).withY(y).withWidth(editorWidth));
 
-					viewport.setBounds(mainEditor->getRight() + AutoEditor::HorizontalSpacing, mainEditor->getY(), getWidth()-mainEditor->getWidth()-2*HorizontalSpacing, mainEditor->getHeight());
+					viewport.setBounds(mainEditor->getRight() + AutoEditor::HorizontalSpacing, mainEditor->getY(),
+									   getWidth() - mainEditor->getWidth() - 2 * HorizontalSpacing,
+									   mainEditor->getHeight());
 
 					y += mainEditor->getHeight() + AutoEditor::VerticalSpacing;
 				}
 				else
 				{
-					viewport.setBounds(childEditors[0]->getBounds().withHeight(sequenceListView.getCalculatedHeight() + AutoEditor::VerticalSpacing).withY(y));
+					viewport.setBounds(
+						childEditors[0]
+							->getBounds()
+							.withHeight(sequenceListView.getCalculatedHeight() + AutoEditor::VerticalSpacing)
+							.withY(y));
 					y += viewport.getHeight() + AutoEditor::VerticalSpacing;
 				}
 
-				sequenceListView.setBounds(juce::Rectangle<int>{}.withHeight(sequenceListView.getCalculatedHeight()).withWidth(viewport.getWidth()).reduced(AutoEditor::HorizontalSpacing, 0));
+				sequenceListView.setBounds(juce::Rectangle<int>{}
+											   .withHeight(sequenceListView.getCalculatedHeight())
+											   .withWidth(viewport.getWidth())
+											   .reduced(AutoEditor::HorizontalSpacing, 0));
 
 				for (const auto ce : childSequenceEditors)
-					ce->setVisible(expanded && ce==mainEditor);
+					ce->setVisible(expanded && ce == mainEditor);
 			}
 
 			juce::Rectangle<int> getRequiredSize() const override
 			{
-				auto heightOfSequenceChildren = [&](){
+				auto heightOfSequenceChildren = [&]()
+				{
 					if (mainEditor)
-						return mainEditor->getRequiredSize().getHeight();
+						return mainEditor->getRequiredSize().getHeight() + 2*VerticalSpacing;
 					else
-						return AutoEditor::ComponentHeight*2  + AutoEditor::VerticalSpacing * 2;
+						return sequenceListView.getCalculatedHeight() + 2*AutoEditor::VerticalSpacing;
 				};
 
-				auto heightOfChildren = [&, heightOfSequenceChildren](){
+				auto heightOfChildren = [&, heightOfSequenceChildren]()
+				{
 					auto sum = 0;
 					for (auto ce : extraChildEditors)
 						sum += ce->getRequiredSize().getHeight();
 					return sum + heightOfSequenceChildren();
 				};
 
-				auto heightOfListComponents = [&](){
-					return 0;
-				}();
+				auto heightOfListComponents = [&]() { return 0; }();
 
 
 				auto w = getWidth();
-				auto h = (!expanded ? 0 : static_cast<int>(sliders.size() + comboBoxes.size() + buttons.size()) * (ComponentHeight + VerticalSpacing))
-									+ VerticalSpacing // extra spacing at bottom
-									+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0)
-									+ juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing
-									+ jmax((expanded ? heightOfChildren() : 0), heightOfListComponents);
+				auto h = (!expanded ? 0
+									: static_cast<int>(sliders.size() + comboBoxes.size() + buttons.size()) *
+								  (ComponentHeight + VerticalSpacing)) +
+					VerticalSpacing // extra spacing at bottom
+					+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0) +
+					juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
+					jmax((expanded ? heightOfChildren() : 0), heightOfListComponents);
 				return {w, h};
 			}
 
@@ -769,9 +1036,8 @@ namespace sjf::generic_editor
 					l->setVisible(expanded);
 
 
-				for (const auto & childEditor : childEditors)
+				for (const auto& childEditor : childEditors)
 					childEditor->setVisible(childEditor.get() == mainEditor && expanded);
-
 
 
 				onLayoutChanged();
@@ -795,42 +1061,82 @@ namespace sjf::generic_editor
 			SequenceListView sequenceListView;
 		};
 
-	}
-
-	void AutoEditor::buildChildEditors()
-	{
-		for (auto& child : parameterGroup.getSubgroups(false))
+		void AutoEditor::buildChildEditors()
 		{
-			jassert(child);
-			auto childMetaData = [&](){
-				for (auto& c : metadata.children)
-					if (c.groupID == child->getID()) return c;
+			for (auto& child : parameterGroup.getSubgroups(false))
+			{
+				jassert(child);
+				auto childMetaData = [&]()
+				{
+					for (auto& c : metadata.children)
+						if (c.groupID == child->getID())
+							return c;
 
-				jassertfalse;
-				return helpers::ParameterFactory::GroupMetadata{};
-			}();
-			if (childMetaData.isSelectorGroup())
-			{
-				childEditors.push_back(std::make_unique<DeviceSelectorEditor>(apvts, *child, childMetaData));
-			}
-			else if (childMetaData.isDynamicProcessorSequenceGroup())
-			{
-				childEditors.push_back(std::make_unique<DynamicProcessorSequenceEditor>(apvts, *child, childMetaData));
-			}
-			else
-			{
-				childEditors.push_back(std::make_unique<AutoEditor>(apvts, *child, childMetaData));
-			}
+					jassertfalse;
+					return helpers::ParameterFactory::GroupMetadata{};
+				}();
+				if (childMetaData.isSelectorGroup())
+				{
+					childEditors.push_back(std::make_unique<DeviceSelectorEditor>(apvts, *child, childMetaData));
+				}
+				else if (childMetaData.isDynamicProcessorSequenceGroup())
+				{
+					childEditors.push_back(
+						std::make_unique<DynamicProcessorSequenceEditor>(apvts, *child, childMetaData));
+				}
+				else
+				{
+					childEditors.push_back(std::make_unique<AutoEditor>(apvts, *child, childMetaData));
+				}
 
-			addAndMakeVisible(childEditors.back().get());
-			childEditors.back()->buildChildEditors();
+				addAndMakeVisible(childEditors.back().get());
+				childEditors.back()->buildChildEditors();
+			}
+			onLayoutChanged();
 		}
-		onLayoutChanged();
+
+
+		const juce::AudioProcessorParameterGroup*
+		getTopLevelParameterGroup(const juce::AudioProcessorParameterGroup& tree,
+								  const helpers::ParameterFactory::GroupMetadata& metadata_)
+		{
+			auto id = metadata_.groupID;
+			if (tree.getID() == id)
+				return &tree;
+			for (const auto child : tree.getSubgroups(false))
+			{
+				auto t = getTopLevelParameterGroup(*child, metadata_);
+				if (t)
+					return t;
+			}
+			jassertfalse;
+			return nullptr;
+		}
+	} // namespace
+
+	GenericEditor::GenericEditor(juce::AudioProcessorValueTreeState& apvts_, juce::AudioProcessor& processor_,
+								 const helpers::ParameterFactory::GroupMetadata& metadata_) :
+		AudioProcessorEditor(processor_), presets(processor.getParameterTree())
+	{
+		addAndMakeVisible(presets);
+
+		initialiseMainEditor(apvts_, *getTopLevelParameterGroup(processor.getParameterTree(), metadata_), metadata_);
+		jassert(mainEditor != nullptr);
+		jassert(dynamic_cast<AutoEditor*>(mainEditor.get()) != nullptr);
+
+		// 2. Configure Viewport
+		viewport.setViewedComponent(mainEditor.get(), false);
+		viewport.setScrollBarsShown(true, false, true, false);
+		addAndMakeVisible(viewport);
+
+		setResizable(true, false);
+		dynamic_cast<AutoEditor*>(mainEditor.get())->buildChildEditors();
+		setSize(600, 600);
 	}
 
 	void GenericEditor::initialiseMainEditor(juce::AudioProcessorValueTreeState& apvts,
-											const juce::AudioProcessorParameterGroup& parameterGroup,
-											const helpers::ParameterFactory::GroupMetadata& metadata)
+											 const juce::AudioProcessorParameterGroup& parameterGroup,
+											 const helpers::ParameterFactory::GroupMetadata& metadata)
 	{
 		if (metadata.isSelectorGroup())
 		{
@@ -846,4 +1152,18 @@ namespace sjf::generic_editor
 		}
 	}
 
-}
+	void GenericEditor::resized()
+	{
+		auto bounds = getLocalBounds();
+
+
+		presets.setBounds(bounds.removeFromTop(30));
+		const auto pos = viewport.getViewPosition();
+		viewport.setBounds(bounds);
+
+		mainEditor->setBounds(0, 0, getWidth(),
+							  dynamic_cast<AutoEditor*>(mainEditor.get())->getRequiredSize().getHeight());
+
+		viewport.setViewPosition(pos);
+	}
+} // namespace sjf::generic_editor

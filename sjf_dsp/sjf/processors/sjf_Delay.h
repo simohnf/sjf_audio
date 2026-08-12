@@ -165,7 +165,7 @@ public:
                                                                                         Configurations...
                                                                                     >;
 
-    using Filter = sjf::helpers::BypassWrapper<sjf::dsp::SVF<true, true>, helpers::bypass_wrapper_config::Bypass>;
+    using Filter = sjf::helpers::BypassWrapper<sjf::dsp::SVF<FixedFilterType::LowPass, true>, helpers::bypass_wrapper_config::Bypass>;
     using DelayLine = std::conditional_t<hasDetune, sjf::helpers::PitchShiftDelayLine<>, sjf::helpers::DelayLine>;
 
     using DefaultTimes = delay_config::TimeValues<>;

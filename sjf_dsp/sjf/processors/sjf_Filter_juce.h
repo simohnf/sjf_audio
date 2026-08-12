@@ -18,7 +18,8 @@
 namespace sjf::dsp
 {
 /// just a wrapper around the juce StateVariableFilter to allow it to be easily dropped into custom processors
-template<bool FixedType = false, bool NoResonance = false>
+enum class FixedFilterType {Variable, LowPass, BandPass, HighPass};
+template<FixedFilterType FixedType = FixedFilterType::Variable, bool NoResonance = false>
 class SVF
 {
 public:
@@ -51,9 +52,9 @@ public:
                 createTrackedParameter  (*factory, resonance, "Q",  "Q",  range, 0.707f, {}, attributes);
             }
 
-            if (FixedType)
+            if constexpr (FixedType != FixedFilterType::Variable)
             {
-                type.currentValue = 0;
+                type.currentValue = static_cast<int>(FixedType) - 1;
             }
             else
             {
@@ -64,7 +65,7 @@ public:
         }
     } parameters;
 
-    template <bool B = FixedType, typename = std::enable_if_t<B>>
+    template <bool B = FixedType != FixedFilterType::Variable, typename = std::enable_if_t<B>>
     void setType (const juce::dsp::StateVariableFilter::StateVariableFilterType& filterType)
     {
         parameters.type.currentValue = static_cast<int>(filterType);

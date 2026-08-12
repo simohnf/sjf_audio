@@ -59,9 +59,9 @@ namespace sjf::dsp
 		{
 			auto mainFactory = helpers::ParameterFactory::create (factoryID, factoryName);
 
-			mainFactory->addChildFactory(preDelay.createParameters(factoryID + "PreDelay", factoryName + " Pre Delay"));
-			mainFactory->addChildFactory(filter.createParameters(factoryID + "Filter", factoryName + " Filter"));
-			mainFactory->addChildFactory(inputDiffuser.createParameters(factoryID + "Diffuser", factoryName + " Diffuser",
+			mainFactory->addChildFactory(preDelay.createParameters(factoryID + "PreDel", factoryName + " Pre Delay"));
+			mainFactory->addChildFactory(filter.createParameters(factoryID + "Filt", factoryName + " Filter"));
+			mainFactory->addChildFactory(inputDiffuser.createParameters(factoryID + "Diff", factoryName + " Diffuser",
 																		helpers::processor_sequence::SubFactoryConfig{"MT", "MT"},
 																		helpers::processor_sequence::SubFactoryConfig{"RD", "RD"}
 																		));

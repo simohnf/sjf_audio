@@ -400,7 +400,7 @@ public:
         auto factory = parameters.createParameters (factoryID, factoryName);
 
         if constexpr (hasFilter)
-            factory->addChildFactory(filter.createParameters(factoryID +"Filter", factoryName + " Filter"));
+            factory->addChildFactory(filter.createParameters(factoryID +"Filt", factoryName + " Filter"));
 
         factory->addChildFactory(dcBlocker.createParameters(factoryID + "DCBlock", factoryName+" DC Block"));
 

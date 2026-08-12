@@ -1006,19 +1006,19 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
                 }
             };
 
-            createTrackedParameter (*factory, frequency, "Frequency", "Frequency  (Hz)", frequencyRange, defaultFrequency, mapping, getFrequencyAttributes());
+            createTrackedParameter (*factory, frequency, "Freq", "Frequency  (Hz)", frequencyRange, defaultFrequency, mapping, getFrequencyAttributes());
         }
 
         // SyncedNumerator
         {
             auto mapping = [&](const int indx){ return SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(indx)];};
-            createTrackedParameter (*factory, syncedNumerator, "NumDivisions", "NumDivisions", SyncRatesProvider::Numerator::getStrings(), SyncRatesProvider::Numerator::getDefault(), mapping);
+            createTrackedParameter (*factory, syncedNumerator, "NumDivs", "NumDivisions", SyncRatesProvider::Numerator::getStrings(), SyncRatesProvider::Numerator::getDefault(), mapping);
         }
 
         // SyncedDenominator
         {
             auto mapping = [&](const int indx){ return SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(indx)];};
-            createTrackedParameter (*factory, syncedDenominator, "Division", "Division", SyncRatesProvider::Denominator::getStrings(), SyncRatesProvider::Denominator::getDefault(), mapping);
+            createTrackedParameter (*factory, syncedDenominator, "Div", "Division", SyncRatesProvider::Denominator::getStrings(), SyncRatesProvider::Denominator::getDefault(), mapping);
         }
 
         return factory;

@@ -13,6 +13,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
+#include <sjf/helpers/sjf_BypassWrapper.h>
 #include <sjf/processors/Waveshaper/sjf_WaveshaperTypeProvider.h>
 #include <sjf/helpers/sjf_HelperFunctions.h>
 
@@ -258,9 +259,9 @@ public:
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
     {
         return sequence.createParameters (factoryID, factoryName,
-                                            helpers::processor_sequence::SubFactoryConfig("PreFilter", " Pre Filter"),
-                                            helpers::processor_sequence::SubFactoryConfig("Waveshaper", " Waveshaper"),
-                                            helpers::processor_sequence::SubFactoryConfig("PostFilter", " Post Filter")
+                                            helpers::processor_sequence::SubFactoryConfig("PreFilt", " Pre Filter"),
+                                            helpers::processor_sequence::SubFactoryConfig("WS", " Waveshaper"),
+                                            helpers::processor_sequence::SubFactoryConfig("PostFilt", " Post Filter")
                                             );
     }
 

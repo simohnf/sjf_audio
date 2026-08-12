@@ -136,12 +136,12 @@ public:
 
             if constexpr (hasTempoSync)
             {
-                factory->addChildFactory(frequency.createParameters(factoryID+"Frequency" , factoryName + " Frequency"));
+                factory->addChildFactory(frequency.createParameters(factoryID+"Freq" , factoryName + " Frequency"));
                 addTrackedChildParameters(frequency);
             }
             else
             {
-                createTrackedParameter(*factory, frequency.frequency, "Frequency", "Frequency", frequency.frequencyRange, frequency.defaultFrequency, nullptr, FrequencyParam::getFrequencyAttributes());
+                createTrackedParameter(*factory, frequency.frequency, "Freq", "Frequency", frequency.frequencyRange, frequency.defaultFrequency, nullptr, FrequencyParam::getFrequencyAttributes());
             }
 
             if constexpr (hasWaveformChoice)

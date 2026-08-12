@@ -404,6 +404,7 @@ namespace sjf::generic_editor
 
 			void paint(Graphics& g) override
 			{
+				g.fillAll(isSelected ? getLookAndFeel().findColour(juce::TextButton::buttonColourId).brighter() : getLookAndFeel().findColour(juce::TextButton::buttonColourId).darker());
 				g.setColour(colours::borderColour);
 				g.drawRoundedRectangle(getLocalBounds().toFloat(), 2, 1.0f);
 			}
@@ -703,6 +704,12 @@ namespace sjf::generic_editor
 			bool isInterestedInDragSource(const SourceDetails& dragSourceDetails) override
 			{
 				return dynamic_cast<SequenceItemComponent*>(dragSourceDetails.sourceComponent.get()) != nullptr;
+			}
+
+			void setSelectItem(size_t itemId)
+			{
+				for (const auto& item : masterPool)
+					item->setSelected(itemId == item->getProcessorID());
 			}
 
 		private:
@@ -1085,6 +1092,7 @@ namespace sjf::generic_editor
 				else
 					mainEditor = nullptr;
 
+				sequenceListView.setSelectItem(processorID);
 				onLayoutChanged();
 			}
 

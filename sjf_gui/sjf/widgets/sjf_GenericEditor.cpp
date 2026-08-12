@@ -1173,7 +1173,7 @@ namespace sjf::generic_editor
 		viewport.setScrollBarsShown(true, false, true, false);
 		addAndMakeVisible(viewport);
 
-		setResizable(true, false);
+		setResizable(true, true);
 		autoEditor->buildChildEditors();
 		autoEditor->initialisePresetPanel(true);
 		setSize(600, 600);

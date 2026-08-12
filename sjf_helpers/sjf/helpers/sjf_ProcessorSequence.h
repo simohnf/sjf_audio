@@ -92,6 +92,29 @@ namespace processor_sequence
         }
     };
 
+
+
+	// Case 1: The configuration is a flat SubFactoryConfig
+	template <typename ProcessorType, typename ConfigType>
+	requires std::is_same_v<std::decay_t<ConfigType>, processor_sequence::SubFactoryConfig>
+	static void invokeCreateParameters (ProcessorType& proc, ParameterFactory* parent, ConfigType&& config)
+	{
+		if (auto sub = proc.createParameters (parent->getID() + config.id,parent->getName() + " " + config.name))
+			parent->addChildFactory (std::move (sub));
+	}
+
+	// Case 2: The configuration is wrapped in a 'NestedConfig' token
+	template <typename ProcessorType, typename... Args>
+	static void invokeCreateParameters (ProcessorType& proc, ParameterFactory* parent, const processor_sequence::NestedConfig<Args...>& nestedPackage)
+	{
+		const auto prefixedNestedArgs = nestedPackage.withPrefixedIdAndName(parent->getID(), parent->getName());
+
+		std::apply ([&](auto&&... nestedArgs) {
+			if (auto sub = proc.createParameters (std::forward<decltype (nestedArgs)> (nestedArgs)...))
+				parent->addChildFactory (std::move (sub));
+		}, prefixedNestedArgs.args);
+	}
+
 }
 
 
@@ -148,7 +171,7 @@ public:
 
         [&]<std::size_t... Is>(std::index_sequence<Is...>)
         {
-            (invokeCreateParameters (
+            (processor_sequence::invokeCreateParameters (
                 std::get<Is> (processors),
                 mainFactory.get(),
                 std::forward<std::tuple_element_t<Is, decltype(configTuple)>> (std::get<Is> (configTuple))
@@ -211,24 +234,7 @@ public:
     }
 
 private:
-    // Case 1: The configuration is a flat SubFactoryConfig
-    template <typename ProcessorType, typename ConfigType>
-    requires std::is_same_v<std::decay_t<ConfigType>, processor_sequence::SubFactoryConfig>
-    void invokeCreateParameters (ProcessorType& proc, ParameterFactory* parent, ConfigType&& config)
-    {
-        if (auto sub = proc.createParameters (parent->getID() + config.id,parent->getName() + " " + config.name))
-            parent->addChildFactory (std::move (sub));
-    }
 
-    // Case 2: The configuration is wrapped in a 'NestedConfig' token
-    template <typename ProcessorType, typename... Args>
-    void invokeCreateParameters (ProcessorType& proc, ParameterFactory* parent, const processor_sequence::NestedConfig<Args...>& nestedPackage)
-    {
-        std::apply ([&](auto&&... nestedArgs) {
-            if (auto sub = proc.createParameters (std::forward<decltype (nestedArgs)> (nestedArgs)...))
-                parent->addChildFactory (std::move (sub));
-        }, nestedPackage.args);
-    }
 
     //==============================================================================
     std::tuple<Processors...> processors;

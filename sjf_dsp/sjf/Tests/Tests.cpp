@@ -15,6 +15,9 @@
 #include <sjf/processors/Reverbs/sjf_KeithBarrReverb.h>
 #include <sjf/processors/Reverbs/sjf_MultitapDiffuser.h>
 #include <sjf/processors/Reverbs/sjf_RotateDelayDiffuser.h>
+#include <sjf/processors/sjf_Filter_juce.h>
+#include <sjf/processors/sjf_Compressor_juce.h>
+#include <sjf/processors/sjf_Limiter_juce.h>
 
 namespace
 {
@@ -57,6 +60,8 @@ namespace sjf::tests
 	static GenericTests<dsp::SimpleDelay<0, 100, 0, 50>> delay1("SimpleDelay");
 
 	static GenericTests<sjf::dsp::SVF<>> filter{"SVF Filter"};
+	static GenericTests<sjf::dsp::Compressor> compressor{"Compressor"};
+	static GenericTests<sjf::dsp::Limiter<>> limiter{"Limiter"};
 
 	static GenericTests<dsp::waveshaper::FilteredWaveshaper<Saturator>> filteredSaturator("Filtered Saturator");
 	static GenericTests<dsp::waveshaper::Waveshaper<Saturator>> saturator("Saturator");

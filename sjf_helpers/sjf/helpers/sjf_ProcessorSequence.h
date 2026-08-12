@@ -45,6 +45,9 @@ public:
     // Enforce that the sequence must contain at least one processor module
     static_assert (sizeof...(Processors) > 0, "ProcessorSequence must be instantiated with at least one Processor type!");
 
+	explicit ProcessorSequence(const bool allowChildSubPresets = true)
+	: supportsChildSubPresets(allowChildSubPresets)
+	{}
 
 
     /**
@@ -63,7 +66,7 @@ public:
         static_assert (sizeof...(Configs) == sizeof...(Processors),
             "The number of configuration parameters must match the number of processors!");
 
-        auto mainFactory = ParameterFactory::create (factoryID, factoryName);
+        auto mainFactory = ParameterFactory::create (factoryID, factoryName, true, supportsChildSubPresets);
 
         if (mainFactory == nullptr)
         {
@@ -145,6 +148,7 @@ private:
 
 	juce::AudioPlayHead::PositionInfo positionInfo{};
 	juce::dsp::ProcessSpec spec{};
+	const bool supportsChildSubPresets{true};
 };
 
 }

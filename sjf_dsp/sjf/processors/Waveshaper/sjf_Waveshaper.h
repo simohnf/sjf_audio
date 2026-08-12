@@ -174,7 +174,7 @@ private:
             auto gainCompensation = autoGain ? waveshapers[channel].template getCompensationGain<WaveshaperIndex>(drive) : 1.0f;
 
             for (size_t i = 0; i < numSamples; ++i)
-                output[i] = gainCompensation * waveshapers[channel].template processSample<WaveshaperIndex>(input[i]);
+                output[i] = gainCompensation * waveshapers[channel].template processSample<WaveshaperIndex>(input[i]*drive);
         }
     }
 
@@ -212,7 +212,7 @@ private:
             for (size_t channel = 0; channel < NUM_CHANNELS; ++channel)
             {
                 const auto gainCompensation = autoGain ? waveshapers[channel].template getCompensationGain<WaveshaperIndex>(drive) : 1.0f;
-                outputChannelPointers[channel][i] = gainCompensation * waveshapers[channel].template processSample<WaveshaperIndex>(inputChannelPointers[channel][i]);
+                outputChannelPointers[channel][i] = gainCompensation * waveshapers[channel].template processSample<WaveshaperIndex>(inputChannelPointers[channel][i]*drive);
             }
         }
     }

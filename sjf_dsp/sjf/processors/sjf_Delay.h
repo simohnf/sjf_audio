@@ -748,4 +748,19 @@ private:
 
 
 
+	namespace modulation_effects
+	{
+		namespace internal
+		{
+			using ChorusLFO = sjf::dsp::oscillators::lfo::LFO<dsp::oscillators::lfo::LFOWaveformProvider<dsp::oscillators::lfo::Sine>,
+															   dsp::oscillators::lfo::lfo_config::Invert,
+															   dsp::oscillators::lfo::lfo_config::PhaseOffset,
+															   dsp::oscillators::lfo::lfo_config::Smooth,
+															   dsp::oscillators::lfo::lfo_config::Depth>;
+		}
+
+		using Chorus  = Delay<internal::ChorusLFO, delay_config::TimeValues<5, 10, 7>, delay_config::Link, delay_config::Filter, delay_config::Offset>;
+		using Flanger = Delay<internal::ChorusLFO, delay_config::TimeValues<1, 5, 2>, delay_config::Link, delay_config::Filter, delay_config::Offset, delay_config::Feedback>;
+	}
+
 }

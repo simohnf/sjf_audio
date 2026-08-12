@@ -278,7 +278,7 @@ private:
     /**
      * @brief Internal DSP processing sequence: [Pre-Filter] -> [Oversampled Waveshaper] -> [Post-Filter].
      */
-    sjf::helpers::ProcessorSequence<Filter, helpers::OversamplingWrapper<Waveshaper<WaveshaperTypes, NUM_CHANNELS>>, Filter> sequence;
+    sjf::helpers::ProcessorSequence<Filter, helpers::OversamplingWrapper<Waveshaper<WaveshaperTypes, NUM_CHANNELS>>, Filter> sequence{false};
 };
 
 }

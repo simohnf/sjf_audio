@@ -15,7 +15,6 @@
 #include <sjf/processors/Reverbs/sjf_KeithBarrReverb.h>
 #include <sjf/processors/Reverbs/sjf_MultitapDiffuser.h>
 #include <sjf/processors/sjf_Filter_juce.h>
-#include <sjf/helpers/sjf_ProcessorSequence.h>
 #include <sjf/helpers/sjf_BypassWrapper.h>
 
 #include <sjf/helpers/sjf_ProcessorSelector.h>
@@ -57,7 +56,7 @@ namespace sjf::dsp
 
 		std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
 		{
-			auto mainFactory = helpers::ParameterFactory::create (factoryID, factoryName);
+			auto mainFactory = helpers::ParameterFactory::create (factoryID, factoryName, true, false);
 
 			mainFactory->addChildFactory(preDelay.createParameters(factoryID + "PreDel", factoryName + " Pre Delay"));
 			mainFactory->addChildFactory(filter.createParameters(factoryID + "Filt", factoryName + " Filter"));
@@ -78,7 +77,7 @@ namespace sjf::dsp
 		 * @brief Internal DSP processing sequence: Filter >> Input Diffuser >> Reverb Tank.
 		 */
 		SimpleDelay<0, 100, 0, 50> preDelay;
-		SVF<true, true> filter;
+		SVF<FixedFilterType::LowPass, true> filter;
 		sjf::helpers::ProcessorSelector<MultiTapDiffuser<>, RotateDelayDiffuser<>> inputDiffuser;
 		helpers::BypassWrapper<keith_barr::reverb::Tank<>, helpers::bypass_wrapper_config::Mix> tank;
 	};

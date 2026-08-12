@@ -195,7 +195,7 @@ public:
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
             static_assert(NUM_CHANNELS > 0, "Number of channels must be greater than 0!!!");
-            auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
+            auto factory = helpers::ParameterFactory::create (factoryID, factoryName, true, false);
             auto delayTimeStrings = [](){
                 if constexpr(NUM_CHANNELS == 1)
                     return std::vector<String>{""};

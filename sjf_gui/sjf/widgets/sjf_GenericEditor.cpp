@@ -24,6 +24,7 @@ namespace sjf::generic_editor
 
 				collapseButton.onClick = [this]() { setExpanded(!isExpanded()); };
 
+				presetLabel.setText("Preset", juce::dontSendNotification);
 
 				buildUIFromGroup();
 			}
@@ -36,7 +37,9 @@ namespace sjf::generic_editor
 				auto y = titleLabel.getBottom() + VerticalSpacing;
 				if (presetPanel)
 				{
-					presetPanel->setBounds(HorizontalSpacing, y, getWidth() - 2 * HorizontalSpacing, PresetPanelHeight);
+					auto presetBounds = juce::Rectangle<int>{HorizontalSpacing, y, getWidth() - 2 * HorizontalSpacing, PresetPanelHeight};
+					presetLabel.setBounds(presetBounds.removeFromLeft(presetBounds.getWidth()/5));
+					presetPanel->setBounds(presetBounds.withWidth(presetBounds.getWidth() - HorizontalSpacing));
 					y = presetPanel->getBottom() + VerticalSpacing;
 				}
 
@@ -120,8 +123,12 @@ namespace sjf::generic_editor
 				else
 				{
 					const auto viewport = findParentComponentOfClass<juce::Viewport>();
-					auto pos = viewport ? viewport->getViewPosition() : juce::Point<int>(0, 0);
-					setBounds(getRequiredSize().withX(0).withY(0));
+					const auto pos = viewport ? viewport->getViewPosition() : juce::Point<int>(0, 0);
+					const auto b = getRequiredSize().withX(0).withY(0);
+					if (getLocalBounds() == b)
+						setBounds(b.reduced(10)); // force resize incase we switch between 2 processors of the same types/editors of same size
+					setBounds(b);
+
 					if (viewport)
 						viewport->setViewPosition(pos); // force viewport not to jump all over the place
 				}
@@ -145,6 +152,28 @@ namespace sjf::generic_editor
 
 			[[nodiscard]] bool isExpanded() const noexcept { return expanded; }
 
+			void initialisePresetPanel(const bool forceHide = false)
+			{
+				for (auto& c : childEditors)
+					c->initialisePresetPanel();
+
+				const auto supportsSubPresets = [&](){
+					if (forceHide)
+						return false;
+					for ( auto p = getParentComponent(); dynamic_cast<AutoEditor*>(p)!=nullptr; p = p->getParentComponent())
+						if (!dynamic_cast<AutoEditor*>(p)->metadata.supportsChildSubPresets)
+							return false;
+
+					return metadata.supportsSubPresets;
+				}();
+				if (supportsSubPresets)
+				{
+					presetPanel = std::make_unique<sjf::gui::PresetPanel>(parameterGroup);
+					addAndMakeVisible(*presetPanel);
+					addAndMakeVisible(presetLabel);
+				}
+
+			}
 
 			void buildChildEditors();
 
@@ -174,6 +203,7 @@ namespace sjf::generic_editor
 			std::vector<std::unique_ptr<AutoEditor>> childEditors;
 
 			std::unique_ptr<sjf::gui::PresetPanel> presetPanel;
+			juce::Label presetLabel;
 
 			std::vector<Component*> paramComponents;
 			std::unordered_map<const juce::AudioProcessorParameter*, Component*> paramMap;
@@ -205,13 +235,6 @@ namespace sjf::generic_editor
 				addAndMakeVisible(titleLabel);
 				titleLabel.setText(helpers::ParameterFactory::getNameWithoutParentPrefix(parameterGroup),
 								   juce::sendNotification);
-
-
-				if (metadata.supportsSubPresets)
-				{
-					presetPanel = std::make_unique<sjf::gui::PresetPanel>(parameterGroup);
-					addAndMakeVisible(*presetPanel);
-				}
 
 				for (const auto param : parameterGroup.getParameters(false))
 				{
@@ -1134,7 +1157,8 @@ namespace sjf::generic_editor
 
 		initialiseMainEditor(apvts_, *getTopLevelParameterGroup(processor.getParameterTree(), metadata_), metadata_);
 		jassert(mainEditor != nullptr);
-		jassert(dynamic_cast<AutoEditor*>(mainEditor.get()) != nullptr);
+		const auto autoEditor = dynamic_cast<AutoEditor*>(mainEditor.get());
+		jassert(autoEditor != nullptr);
 
 		// 2. Configure Viewport
 		viewport.setViewedComponent(mainEditor.get(), false);
@@ -1142,7 +1166,8 @@ namespace sjf::generic_editor
 		addAndMakeVisible(viewport);
 
 		setResizable(true, false);
-		dynamic_cast<AutoEditor*>(mainEditor.get())->buildChildEditors();
+		autoEditor->buildChildEditors();
+		autoEditor->initialisePresetPanel(true);
 		setSize(600, 600);
 	}
 
@@ -1169,7 +1194,7 @@ namespace sjf::generic_editor
 		auto bounds = getLocalBounds();
 
 
-		presets.setBounds(bounds.removeFromTop(30));
+		presets.setBounds(bounds.removeFromTop(30).reduced(viewport.getScrollBarThickness()*2, 0));
 		const auto pos = viewport.getViewPosition();
 		viewport.setBounds(bounds);
 

@@ -131,10 +131,10 @@ namespace sjf::dsp
 		template <typename ProcessContext>
 		void process (const ProcessContext& context) noexcept
 		{
-			const auto& inputBlock = context.getInputBlock();
-			auto& outputBlock      = context.getOutputBlock();
-			const auto numChannels = outputBlock.getNumChannels();
-			const auto numSamples  = outputBlock.getNumSamples();
+			[[maybe_unused]] const auto& inputBlock = context.getInputBlock();
+			[[maybe_unused]] auto& outputBlock      = context.getOutputBlock();
+			[[maybe_unused]] const auto numChannels = outputBlock.getNumChannels();
+			[[maybe_unused]] auto numSamples  = outputBlock.getNumSamples();
 
 			jassert (inputBlock.getNumChannels() == numChannels);
 			jassert (inputBlock.getNumSamples() == numSamples);
@@ -174,10 +174,10 @@ namespace sjf::dsp
 		template <typename ProcessContext>
 		void processStaticState (const ProcessContext& context) noexcept
 		{
-			const auto& inputBlock = context.getInputBlock();
-			auto& outputBlock      = context.getOutputBlock();
-			const auto numChannels = outputBlock.getNumChannels();
-			const auto numSamples  = outputBlock.getNumSamples();
+			[[maybe_unused]] const auto& inputBlock = context.getInputBlock();
+			[[maybe_unused]] auto& outputBlock      = context.getOutputBlock();
+			[[maybe_unused]] auto numChannels = outputBlock.getNumChannels();
+			[[maybe_unused]] const auto numSamples  = outputBlock.getNumSamples();
 
 			jassert (inputBlock.getNumChannels() == numChannels);
 			jassert (inputBlock.getNumSamples() == numSamples);

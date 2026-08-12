@@ -158,9 +158,9 @@ private:
     template <size_t WaveshaperIndex, typename ProcessContext>
     void processStaticState (const ProcessContext& context) noexcept
     {
-        const auto& inputBlock = context.getInputBlock();
-        auto& outputBlock      = context.getOutputBlock();
-        const auto numSamples  = outputBlock.getNumSamples();
+        [[maybe_unused]] const auto& inputBlock = context.getInputBlock();
+        [[maybe_unused]] auto& outputBlock      = context.getOutputBlock();
+        [[maybe_unused]] const auto numSamples  = outputBlock.getNumSamples();
 
         jassert (inputBlock.getNumSamples() == numSamples);
 
@@ -187,9 +187,9 @@ private:
     template <size_t WaveshaperIndex, typename ProcessContext>
     void processSmoothedState (const ProcessContext& context) noexcept
     {
-        const auto& inputBlock = context.getInputBlock();
-        auto& outputBlock      = context.getOutputBlock();
-        const auto numSamples  = outputBlock.getNumSamples();
+        [[maybe_unused]] const auto& inputBlock = context.getInputBlock();
+        [[maybe_unused]] auto& outputBlock      = context.getOutputBlock();
+        [[maybe_unused]] const auto numSamples  = outputBlock.getNumSamples();
 
         jassert (inputBlock.getNumSamples() == numSamples);
 

@@ -13,7 +13,7 @@
 #include <JuceHeader.h>
 
 #include <sjf/helpers/sjf_ParameterFactory.h>
-#include <sjf/helpers/sjf_ProcessorSequence.h>
+#include <sjf/helpers/sjf_ProcessorSequenceConfigs.h>
 
 #include <sjf/helpers/sjf_HelperFunctions.h>
 #include <sjf/helpers/sjf_OptionalCalls.h>

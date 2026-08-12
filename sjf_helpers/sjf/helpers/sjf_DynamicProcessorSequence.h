@@ -14,7 +14,7 @@
 #include <sjf/helpers/sjf_HelperFunctions.h>
 #include <sjf/helpers/sjf_OptionalCalls.h>
 #include <sjf/helpers/sjf_SPSCTripleBuffer.h>
-#include <sjf/helpers/sjf_ProcessorSequence.h>
+#include <sjf/helpers/sjf_ProcessorSequenceConfigs.h>
 
 #include <sjf/helpers/sjf_AsyncCallbackInvoker.h>
 

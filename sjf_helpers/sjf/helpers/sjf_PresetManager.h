@@ -65,7 +65,7 @@ class PresetManager
         {
             jassert(extension.startsWith ("."));
 
-            const auto folderName = getGroupIDWithNoSpaces(group);
+            const auto folderName = getGroupNameWithNoSpaces(group);
             auto targetDir = getProjectWriteableRoot().getChildFile(folderName);
 
             if (targetDir.createDirectory())
@@ -86,7 +86,7 @@ class PresetManager
         {
             jassert(extension.startsWith ("."));
 
-            const auto folderName = getGroupIDWithNoSpaces(group);
+            const auto folderName = getGroupNameWithNoSpaces(group);
             auto presetFile = getProjectWriteableRoot().getChildFile(folderName).getChildFile(presetName + extension);
 
             if (presetFile.existsAsFile())
@@ -142,7 +142,7 @@ class PresetManager
 
     	static juce::ValueTree saveToVT(const juce::AudioProcessorParameterGroup& group, bool recursive = true)
         {
-            const auto id = getGroupIDWithNoSpaces(group);
+            const auto id = getGroupNameWithNoSpaces(group);
             auto vt = juce::ValueTree{id};
 
             for (const auto& param : group.getParameters(false))
@@ -189,9 +189,9 @@ class PresetManager
 
     private:
         // Helper to guarantee savePreset and loadPreset resolve the directory identically
-        static juce::String getGroupIDWithNoSpaces(const juce::AudioProcessorParameterGroup& group)
+        static juce::String getGroupNameWithNoSpaces(const juce::AudioProcessorParameterGroup& group)
         {
-            auto id = ParameterFactory::getIDWithoutParentPrefix(group);
+            auto id = ParameterFactory::getNameWithoutParentPrefix(group);
             if (id.isEmpty())
                 id = juce::String(JucePlugin_Name).replace(" ", "");
             return id;
@@ -219,7 +219,7 @@ class PresetManager
 
         static int populatePresetPopupMenu(int startId, juce::PopupMenu& m, const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf")
         {
-            auto id = getGroupIDWithNoSpaces(group);
+            auto id = getGroupNameWithNoSpaces(group);
             auto dir = getProjectWriteableRoot().getChildFile(id);
             if (dir.isDirectory())
             {

@@ -34,15 +34,15 @@ public:
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
             {
                  auto range = NormalisableRange<float>{ThresholdMin, ThresholdMax, 0.01f};
-                 range.setSkewForCentre(ThresholdMin + (ThresholdMax-ThresholdMin)*0.5f);
+                 range.setSkewForCentre(-6.0f);
                  const auto attributes = AudioParameterFloatAttributes().withLabel("dB");
-                 createTrackedParameter(*factory, threshold, "Threshold", "Threshold", range, ThresholdMax, {}, attributes);
+                 createTrackedParameter(*factory, threshold, "Thr", "Threshold", range, ThresholdMax, {}, attributes);
             }
             {
-                auto range = NormalisableRange<float>{0, 10, 0.01f};
+                auto range = NormalisableRange<float>{0, 200, 0.01f};
                 range.setSkewForCentre(5);
                 const auto attributes = AudioParameterFloatAttributes().withLabel("ms");
-                createTrackedParameter(*factory, release, "Release", "Release", range, 0, {}, attributes);
+                createTrackedParameter(*factory, release, "Rel", "Release", range, 0, {}, attributes);
             }
 
             return factory;

@@ -88,19 +88,25 @@ namespace sjf::generic_editor
 				{
 					auto sum = 0;
 					for (const auto& c : childEditors)
-						sum += c->getRequiredSize().getHeight() + VerticalSpacing;
+					{
+						const auto ch = c->getRequiredSize().getHeight();
+						sum += ch + (ch > 0 ? VerticalSpacing : 0);
+					}
 					return sum;
 				};
 
 
 				auto w = getWidth();
-				auto h = (!expanded ? VerticalSpacing
+				auto h =paramComponents.empty() && childEditors.empty() ? 0 :
+								( (!expanded ? VerticalSpacing
 									: static_cast<int>(sliders.size() + comboBoxes.size() + buttons.size()) *
 								  (ComponentHeight + VerticalSpacing)) +
-					VerticalSpacing // extra spacing at bottom
-					+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0) +
-					juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
-					(expanded ? heightOfChildren() : VerticalSpacing);
+									VerticalSpacing // extra spacing at bottom
+									+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0) +
+									juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
+									(expanded ? heightOfChildren() : VerticalSpacing));
+
+
 				return {w, h};
 			}
 
@@ -301,7 +307,8 @@ namespace sjf::generic_editor
 				{
 					const auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()),
 													 childEditors.size() - 1);
-					return childEditors[selected]->getRequiredSize().getHeight() + VerticalSpacing;
+					const auto ch = childEditors[selected]->getRequiredSize().getHeight();
+					return ch + (ch > 0 ? VerticalSpacing : 0);
 				};
 
 
@@ -999,9 +1006,14 @@ namespace sjf::generic_editor
 				auto heightOfSequenceChildren = [&]()
 				{
 					if (mainEditor)
-						return mainEditor->getRequiredSize().getHeight() + 2*VerticalSpacing;
+					{
+						const auto mh = mainEditor->getRequiredSize().getHeight();
+						return mh + (mh > 0 ? 2*VerticalSpacing : 0);
+					}
 					else
+					{
 						return sequenceListView.getCalculatedHeight() + 2*AutoEditor::VerticalSpacing;
+					}
 				};
 
 				auto heightOfChildren = [&, heightOfSequenceChildren]()

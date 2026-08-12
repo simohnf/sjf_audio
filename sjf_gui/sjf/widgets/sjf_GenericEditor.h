@@ -23,7 +23,21 @@ namespace sjf::generic_editor
 	}
 
 
-
+	/**
+	 * @brief A generic, responsive audio processor editor that automatically generates complex
+	 *        hierarchical user interfaces from parameter metadata.
+	 *
+	 * This editor acts as a high-level container that inspects parameter trees built via
+	 * `ParameterFactory` and constructs an auto-layout UI driven by `GroupMetadata`. It wraps the
+	 * internally constructed interface in a flexible `juce::Viewport` to handle arbitrary layout
+	 * scaling, dynamic collapsible sub-panels, and reorderable sequence views safely.
+	 *
+	 * It automatically incorporates integrated top-level controls (such as an embedded `PresetPanel`)
+	 * and delegates detailed parameter control generation, sub-group layout, and dynamic viewport
+	 * sizing to internal view containers (`AutoEditor`).
+	 *
+	 * @see ParameterFactory::GroupMetadata, juce::AudioProcessorValueTreeState
+	 */
 	class GenericEditor : public juce::AudioProcessorEditor
 	{
 		public:

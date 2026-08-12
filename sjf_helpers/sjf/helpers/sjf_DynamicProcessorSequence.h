@@ -30,6 +30,29 @@ namespace dynamic_processor_sequence
 	// Sentinel value indicating an unused/empty slot in the sequence
 	static constexpr size_t InactiveSlot = std::numeric_limits<int>::max();
 }
+
+/**
+ * @brief A dynamic, lock-free variadic chain container that sequences multiple execution
+ *        processors into a runtime-reorderable DSP pipeline.
+ *
+ * Building upon compile-time variadic tuple storage, this class allows active processor
+ * execution order, activation, and bypass state to be dynamically reordered at runtime.
+ * Order mutations are managed via a thread-safe `juce::ValueTree` model on the control thread
+ * and published to the audio thread using a lock-free triple buffer (`SPSCTripleBuffer`).
+ *
+ * Lifecycle functions (`prepare`, `reset`, `process`, and `setPositionInfo`) dynamically route
+ * processing contexts through active processors according to the current sequence order array.
+ * Processors transitioning out of the active lane are automatically flagged for state resets
+ * upon reactivation to prevent audio artifacts.
+ *
+ * It provides a parameter reflection driver (`createParameters`) that recursively builds a
+ * strict parameter tree hierarchy and integrates seamlessly with `juce::ValueTree` state listeners
+ * for automated UI synchronization and host DAW state serialization.
+ *
+ * @tparam Processors Variadic list of class types to compose into the reorderable audio lane.
+ *                    Each type must expose standard JUCE-style `prepare`, `reset`, `process`,
+ *                    and `createParameters` interfaces.
+ */
 template <typename... Processors>
 class DynamicProcessorSequence : private juce::ValueTree::Listener
 {

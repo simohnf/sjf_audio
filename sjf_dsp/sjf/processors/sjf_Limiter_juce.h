@@ -17,9 +17,11 @@
 
 namespace sjf::dsp
 {
-template <float ThresholdMin = -60.0f, float ThresholdMax = 0.0f>
+/// just a wrapper around the juce::dsp::Limiter class
 class Limiter
 {
+	static constexpr auto ThresholdMin = -60.0f;
+	static constexpr auto ThresholdMax = 0.0f;
 public:
     struct Parameters : public helpers::AudioParametersBase
     {

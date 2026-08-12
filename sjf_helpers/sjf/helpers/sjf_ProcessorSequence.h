@@ -48,9 +48,50 @@ namespace processor_sequence
     template <typename... Args>
     struct NestedConfig
     {
-        std::tuple<Args...> args;
-        NestedConfig (Args... inputs) : args (std::move (inputs)...) {}
+    	static_assert(sizeof...(Args) > 2,
+					 "NestedConfig must have at least 2 arguments (ID and Name).");
+
+    	using TupleType = std::tuple<Args...>;
+
+    	using Arg0 = std::tuple_element_t<0, TupleType>;
+    	using Arg1 = std::tuple_element_t<1, TupleType>;
+
+    	static_assert(std::is_constructible_v<juce::String, Arg0>,
+					  "The first argument of NestedConfig must be constructible as a juce::String (ID).");
+
+    	static_assert(std::is_constructible_v<juce::String, Arg1>,
+					  "The second argument of NestedConfig must be constructible as a juce::String (Name).");
+
+    	TupleType args;
+
+        explicit NestedConfig (Args... inputs) : args (std::move (inputs)...)
+        {}
+
+    	/** Returns a copy of this NestedConfig with updated ID and Name, preserving all remaining arguments. */
+    	[[nodiscard]] auto withNewIdAndName (juce::String newId, juce::String newName) const
+        {
+        	return std::apply ([&](const auto& /*oldId*/, const auto& /*oldName*/, const auto&... remainingArgs) {
+				return NestedConfig<juce::String, juce::String, std::decay_t<decltype(remainingArgs)>...> (
+					std::move (newId),
+					std::move (newName),
+					remainingArgs...
+				);
+			}, args);
+        }
+
+    	/** Returns a copy of this NestedConfig with parent prefixes applied to ID and Name. */
+    	[[nodiscard]] auto withPrefixedIdAndName (const juce::String& parentId, const juce::String& parentName) const
+        {
+        	const auto& currentId   = std::get<0> (args);
+        	const auto& currentName = std::get<1> (args);
+
+        	const auto fullId   = parentId + currentId;
+        	const auto fullName = parentName.isEmpty() ? currentName : parentName + " " + currentName;
+
+        	return withNewIdAndName (fullId, fullName);
+        }
     };
+
 }
 
 

@@ -73,9 +73,9 @@ public:
     {
     	   if (parameters.checkForStateChange())
     	   {
-    	   				parameters.reset();
-    	   				limiter.setRelease(parameters.release.currentValue);
-            limiter.setThreshold(parameters.threshold.currentValue);
+    	   		parameters.reset();
+    	   		limiter.setRelease(parameters.release.currentValue);
+				limiter.setThreshold(parameters.threshold.currentValue);
     	   }
         limiter.process(context);
     }

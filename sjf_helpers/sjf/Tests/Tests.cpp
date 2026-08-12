@@ -19,6 +19,8 @@
 #include <sjf/helpers/sjf_DCBlock.h>
 #include <sjf/helpers/sjf_ProcessDuplicator.h>
 #include <sjf/helpers/sjf_ProcessorSelector.h>
+
+#include "sjf/helpers/sjf_ProcessorSequence.h"
 namespace sjf::tests
 {
 	using namespace helpers;

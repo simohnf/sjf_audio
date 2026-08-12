@@ -56,12 +56,14 @@ namespace sjf::tests
 
 	static GenericTests<Delay> delayTestMaximal("Maximal Delay");
 	static GenericTests<sjf::dsp::Delay<>> delayTestMinimal("Minimal Delay");
+	static GenericTests<sjf::dsp::modulation_effects::Chorus> chorus("Chorus");
+	static GenericTests<sjf::dsp::modulation_effects::Flanger> flanger("Flanger");
 
 	static GenericTests<dsp::SimpleDelay<0, 100, 0, 50>> delay1("SimpleDelay");
 
 	static GenericTests<sjf::dsp::SVF<>> filter{"SVF Filter"};
 	static GenericTests<sjf::dsp::Compressor> compressor{"Compressor"};
-	static GenericTests<sjf::dsp::Limiter<>> limiter{"Limiter"};
+	static GenericTests<sjf::dsp::Limiter> limiter{"Limiter"};
 
 	static GenericTests<dsp::waveshaper::FilteredWaveshaper<Saturator>> filteredSaturator("Filtered Saturator");
 	static GenericTests<dsp::waveshaper::Waveshaper<Saturator>> saturator("Saturator");

@@ -111,7 +111,7 @@ namespace sjf::generic_editor
 
 
 				auto w = getWidth();
-				auto h =paramComponents.empty() && childEditors.empty() ? 0 :
+				auto h = paramComponents.empty() && childEditors.empty() ? 0 :
 								( (!expanded ? VerticalSpacing
 									: static_cast<int>(sliders.size() + comboBoxes.size() + buttons.size()) *
 								  (ComponentHeight + VerticalSpacing)) +

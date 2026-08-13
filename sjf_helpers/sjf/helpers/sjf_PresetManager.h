@@ -197,6 +197,17 @@ class PresetManager
             return id;
         }
 
+    	static juce::String getGroupIDWithNoSpaces(const juce::AudioProcessorParameterGroup& group)
+        {
+        	auto id = ParameterFactory::getIDWithoutParentPrefix(group).replace(" ", "");
+        	if (id.isEmpty())
+        		id = juce::String(JucePlugin_Name).replace(" ", "");
+        	return id;
+        }
+
+    private:
+
+
 
         static void saveToFile(const juce::ValueTree& vt, const juce::File& targetFile)
         {

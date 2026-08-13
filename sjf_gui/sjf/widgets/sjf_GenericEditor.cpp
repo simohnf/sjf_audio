@@ -1257,8 +1257,10 @@ namespace sjf::generic_editor
 	} // namespace
 
 	GenericEditor::GenericEditor(juce::AudioProcessorValueTreeState& apvts_, juce::AudioProcessor& processor_,
-								 const helpers::ParameterFactory::GroupMetadata& metadata_)
+								 const helpers::ParameterFactory::GroupMetadata& metadata_,
+								 UndoManager* undoManager_)
 	: AudioProcessorEditor(processor_)
+	, undoManager(undoManager_)
 	, presets(processor.getParameterTree(), helpers::PresetManager::getDefaultExtension(),
 					[this, id = metadata_.groupID, safeThis = SafePointer(this)](ValueTree vt){
 								if (safeThis && mainEditor && vt.getChildWithName(id).isValid())
@@ -1276,6 +1278,21 @@ namespace sjf::generic_editor
 		addAndMakeVisible(label);
 		label.setText(JucePlugin_Name, dontSendNotification);
 		label.setJustificationType(juce::Justification::centred);
+
+		if (undoManager)
+		{
+			addAndMakeVisible(undo);
+			undo.setButtonText("<");
+			undo.onClick = [this](){
+				undoManager->undo();
+			};
+
+			addAndMakeVisible(redo);
+			redo.setButtonText(">");
+			redo.onClick = [this](){
+				undoManager->redo();
+			};
+		}
 
 		initialiseMainEditor(apvts_, *getTopLevelParameterGroup(processor.getParameterTree(), metadata_), metadata_);
 		jassert(mainEditor != nullptr);
@@ -1317,6 +1334,13 @@ namespace sjf::generic_editor
 		label.setBounds(bounds.removeFromTop(AutoEditor::ComponentHeight));
 		bounds.removeFromTop(AutoEditor::VerticalSpacing);
 
+		if (undoManager)
+		{
+			auto undoBounds = bounds.removeFromTop(AutoEditor::ComponentHeight);
+			undo.setBounds(undoBounds.getCentreX() - AutoEditor::HorizontalSpacing - AutoEditor::ComponentHeight, undoBounds.getY(), AutoEditor::ComponentHeight, AutoEditor::ComponentHeight);
+			redo.setBounds(undoBounds.getCentreX() + AutoEditor::HorizontalSpacing, undoBounds.getY(), AutoEditor::ComponentHeight, AutoEditor::ComponentHeight);
+			bounds.removeFromTop(AutoEditor::VerticalSpacing);
+		}
 		presets.setBounds(bounds.removeFromTop(AutoEditor::ComponentHeight).reduced(viewport.getScrollBarThickness()*2, 0));
 		bounds.removeFromTop(AutoEditor::VerticalSpacing);
 

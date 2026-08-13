@@ -35,7 +35,7 @@ namespace sjf::generic_editor
 	{
 		public:
 
-			explicit GenericEditor(juce::AudioProcessorValueTreeState& apvts_, juce::AudioProcessor& processor_, const helpers::ParameterFactory::GroupMetadata& metadata_);
+			explicit GenericEditor(juce::AudioProcessorValueTreeState&, juce::AudioProcessor&, const helpers::ParameterFactory::GroupMetadata&, UndoManager* undoManager = nullptr);
 
 			void resized() override;
 
@@ -47,9 +47,11 @@ namespace sjf::generic_editor
 											const helpers::ParameterFactory::GroupMetadata& metadata);
 
 			std::unique_ptr<Component> mainEditor;
+			UndoManager* undoManager;
 			juce::Viewport viewport;
 			sjf::gui::PresetPanel presets;
 			juce::Label label;
+			juce::TextButton undo, redo;
 	};
 }
 

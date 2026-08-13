@@ -34,11 +34,15 @@ namespace sjf::helpers
 class PresetManager
 {
     public:
+    	using AfterSaveCallback = std::function<void(juce::ValueTree)>;
+    	using AfterLoadCallback = std::function<void(juce::ValueTree)>;
+
     	static juce::String getDefaultExtension()
     	{
     		const static auto defaultExtension =  juce::String{".sjf"};
     		return defaultExtension;
     	}
+
         static juce::File getProjectWriteableRoot()
         {
             const static auto userMusicDir = juce::File::getSpecialLocation(juce::File::SpecialLocationType::userMusicDirectory);
@@ -66,7 +70,9 @@ class PresetManager
             return mb;
         }
 
-        static void savePreset(const juce::AudioProcessorParameterGroup& group, const juce::String& presetName, const juce::String& extension = ".sjf")
+
+
+        static void savePreset(const juce::AudioProcessorParameterGroup& group, const juce::String& presetName, const juce::String& extension,const AfterSaveCallback& afterSave)
         {
             jassert(extension.startsWith ("."));
 
@@ -76,6 +82,9 @@ class PresetManager
             if (targetDir.createDirectory())
             {
                 auto preset = saveToVT(group, true);
+            	if (afterSave)
+            		afterSave(preset);
+
                 preset.setProperty(preset_manager::ids::presetNameId, presetName, nullptr);
 
                 auto presetFile = targetDir.getChildFile(presetName + extension);
@@ -87,7 +96,7 @@ class PresetManager
             }
         }
 
-        static void loadPreset(const juce::AudioProcessorParameterGroup& group, const juce::String& presetName, const juce::String& extension = ".sjf")
+        static void loadPreset(const juce::AudioProcessorParameterGroup& group, const juce::String& presetName, const juce::String& extension, const AfterLoadCallback& afterLoad)
         {
             jassert(extension.startsWith ("."));
 
@@ -98,7 +107,11 @@ class PresetManager
             {
                 auto vt = loadFromFile(presetFile);
                 if (vt.isValid())
-                    loadFromVT(group, vt, true);
+                {
+	                loadFromVT(group, vt, true);
+                	if (afterLoad)
+						afterLoad(vt);
+                }
             }
             else
             {
@@ -107,18 +120,19 @@ class PresetManager
         }
         
         
-        static juce::PopupMenu getPresetPopupMenu(const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf", juce::Component::SafePointer<juce::ComboBox> parent = nullptr)
+        static juce::PopupMenu getPresetPopupMenu(const juce::AudioProcessorParameterGroup& group, const juce::String& extension = getDefaultExtension(), juce::Component::SafePointer<juce::ComboBox> parent = nullptr, const AfterSaveCallback& afterSave = {}, const AfterLoadCallback& afterLoad = {})
         {
             juce::PopupMenu m;
 
-            auto itemId = populatePresetPopupMenu(1, m, group, extension);
+            auto itemId = populatePresetPopupMenu(1, m, group, extension, afterLoad);
             m.addSeparator();
             auto save = juce::PopupMenu::Item();
             save.itemID = itemId;
             save.text = preset_manager::strings::savePreset;
+    		auto test = afterSave;
             save.isEnabled = true;
             save.isTicked = false;
-            save.action = [&, ext = extension, parent]()
+            save.action = [&, ext = extension, parent, as = afterSave]()
             {
                 auto* alert = new juce::AlertWindow (preset_manager::strings::savePreset, "Please enter a name for your preset:", juce::MessageBoxIconType::NoIcon);
 
@@ -127,12 +141,12 @@ class PresetManager
                 alert->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
 
                 alert->enterModalState (true, juce::ModalCallbackFunction::create (
-                    [alert, &group, e = ext, parent] (int result)
+                    [alert, &group, e = ext, parent, as] (int result)
                     {
                         if (result == 1) // User clicked Save
                         {
                             auto presetName = alert->getTextEditorContents ("presetName");
-                            PresetManager::savePreset(group, presetName, e);
+                            PresetManager::savePreset(group, presetName, e, as);
                         	if (parent)
                         		parent->getProperties().set(preset_manager::ids::savedPreset, presetName);
                         }
@@ -232,7 +246,7 @@ class PresetManager
         }
 
 
-        static int populatePresetPopupMenu(int startId, juce::PopupMenu& m, const juce::AudioProcessorParameterGroup& group, const juce::String& extension = ".sjf")
+        static int populatePresetPopupMenu(int startId, juce::PopupMenu& m, const juce::AudioProcessorParameterGroup& group, const juce::String& extension, const AfterLoadCallback& afterLoad)
         {
             auto id = getGroupNameWithNoSpaces(group);
             auto dir = getProjectWriteableRoot().getChildFile(id);
@@ -243,8 +257,8 @@ class PresetManager
                 for (const auto& file : arr)
                 {
                     auto item = juce::PopupMenu::Item();
-                    item.action = [&, name = file.getFileNameWithoutExtension(), e = extension](){
-                        loadPreset(group, name, e);
+                    item.action = [&, name = file.getFileNameWithoutExtension(), e = extension, al = afterLoad](){
+                        loadPreset(group, name, e, al);
                     };
                     item.itemID = startId;
                     item.text = file.getFileNameWithoutExtension();
@@ -259,7 +273,7 @@ class PresetManager
                 for ( const auto& subDir : dir.findChildFiles(juce::File::TypesOfFileToFind::findDirectories, false, "*"+extension, juce::File::FollowSymlinks::noCycles))
                 {
                     auto subMenu = juce::PopupMenu();
-                    startId = populatePresetPopupMenu(startId, subMenu, group, extension);
+                    startId = populatePresetPopupMenu(startId, subMenu, group, extension, afterLoad);
                     m.addSubMenu(subDir.getFileName(), subMenu);
                 }
             }

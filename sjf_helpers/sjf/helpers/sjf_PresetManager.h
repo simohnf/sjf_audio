@@ -142,7 +142,7 @@ class PresetManager
 
     	static juce::ValueTree saveToVT(const juce::AudioProcessorParameterGroup& group, bool recursive = true)
         {
-            const auto id = getGroupNameWithNoSpaces(group);
+            const auto id = getGroupIDWithNoSpaces(group);
             auto vt = juce::ValueTree{id};
 
             for (const auto& param : group.getParameters(false))
@@ -181,7 +181,7 @@ class PresetManager
                 else if (recursive)
                 {
                     if (const auto childGroup = node->getGroup())
-                        if (auto childVT = vt.getChildWithName(ParameterFactory::getIDWithoutParentPrefix(*childGroup)); childVT.isValid())
+                        if (auto childVT = vt.getChildWithName(getGroupIDWithNoSpaces(*childGroup)); childVT.isValid())
                             loadFromVT(*childGroup, childVT, true);
                 }
             }

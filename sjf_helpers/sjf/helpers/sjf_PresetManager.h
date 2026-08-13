@@ -34,6 +34,11 @@ namespace sjf::helpers
 class PresetManager
 {
     public:
+    	static juce::String getDefaultExtension()
+    	{
+    		const static auto defaultExtension =  juce::String{".sjf"};
+    		return defaultExtension;
+    	}
         static juce::File getProjectWriteableRoot()
         {
             const static auto userMusicDir = juce::File::getSpecialLocation(juce::File::SpecialLocationType::userMusicDirectory);

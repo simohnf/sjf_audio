@@ -18,9 +18,16 @@ namespace sjf::gui
 class PresetPanel : public juce::ComboBox
 {
 public:
-	PresetPanel(const juce::AudioProcessorParameterGroup& parameters_, const juce::String& extension_ = ".sjf")
+	using AfterSave = helpers::PresetManager::AfterSaveCallback;
+	using AfterLoad = helpers::PresetManager::AfterLoadCallback;
+
+
+
+	PresetPanel(const juce::AudioProcessorParameterGroup& parameters_, const juce::String& extension_ = helpers::PresetManager::getDefaultExtension(), const AfterSave& afterSave_ = {}, const AfterLoad& afterLoad_ = {})
 	: parameters(parameters_)
 	, extension(extension_.startsWith(".") ? extension_ : "."+extension_)
+	, afterSave(afterSave_)
+	, afterLoad(afterLoad_)
 	{}
 
 private:
@@ -33,7 +40,7 @@ private:
 		
 		if (const auto m = getRootMenu())
 		{
-			*m = sjf::helpers::PresetManager::getPresetPopupMenu(parameters, extension, SafePointer<ComboBox>(this));
+			*m = sjf::helpers::PresetManager::getPresetPopupMenu(parameters, extension, SafePointer<ComboBox>(this), afterSave, afterLoad);
 			if (const auto saved = getProperties().getWithDefault(helpers::preset_manager::ids::savedPreset, {}); !saved.isVoid())
 			{
 				setText(saved.toString());
@@ -45,6 +52,8 @@ private:
 	const juce::AudioProcessorParameterGroup& parameters;
 	const juce::String extension;
 	juce::String text;
+	const AfterSave afterSave = {};
+	const AfterLoad afterLoad = {};
 	juce::VBlankAttachment vBlankAttachment{this, [&](){timerCallback();}};
 };
 }

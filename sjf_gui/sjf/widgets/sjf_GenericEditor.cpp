@@ -9,6 +9,13 @@ namespace sjf::generic_editor
 {
 	namespace
 	{
+		juce::Colour getUIColour(const Component* comp, const juce::LookAndFeel_V4::ColourScheme::UIColour colour)
+		{
+			const auto lnf4 = dynamic_cast<juce::LookAndFeel_V4*>(&comp->getLookAndFeel());
+			jassert(lnf4 != nullptr);
+			return lnf4->getCurrentColourScheme().getUIColour(colour);
+		}
+
 		class AutoEditor : public juce::Component
 		{
 		public:
@@ -21,7 +28,6 @@ namespace sjf::generic_editor
 					   const helpers::ParameterFactory::GroupMetadata& metadata_) :
 				apvts(apvts_), parameterGroup(group_), metadata(metadata_)
 			{
-
 				collapseButton.onClick = [this]() { setExpanded(!isExpanded()); };
 
 				presetLabel.setText("Preset", juce::dontSendNotification);
@@ -80,7 +86,18 @@ namespace sjf::generic_editor
 
 			void paint(juce::Graphics& g) override
 			{
-				g.setColour(colours::borderColour);
+				depth = depth >= 0 ? depth : [&](){
+						for (auto p = getParentComponent(); dynamic_cast<AutoEditor*>(p) != nullptr; p = p->getParentComponent())
+							depth += 1;
+						return depth;
+					}();
+				const auto dark = static_cast<float>(depth & 3) * 0.1f + 0.1f;
+				const auto fill = getUIColour(this, juce::LookAndFeel_V4::ColourScheme::UIColour::windowBackground).darker(dark);
+				g.fillAll(fill);
+
+				const auto outline =getUIColour(this, juce::LookAndFeel_V4::ColourScheme::UIColour::outline);
+
+				g.setColour(outline);
 				g.drawRect(getLocalBounds());
 			}
 
@@ -282,6 +299,7 @@ namespace sjf::generic_editor
 					addAndMakeVisible(*c);
 			}
 
+			int depth = -1;
 
 			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AutoEditor)
 		};
@@ -404,8 +422,11 @@ namespace sjf::generic_editor
 
 			void paint(Graphics& g) override
 			{
-				g.fillAll(isSelected ? getLookAndFeel().findColour(juce::TextButton::buttonColourId).brighter() : getLookAndFeel().findColour(juce::TextButton::buttonColourId).darker());
-				g.setColour(colours::borderColour);
+				const auto fill = getUIColour(this, juce::LookAndFeel_V4::ColourScheme::widgetBackground);
+				g.fillAll(isSelected ? fill.brighter() : fill);
+
+				const auto outline = getUIColour(this, juce::LookAndFeel_V4::ColourScheme::outline);
+				g.setColour(outline);
 				g.drawRoundedRectangle(getLocalBounds().toFloat(), 2, 1.0f);
 			}
 			void mouseDown(const juce::MouseEvent& e) override
@@ -626,9 +647,12 @@ namespace sjf::generic_editor
 
 			void paintOverChildren(juce::Graphics& g) override
 			{
+				const auto outline = getUIColour(this, juce::LookAndFeel_V4::ColourScheme::outline);
+
 				if (!insertionIndex.has_value())
 				{
-					g.setColour(colours::borderColour);
+
+					g.setColour(outline);
 					g.drawRect(getLocalBounds());
 
 					return;
@@ -651,10 +675,11 @@ namespace sjf::generic_editor
 					lineY = addButton.getY() - (AutoEditor::VerticalSpacing / 2);
 				}
 
-				g.setColour(colours::insertionIndexColour);
+				const auto insertionHighlight = getUIColour(this, juce::LookAndFeel_V4::ColourScheme::highlightedText).withAlpha(0.7f);
+				g.setColour(insertionHighlight);
 				g.fillRect(0, jmax(0, lineY - 1), getWidth(), 3);
 
-				g.setColour(colours::borderColour);
+				g.setColour(outline);
 				g.drawRect(getLocalBounds());
 			}
 
@@ -1161,7 +1186,13 @@ namespace sjf::generic_editor
 								 const helpers::ParameterFactory::GroupMetadata& metadata_) :
 		AudioProcessorEditor(processor_), presets(processor.getParameterTree())
 	{
+		if (auto lnf4 = dynamic_cast<juce::LookAndFeel_V4*>(&getLookAndFeel()))
+			lnf4->setColourScheme(LookAndFeel_V4::getMidnightColourScheme());
+
 		addAndMakeVisible(presets);
+		addAndMakeVisible(label);
+		label.setText(JucePlugin_Name, dontSendNotification);
+		label.setJustificationType(juce::Justification::centred);
 
 		initialiseMainEditor(apvts_, *getTopLevelParameterGroup(processor.getParameterTree(), metadata_), metadata_);
 		jassert(mainEditor != nullptr);
@@ -1200,9 +1231,12 @@ namespace sjf::generic_editor
 	void GenericEditor::resized()
 	{
 		auto bounds = getLocalBounds();
+		label.setBounds(bounds.removeFromTop(AutoEditor::ComponentHeight));
+		bounds.removeFromTop(AutoEditor::VerticalSpacing);
 
+		presets.setBounds(bounds.removeFromTop(AutoEditor::ComponentHeight).reduced(viewport.getScrollBarThickness()*2, 0));
+		bounds.removeFromTop(AutoEditor::VerticalSpacing);
 
-		presets.setBounds(bounds.removeFromTop(30).reduced(viewport.getScrollBarThickness()*2, 0));
 		const auto pos = viewport.getViewPosition();
 		viewport.setBounds(bounds);
 
@@ -1210,5 +1244,11 @@ namespace sjf::generic_editor
 							  dynamic_cast<AutoEditor*>(mainEditor.get())->getRequiredSize().getHeight());
 
 		viewport.setViewPosition(pos);
+	}
+
+	void GenericEditor::paint(juce::Graphics& g)
+	{
+		const auto fill = getUIColour(this, juce::LookAndFeel_V4::ColourScheme::UIColour::windowBackground);
+		g.fillAll(fill);
 	}
 } // namespace sjf::generic_editor

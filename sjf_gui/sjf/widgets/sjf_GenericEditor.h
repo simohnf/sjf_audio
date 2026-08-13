@@ -16,13 +16,6 @@
 
 namespace sjf::generic_editor
 {
-	namespace colours
-	{
-		static const juce::Colour borderColour = juce::Colour::greyLevel(0.5f);
-		static const juce::Colour insertionIndexColour = juce::Colours::cyan.withAlpha(0.5f);
-	}
-
-
 	/**
 	 * @brief A generic, responsive audio processor editor that automatically generates complex
 	 *        hierarchical user interfaces from parameter metadata.
@@ -46,6 +39,8 @@ namespace sjf::generic_editor
 
 			void resized() override;
 
+			void paint(juce::Graphics& g) override;
+
 		private:
 			void initialiseMainEditor(juce::AudioProcessorValueTreeState& apvts,
 											const juce::AudioProcessorParameterGroup& parameterGroup,
@@ -54,6 +49,7 @@ namespace sjf::generic_editor
 			std::unique_ptr<Component> mainEditor;
 			juce::Viewport viewport;
 			sjf::gui::PresetPanel presets;
+			juce::Label label;
 	};
 }
 

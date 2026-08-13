@@ -25,8 +25,8 @@ namespace sjf::generic_editor
 			static constexpr auto PresetPanelHeight = 30;
 
 			AutoEditor(juce::AudioProcessorValueTreeState& apvts_, const juce::AudioProcessorParameterGroup& group_,
-					   const helpers::ParameterFactory::GroupMetadata& metadata_) :
-				apvts(apvts_), parameterGroup(group_), metadata(metadata_)
+					   const helpers::ParameterFactory::GroupMetadata& metadata_, UndoManager* undoManager_)
+			: apvts(apvts_), parameterGroup(group_), metadata(metadata_), undoManager(undoManager_)
 			{
 				collapseButton.onClick = [this]() { setExpanded(!isExpanded()); };
 
@@ -250,6 +250,7 @@ namespace sjf::generic_editor
 			std::unordered_map<const juce::AudioProcessorParameter*, Component*> paramMap;
 			std::vector<std::unique_ptr<juce::Label>> paramNames;
 
+			UndoManager* undoManager;
 		private:
 			void buildUIFromGroup()
 			{
@@ -331,8 +332,9 @@ namespace sjf::generic_editor
 		public:
 			DeviceSelectorEditor(juce::AudioProcessorValueTreeState& apvts_,
 								 const juce::AudioProcessorParameterGroup& group_,
-								 const helpers::ParameterFactory::GroupMetadata& metadata_) :
-				AutoEditor(apvts_, group_, metadata_)
+								 const helpers::ParameterFactory::GroupMetadata& metadata_,
+								 UndoManager* undoManager_)
+			: AutoEditor(apvts_, group_, metadata_, undoManager_)
 			{
 
 			}
@@ -489,6 +491,11 @@ namespace sjf::generic_editor
 				label.setBounds(getLocalBounds().reduced(AutoEditor::HorizontalSpacing, AutoEditor::VerticalSpacing));
 			}
 
+			juce::String getProcessorName() const
+			{
+				return helpers::ParameterFactory::getNameWithoutParentPrefix(group);
+			}
+
 		private:
 			void showContextMenu()
 			{
@@ -559,9 +566,15 @@ namespace sjf::generic_editor
 
 			SequenceListView(juce::AudioProcessorValueTreeState& apvts_,
 							 const juce::AudioProcessorParameterGroup& group_,
-							 const helpers::ParameterFactory::GroupMetadata& metadata_, Listener& listener_) :
-				listener(listener_), apvts(apvts_), group(group_), metadata(metadata_), state(apvts_.state),
-				sequenceID(group.getID() + sjf::helpers::dynamic_processor_sequence::ids::sequenceTreeId)
+							 const helpers::ParameterFactory::GroupMetadata& metadata_, Listener& listener_,
+							 UndoManager* undoManager_)
+			:	listener(listener_)
+			, apvts(apvts_)
+			, group(group_)
+			, metadata(metadata_)
+			, state(apvts_.state)
+			, sequenceID(group.getID() + sjf::helpers::dynamic_processor_sequence::ids::sequenceTreeId)
+			, undoManager(undoManager_)
 			{
 				const auto& subgroups = group.getSubgroups(false);
 				masterPool.reserve(static_cast<size_t>(subgroups.size()));
@@ -754,7 +767,7 @@ namespace sjf::generic_editor
 				return dynamic_cast<SequenceItemComponent*>(dragSourceDetails.sourceComponent.get()) != nullptr;
 			}
 
-			void setSelectItem(size_t itemId)
+			void setSelectItem(const size_t itemId) const
 			{
 				for (const auto& item : masterPool)
 					item->setSelected(itemId == item->getProcessorID());
@@ -765,7 +778,7 @@ namespace sjf::generic_editor
 				if (auto seq = state.getChildWithName(sequenceID); seq.isValid())
 				{
 					seq.setProperty(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId,
-									updatedSequence, nullptr);
+									updatedSequence, undoManager);
 				}
 			}
 
@@ -877,6 +890,12 @@ namespace sjf::generic_editor
 				}
 
 				updateValueTree(updatedSequence);
+
+				if (undoManager)
+				{
+					undoManager->setCurrentTransactionName("Removed " + masterPool[processorID]->getProcessorName());
+					undoManager->beginNewTransaction();
+				}
 			}
 
 			void onItemSwapRequested(const size_t targetProcessorID, const size_t newProcessorTypeID) override
@@ -892,6 +911,12 @@ namespace sjf::generic_editor
 				}
 				onItemClicked(masterPool[newProcessorTypeID].get());
 				updateValueTree(updatedSequence);
+
+				if (undoManager)
+				{
+					undoManager->setCurrentTransactionName("Swapped " + masterPool[targetProcessorID]->getProcessorName() + " for " + masterPool[newProcessorTypeID]->getProcessorName());
+					undoManager->beginNewTransaction();
+				}
 			}
 
 
@@ -904,10 +929,22 @@ namespace sjf::generic_editor
 				updatedSequence.push_back(newProcessorTypeID);
 				onItemClicked(masterPool[newProcessorTypeID].get());
 				updateValueTree(updatedSequence);
+
+				if (undoManager)
+				{
+					undoManager->setCurrentTransactionName("Add " + masterPool[newProcessorTypeID]->getProcessorName());
+					undoManager->beginNewTransaction();
+				}
 			}
 
 			void onItemMoveRequested(const size_t processorID, const size_t newIndex) const
 			{
+				const auto currentIndex = std::find_if(activeSequence.begin(), activeSequence.end(),
+																					[&](auto* ed){ return ed->getProcessorID() == processorID; });
+
+				if ( currentIndex == activeSequence.end() || static_cast<size_t>(std::distance(activeSequence.begin(), currentIndex)) == newIndex)
+					return; // dropping back to original position, bail early
+
 				std::vector<size_t> updatedSequence{};
 				updatedSequence.reserve(masterPool.size());
 				for (auto i = 0ul; i < activeSequence.size(); ++i)
@@ -919,6 +956,12 @@ namespace sjf::generic_editor
 				updatedSequence.insert(updatedSequence.begin() + targetPos, processorID);
 
 				updateValueTree(updatedSequence);
+
+				if (undoManager)
+				{
+					undoManager->setCurrentTransactionName("Move " + masterPool[processorID]->getProcessorName() + " to position " + juce::String(targetPos));
+					undoManager->beginNewTransaction();
+				}
 			}
 
 			std::vector<std::pair<size_t, juce::String>> getAvailableSwapTypes() override
@@ -1019,6 +1062,7 @@ namespace sjf::generic_editor
 			size_t selectedId = sjf::helpers::dynamic_processor_sequence::InactiveSlot;
 
 			const Identifier sequenceID;
+			UndoManager* undoManager;
 
 			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SequenceListView)
 		};
@@ -1031,8 +1075,10 @@ namespace sjf::generic_editor
 		public:
 			DynamicProcessorSequenceEditor(juce::AudioProcessorValueTreeState& apvts_,
 										   const juce::AudioProcessorParameterGroup& group_,
-										   const helpers::ParameterFactory::GroupMetadata& metadata_) :
-				AutoEditor(apvts_, group_, metadata_), sequenceListView(apvts, parameterGroup, metadata, *this)
+										   const helpers::ParameterFactory::GroupMetadata& metadata_,
+										   UndoManager* undoManager_)
+			: AutoEditor(apvts_, group_, metadata_, undoManager_)
+			, sequenceListView(apvts, parameterGroup, metadata, *this, undoManager)
 			{
 				viewport.setViewedComponent(&sequenceListView, false);
 				addAndMakeVisible(viewport);
@@ -1047,7 +1093,6 @@ namespace sjf::generic_editor
 						sequenceVT.setProperty(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId, sequenceListView.getActiveSequenceString(), nullptr);
 						vt.addChild(sequenceVT, -1, nullptr);
 						auto xml = vt.toXmlString();
-						int i{};
 					}
 				};
 
@@ -1065,13 +1110,18 @@ namespace sjf::generic_editor
 							if (seq)
 							{
 								sequenceListView.updateValueTree(seq->toString());
+
+								if (undoManager)
+								{
+									undoManager->setCurrentTransactionName("Loaded preset for " + helpers::ParameterFactory::getNameWithoutParentPrefix(parameterGroup));
+									undoManager->beginNewTransaction();
+								}
 							}
 							else
 							{
 								jassertfalse;
 							}
 						}
-						int i{};
 					}
 				};
 			}
@@ -1219,16 +1269,16 @@ namespace sjf::generic_editor
 				}();
 				if (childMetaData.isSelectorGroup())
 				{
-					childEditors.push_back(std::make_unique<DeviceSelectorEditor>(apvts, *child, childMetaData));
+					childEditors.push_back(std::make_unique<DeviceSelectorEditor>(apvts, *child, childMetaData, undoManager));
 				}
 				else if (childMetaData.isDynamicProcessorSequenceGroup())
 				{
 					childEditors.push_back(
-						std::make_unique<DynamicProcessorSequenceEditor>(apvts, *child, childMetaData));
+						std::make_unique<DynamicProcessorSequenceEditor>(apvts, *child, childMetaData, undoManager));
 				}
 				else
 				{
-					childEditors.push_back(std::make_unique<AutoEditor>(apvts, *child, childMetaData));
+					childEditors.push_back(std::make_unique<AutoEditor>(apvts, *child, childMetaData, undoManager));
 				}
 
 				addAndMakeVisible(childEditors.back().get());
@@ -1316,15 +1366,15 @@ namespace sjf::generic_editor
 	{
 		if (metadata.isSelectorGroup())
 		{
-			mainEditor = std::make_unique<DeviceSelectorEditor>(apvts, parameterGroup, metadata);
+			mainEditor = std::make_unique<DeviceSelectorEditor>(apvts, parameterGroup, metadata, undoManager);
 		}
 		else if (metadata.isDynamicProcessorSequenceGroup())
 		{
-			mainEditor = std::make_unique<DynamicProcessorSequenceEditor>(apvts, parameterGroup, metadata);
+			mainEditor = std::make_unique<DynamicProcessorSequenceEditor>(apvts, parameterGroup, metadata, undoManager);
 		}
 		else
 		{
-			mainEditor = std::make_unique<AutoEditor>(apvts, parameterGroup, metadata);
+			mainEditor = std::make_unique<AutoEditor>(apvts, parameterGroup, metadata, undoManager);
 		}
 	}
 

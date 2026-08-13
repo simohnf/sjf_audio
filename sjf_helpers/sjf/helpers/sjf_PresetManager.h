@@ -187,8 +187,7 @@ class PresetManager
             }
         }
 
-    private:
-        // Helper to guarantee savePreset and loadPreset resolve the directory identically
+		// Helper to guarantee savePreset and loadPreset resolve the directory identically
         static juce::String getGroupNameWithNoSpaces(const juce::AudioProcessorParameterGroup& group)
         {
             auto id = ParameterFactory::getNameWithoutParentPrefix(group).replace(" ", "");

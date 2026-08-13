@@ -17,7 +17,7 @@
 namespace sjf::helpers
 {
 
-template<int Minimum_dB = -100, int Maximum_dB = 12, int Default_dB = 0, int SkewForCentre_dB = 0>
+template<int Minimum_dB = -100, int Maximum_dB = 12, int Default_dB = 0, int SkewForCentre_dB = 0, const bool SupportSubPresets = false>
 class Gain
 {
 public:
@@ -28,7 +28,7 @@ public:
 		std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
 		{
 			static_assert(Minimum_dB < Maximum_dB, "Minimum_dB must be less than Maximum_dB");
-			auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
+			auto factory = helpers::ParameterFactory::create (factoryID, factoryName, SupportSubPresets);
 			auto range = NormalisableRange<float>{Minimum_dB, Maximum_dB, 0.01f};
 			const auto skew = SkewForCentre_dB > Minimum_dB && SkewForCentre_dB < Maximum_dB ? SkewForCentre_dB : jmap<float>(0.5f, Minimum_dB, Maximum_dB);
 			range.setSkewForCentre(skew);

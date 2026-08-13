@@ -179,7 +179,7 @@ namespace sjf::generic_editor
 				}();
 				if (supportsSubPresets)
 				{
-					presetPanel = std::make_unique<sjf::gui::PresetPanel>(parameterGroup);
+					presetPanel = std::make_unique<sjf::gui::PresetPanel>(parameterGroup, helpers::PresetManager::getDefaultExtension(), afterSave, afterLoad);
 					addAndMakeVisible(*presetPanel);
 					addAndMakeVisible(presetLabel);
 				}
@@ -188,10 +188,40 @@ namespace sjf::generic_editor
 
 			void buildChildEditors();
 
+
+			void callAfterSave(ValueTree vt) const
+			{
+				if (afterSave)
+					afterSave(vt);
+				for (auto& childEditor : childEditors)
+				{
+					auto xml = vt.toXmlString();
+					auto id = helpers::PresetManager::getGroupIDWithNoSpaces(childEditor->parameterGroup);
+					if (auto childVT = vt.getChildWithName(id); childVT.isValid())
+						childEditor->callAfterSave(childVT);
+				}
+			}
+
+
+			void callAfterLoad(ValueTree vt) const
+			{
+				if (afterLoad)
+					afterLoad(vt);
+				for (auto& childEditor : childEditors)
+				{
+					auto id = helpers::PresetManager::getGroupIDWithNoSpaces(childEditor->parameterGroup);
+					if (auto childVT = vt.getChildWithName(id); childVT.isValid())
+						childEditor->callAfterLoad(childVT);
+				}
+			}
+
 		protected:
 			juce::AudioProcessorValueTreeState& apvts;
 			const juce::AudioProcessorParameterGroup& parameterGroup;
 			const helpers::ParameterFactory::GroupMetadata metadata;
+
+			helpers::PresetManager::AfterSaveCallback afterSave{};
+			helpers::PresetManager::AfterLoadCallback afterLoad{};
 
 			bool expanded{true};
 
@@ -304,6 +334,7 @@ namespace sjf::generic_editor
 								 const helpers::ParameterFactory::GroupMetadata& metadata_) :
 				AutoEditor(apvts_, group_, metadata_)
 			{
+
 			}
 
 			void resized() override
@@ -729,7 +760,32 @@ namespace sjf::generic_editor
 					item->setSelected(itemId == item->getProcessorID());
 			}
 
+			void updateValueTree(const juce::String& updatedSequence) const
+			{
+				if (auto seq = state.getChildWithName(sequenceID); seq.isValid())
+				{
+					seq.setProperty(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId,
+									updatedSequence, nullptr);
+				}
+			}
+
+			juce::String getActiveSequenceString() const
+			{
+				StringArray ret{};
+				for (auto item : activeSequence)
+					ret.add(juce::String(item->getProcessorID()));
+				return ret.joinIntoString("/");
+			}
+
 		private:
+
+			void updateValueTree(const std::vector<size_t>& updatedSequence) const
+			{
+				auto ret = juce::StringArray{};
+				for (const auto i : updatedSequence)
+					ret.add(static_cast<juce::String>(i));
+				updateValueTree(ret.joinIntoString("/"));
+			}
 			void valueTreePropertyChanged(ValueTree& treeWhosePropertyHasChanged, const Identifier& property) override
 			{
 				if (treeWhosePropertyHasChanged.hasType(sequenceID) &&
@@ -797,19 +853,7 @@ namespace sjf::generic_editor
 				addButton.setEnabled(activeSequence.size() < masterPool.size());
 			}
 
-			void updateValueTree(const std::vector<size_t>& updatedSequence) const
-			{
-				auto ret = juce::StringArray{};
-				for (const auto i : updatedSequence)
-					ret.add(static_cast<juce::String>(i));
 
-				auto xml = state.toXmlString();
-				if (auto seq = state.getChildWithName(sequenceID); seq.isValid())
-				{
-					seq.setProperty(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId,
-									ret.joinIntoString("/"), nullptr);
-				}
-			}
 
 			// SequenceItemComponent::Listener Overrides
 			void onItemClicked(SequenceItemComponent* item) override
@@ -992,6 +1036,44 @@ namespace sjf::generic_editor
 			{
 				viewport.setViewedComponent(&sequenceListView, false);
 				addAndMakeVisible(viewport);
+
+				afterSave = [this, safeThis = SafePointer(this)](ValueTree vt){
+					if (!safeThis)
+						return;
+					if (vt.isValid())
+					{
+
+						auto sequenceVT = ValueTree(sjf::helpers::dynamic_processor_sequence::ids::sequenceTreeId);
+						sequenceVT.setProperty(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId, sequenceListView.getActiveSequenceString(), nullptr);
+						vt.addChild(sequenceVT, -1, nullptr);
+						auto xml = vt.toXmlString();
+						int i{};
+					}
+				};
+
+				afterLoad = [this, id = group_.getID(), safeThis = SafePointer(this)](ValueTree vt)
+				{
+					if (!safeThis)
+						return;
+
+					if (vt.isValid())
+					{
+						auto xml = vt.toXmlString();
+						if (auto seqTree = vt.getChildWithName(sjf::helpers::dynamic_processor_sequence::ids::sequenceTreeId); seqTree.isValid())
+						{
+							auto seq = seqTree.getPropertyPointer(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId);
+							if (seq)
+							{
+								sequenceListView.updateValueTree(seq->toString());
+							}
+							else
+							{
+								jassertfalse;
+							}
+						}
+						int i{};
+					}
+				};
 			}
 
 			void resized() override
@@ -1175,8 +1257,17 @@ namespace sjf::generic_editor
 	} // namespace
 
 	GenericEditor::GenericEditor(juce::AudioProcessorValueTreeState& apvts_, juce::AudioProcessor& processor_,
-								 const helpers::ParameterFactory::GroupMetadata& metadata_) :
-		AudioProcessorEditor(processor_), presets(processor.getParameterTree())
+								 const helpers::ParameterFactory::GroupMetadata& metadata_)
+	: AudioProcessorEditor(processor_)
+	, presets(processor.getParameterTree(), helpers::PresetManager::getDefaultExtension(),
+					[this, id = metadata_.groupID, safeThis = SafePointer(this)](ValueTree vt){
+								if (safeThis && mainEditor && vt.getChildWithName(id).isValid())
+									dynamic_cast<AutoEditor*>(mainEditor.get())->callAfterSave(vt.getChildWithName(id));
+						},
+						[this, id = metadata_.groupID, safeThis = SafePointer(this)](ValueTree vt){
+								if (safeThis && mainEditor && vt.getChildWithName(id).isValid())
+									dynamic_cast<AutoEditor*>(mainEditor.get())->callAfterLoad(vt.getChildWithName(id));
+						})
 	{
 		if (auto lnf4 = dynamic_cast<juce::LookAndFeel_V4*>(&getLookAndFeel()))
 			lnf4->setColourScheme(LookAndFeel_V4::getMidnightColourScheme());

@@ -14,6 +14,8 @@
 #pragma once
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
+
+#include "sjf_AsyncCallbackInvoker.h"
 #include "sjf_OptionalCalls.h"
 
 namespace sjf::helpers
@@ -145,13 +147,13 @@ public:
         spec = spec_;
         processor.prepare (spec);
         parameters.prepare (spec);
-        wetRamp.reset(spec.sampleRate, 0.05); // 50ms
-        dryRamp.reset(spec.sampleRate, 0.05); // 50ms
+        wetRamp.reset(spec.sampleRate, 0.1); // 50ms
+        dryRamp.reset(spec.sampleRate, 0.1); // 50ms
 
         inputBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
 
     	latencyDelay.prepare(spec);
-    	latencyDelay.setMaximumDelayInSamples(getLatencySamples()+10);
+    	latencyDelay.setMaximumDelayInSamples(getLatencySamples() * 2 + 10);
         reset();
     }
 
@@ -178,27 +180,41 @@ public:
 
         if (!wetRamp.isSmoothing() && !dryRamp.isSmoothing())
         {
-            parameters.reset(); // we only have bool parameter so we can snap and do our thing
+        	parameters.reset(); // we handle smoothing manually
             wetRamp.setTargetValue(getWetTargetLevel());
             dryRamp.setTargetValue(getDryTargetLevel());
         }
 
-    	latencyDelay.setDelay(getLatencySamples());
+    	if (getLatencySamples() > latencyDelay.getMaximumDelayInSamples())
+    		asyncCallback.triggerUpdate();
+    	else
+			latencyDelay.setDelay(getLatencySamples());
 
-        if (wetRamp.getCurrentValue() == 0.0f)
+        if (!wetRamp.isSmoothing() && !dryRamp.isSmoothing() && wetRamp.getCurrentValue() == 0.0f)
         {
+        	if (processorNeedsReset)
+        		processor.reset();
+
+        	processorNeedsReset = false;
+        	delayNeedsReset = true;
+
         	if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
         		outputBlock.copyFrom(inputBlock);
 
         	juce::dsp::ProcessContextReplacing<float> delayContext(outputBlock);
-        	latencyDelay.process(context);
+        	latencyDelay.process(delayContext);
 
             dryRamp.skip(static_cast<int>(inputBlock.getNumSamples()));
             wetRamp.skip(static_cast<int>(inputBlock.getNumSamples()));
         }
         else
         {
-        	latencyDelay.reset();
+        	if (delayNeedsReset)
+				latencyDelay.reset();
+
+        	delayNeedsReset = false;
+        	processorNeedsReset = true;
+
             juce::dsp::AudioBlock<float> dryBlock(inputBuffer);
             dryBlock.copyFrom(inputBlock);
             processor.process (context);
@@ -295,6 +311,21 @@ private:
     juce::AudioBuffer<float> inputBuffer;
     juce::LinearSmoothedValue<float> wetRamp, dryRamp;
 	juce::dsp::DelayLine<float> latencyDelay;
+
+
+	bool processorNeedsReset{false}, delayNeedsReset{false};
+
+	using Callback = std::function<void()>;
+	std::shared_ptr<int> guard = std::make_shared<int>(42);
+	sjf::helpers::AsyncCallbackInvoker<Callback> asyncCallback{
+		[this, safeGuard = std::weak_ptr(guard)](){
+			if (!safeGuard.expired())
+			{
+				latencyDelay.setMaximumDelayInSamples(getLatencySamples() + 10);
+				latencyDelay.setDelay(getLatencySamples());
+				reset();
+			}
+		}};
 };
 
-} // namespace sjf::helpers
+}

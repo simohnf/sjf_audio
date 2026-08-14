@@ -33,6 +33,14 @@ namespace bypass_wrapper_config
     /** @brief Configuration tag enabling an adjustable Dry/Wet Mix parameter using constant-power crossfading curves. */
     struct Mix{};
 
+	/** @brief Configuration tag enabling an adjustable Dry/Wet Mix parameter using constant-power crossfading curves. */
+	template<float DefaultLevel = 100.0f>
+	struct DefaultMixLevel
+	{
+		static_assert(DefaultLevel >= 0.0f && DefaultLevel <= 100.0f, "Default mix level must be in the range [0, 100]%");
+		static constexpr float defaultLevel = DefaultLevel;
+	};
+
     /** @brief Configuration tag enabling a hard mute switch parameter with a 50ms gain ramp down. */
     struct Mute{};
 }
@@ -53,6 +61,12 @@ template <typename Processor, typename... Configs>
 class BypassWrapper
 {
     static constexpr auto hasBypass = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Bypass, Configs...>;
+
+	using DefaultMixLevel_ = bypass_wrapper_config::DefaultMixLevel<>;
+	using DefaultMixLevel = helpers::functions::utilities::find_value_instantiation_of_t<			bypass_wrapper_config::DefaultMixLevel,
+																									DefaultMixLevel_,
+																									Configs...
+																								 >;
     static constexpr auto hasMix = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mix, Configs...>;
     static constexpr auto hasMute = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mute, Configs...>;
 public:
@@ -81,7 +95,7 @@ public:
                     const auto attributes = juce::AudioParameterFloatAttributes{}
                                                                                     .withLabel("%");
                     const auto mapping = [&](const float x){ return x * 0.01f;};
-                    createTrackedParameter (*targetFactory, mix, "Mix", "Mix", range, 100.0f, mapping, attributes);
+                    createTrackedParameter (*targetFactory, mix, "Mix", "Mix", range, DefaultMixLevel::defaultLevel, mapping, attributes);
                 }
                 else
                 {

@@ -42,7 +42,7 @@ public:
                 auto range = NormalisableRange<float>{0, 200, 0.01f};
                 range.setSkewForCentre(5);
                 const auto attributes = AudioParameterFloatAttributes().withLabel("ms");
-                createTrackedParameter(*factory, release, "Rel", "Release", range, 0, {}, attributes);
+                createTrackedParameter(*factory, release, "Rel", "Release", range, 10, {}, attributes);
             }
 
             return factory;

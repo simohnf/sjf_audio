@@ -179,7 +179,7 @@ namespace sjf::generic_editor
 				}();
 				if (supportsSubPresets)
 				{
-					presetPanel = std::make_unique<sjf::gui::PresetPanel>(parameterGroup, helpers::PresetManager::getDefaultExtension(), afterSave, afterLoad);
+					presetPanel = std::make_unique<sjf::gui::PresetPanel>(parameterGroup, helpers::PresetManager::getDefaultExtension(), afterSave, afterLoad, undoManager);
 					addAndMakeVisible(*presetPanel);
 					addAndMakeVisible(presetLabel);
 				}
@@ -1110,12 +1110,6 @@ namespace sjf::generic_editor
 							if (seq)
 							{
 								sequenceListView.updateValueTree(seq->toString());
-
-								if (undoManager)
-								{
-									undoManager->setCurrentTransactionName("Loaded preset for " + helpers::ParameterFactory::getNameWithoutParentPrefix(parameterGroup));
-									undoManager->beginNewTransaction();
-								}
 							}
 							else
 							{
@@ -1319,7 +1313,8 @@ namespace sjf::generic_editor
 						[this, id = metadata_.groupID, safeThis = SafePointer(this)](ValueTree vt){
 								if (safeThis && mainEditor && vt.getChildWithName(id).isValid())
 									dynamic_cast<AutoEditor*>(mainEditor.get())->callAfterLoad(vt.getChildWithName(id));
-						})
+						},
+						undoManager)
 	{
 		if (auto lnf4 = dynamic_cast<juce::LookAndFeel_V4*>(&getLookAndFeel()))
 			lnf4->setColourScheme(LookAndFeel_V4::getMidnightColourScheme());

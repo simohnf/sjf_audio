@@ -23,7 +23,6 @@ namespace sjf::helpers
         const static juce::Identifier presetNameId{"preset"};
         const static juce::Identifier value{"value"};
         const static juce::Identifier param{"Param"};
-        const static juce::Identifier savedPreset{"SavedPreset"};
     }
 
 	namespace preset_manager::strings
@@ -82,10 +81,11 @@ class PresetManager
             if (targetDir.createDirectory())
             {
                 auto preset = saveToVT(group, true);
-            	if (afterSave)
-            		afterSave(preset);
 
                 preset.setProperty(preset_manager::ids::presetNameId, presetName, nullptr);
+
+            	if (afterSave)
+            		afterSave(preset);
 
                 auto presetFile = targetDir.getChildFile(presetName + extension);
                 saveToFile(preset, presetFile);
@@ -129,11 +129,14 @@ class PresetManager
             auto save = juce::PopupMenu::Item();
             save.itemID = itemId;
             save.text = preset_manager::strings::savePreset;
-    		auto test = afterSave;
             save.isEnabled = true;
             save.isTicked = false;
-            save.action = [&, ext = extension, parent, as = afterSave]()
+    		auto txt = parent ? parent->getText() : "";
+            save.action = [&, ext = extension, parent, as = afterSave, txt]()
             {
+            	if (parent)
+            		parent->setText(txt);
+
                 auto* alert = new juce::AlertWindow (preset_manager::strings::savePreset, "Please enter a name for your preset:", juce::MessageBoxIconType::NoIcon);
 
                 alert->addTextEditor ("presetName", "My Preset", "Preset Name:");
@@ -147,8 +150,6 @@ class PresetManager
                         {
                             auto presetName = alert->getTextEditorContents ("presetName");
                             PresetManager::savePreset(group, presetName, e, as);
-                        	if (parent)
-                        		parent->getProperties().set(preset_manager::ids::savedPreset, presetName);
                         }
                         delete alert;
                     }));

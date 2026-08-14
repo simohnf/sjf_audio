@@ -759,8 +759,8 @@ private:
 															   dsp::oscillators::lfo::lfo_config::Depth>;
 		}
 
-		using Chorus  = Delay<internal::ChorusLFO, delay_config::TimeValues<5, 10, 7>, delay_config::Link, delay_config::Filter, delay_config::Offset>;
-		using Flanger = Delay<internal::ChorusLFO, delay_config::TimeValues<1, 5, 2>, delay_config::Link, delay_config::Filter, delay_config::Offset, delay_config::Feedback>;
+		using Chorus  = Delay<internal::ChorusLFO, delay_config::TimeValues<5, 10, 7>, delay_config::Link, delay_config::Offset>;
+		using Flanger = Delay<internal::ChorusLFO, delay_config::TimeValues<1, 5, 2>, delay_config::Link, delay_config::Offset, delay_config::Feedback>;
 	}
 
 }

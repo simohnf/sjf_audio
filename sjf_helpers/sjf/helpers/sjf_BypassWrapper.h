@@ -31,6 +31,8 @@ namespace bypass_wrapper_config
 {
     /** @brief Configuration tag enabling a soft-bypass control parameter with a click-free 50ms ramp transition. */
     struct Bypass{};
+	/** @brief Configuration tag enabling a soft-bypass control parameter with a click-free 50ms ramp transition, Opposite of Bypass. */
+	struct OnOff{};
 
     /** @brief Configuration tag enabling an adjustable Dry/Wet Mix parameter using constant-power crossfading curves. */
     struct Mix{};
@@ -63,6 +65,8 @@ template <typename Processor, typename... Configs>
 class BypassWrapper
 {
     static constexpr auto hasBypass = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Bypass, Configs...>;
+    static constexpr auto hasOnOff = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::OnOff, Configs...>;
+	static_assert(!(hasBypass&&hasOnOff), "You can't have both Bypass and OnOff");
 
 	using DefaultMixLevel_ = bypass_wrapper_config::DefaultMixLevel<>;
 	using DefaultMixLevel = helpers::functions::utilities::find_value_instantiation_of_t<			bypass_wrapper_config::DefaultMixLevel,
@@ -108,6 +112,10 @@ public:
                 {
                     createTrackedParameter (*targetFactory, bypass, "Bypass", "Bypass", false);
                 }
+            	else if constexpr (hasOnOff)
+            	{
+            		createTrackedParameter (*targetFactory, bypass, "On", "On", false, [](const bool x){ return !x;});
+            	}
                 else
                 {
                     bypass.currentValue = false;

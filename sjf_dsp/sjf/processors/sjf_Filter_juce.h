@@ -33,7 +33,7 @@ namespace filter_config
 	};
 }
 
-template<FixedFilterType FixedType = FixedFilterType::Variable, bool NoResonance = false, typename FrequencyRange = filter_config::FrequencyRange<>>
+template<FixedFilterType FixedType = FixedFilterType::Variable, bool NoResonance = false, typename FrequencyRange = filter_config::FrequencyRange<>, bool SupportPresets = true>
 class SVF
 {
 public:
@@ -47,7 +47,8 @@ public:
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
-            auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
+            auto factory = helpers::ParameterFactory::create (factoryID, factoryName, SupportPresets);
+
             {
                 auto range = NormalisableRange<float>{ FrequencyRange::Min, FrequencyRange::Max, 0.1f };
                 range.setSkewForCentre(FrequencyRange::Skew);

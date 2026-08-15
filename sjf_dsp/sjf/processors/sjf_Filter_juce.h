@@ -19,10 +19,25 @@ namespace sjf::dsp
 {
 /// just a wrapper around the juce StateVariableFilter to allow it to be easily dropped into custom processors
 enum class FixedFilterType {Variable, LowPass, BandPass, HighPass};
-template<FixedFilterType FixedType = FixedFilterType::Variable, bool NoResonance = false>
+
+namespace filter_config
+{
+	template <float MinFrequency = 20.0f, float MaxFrequency = 20000.0f, float DefaultFrequency = 1000.0f, float SkewForCentre = 2000.0f>
+	struct FrequencyRange
+	{
+		static_assert(MinFrequency < MaxFrequency);
+		static constexpr float Min = MinFrequency;
+		static constexpr float Max = MaxFrequency;
+		static constexpr float Default = DefaultFrequency >= Min && DefaultFrequency <= Max ? DefaultFrequency : Min + 0.5f *(Max - Min);
+		static constexpr float Skew = SkewForCentre > Min && SkewForCentre < Max ? SkewForCentre : Min + 0.5f *(Max - Min);
+	};
+}
+
+template<FixedFilterType FixedType = FixedFilterType::Variable, bool NoResonance = false, typename FrequencyRange = filter_config::FrequencyRange<>>
 class SVF
 {
 public:
+
     struct Parameters : public helpers::AudioParametersBase
     {
         /// NOTE: You need to ensure all TrackedState objects of a given type are declared consecutively!!!
@@ -34,10 +49,10 @@ public:
         {
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
             {
-                auto range = NormalisableRange<float>{ 20.0f, 20000.0f, 0.1f };
-                range.setSkewForCentre(2000.0f);
+                auto range = NormalisableRange<float>{ FrequencyRange::Min, FrequencyRange::Max, 0.1f };
+                range.setSkewForCentre(FrequencyRange::Skew);
                 const auto attributes = AudioParameterFloatAttributes().withLabel("Hz");
-                createTrackedParameter  (*factory, cutoff, "Cutoff",  "Cutoff Frequency",  range, 1000.0f, {}, attributes);
+                createTrackedParameter  (*factory, cutoff, "Cutoff",  "Cutoff Frequency",  range, FrequencyRange::Default, {}, attributes);
             }
 
             if constexpr (NoResonance)

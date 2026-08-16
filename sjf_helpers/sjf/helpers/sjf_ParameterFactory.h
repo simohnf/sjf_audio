@@ -544,6 +544,71 @@ public:
         }
     }
 
+	template<typename TrackedStateType, typename Mapping>
+	void updateMapping(TrackedStateType& trackedState, Mapping mapping) noexcept
+    {
+    	static constexpr bool isFloatParam	= std::is_same_v<std::decay_t<TrackedStateType>, FloatState>;
+    	static constexpr bool isIntParam	= std::is_same_v<std::decay_t<TrackedStateType>, IntState>;
+    	static constexpr bool isChoiceParam = std::is_same_v<std::decay_t<TrackedStateType>, ChoiceState>;
+    	static constexpr bool isBoolParam	= std::is_same_v<std::decay_t<TrackedStateType>, BoolState>;
+
+	    if constexpr (isFloatParam)
+	    {
+		    static_assert(std::is_constructible_v<FloatMapping, std::decay_t<Mapping>>, "FloatParameters must use FloatMappings");
+	    	for ( auto i = 0ul; i < floatStates.size(); ++i)
+	    	{
+	    		if (&trackedState == &floatStates[i].get())
+	    		{
+	    			floatMappings[i] = mapping;
+	    			trackedState.latchTarget(mapping(trackedState.getParameterValue()));
+	    			return;
+	    		}
+	    	}
+	    }
+    	if constexpr (isIntParam)
+    	{
+    		static_assert(std::is_constructible_v<IntMapping, std::decay_t<Mapping>>, "IntParameters must use IntMappings");
+    		for ( auto i = 0ul; i < intStates.size(); ++i)
+    		{
+    			if (&trackedState == &intStates[i].get())
+    			{
+    				intMappings[i] = mapping;
+    				trackedState.latchTarget(mapping(trackedState.getParameterValue()));
+    				return;
+    			}
+    		}
+    	}
+    	if constexpr (isChoiceParam)
+    	{
+    		static_assert(std::is_constructible_v<ChoiceMapping, std::decay_t<Mapping>>, "ChoiceParameters must use ChoiceMappings");
+    		for ( auto i = 0ul; i < choiceStates.size(); ++i)
+    		{
+    			if (&trackedState == &choiceStates[i].get())
+    			{
+    				choiceMappings[i] = mapping;
+    				trackedState.latchTarget(mapping(trackedState.getParameterValue()));
+
+    				return;
+    			}
+    		}
+    	}
+    	if constexpr (isBoolParam)
+    	{
+    		static_assert(std::is_constructible_v<BoolMapping, std::decay_t<Mapping>>, "BoolParameters must use BoolMappings");
+    		for ( auto i = 0ul; i < boolStates.size(); ++i)
+    		{
+    			if (&trackedState == &boolStates[i].get())
+    			{
+    				boolMappings[i] = mapping;
+    				trackedState.latchTarget(mapping(trackedState.getParameterValue()));
+
+    				return;
+    			}
+    		}
+    	}
+    	jassertfalse; // you've tried to change a mapping for a parameter that's not tracked by this obect
+    }
+
 private:
 
     template<typename TrackedStateType, typename TrackedStateMappingType>

@@ -28,8 +28,6 @@ namespace sjf::tests
 	using TestGain = Gain<-60, 0>;
 	static GenericTests<ProcessorDuplicator<TestGain>> processorDuplicator("ProcessorDuplicator");
 
-	static GenericTests<ProcessorDuplicator<DCBlocker<>>> dcBlock("DCBlock");
-
 
 
 	static GenericTests< BypassWrapper<TestGain, bypass_wrapper_config::Mix, bypass_wrapper_config::Bypass, bypass_wrapper_config::Mute>> bypassWrapper("BypassWrapper");

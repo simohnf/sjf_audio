@@ -402,8 +402,6 @@ public:
         if constexpr (hasFilter)
             factory->addChildFactory(filter.createParameters(factoryID +"Filt", factoryName + " Filter"));
 
-        factory->addChildFactory(dcBlocker.createParameters(factoryID + "DCBlock", factoryName+" DC Block"));
-
         if constexpr (hasModulation)
             factory->addChildFactory(lfo.createParameters(factoryID + "Mod", factoryName + " Modulation"));
 
@@ -600,7 +598,7 @@ private:
     juce::dsp::ProcessSpec spec{};
     std::array<DelayLine, NUM_CHANNELS> delayLine;
     [[maybe_unused]] LFO lfo;
-    sjf::helpers::ProcessorDuplicator<helpers::DCBlocker<false>> dcBlocker;
+    helpers::DCBlocker<NUM_CHANNELS> dcBlocker;
     [[maybe_unused]] Filter filter;
     [[maybe_unused]] Saturation saturation;
     size_t lastSaturationType = 0;

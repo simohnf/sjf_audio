@@ -53,8 +53,11 @@ public:
         {
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
             createTrackedParameter(*factory, drive, "Drive", "Drive", {1.0f, 10.0f, 0.001f}, 1.0f);
+        	if constexpr (WaveshaperTypes::numSaturators > 1)
+				createTrackedParameter(*factory, waveshaper, "Type", "Type", WaveshaperTypes::getNames(), 0);
+        	else
+        		waveshaper.currentValue = 0;
 
-            createTrackedParameter(*factory, waveshaper, "Type", "Type", WaveshaperTypes::getNames(), 0);
             createTrackedParameter(*factory, autoGain, "AutoGain", "Auto Gain", false);
 
             return factory;

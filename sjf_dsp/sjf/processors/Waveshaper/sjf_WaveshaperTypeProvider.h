@@ -12,8 +12,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_Waveshapers.h>
-
-#include "sjf/helpers/sjf_HelperFunctions.h"
+#include <sjf/helpers/sjf_HelperFunctions.h>
 
 namespace sjf::dsp::waveshaper
 {

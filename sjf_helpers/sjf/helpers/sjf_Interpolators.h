@@ -161,6 +161,25 @@ namespace sjf::interpolation
         T a2 = -(2 * diff + a1 + a3);
         return 0.5f * ((a3 * mu + a2) * mu + a1) * mu + x1;
     }
+
+	/**
+     Four point Hermite interpolation copied from from Godot https://stackoverflow.com/questions/1125666/how-do-you-do-bicubic-or-other-non-linear-interpolation-of-re-sampled-audio-da
+     mu - distance between points one and two ( must be between 0 --> 1 )
+     x0 - value of previous point
+     x1 - value of first point
+     x2 - value of second point
+     x3 - value of point after next
+     */
+    template <typename T>
+    T cubicInterpolateCatmullRom ( const T mu, const T x0, const T x1, const T x2, const T x3 )
+    {
+    	const auto a0 = -0.5f * x0 + 1.5f * x1 - 1.5f * x2 + 0.5f * x3;
+    	const auto a1 = x0 - 2.5f * x1 + 2.0f * x2 - 0.5f * x3;
+    	const auto a2 = -0.5f * x0 + 0.5f * x2;
+    	const auto a3 = x1;
+
+    	return (((a0 * mu + a1) * mu + a2) * mu + a3);
+    }
     //==============================================================================
     // /**
     //  Allpass filter based interpolator copied from https://ccrma.stanford.edu/~jos/pasp/First_Order_Allpass_Interpolation.html

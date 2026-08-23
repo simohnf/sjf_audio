@@ -19,7 +19,8 @@
 #include <sjf/processors/sjf_Compressor_juce.h>
 #include <sjf/processors/sjf_Limiter_juce.h>
 
-#include "sjf/processors/sjf_Utility.h"
+#include <sjf/processors/sjf_Redux.h>
+#include <sjf/processors/sjf_Utility.h>
 
 namespace
 {
@@ -67,6 +68,7 @@ namespace sjf::tests
 	static GenericTests<sjf::dsp::Compressor> compressor{"Compressor"};
 	static GenericTests<sjf::dsp::Limiter> limiter{"Limiter"};
 	static GenericTests<sjf::dsp::LiveUtility> utility{"Utility"};
+	static GenericTests<sjf::dsp::Redux> redux{"Redux"};
 
 	static GenericTests<dsp::waveshaper::FilteredWaveshaper<Saturator>> filteredSaturator("Filtered Saturator");
 	static GenericTests<dsp::waveshaper::Waveshaper<Saturator>> saturator("Saturator");

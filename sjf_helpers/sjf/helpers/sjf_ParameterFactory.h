@@ -459,8 +459,15 @@ public:
             resetAllStates (boolStates, boolMappings);
             resetAllStates (choiceStates, choiceMappings);
 
-            masterRamp.setCurrentAndTargetValue (0.0f);
-            masterRamp.setTargetValue (1.0f);
+        	if (floatStates.empty())
+        	{
+        		masterRamp.setCurrentAndTargetValue (1.0f);
+        	}
+        	else
+        	{
+        		masterRamp.setCurrentAndTargetValue (0.0f);
+        		masterRamp.setTargetValue (1.0f);
+        	}
             return true;
         }
         return false;

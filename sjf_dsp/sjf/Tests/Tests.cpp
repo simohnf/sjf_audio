@@ -19,6 +19,8 @@
 #include <sjf/processors/sjf_Compressor_juce.h>
 #include <sjf/processors/sjf_Limiter_juce.h>
 
+#include "sjf/processors/sjf_Utility.h"
+
 namespace
 {
 	using LFO = sjf::dsp::oscillators::lfo::LFO<sjf::dsp::oscillators::lfo::DefaultWaveformProvider,
@@ -64,6 +66,7 @@ namespace sjf::tests
 	static GenericTests<sjf::dsp::SVF<>> filter{"SVF Filter"};
 	static GenericTests<sjf::dsp::Compressor> compressor{"Compressor"};
 	static GenericTests<sjf::dsp::Limiter> limiter{"Limiter"};
+	static GenericTests<sjf::dsp::LiveUtility> utility{"Utility"};
 
 	static GenericTests<dsp::waveshaper::FilteredWaveshaper<Saturator>> filteredSaturator("Filtered Saturator");
 	static GenericTests<dsp::waveshaper::Waveshaper<Saturator>> saturator("Saturator");

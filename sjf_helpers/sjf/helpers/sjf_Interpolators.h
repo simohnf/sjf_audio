@@ -36,7 +36,7 @@ namespace sjf::interpolation
      x2 - value of second point
      */
     template <typename T>
-    const T linearInterpolate ( const T mu, const T x1, const T x2 )
+    T linearInterpolate ( const T mu, const T x1, const T x2 )
     { return x1 + mu*(x2-x1); }
     //==============================================================================
     /**
@@ -69,7 +69,7 @@ namespace sjf::interpolation
      x3 - value of point after next
      */
     template <typename T>
-    const T fourPointInterpolatePD ( const T mu, const T x0, const T x1, const T x2, const T x3 )
+    T fourPointInterpolatePD ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         auto x2minusx1 = x2-x1;
         return x1 + mu * (x2minusx1 - 0.1666667f * (1.0f - mu) * ( (x3 - x0 - 3.0f * x2minusx1) * mu + (x3 + 2.0f*x0 - 3.0f*x1) ) );
@@ -85,7 +85,7 @@ namespace sjf::interpolation
      x3 - value of point after next
      */
     template <typename T>
-    const T fourPointFourthOrderOptimal  ( const T mu, const T x0, const T x1, const T x2, const T x3 )
+    T fourPointFourthOrderOptimal  ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         //    Copied from Olli Niemitalo - Polynomial Interpolators for High-Quality Resampling of Oversampled Audio
         // Optimal 2x (4-point, 4th-order) (z-form)
@@ -110,7 +110,7 @@ namespace sjf::interpolation
      x3 - value of point after next
      */
     template <typename T>
-    const T cubicInterpolateGodot ( const T mu, const T x0, const T x1, const T x2, const T x3 )
+    T cubicInterpolateGodot ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         //  Godot https://stackoverflow.com/questions/1125666/how-do-you-do-bicubic-or-other-non-linear-interpolation-of-re-sampled-audio-da
         T a0,a1,a2,a3,mu2;
@@ -133,7 +133,7 @@ namespace sjf::interpolation
      x3 - value of point after next
      */
     template <typename T>
-    const T cubicInterpolateHermite ( const T mu, const T x0, const T x1, const T x2, const T x3 )
+    T cubicInterpolateHermite ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         T a1,a2,a3;
         
@@ -153,7 +153,7 @@ namespace sjf::interpolation
      x3 - value of point after next
      */
     template <typename T>
-    const T cubicInterpolateHermite2 ( const T mu, const T x0, const T x1, const T x2, const T x3 )
+    T cubicInterpolateHermite2 ( const T mu, const T x0, const T x1, const T x2, const T x3 )
     {
         T diff = x1 - x2;
         T a1 = x2 - x0;

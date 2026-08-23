@@ -30,6 +30,19 @@ namespace sjf::helpers
 		};
 	}
 
+	/**
+	 * @brief A configurable wrapper template that adds smoothed input and/or output gain stages to an underlying audio processor.
+	 *
+	 * This wrapper provides optional pre-processing input gain and post-processing output gain stages around a wrapped processor.
+	 * Gain values are converted from decibels to linear multipliers and smoothed using linear value interpolation (`juce::LinearSmoothedValue`)
+	 * to prevent audible artifacts during parameter changes.
+	 *
+	 * @tparam Processor The target audio processor class to be wrapped. Must expose standard JUCE DSP interface methods (`prepare`, `reset`, `process`, `createParameters`).
+	 * @tparam InputGain Enables the input gain processing stage when `true`.
+	 * @tparam OutputGain Enables the output gain processing stage when `true`.
+	 * @tparam InputConfig Configuration struct defining the min, max, default, and center skew parameters for the input gain range. Defaults to `gain_wrapper_config::GainConfig<>` (-80 dB to +12 dB).
+	 * @tparam OutputConfig Configuration struct defining the min, max, default, and center skew parameters for the output gain range. Defaults to `gain_wrapper_config::GainConfig<>` (-80 dB to +12 dB).
+	 */
 	template <typename Processor, bool InputGain, bool OutputGain, typename InputConfig = gain_wrapper_config::GainConfig<>, typename OutputConfig = gain_wrapper_config::GainConfig<>>
 	class GainWrapper
 	{

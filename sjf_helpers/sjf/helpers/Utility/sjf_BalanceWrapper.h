@@ -17,6 +17,15 @@
 
 namespace sjf::helpers
 {
+	/**
+	 * @brief A stereo balance wrapper template that adds equal-power pan/balance control to an underlying processor.
+	 *
+	 * This wrapper handles constant-power stereo balance adjustments via a square-root crossfade law ($L = \sqrt{1 - b}$, $R = \sqrt{b}$)
+	 * with optional $3\text{ dB}$ center-boost scaling ($+\sqrt{2}$) to maintain unity gain at the center position.
+	 *
+	 * @tparam Processor The target audio processor class to be wrapped. Must expose standard JUCE DSP methods (`prepare`, `reset`, `process`, `createParameters`).
+	 * @tparam UnityAtCentre When `true`, scales the output block by $\sqrt{2}$ ($\approx +3.01\text{ dB}$) so that center balance ($b = 0.5$) yields $0\text{ dB}$ unity gain per channel instead of $-3\text{ dB}$. Defaults to `true`.
+	 */
 	template <typename Processor, bool UnityAtCentre = true>
 	class BalanceWrapper
 	{

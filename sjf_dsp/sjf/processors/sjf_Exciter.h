@@ -20,6 +20,14 @@
 
 namespace sjf::dsp
 {
+	/**
+	 * @brief An audio harmonic exciter module that generates 2nd and 3rd order harmonics using Chebyshev polynomials.
+	 *
+	 * This processor enhances high-frequency presence and clarity by extracting high-band input content via a high-pass filter,
+	 * splitting it into parallel 2nd-order ($T_2(x) = 2x^2 - 1$) and 3rd-order ($T_3(x) = 4x^3 - 3x$) Chebyshev waveshaping paths,
+	 * applying low-pass pre-filtering to bound harmonic aliasing, removing generated DC offsets, and mixing the weighted harmonics
+	 * in parallel with the dry audio signal.
+	 */
 	class Exciter
 	{
 		public:

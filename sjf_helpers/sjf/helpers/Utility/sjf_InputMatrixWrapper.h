@@ -16,6 +16,16 @@
 #include <sjf/helpers/sjf_OptionalCalls.h>
 
 namespace sjf::helpers{
+/**
+* @brief A pre-processing channel matrix wrapper template that reconfigures stereo audio channels prior to reaching an underlying processor.
+*
+* This wrapper transforms input stereo channels before processing, offering selectable channel routing modes including dual-left,
+* dual-right, channel swapping, and equal-power mono summing ($L + R \times \frac{1}{\sqrt{2}}$). Alternatively, it can operate as a lightweight
+* toggle wrapper providing a dedicated mono summing switch.
+*
+* @tparam Processor The target audio processor class to be wrapped. Must expose standard JUCE DSP interface methods (`prepare`, `reset`, `process`, `createParameters`).
+* @tparam OnlyMonoSwitch When `true`, exposes a single boolean mono switch instead of the full multi-choice channel matrix ("Stereo", "Left", "Right", "Swap", "Mono"). Defaults to `false`.
+*/
 template <typename Processor, bool OnlyMonoSwitch = false>
 class InputMatrixWrapper
 {

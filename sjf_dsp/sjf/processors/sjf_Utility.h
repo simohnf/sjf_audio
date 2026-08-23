@@ -40,6 +40,24 @@ namespace utility_configs
 	struct Mute{};
 }
 
+/**
+ * @brief A meta-processor utility class that constructs a modular, compile-time DSP chain using template policy tags.
+ *
+ * This class wraps `sjf::helpers::Passthrough` with a series of conditionally applied DSP wrapper templates based on
+ * variadic template configuration parameters (`Configs...`). It evaluates policy flags at compile time to build an optimal
+ * nested processor type stack in the following order:
+ *
+ * 1. **Polarity** (`helpers::PolarityWrapper`) - Pre-processing channel polarity inversion.
+ * 2. **Input Matrix** (`helpers::InputMatrixWrapper`) - Input channel selection, swapping, or mono summing.
+ * 3. **Mid/Side** (`helpers::MidSideWrapper`) - Spatial processing, stereo spread adjustment, and low-frequency mono summing.
+ * 4. **Balance** (`helpers::BalanceWrapper`) - Constant-power stereo panning/balance control.
+ * 5. **DC Block** (`helpers::DCBlockerWrapper`) - Post-processing DC offset transient filter.
+ * 6. **Output Gain** (`helpers::GainWrapper`) - Final output gain stage with smoothed volume scaling.
+ *
+ * @tparam Configs Variadic list of configuration tags from `sjf::dsp::utility_configs` (e.g., `utility_configs::PolarityInvert`,
+ *                 `utility_configs::InputMatrix`, `utility_configs::StereoSpread`, `utility_configs::MonoBass`, `utility_configs::Balance`,
+ *                 `utility_configs::DCBlock`, `utility_configs::OutputGain`, `utility_configs::Mute`).
+ */
 template <typename ... Configs>
 class Utility
 {

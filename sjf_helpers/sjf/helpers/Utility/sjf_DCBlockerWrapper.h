@@ -19,6 +19,15 @@
 #include <sjf/helpers/sjf_DCBlock.h>
 
 namespace sjf::helpers{
+/**
+* @brief A DSP wrapper template that appends a DC offset blocking filter post-processing stage to an underlying processor.
+*
+* This class wraps a target audio processor, executing its processing chain first and then passing the resulting audio block
+* through an integrated, bypassable DC blocker (`DCBlocker`) to remove any residual ultra-low frequency or DC offset transients.
+*
+* @tparam Processor The target audio processor class to be wrapped. Must expose standard JUCE DSP interface methods (`prepare`, `reset`, `process`, `createParameters`).
+* @tparam FirstOrder Configures the filter order of the underlying DC blocker. Set to `true` for a 1st-order (6 dB/octave) high-pass filter, or `false` for higher-order blocking. Defaults to `true`.
+*/
 template <typename Processor, bool FirstOrder = true>
 class DCBlockerWrapper
 {

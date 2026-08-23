@@ -15,6 +15,13 @@
 
 namespace sjf::helpers
 {
+/**
+* @brief A static utility struct providing Mid/Side (M/S) encoding and decoding operations for stereo audio signals.
+*
+* This class provides high-performance, header-only static functions to convert stereo Left/Right signals into
+* Mid/Side representation ($M = L + R$, $S = L - R$) and back again ($L = \frac{M + S}{2}$, $R = \frac{M - S}{2}$).
+* Functions are overloaded to accept raw sample pairs, single-channel JUCE `AudioBlock<float>` pairs, or complete `ProcessContext` wrappers.
+*/
 struct MidSide {
 	template <typename ProcessContext>
 	forcedinline static void encode(const ProcessContext& context)

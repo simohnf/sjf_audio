@@ -20,6 +20,17 @@
 #include <sjf/helpers/Utility/sjf_MidSide.h>
 
 namespace sjf::helpers{
+/**
+ * @brief A Mid/Side (M/S) post-processing wrapper template providing optional stereo width spread adjustment and low-frequency mono summing.
+ *
+ * This wrapper encodes processed stereo audio into Mid/Side format ($M = L + R$, $S = L - R$) to perform targeted spatial adjustments.
+ * It can apply high-pass filtering to the Side channel (`MonoBass`) to eliminate low-frequency phase problems and collapse low frequencies to mono,
+ * as well as adjust overall Mid/Side balance (`StereoSpread`) using constant-power smoothed gains before decoding back to standard Left/Right stereo.
+ *
+ * @tparam Processor The target audio processor class to be wrapped. Must expose standard JUCE DSP interface methods (`prepare`, `reset`, `process`, `createParameters`).
+ * @tparam StereoSpread Enables the continuous stereo width/spread parameter adjustment stage when `true`.
+ * @tparam MonoBass Enables the high-pass filter stage on the Side channel to collapse low frequencies below a configurable cutoff to mono when `true`.
+ */
 template <typename Processor, bool StereoSpread, bool MonoBass>
 class MidSideWrapper
 {

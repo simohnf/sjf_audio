@@ -19,7 +19,17 @@
 
 namespace sjf::helpers
 {
-
+/**
+ * @brief A stereo polarity inversion wrapper template providing optional per-channel input and output phase flips.
+ *
+ * This wrapper adds per-channel polarity inversion switches ($\varnothing$) to pre- and/or post-processing stages of a target audio processor.
+ * Polarity transitions are smoothed between positive ($+1.0$) and inverted ($-1.0$) states using linear interpolation (`juce::LinearSmoothedValue`)
+ * to prevent clicks and pop artifacts during real-time parameter changes.
+ *
+ * @tparam Processor The target audio processor class to be wrapped. Must expose standard JUCE DSP interface methods (`prepare`, `reset`, `process`, `createParameters`).
+ * @tparam InputPolarity Enables independent input channel polarity inversion toggles (Input Left $\varnothing$, Input Right $\varnothing$) when `true`.
+ * @tparam OutputPolarity Enables independent output channel polarity inversion toggles (Output Left $\varnothing$, Output Right $\varnothing$) when `true`.
+ */
 template <typename Processor, bool InputPolarity, bool OutputPolarity>
 class PolarityWrapper
 {

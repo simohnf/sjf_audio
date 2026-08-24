@@ -278,10 +278,9 @@ namespace sjf::generic_editor
 				titleLabel.setText(helpers::ParameterFactory::getNameWithoutParentPrefix(parameterGroup),
 								   juce::sendNotification);
 
-				for (const auto param : parameterGroup.getParameters(false))
-				{
-					if (auto choice = dynamic_cast<juce::AudioParameterChoice*>(param))
-					{
+				auto addComponent = [&] (juce::AudioProcessorParameter* param_){
+					auto addComboBox = [&](juce::AudioProcessorParameter* param, const juce::AudioParameterChoice* choice){
+
 						comboBoxes.push_back(std::make_unique<juce::ComboBox>(paramName(param)));
 						comboBoxAttachments.push_back(
 							std::make_unique<ComboBoxAttachment>(apvts, paramId(param), *comboBoxes.back()));
@@ -289,18 +288,18 @@ namespace sjf::generic_editor
 						comboBoxes.back()->setText(choice->getCurrentValueAsText());
 
 						paramComponents.push_back(comboBoxes.back().get());
-					}
-					else if (dynamic_cast<juce::AudioParameterBool*>(param))
-					{
+					};
+
+					auto addButton = [&](juce::AudioProcessorParameter* param){
 						buttons.push_back(std::make_unique<juce::ToggleButton>(paramName(param)));
 						buttonAttachments.push_back(
 							std::make_unique<ButtonAttachment>(apvts, paramId(param), *buttons.back()));
 						paramComponents.push_back(buttons.back().get());
-					}
-					else
-					{
+					};
+
+					auto addSlider = [&](juce::AudioProcessorParameter* param){
 						jassert(dynamic_cast<juce::AudioParameterInt*>(param) ||
-								dynamic_cast<juce::AudioParameterFloat*>(param));
+						dynamic_cast<juce::AudioParameterFloat*>(param));
 						sliders.push_back(std::make_unique<juce::Slider>(paramName(param)));
 						const auto& s = sliders.back();
 						sliderAttachments.push_back(std::make_unique<SliderAttachment>(apvts, paramId(param), *s));
@@ -308,10 +307,44 @@ namespace sjf::generic_editor
 						s->setTextBoxStyle(juce::Slider::TextBoxRight, false, s->getTextBoxWidth(),
 										   s->getTextBoxHeight());
 						paramComponents.push_back(s.get());
+					};
+
+					if (auto choice = dynamic_cast<juce::AudioParameterChoice*>(param_))
+					{
+						addComboBox(param_, choice);
 					}
-					paramNames.push_back(std::make_unique<juce::Label>(paramName(param) + "Label"));
-					paramNames.back()->setText(paramName(param), juce::sendNotification);
-					paramMap[param] = paramComponents.back();
+					else if (dynamic_cast<juce::AudioParameterBool*>(param_))
+					{
+						addButton(param_);
+					}
+					else
+					{
+						addSlider(param_);
+					}
+					paramNames.push_back(std::make_unique<juce::Label>(paramName(param_) + "Label"));
+					paramNames.back()->setText(paramName(param_), juce::sendNotification);
+					paramMap[param_] = paramComponents.back();
+				};
+
+				auto params = parameterGroup.getParameters(false);
+				std::vector<int> toRemove;
+				toRemove.reserve(static_cast<size_t>(params.size()));
+				for (auto i = 0; i < params.size(); i++)
+				{
+					auto param = params[i];
+					if (paramName(param) == "Bypass" || paramName(param) == "On" || paramName(param) == "Mute" || paramName(param) == "Mix")
+					{
+						addComponent(param);
+						toRemove.push_back(i);
+					}
+				}
+
+				for ( auto i = 0ul; i < toRemove.size(); i++)
+					params.remove(toRemove[toRemove.size() - 1 - i]);
+
+				for (const auto param : params)
+				{
+					addComponent(param);
 				}
 
 				for (const auto c : paramComponents)

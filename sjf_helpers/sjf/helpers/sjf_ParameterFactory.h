@@ -274,7 +274,7 @@ public:
     [[nodiscard]] static juce::String getIDWithoutParentPrefix(const juce::RangedAudioParameter& param, const juce::AudioProcessorParameterGroup& group)
     {
         jassert(param.paramID.startsWith(group.getID()));
-        return param.paramID.substring(group.getID().length());
+        return param.paramID.substring(group.getID().length()).trim();
     }
 
     [[nodiscard]] static juce::String getIDWithoutParentPrefix(const juce::RangedAudioParameter& param, const ParameterFactory& group)

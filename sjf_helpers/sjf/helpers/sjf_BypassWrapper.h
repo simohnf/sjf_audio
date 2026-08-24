@@ -95,18 +95,6 @@ public:
                 /// we insert the parameters into the processors parameter tree,
                 /// BUT The BypassWrapper::Parameters struct handles smoothing/reset etc the
 
-                if constexpr (hasMix)
-                {
-                    const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
-                    const auto attributes = juce::AudioParameterFloatAttributes{}
-                                                                                    .withLabel("%");
-                    const auto mapping = [&](const float x){ return x * 0.01f;};
-                    createTrackedParameter (*targetFactory, mix, "Mix", "Mix", range, DefaultMixLevel::defaultLevel, mapping, attributes);
-                }
-                else
-                {
-                    mix.currentValue = 1.0f;
-                }
 
                 if constexpr (hasBypass)
                 {
@@ -129,6 +117,19 @@ public:
                 {
                     mute.currentValue = false;
                 }
+
+            	if constexpr (hasMix)
+            	{
+            		const auto range = juce::NormalisableRange<float>{ 0.0f, 100.0f, 0.01f };
+            		const auto attributes = juce::AudioParameterFloatAttributes{}
+            		.withLabel("%");
+            		const auto mapping = [&](const float x){ return x * 0.01f;};
+            		createTrackedParameter (*targetFactory, mix, "Mix", "Mix", range, DefaultMixLevel::defaultLevel, mapping, attributes);
+            	}
+            	else
+            	{
+            		mix.currentValue = 1.0f;
+            	}
             }
             else
             {

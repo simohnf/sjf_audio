@@ -1349,6 +1349,7 @@ namespace sjf::generic_editor
 						},
 						undoManager)
 	{
+		LookAndFeel::setDefaultLookAndFeel(&lookAndFeel);
 		if (auto lnf4 = dynamic_cast<juce::LookAndFeel_V4*>(&getLookAndFeel()))
 			lnf4->setColourScheme(LookAndFeel_V4::getMidnightColourScheme());
 
@@ -1386,6 +1387,11 @@ namespace sjf::generic_editor
 		autoEditor->buildChildEditors();
 		autoEditor->initialisePresetPanel(true);
 		setSize(600, 600);
+	}
+
+	GenericEditor::~GenericEditor()
+	{
+		LookAndFeel::setDefaultLookAndFeel(nullptr);
 	}
 
 	void GenericEditor::initialiseMainEditor(juce::AudioProcessorValueTreeState& apvts,

@@ -234,8 +234,6 @@ public:
 
 		stateTree = parentTree.getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
 
-
-
     	if (MessageManager::existsAndIsCurrentThread())
     	{
     		apvtsTree.addListener(this);
@@ -277,6 +275,7 @@ public:
 
 	static SequenceOrder varToSequence (const juce::var& v)
     {
+    	jassert(!(v.isUndefined() || v.isVoid()));
     	if (v.isString())
     	{
     		return [&v](){
@@ -285,6 +284,14 @@ public:
     			SequenceOrder ret{};
     			ret.fill(InactiveSlot);
     			const auto strArr = StringArray::fromTokens(v.toString(), "/", "");
+
+    			jassert(strArr.size() <= static_cast<int>(NumProcessors));
+    			for ( auto i = 0ul; i < static_cast<size_t>(strArr.size()); ++i)
+    			{
+    				// if you hit this you changed the number of processors
+    				jassert(strArr[static_cast<int>(i)].getIntValue() == InactiveSlot || strArr[static_cast<int>(i)].getIntValue() < static_cast<int>(NumProcessors));
+    			}
+
     			for ( auto i = 0ul; i < jmin(static_cast<size_t>(strArr.size()), NumProcessors); ++i)
     			{
     				auto processor = static_cast<size_t>(strArr[static_cast<int>(i)].getIntValue());
@@ -390,6 +397,9 @@ private:
     	{
     		if (const auto prop = stateTree.getPropertyPointer(dynamic_processor_sequence::ids::sequencePropertyId))
     		{
+    			if (prop->isUndefined() || prop->isVoid())
+    				return;
+
     			std::array<bool, NumProcessors> needsReset;
     			needsReset.fill(true);
 
@@ -397,8 +407,10 @@ private:
     			{
     				if (activeControlSequence[i]==InactiveSlot)
     					break;
+
     				needsReset[activeControlSequence[i]] = false;
     			}
+
     			for (auto i = 0ul; i < NumProcessors; ++i)
     				pendingResets[i] = needsReset[i];
 

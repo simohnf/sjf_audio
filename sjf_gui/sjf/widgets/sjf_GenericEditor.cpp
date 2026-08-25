@@ -3,7 +3,7 @@
 //
 #include <JuceHeader.h>
 #include "sjf_GenericEditor.h"
-#include "sjf/helpers/sjf_DynamicProcessorSequence.h"
+#include <sjf/helpers/sjf_DynamicProcessorSequence.h>
 
 namespace sjf::generic_editor
 {
@@ -444,8 +444,14 @@ namespace sjf::generic_editor
 		};
 
 
-		class SequenceItemComponent : public juce::Component
+		namespace
 		{
+			static const juce::Identifier labelTextColour{"labelTextColour"};
+		}
+
+		class SequenceItemComponent : public juce::Component, public juce::AudioProcessorParameter::Listener
+		{
+
 		public:
 			struct Listener
 			{
@@ -466,7 +472,35 @@ namespace sjf::generic_editor
 				addAndMakeVisible(label);
 				label.setInterceptsMouseClicks(false, false);
 
+				label.getProperties().set(labelTextColour, label.findColour(juce::Label::textColourId, true).toString());
 				setMouseCursor(MouseCursor::UpDownResizeCursor);
+
+
+				auto params = group.getParameters(false);
+				for (const auto& name : {"Solo", "Bypass", "Mute", "On"})
+				{
+					for (auto param : params)
+					{
+						if (const auto ranged = dynamic_cast<juce::RangedAudioParameter*>(param))
+						{
+							if (helpers::ParameterFactory::getNameWithoutParentPrefix(*ranged, group) == name)
+							{
+								jassert(!popupMenuParams.contains(name));
+								popupMenuParams[name] = ranged;
+								ranged->addListener(this);
+							}
+						}
+					}
+				}
+			}
+
+			~SequenceItemComponent() override
+			{
+				for (const auto& [name, param] : popupMenuParams)
+				{
+					if (const auto ranged = dynamic_cast<juce::RangedAudioParameter*>(param))
+						ranged->removeListener(this);
+				}
 			}
 
 			void setSelected(const bool shouldBeSelected)
@@ -486,15 +520,43 @@ namespace sjf::generic_editor
 				const auto outline = getUIColour(this, juce::LookAndFeel_V4::ColourScheme::outline);
 				g.setColour(outline);
 				g.drawRoundedRectangle(getLocalBounds().toFloat(), 2, 1.0f);
+
+				for (const auto& [name, param] : popupMenuParams)
+				{
+					if (name == "Bypass")
+					{
+						label.setColour(juce::Label::textColourId, findColour(juce::Label::textColourId, true).withAlpha(param->getValue() > 0.5f ? 0.25f : 1.0f));
+					}
+					else if (name == "On")
+					{
+						label.setColour(juce::Label::textColourId, findColour(juce::Label::textColourId, true).withAlpha(param->getValue() > 0.5f ? 1.0f : 0.25f));
+					}
+
+					if (param->getValue() > 0.5f)
+					{
+						if (name == "Mute")
+						{
+
+						}
+						else if (name == "Solo")
+						{
+
+						}
+					}
+				}
+
 			}
+
 			void mouseDown(const juce::MouseEvent& e) override
 			{
-				// Select on click
-				listener.onItemClicked(this);
-
 				if (e.mods.isPopupMenu())
 				{
 					showContextMenu();
+				}
+				else
+				{
+					// Select on click
+					listener.onItemClicked(this);
 				}
 			}
 
@@ -530,14 +592,36 @@ namespace sjf::generic_editor
 			}
 
 		private:
+			void parameterValueChanged (int parameterIndex, float ) override
+			{
+				for (const auto& [name, param] : popupMenuParams)
+					if (param->getParameterIndex() == parameterIndex)
+						repaint();
+			}
+
+			void parameterGestureChanged (int, bool) override {}
+
 			void showContextMenu()
 			{
 				juce::PopupMenu menu;
 
-				// 1. Swap Submenu
-				juce::PopupMenu swapMenu;
+				for (const auto& [name, param] : popupMenuParams)
+				{
+					menu.addItem(name, true, param->getValue() > 0.5f,[safeThis = SafePointer{this}, param](){
+						param->setValueNotifyingHost(param->getValue() < 0.5f);
+						if (safeThis)
+							safeThis->repaint();
+					});
+				}
+
+				menu.addSeparator();
+
+
 				const auto availableTypes = listener.getAvailableSwapTypes();
 
+
+				// 1. Swap Submenu
+				juce::PopupMenu swapMenu;
 				if (availableTypes.empty())
 				{
 					swapMenu.addItem(
@@ -577,8 +661,12 @@ namespace sjf::generic_editor
 			const size_t processorID{0};
 			bool isSelected{false};
 			juce::Label label;
-
 			Listener& listener;
+
+			std::unordered_map<String, RangedAudioParameter*> popupMenuParams;
+
+			RangedAudioParameter *bypassParam{nullptr}, *muteParam{nullptr}, *soloParam{nullptr}, *onParam{nullptr};
+
 			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SequenceItemComponent)
 		};
 

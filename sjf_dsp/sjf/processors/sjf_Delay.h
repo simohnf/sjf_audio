@@ -329,7 +329,7 @@ public:
         {
             dl.prepare(spec);
             if constexpr (hasModulation)
-                dl.setMaxDelayTimeMS(DelayTimes::maxTimeMS + DelayTimes::maxTimeMS * ModulationDepthScale + 2);
+                dl.setMaxDelayTimeMS((DelayTimes::maxTimeMS + DelayTimes::maxTimeMS * ModulationDepthScale + 2) * 1.5f);
         	else
         		dl.setMaxDelayTimeMS(DelayTimes::maxTimeMS + 2);
         }

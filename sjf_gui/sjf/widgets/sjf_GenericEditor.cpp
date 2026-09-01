@@ -665,8 +665,6 @@ namespace sjf::generic_editor
 
 			std::unordered_map<String, RangedAudioParameter*> popupMenuParams;
 
-			RangedAudioParameter *bypassParam{nullptr}, *muteParam{nullptr}, *soloParam{nullptr}, *onParam{nullptr};
-
 			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SequenceItemComponent)
 		};
 

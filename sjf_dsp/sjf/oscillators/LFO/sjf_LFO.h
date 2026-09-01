@@ -170,7 +170,7 @@ public:
             }
             if constexpr (hasInvert)
             {
-                createTrackedParameter(*factory, invert, "InvertRight", "Invert Right", {"None", "Left", "Right"}, 0);
+                createTrackedParameter(*factory, invert, "Invert", "Invert", {"None", "Left", "Right"}, 0);
             }
 
             return factory;

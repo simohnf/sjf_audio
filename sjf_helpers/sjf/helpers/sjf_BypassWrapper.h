@@ -287,7 +287,7 @@ private:
             if (parameters.mute.currentValue)
                 return 0.0f;
 
-        if constexpr (hasBypass)
+        if constexpr (hasBypass || hasOnOff)
             if (parameters.bypass.currentValue)
                 return 0.0f; // Bypassed = no wet signal
 
@@ -303,7 +303,7 @@ private:
             if (parameters.mute.currentValue)
                 return 0.0f;
 
-        if constexpr (hasBypass)
+        if constexpr (hasBypass || hasOnOff)
             if (parameters.bypass.currentValue)
                 return 1.0f;
 

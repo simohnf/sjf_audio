@@ -94,7 +94,7 @@ public:
 	using Balance		= std::conditional_t<hasBalance, helpers::BalanceWrapper<T>, T>;
 
 	template<typename T>
-	using DCBlock		= std::conditional_t<hasDCBlock, helpers::DCBlockerWrapper<T>, T>;
+	using DCBlock		= std::conditional_t<hasDCBlock, helpers::DCBlockerWrapper<T, true, true>, T>;
 
 	template<typename T>
 	using OutGain		= std::conditional_t<hasOutputGain, helpers::GainWrapper<T, false, true>, T>;

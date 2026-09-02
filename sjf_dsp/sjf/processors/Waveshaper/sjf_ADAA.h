@@ -38,7 +38,7 @@ namespace sjf::dsp::waveshaper::adaa
 		static constexpr auto InputTableSize = (UserTableSize % 2 == 0) ? UserTableSize + 1 : UserTableSize;
 		static constexpr size_t TableSize = InputTableSize + 2*TablePadding;
 		static constexpr auto indexToVoltageScale = (2.0f * AbsMaxLevel)/static_cast<float>(InputTableSize - 1);
-		static constexpr auto clippingPoint = AbsMaxLevel + static_cast<float>(2 * TablePadding)*indexToVoltageScale;
+		static constexpr auto clippingPoint = AbsMaxLevel + static_cast<float>(TablePadding)*indexToVoltageScale;
 
 		using Table = std::array<float, TableSize>;
 

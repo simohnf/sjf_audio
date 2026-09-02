@@ -150,7 +150,10 @@ public:
     	if constexpr (StereoSpread)
     	{
     		for (auto i = 0ul; i < NumChannels; i++)
+    		{
     			contextReplacing.getOutputBlock().getSingleChannelBlock(i).multiplyBy(msSmoother[i]);
+    		}
+    		contextReplacing.getOutputBlock().multiplyBy(juce::MathConstants<float>::sqrt2);
     	}
 
     	sjf::helpers::MidSide::decode(block0, block1);

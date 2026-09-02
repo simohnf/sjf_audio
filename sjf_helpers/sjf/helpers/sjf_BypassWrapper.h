@@ -182,6 +182,8 @@ public:
         const auto& inputBlock = context.getInputBlock();
         auto& outputBlock      = context.getOutputBlock();
 
+    	const auto numSamples = outputBlock.getNumSamples();
+
         if (context.isBypassed)
         {
             jassertfalse; // This should never happen! Top level processor needs to handle host setting bypass
@@ -218,14 +220,15 @@ public:
         }
         else
         {
-        	if (delayNeedsReset)
-				latencyDelay.reset();
-
-        	delayNeedsReset = false;
         	processorNeedsReset = true;
 
-            juce::dsp::AudioBlock<float> dryBlock(inputBuffer);
+            juce::dsp::AudioBlock<float> _block(inputBuffer);
+        	auto dryBlock = _block.getSubBlock(0, numSamples);
+
             dryBlock.copyFrom(inputBlock);
+        	juce::dsp::ProcessContextReplacing<float> delayContext(dryBlock);
+        	latencyDelay.process(delayContext);
+
             processor.process (context);
             dryBlock.multiplyBy(dryRamp);
             outputBlock.multiplyBy(wetRamp);

@@ -193,7 +193,7 @@ namespace sjf::dsp::waveshaper::adaa
 	template<typename Nonlinearity, typename F1, float AbsMaxLevel = 10.0f>
 	struct ADAA
 	{
-		static constexpr auto tolerance = 1.0e-7f;
+		static constexpr auto tolerance = 1.0e-5f;
 		static const juce::String& getName()
 		{
 			return Nonlinearity::getName();

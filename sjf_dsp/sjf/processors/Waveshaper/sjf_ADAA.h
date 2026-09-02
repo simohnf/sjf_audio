@@ -209,7 +209,7 @@ namespace sjf::dsp::waveshaper::adaa
 			const float delta = x - lastInput;
 
 			const auto ret = std::abs(delta) < tolerance ?
-								nonlinearity.processSample(x) :
+								nonlinearity.processSample((x+lastInput)*0.5f) :
 								(antiDerivative - lastAntiDerivative) / delta;
 
 			lastInput = x;

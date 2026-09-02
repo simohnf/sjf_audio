@@ -47,6 +47,9 @@ namespace bypass_wrapper_config
 
     /** @brief Configuration tag enabling a hard mute switch parameter with a 50ms gain ramp down. */
     struct Mute{};
+
+    /** @brief Configuration tag disabling auto reset of processor when muted bypassed. */
+    struct SoftBypass{};
 }
 
 /**
@@ -73,8 +76,9 @@ class BypassWrapper
 																									DefaultMixLevel_,
 																									Configs...
 																								 >;
-    static constexpr auto hasMix = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mix, Configs...>;
-    static constexpr auto hasMute = helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mute, Configs...>;
+    static constexpr auto hasMix		= helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mix, Configs...>;
+    static constexpr auto hasMute		= helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mute, Configs...>;
+    static constexpr auto forceReset	= !helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::SoftBypass, Configs...>;
 public:
     BypassWrapper() = default;
     ~BypassWrapper() = default;
@@ -203,11 +207,13 @@ public:
 
         if (!wetRamp.isSmoothing() && !dryRamp.isSmoothing() && wetRamp.getCurrentValue() == 0.0f)
         {
-        	if (processorNeedsReset)
-        		processor.reset();
+        	if constexpr (forceReset)
+        	{
+        		if (processorNeedsReset)
+        			processor.reset();
+        	}
 
         	processorNeedsReset = false;
-        	delayNeedsReset = true;
 
         	if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
         		outputBlock.copyFrom(inputBlock);
@@ -325,7 +331,7 @@ private:
 	juce::dsp::DelayLine<float> latencyDelay;
 
 
-	bool processorNeedsReset{false}, delayNeedsReset{false};
+	bool processorNeedsReset{false};
 
 	using Callback = std::function<void()>;
 	std::shared_ptr<int> guard = std::make_shared<int>(42);

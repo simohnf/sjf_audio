@@ -29,13 +29,9 @@ public:
 		{
 			static_assert(Minimum_dB < Maximum_dB, "Minimum_dB must be less than Maximum_dB");
 			auto factory = helpers::ParameterFactory::create (factoryID, factoryName, SupportSubPresets);
-			auto range = juce::NormalisableRange<float>{Minimum_dB, Maximum_dB, 0.01f};
 			const auto skew = SkewForCentre_dB > Minimum_dB && SkewForCentre_dB < Maximum_dB ? SkewForCentre_dB : jmap<float>(0.5f, Minimum_dB, Maximum_dB);
-			range.setSkewForCentre(skew);
 			const auto default_dB = Default_dB > Minimum_dB && Default_dB < Maximum_dB ? Default_dB : skew;
-			auto attributes = juce::AudioParameterFloatAttributes{}.withLabel("dB");
-			createTrackedParameter  (*factory, gain, "Gain",    "Gain", range, default_dB,
-													[](const float dB) { return juce::Decibels::decibelsToGain (dB); }, attributes);
+			createTrackedDecibelParameter(*factory, gain, "Gain",    "Gain", Minimum_dB, Maximum_dB, skew, default_dB);
 
 			return factory;
 		}

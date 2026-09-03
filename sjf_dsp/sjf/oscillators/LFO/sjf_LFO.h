@@ -149,24 +149,11 @@ public:
 
             if constexpr (hasDepth)
             {
-                auto range = juce::NormalisableRange<float>(0.0f, 100.0f, 0.01f);
-                auto mapping = [](const float x){
-                    return x * 0.01f;
-                };
-                const auto attributes = AudioParameterFloatAttributes().withLabel("%");
-                createTrackedParameter(*factory, depth, "Depth", "Depth", range, 0.0f, mapping, attributes);
+            	createTrackedPercentParameter(*factory, depth, "Depth", "Depth", 0.0f, 100.0f, 50.0f, 0.0f);
             }
             if constexpr (hasPhaseOffset)
             {
-                static const auto degreeString = juce::CharPointer_UTF8 ("\xc2\xba");
-                auto range = juce::NormalisableRange<float>(-180.0f, 180.0f, 0.01f);
-                range.setSkewForCentre(0.0f);
-                auto mapping = [](const float x){
-                    using namespace sjf::helpers::functions::waveforms;
-                    return wrapPhase( 1.0f + x/360.0f);
-                };
-                const auto attributes = AudioParameterFloatAttributes().withLabel(degreeString);
-                createTrackedParameter(*factory, phaseOffset, "PhaseOffset", "Phase Offset", range, 0.0f, mapping, attributes);
+            	createTrackedDegreeParameter(*factory, phaseOffset, "PhaseOffset", "Phase Offset", -180.0f, 180.0f, 0.0f, 0.0f);
             }
             if constexpr (hasInvert)
             {

@@ -389,7 +389,7 @@ public:
         }
         else
         {
-            dispatch<false>(0, std::make_index_sequence<Saturation::numSaturators>{}, context);
+			dispatch<false>(0, std::make_index_sequence<Saturation::numSaturators>{}, context);
         }
 
         dcBlocker.process(context);
@@ -422,10 +422,13 @@ private:
     template <bool SaturationActive, std::size_t... Indices, typename ProcessContext>
     void dispatch (const size_t targetIndex, std::index_sequence<Indices...>, const ProcessContext& context) noexcept
     {
-        (void)((targetIndex == static_cast<size_t>(Indices) ? (processInternal<Indices, SaturationActive>(context), true) : false) || ...);
+    	if (getPingPongActive())
+			(void)((targetIndex == static_cast<size_t>(Indices) ? (processInternal<Indices, SaturationActive, true>(context), true) : false) || ...);
+    	else
+    		(void)((targetIndex == static_cast<size_t>(Indices) ? (processInternal<Indices, SaturationActive, false>(context), true) : false) || ...);
     }
 
-    template <size_t SaturationIndex, bool SaturationActive, typename ProcessContext>
+    template <size_t SaturationIndex, bool SaturationActive, bool PingPong, typename ProcessContext>
     void processInternal (const ProcessContext& context) noexcept
     {
         const auto& inputBlock = context.getInputBlock();
@@ -450,13 +453,12 @@ private:
             outputChannelPointers[channel] = outputBlock.getChannelPointer (channel);
         }
 
-        const auto pingPong = getPingPongActive();
 
         const auto link = getLinkActive();
 
         const auto calculateInput = [&](const size_t channel, const size_t i)
         {
-            if (pingPong)
+            if constexpr (PingPong)
             {
                 const auto sumInputs = [&]()
                 {
@@ -478,13 +480,22 @@ private:
 
         const auto calculateWriteChannel = [&](const size_t channel)
         {
-            if (pingPong)
+            if constexpr (PingPong)
                 return channel+1 < NUM_CHANNELS ? channel+1 : 0;
             return channel;
         };
 
+    	const auto calculateFeedback = [&](const size_t channel, const float feedback)
+    	{
+    		if constexpr (PingPong)
+    			if(channel == 1)
+					return  1.0f;
+    		return feedback;
+    	};
+
 
         const auto lfoBlock = getLFOBlock(context);
+
 
         for (size_t i = 0; i < numSamples; ++i)
         {
@@ -512,12 +523,13 @@ private:
             if constexpr (hasFilter)
                 filter.process(oneSampleContext);
 
+
             for (auto channel = 0ul; channel < NUM_CHANNELS; ++channel)
             {
                 const auto& sample = wptrs[channel][0];
                 const auto wc = calculateWriteChannel(channel);
                 const auto input = calculateInput(channel, i);
-                delayLine[wc].writeSample(input + feedback * sample);
+                delayLine[wc].writeSample(input + calculateFeedback(channel, feedback) * sample);
                 outputChannelPointers[channel][i] = sample;
             }
         }

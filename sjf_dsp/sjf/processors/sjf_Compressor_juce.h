@@ -35,19 +35,19 @@ namespace sjf::dsp
 					 createTrackedParameter(*factory, threshold, "Thr", "Threshold", range, range.end, {}, attributes);
 				}
 				{
-					auto range = NormalisableRange<float>{1, 20, 0.01f};
+					auto range = NormalisableRange<float>{1, 30, 0.01f};
 					range.setSkewForCentre(2);
 					const auto attributes = AudioParameterFloatAttributes().withLabel(": 1");
 					createTrackedParameter(*factory, ratio, "Rat", "Ratio", range, 1.1f, {}, attributes);
 				}
 				{
-					auto range = NormalisableRange<float>{0, 5000, 0.01f};
+					auto range = NormalisableRange<float>{0, 200, 0.01f};
 					range.setSkewForCentre(100);
 					const auto attributes = AudioParameterFloatAttributes().withLabel("ms");
 					createTrackedParameter(*factory, attack, "Att", "Attack", range, 10, {}, attributes);
 				}
 				{
-					auto range = NormalisableRange<float>{0, 200, 0.01f};
+					auto range = NormalisableRange<float>{0, 5000, 0.01f};
 					range.setSkewForCentre(10);
 					const auto attributes = AudioParameterFloatAttributes().withLabel("ms");
 					createTrackedParameter(*factory, release, "Rel", "Release", range, 100, {}, attributes);

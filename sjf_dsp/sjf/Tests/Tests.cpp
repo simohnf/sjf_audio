@@ -21,6 +21,7 @@
 
 #include <sjf/processors/sjf_Redux.h>
 #include <sjf/processors/sjf_Utility.h>
+#include <sjf/processors/sjf_StereoSpread.h>
 
 namespace
 {
@@ -76,6 +77,7 @@ namespace sjf::tests
 	static GenericTests<dsp::keith_barr::reverb::Tank<>> rev1 ("KeithBarrReverb");
 	static GenericTests<dsp::MultiTapDiffuser<>> diff1("MTDiffuser");
 	static GenericTests<dsp::RotateDelayDiffuser<>> diff2("RotateDelayDiffuser");
+	static GenericTests<dsp::StereoSpread> spread("StereoSpreader");
 
 
 

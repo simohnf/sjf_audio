@@ -322,6 +322,50 @@ private:
 };
 
 //===========//===========//===========//===========//===========//===========
+//===========//===========//===========//===========//===========//===========
+//===========//===========//===========//===========//===========//===========
+//===========//===========//===========//===========//===========//===========
+struct ParameterHelpers
+{
+	static auto getPercentMapping()
+	{
+		return [](const float x){return x * 0.01f;};
+	}
+
+	static auto getDecibelsMapping()
+	{
+		return [](const float x){return juce::Decibels::decibelsToGain(x);};
+	}
+
+	static auto getDegreeMapping()
+	{
+		return [](const float x){ return functions::waveforms::wrapPhase( 1.0f + x/360.0f);};
+	}
+
+	static auto getMSToSampleMapping(const juce::dsp::ProcessSpec& spec)
+	{
+		return [&spec](const float x){ return spec.sampleRate * x * 0.001f;};
+	}
+
+
+	static auto getHzToSampleMapping(const juce::dsp::ProcessSpec& spec)
+	{
+		return [&spec](const float x){ return spec.sampleRate / x;};
+	}
+
+	static juce::NormalisableRange<float> createNormalisableRange(const float min, const float max, const float centre)
+	{
+		auto range = juce::NormalisableRange<float>{min, max, 0.01f};
+		range.setSkewForCentre(centre);
+		return range;
+	}
+
+};
+
+//===========//===========//===========//===========//===========//===========
+//===========//===========//===========//===========//===========//===========
+//===========//===========//===========//===========//===========//===========
+//===========//===========//===========//===========//===========//===========
 /**
  * @brief State management engine that tracks host parameters and coordinates
  *        sample-accurate linear parameter smoothing.
@@ -669,12 +713,73 @@ private:
 protected:
 
     //==============================================================================
+	void createTrackedDecibelParameter( ParameterFactory& factory,
+										FloatState& tracker,
+										const juce::ParameterID& parameterID,
+										const juce::String& parameterName,
+										const float minDB, const float maxDB, const float centreDB, const float defaultDB,
+										const FloatMapping& mapping = ParameterHelpers::getDecibelsMapping(),
+										const juce::AudioParameterFloatAttributes& att = juce::AudioParameterFloatAttributes{}.withLabel("dB")
+										)
+	{
+		createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minDB, maxDB, centreDB), defaultDB, mapping, att);
+	}
+
+	void createTrackedPercentParameter( ParameterFactory& factory,
+										FloatState& tracker,
+										const juce::ParameterID& parameterID,
+										const juce::String& parameterName,
+										const float minPercent = 0.0f, const float maxPercent = 100.0f, const float centrePercent = 50.0f, const float defaultPercent = 100.0f,
+										const FloatMapping& mapping = ParameterHelpers::getPercentMapping(),
+										const juce::AudioParameterFloatAttributes& att = juce::AudioParameterFloatAttributes{}.withLabel("%")
+										)
+	{
+		createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minPercent, maxPercent, centrePercent), defaultPercent, mapping, att);
+	}
+
+	void createTrackedDegreeParameter( ParameterFactory& factory,
+										FloatState& tracker,
+										const juce::ParameterID& parameterID,
+										const juce::String& parameterName,
+										const float min, const float max, const float centre, const float defaultValue,
+										const FloatMapping& mapping = ParameterHelpers::getDegreeMapping(),
+										const juce::AudioParameterFloatAttributes& att = juce::AudioParameterFloatAttributes{}.withLabel(juce::CharPointer_UTF8 ("\xc2\xba"))
+										)
+	{
+		createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(min, max, centre), defaultValue, mapping, att);
+	}
+
+	void createTrackedTimeParameter( ParameterFactory& factory,
+										FloatState& tracker,
+										const juce::ParameterID& parameterID,
+										const juce::String& parameterName,
+										const float minMS, const float maxMS, const float centreMS, const float defaultMS,
+										const FloatMapping& mapping ,
+										const juce::AudioParameterFloatAttributes& att = juce::AudioParameterFloatAttributes{}.withLabel("ms")
+										)
+	{
+		createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minMS, maxMS, centreMS), defaultMS, mapping, att);
+	}
+
+
+	void createTrackedFrequencyParameter( ParameterFactory& factory,
+										FloatState& tracker,
+										const juce::ParameterID& parameterID,
+										const juce::String& parameterName,
+										const float minHz, const float maxHz, const float centreHz, const float defaultHz,
+										const FloatMapping& mapping,
+										const juce::AudioParameterFloatAttributes& att = juce::AudioParameterFloatAttributes{}.withLabel("Hz")
+										)
+	{
+		createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minHz, maxHz, centreHz), defaultHz, mapping, att);
+	}
+    //==============================================================================
     void createTrackedParameter (   ParameterFactory& factory,
                                     FloatState& tracker,
                                     const juce::ParameterID& parameterID,
                                     const juce::String& parameterName,
-                                    juce::NormalisableRange<float> normalisableRange,
-                                    float defaultValue,
+									const juce::NormalisableRange<float>& normalisableRange,
+                                    const float defaultValue,
                                     const FloatMapping& mapping = {},
                                     const juce::AudioParameterFloatAttributes& attributes = {})
     {
@@ -972,7 +1077,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
         const auto min = juce::jmin(minMS, maxMS);
         const auto max = juce::jmax(minMS, maxMS);
         const auto skew = ((skewForCentre_ > min && skewForCentre_ < max ? skewForCentre_ : juce::jmap(0.5f, min, max)));
-        auto range = juce::NormalisableRange<float>(minMS, maxMS, 0.001f);
+        auto range = juce::NormalisableRange<float>(minMS, maxMS, 0.01f);
         range.setSkewForCentre(skew);
         return range;
     }
@@ -1116,7 +1221,7 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
         const auto max = juce::jmax(minHz, maxHz) > min && juce::jmax(minHz, maxHz) <= 20000.0f ? juce::jmax(minHz, maxHz) : 20000.0f;
         const auto skew = std::sqrt(min * max);
 
-        auto range = juce::NormalisableRange<float>(min, max, 0.001f);
+        auto range = juce::NormalisableRange<float>(min, max, 0.01f);
         range.setSkewForCentre(skew);
         return range;
     }

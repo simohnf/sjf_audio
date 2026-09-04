@@ -82,9 +82,7 @@ public:
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
     {
-        auto factory = parameters.createParameters (factoryID, factoryName);
-    	factory->addChildFactory(lfo.createParameters (factoryID, factoryName));
-    	return factory;
+    	return lfo.createParameters (factoryID, factoryName);
     }
 
     void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)

@@ -201,7 +201,7 @@ private:
 		const auto nXOvers = static_cast<size_t>(parameters.order.currentValue) +1;
 
 		const auto nOctaves = std::log2f(maxF/minF);
-		const auto inc = nOctaves/ static_cast<float>(nXOvers);
+		const auto inc = nOctaves/ static_cast<float>(nXOvers-1);
 
 		for (auto i = 0ul; i < nXOvers; i++)
 		{

@@ -15,6 +15,7 @@
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/oscillators/LFO/sjf_LFO.h>
 
+
 namespace sjf::dsp
 {
 template<typename LFO>
@@ -100,7 +101,6 @@ private:
 namespace internal
 {
 	using TremoloLFO = sjf::dsp::oscillators::lfo::LFO<dsp::oscillators::lfo::LFOWaveformProvider<dsp::oscillators::lfo::Sine>,
-												   dsp::oscillators::lfo::lfo_config::Invert,
 												   dsp::oscillators::lfo::lfo_config::PhaseOffset,
 												   dsp::oscillators::lfo::lfo_config::Smooth,
 												   dsp::oscillators::lfo::lfo_config::Unipolar,
@@ -108,6 +108,7 @@ namespace internal
 }
 
 using BasicTremolo = Tremolo<internal::TremoloLFO>;
+
 
 }
 

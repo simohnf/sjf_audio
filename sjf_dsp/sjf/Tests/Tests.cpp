@@ -23,6 +23,8 @@
 #include <sjf/processors/sjf_Utility.h>
 #include <sjf/processors/sjf_StereoSpread.h>
 
+#include <sjf/processors/sjf_Tremolo.h>
+
 namespace
 {
 	using LFO = sjf::dsp::oscillators::lfo::LFO<sjf::dsp::oscillators::lfo::DefaultWaveformProvider,
@@ -78,6 +80,7 @@ namespace sjf::tests
 	static GenericTests<dsp::MultiTapDiffuser<>> diff1("MTDiffuser");
 	static GenericTests<dsp::RotateDelayDiffuser<>> diff2("RotateDelayDiffuser");
 	static GenericTests<dsp::StereoSpread> spread("StereoSpreader");
+	static GenericTests<dsp::BasicTremolo> tremolo("Tremolo");
 
 
 

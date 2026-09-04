@@ -24,6 +24,7 @@
 #include <sjf/processors/sjf_StereoSpread.h>
 
 #include <sjf/processors/sjf_Tremolo.h>
+#include <sjf/processors/sjf_SpectralProcessor.h>
 
 namespace
 {
@@ -81,6 +82,7 @@ namespace sjf::tests
 	static GenericTests<dsp::RotateDelayDiffuser<>> diff2("RotateDelayDiffuser");
 	static GenericTests<dsp::StereoSpread> spread("StereoSpreader");
 	static GenericTests<dsp::BasicTremolo> tremolo("Tremolo");
+	static GenericTests<dsp::SpectralProcessor<>> spectralProcessor("Tremolo");
 
 
 

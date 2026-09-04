@@ -29,9 +29,17 @@ public:
         		return jmin(static_cast<float>(spec.sampleRate) * 0.49f, x);
         	};
         	createTrackedFrequencyParameter(*factory, frequency, "Freq", "Frequency", 20.0f, 20000.0f, 1000.0f, 1000.0f, mapping);
+        	auto params = factory->getParameters(false);
+        	jassert(params.size() > 0);
+        	frequencyParam = dynamic_cast<juce::AudioParameterFloat*>(params[0]);
+        	jassert(frequencyParam);
+        	jassert(helpers::ParameterFactory::getIDWithoutParentPrefix(*frequencyParam, *factory) == "Freq");
+        	jassert(helpers::ParameterFactory::getNameWithoutParentPrefix(*frequencyParam, *factory) == "Frequency");
 
             return factory;
         }
+
+    	juce::AudioParameterFloat* frequencyParam{nullptr};
     } parameters;
 
 
@@ -72,6 +80,14 @@ public:
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
     {
         return parameters.createParameters (factoryID, factoryName);
+    }
+
+	void setFrequency(const float frequency) const
+    {
+	    if (parameters.frequencyParam)
+	    	parameters.frequencyParam->setValueNotifyingHost(parameters.frequencyParam->convertTo0to1(jlimit(0.0f, static_cast<float>(spec.sampleRate) * 0.499f, frequency)));
+    	else
+    		jassertfalse;
     }
 
 private:

@@ -202,24 +202,16 @@ private:
 
 		const auto nOctaves = std::log2f(maxF/minF);
 		const auto inc = nOctaves/ static_cast<float>(nXOvers);
-		auto params = crossoverFiltersParams->getParameters(true);
+
 		for (auto i = 0ul; i < nXOvers; i++)
 		{
-			if ( auto ranged = dynamic_cast<juce::RangedAudioParameter*>(params[static_cast<int>(i)]))
-			{
-				const auto f = minF * std::pow(2.0f, static_cast<float>(i) *inc);
-
-				ranged->setValueNotifyingHost(ranged->convertTo0to1(f));
-			}
-			else
-			{
-				jassertfalse;
-			}
+			const auto f = minF * std::pow(2.0f, static_cast<float>(i) *inc);
+			crossoverFilters[i].setFrequency(f);
 		}
 
 		for (auto i = nXOvers; i < crossoverFilters.size(); i++)
 		{
-			crossoverFiltersParams->getParameters(true)[static_cast<int>(i)]->setValueNotifyingHost(maxF);
+			crossoverFilters[i].setFrequency(maxF);
 		}
 
 		auto getPan = [low = parameters.lowAmount.currentValue, high = parameters.highAmount.currentValue, nXOvers](const size_t index){

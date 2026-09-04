@@ -65,7 +65,7 @@ namespace delay_config
     struct Link{};
 
     /** @brief Enables a overriding of the default min, max, default, and centre values for delay time. */
-    template<size_t minMS = 1, size_t maxMS = 5000,  size_t defaultMS = 500, size_t skew = 1000>
+    template<float minMS = 1.0f, float maxMS = 5000.0f,  float defaultMS = 500.0f, float skew = 1000.0f>
     struct TimeValues
     {
         static constexpr float minTimeMS       = minMS;
@@ -769,8 +769,8 @@ private:
 															   dsp::oscillators::lfo::lfo_config::Depth>;
 		}
 
-		using Chorus  = Delay<internal::ChorusLFO, delay_config::TimeValues<5, 10, 7>, delay_config::Link, delay_config::Offset>;
-		using Flanger = Delay<internal::ChorusLFO, delay_config::TimeValues<1, 5, 2>, delay_config::Link, delay_config::Offset, delay_config::Feedback>;
+		using Chorus  = Delay<internal::ChorusLFO, delay_config::TimeValues<5.0f, 10.0f, 7.0f>, delay_config::Link, delay_config::Offset>;
+		using Flanger = Delay<internal::ChorusLFO, delay_config::TimeValues<1.0f, 5.0f, 2.0f>, delay_config::Link, delay_config::Offset, delay_config::Feedback>;
 	}
 
 }

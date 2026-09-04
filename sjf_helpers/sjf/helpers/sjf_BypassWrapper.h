@@ -219,9 +219,12 @@ public:
         		outputBlock.copyFrom(inputBlock);
 
         	juce::dsp::ProcessContextReplacing<float> delayContext(outputBlock);
-        	latencyDelay.process(delayContext);
 
-            dryRamp.skip(static_cast<int>(inputBlock.getNumSamples()));
+			latencyDelay.process(delayContext);
+
+        	if (dryRamp.getCurrentValue() < 1.0f)
+				outputBlock.multiplyBy(dryRamp.getCurrentValue());
+
             wetRamp.skip(static_cast<int>(inputBlock.getNumSamples()));
         }
         else

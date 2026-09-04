@@ -713,7 +713,7 @@ private:
 protected:
 
     //==============================================================================
-	void createTrackedDecibelParameter( ParameterFactory& factory,
+	juce::RangedAudioParameter* createTrackedDecibelParameter( ParameterFactory& factory,
 										FloatState& tracker,
 										const juce::ParameterID& parameterID,
 										const juce::String& parameterName,
@@ -722,10 +722,10 @@ protected:
 										const juce::AudioParameterFloatAttributes& att = juce::AudioParameterFloatAttributes{}.withLabel("dB")
 										)
 	{
-		createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minDB, maxDB, centreDB), defaultDB, mapping, att);
+		return createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minDB, maxDB, centreDB), defaultDB, mapping, att);
 	}
 
-	void createTrackedPercentParameter( ParameterFactory& factory,
+	juce::RangedAudioParameter* createTrackedPercentParameter( ParameterFactory& factory,
 										FloatState& tracker,
 										const juce::ParameterID& parameterID,
 										const juce::String& parameterName,
@@ -734,10 +734,10 @@ protected:
 										const juce::AudioParameterFloatAttributes& att = juce::AudioParameterFloatAttributes{}.withLabel("%")
 										)
 	{
-		createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minPercent, maxPercent, centrePercent), defaultPercent, mapping, att);
+		return createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minPercent, maxPercent, centrePercent), defaultPercent, mapping, att);
 	}
 
-	void createTrackedDegreeParameter( ParameterFactory& factory,
+	juce::RangedAudioParameter* createTrackedDegreeParameter( ParameterFactory& factory,
 										FloatState& tracker,
 										const juce::ParameterID& parameterID,
 										const juce::String& parameterName,
@@ -746,10 +746,10 @@ protected:
 										const juce::AudioParameterFloatAttributes& att = juce::AudioParameterFloatAttributes{}.withLabel(juce::CharPointer_UTF8 ("\xc2\xba"))
 										)
 	{
-		createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(min, max, centre), defaultValue, mapping, att);
+		return createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(min, max, centre), defaultValue, mapping, att);
 	}
 
-	void createTrackedTimeParameter( ParameterFactory& factory,
+	juce::RangedAudioParameter* createTrackedTimeParameter( ParameterFactory& factory,
 										FloatState& tracker,
 										const juce::ParameterID& parameterID,
 										const juce::String& parameterName,
@@ -758,11 +758,11 @@ protected:
 										const juce::AudioParameterFloatAttributes& att = juce::AudioParameterFloatAttributes{}.withLabel("ms")
 										)
 	{
-		createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minMS, maxMS, centreMS), defaultMS, mapping, att);
+		return createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minMS, maxMS, centreMS), defaultMS, mapping, att);
 	}
 
 
-	void createTrackedFrequencyParameter( ParameterFactory& factory,
+	juce::RangedAudioParameter* createTrackedFrequencyParameter( ParameterFactory& factory,
 										FloatState& tracker,
 										const juce::ParameterID& parameterID,
 										const juce::String& parameterName,
@@ -771,10 +771,10 @@ protected:
 										const juce::AudioParameterFloatAttributes& att = juce::AudioParameterFloatAttributes{}.withLabel("Hz")
 										)
 	{
-		createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minHz, maxHz, centreHz), defaultHz, mapping, att);
+		return createTrackedParameter(factory, tracker, parameterID, parameterName, ParameterHelpers::createNormalisableRange(minHz, maxHz, centreHz), defaultHz, mapping, att);
 	}
     //==============================================================================
-    void createTrackedParameter (   ParameterFactory& factory,
+    juce::RangedAudioParameter* createTrackedParameter (   ParameterFactory& factory,
                                     FloatState& tracker,
                                     const juce::ParameterID& parameterID,
                                     const juce::String& parameterName,
@@ -787,9 +787,10 @@ protected:
         initState(tracker, param, mapping);
         floatStates.push_back (tracker);
         floatMappings.push_back (mapping ? mapping : [](const float x) { return x; });
+		return param;
     }
 
-    void createTrackedParameter (   ParameterFactory& factory,
+    juce::RangedAudioParameter* createTrackedParameter (   ParameterFactory& factory,
                                     IntState& tracker,
                                     const juce::ParameterID& parameterID,
                                     const juce::String& parameterName,
@@ -802,9 +803,10 @@ protected:
 
         intStates.push_back (tracker);
         intMappings.push_back (mapping ?  mapping : [](const int x) { return x; });
+		return param;
     }
 
-    void createTrackedParameter (   ParameterFactory& factory,
+    juce::RangedAudioParameter* createTrackedParameter (   ParameterFactory& factory,
                                     BoolState& tracker,
                                     const juce::ParameterID& parameterID,
                                     const juce::String& parameterName,
@@ -817,9 +819,11 @@ protected:
 
         boolStates.push_back (tracker);
         boolMappings.push_back (mapping ? mapping : [](const bool x) { return x; });
+
+		return param;
     }
 
-    void createTrackedParameter (   ParameterFactory& factory,
+    juce::RangedAudioParameter* createTrackedParameter (   ParameterFactory& factory,
                                     ChoiceState& tracker,
                                     const juce::ParameterID& parameterID,
                                     const juce::String& parameterName,
@@ -833,6 +837,8 @@ protected:
 
         choiceStates.push_back (tracker);
         choiceMappings.push_back (mapping ? mapping : [](const int x) { return x; });
+
+		return param;
     }
 
     void addTrackedChildParameters(AudioParametersBase& childParameters_)

@@ -43,6 +43,9 @@ namespace lfo_config
 	/** @brief Configuration tag enabling DAW tempo synchronization features for the LFO frequency. */
 	struct TempoSync{};
 
+	/** @brief Configuration tag enabling automatically scaling output into 0-->1 range (assumes original range was -1<-->1). */
+	struct Unipolar{};
+
 	/** @brief Configuration tag enabling configuration of synced rates used.
 	 * NOTE: must adhere to layout as per DefaultSyncedRatesProvider
 	 * NOTE: including this will automatically enable tempo syncing, without the need to include TempoSync tag
@@ -93,6 +96,7 @@ public:
     static constexpr auto hasPhaseOffset = helpers::functions::utilities::configurationAvailable<lfo_config::PhaseOffset, Configurations...>;
     static constexpr auto hasInvert = helpers::functions::utilities::configurationAvailable<lfo_config::Invert, Configurations...>;
     static constexpr auto hasSmooth = helpers::functions::utilities::configurationAvailable<lfo_config::Smooth, Configurations...>;
+    static constexpr auto hasUnipolar = helpers::functions::utilities::configurationAvailable<lfo_config::Unipolar, Configurations...>;
 
     static constexpr auto numChannels = hasPhaseOffset || hasInvert ? 2 : 1;
     static constexpr auto numWaveforms = WaveformProvider::numWaveforms;
@@ -242,6 +246,12 @@ public:
                 filter.process(filterContext);
             }
         }
+
+    	if constexpr (hasUnipolar)
+    	{
+    		getLfoOutput().add(1.0f);
+    		getLfoOutput().multiplyBy(0.5f);
+    	}
     }
 
     juce::dsp::AudioBlock<float> getLfoOutput()

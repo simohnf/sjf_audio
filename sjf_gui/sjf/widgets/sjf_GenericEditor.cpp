@@ -16,6 +16,15 @@ namespace sjf::generic_editor
 			return lnf4->getCurrentColourScheme().getUIColour(colour);
 		}
 
+		const std::vector<juce::String>& getBypassWrapperParamNames()
+		{
+			static const std::vector<juce::String> names{
+				"Bypass", "Mute", "On", "Mix", "Solo"
+			};
+
+			return names;
+		}
+
 		class AutoEditor : public juce::Component
 		{
 		public:
@@ -28,11 +37,49 @@ namespace sjf::generic_editor
 					   const helpers::ParameterFactory::GroupMetadata& metadata_, UndoManager* undoManager_)
 			: apvts(apvts_), parameterGroup(group_), metadata(metadata_), undoManager(undoManager_)
 			{
-				collapseButton.onClick = [this]() { setExpanded(!isExpanded()); };
-
 				presetLabel.setText("Preset", juce::dontSendNotification);
 
 				buildUIFromGroup();
+
+				collapseButton.onClick = [this](){
+					if (ModifierKeys::getCurrentModifiers().isPopupMenu())
+					{
+						auto safeThis = SafePointer(this);
+						auto menu = PopupMenu{};
+						menu.addItem((isExpanded() ? "Collapse" : "Expand"), true, false, [safeThis](){
+							if (safeThis)
+								safeThis->setExpanded(!safeThis->isExpanded());
+						});
+
+						menu.addSeparator();
+
+						for (const auto param : parameterGroup.getParameters(false))
+						{
+							const auto ranged = dynamic_cast<juce::RangedAudioParameter*>(param);
+							if (!ranged)
+							{
+								jassertfalse;
+								continue;
+							}
+
+							if (const auto paramName = helpers::ParameterFactory::getNameWithoutParentPrefix(*ranged, parameterGroup);
+								!dynamic_cast<juce::AudioParameterFloat*>(ranged) &&
+								std::ranges::find(getBypassWrapperParamNames(), paramName) != getBypassWrapperParamNames().end())
+							{
+								auto action = [ranged](){
+									ranged->setValueNotifyingHost(1.0f-(ranged->getValue()));
+								};
+								menu.addItem(paramName, true, ranged->getValue() > 0.0f, action);
+							}
+						}
+
+						menu.showMenuAsync({});
+					}
+					else
+					{
+						setExpanded(!isExpanded());
+					}
+				};
 			}
 
 			void resized() override
@@ -251,6 +298,8 @@ namespace sjf::generic_editor
 			std::vector<std::unique_ptr<juce::Label>> paramNames;
 
 			UndoManager* undoManager;
+
+
 		private:
 			void buildUIFromGroup()
 			{
@@ -331,8 +380,9 @@ namespace sjf::generic_editor
 				toRemove.reserve(static_cast<size_t>(params.size()));
 				for (auto i = 0; i < params.size(); i++)
 				{
-					auto param = params[i];
-					if (paramName(param) == "Bypass" || paramName(param) == "On" || paramName(param) == "Mute" || paramName(param) == "Mix")
+					const auto param = params[i];
+					if (const auto& bypassWrapperNames = getBypassWrapperParamNames();
+						std::ranges::find(bypassWrapperNames, paramName(param)) != bypassWrapperNames.end())
 					{
 						addComponent(param);
 						toRemove.push_back(i);
@@ -477,7 +527,7 @@ namespace sjf::generic_editor
 
 
 				auto params = group.getParameters(false);
-				for (const auto& name : {"Solo", "Bypass", "Mute", "On"})
+				for (const auto& name : getBypassWrapperParamNames())
 				{
 					for (auto param : params)
 					{

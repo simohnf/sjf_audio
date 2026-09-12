@@ -20,8 +20,7 @@
 
 namespace sjf::helpers
 {
-
-template <typename Processor, size_t NumBands, bool FixedFrequencies = false, bool AddBandSolo = false>
+template <typename Processor, size_t NumBands, bool FixedFrequencies = false, bool AddBandSolo = false, bool FixedNumBands = true>
 class MultiCrossoverWrapper
 {
 	static constexpr auto NumFilters = NumBands - 1;
@@ -32,12 +31,11 @@ public:
     {
     	std::array<FloatState, NumFilters> filters;
     	[[maybe_unused]] std::array<BoolState, NumBands> solos;
+    	[[maybe_unused]] IntState numBands;
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
         	auto factory = ParameterFactory::create(factoryID, factoryName, true, false);
-
-        	ParameterFactory* factoryToUse = factory.get();
 
 
         	constexpr auto defaultMinF = 100.0f;
@@ -59,7 +57,12 @@ public:
             				return x;
             			return jmin(static_cast<float>(spec.sampleRate) * 0.5f, filters[i].getParameterValue() + 1.0f);
             		};
-            		createTrackedFrequencyParameter(*factoryToUse, filters[i], "XOver" + juce::String{i+1}, "XOver " + juce::String{i+1}, 20.0f, 20000.0f, 2000.0f, defaultF, mapping);
+            		filterParams[i] = createTrackedFrequencyParameter(*factory, filters[i], "XOver" + juce::String{i+1}, "XOver " + juce::String{i+1}, 20.0f, 20000.0f, 2000.0f, defaultF, mapping);
+            	}
+
+            	if constexpr (!FixedNumBands && NumBands > 2)
+            	{
+            		createTrackedParameter(*factory, numBands, "NumBands", "NumBands", 2, NumBands, NumBands);
             	}
             }
 
@@ -82,7 +85,17 @@ public:
 	        soloParams_[index] = createTrackedParameter(factory, solos[index], "Solo", "Solo", false, mapping);
         }
 
+    	void setFilterFrequency(size_t filter, float frequency)
+        {
+	        if constexpr (FixedFrequencies)
+	        	filters[filter].currentValue(frequency);
+        	else
+        		filterParams[filter]->setValueNotifyingHost(filterParams[filter]->convertTo0to1(frequency));
+        }
+
     	[[maybe_unused]] juce::BigInteger soloSet, lastSoloSet;
+    private:
+    	[[maybe_unused]] std::array<juce::AudioParameterFloat*, NumFilters> filterParams;
     } parameters;
 
     //==============================================================================
@@ -126,8 +139,6 @@ public:
 
     	for (auto& filter : filters)
     		filter.reset();
-
-
     }
 
     //==============================================================================
@@ -159,7 +170,9 @@ public:
     	auto lowBlock = juce::dsp::AudioBlock<float>(lowBuffer).getSubBlock(0, inputBlock.getNumSamples());
     	auto highBlock = juce::dsp::AudioBlock<float>(highBuffer).getSubBlock(0, inputBlock.getNumSamples());
 
-    	for (auto i = 0ul; i < NumFilters; i++)
+    	const auto numFilters = getNumActiveFilters();
+
+    	for (auto i = 0ul; i < numFilters; i++)
     	{
     		auto& filter = filters[i];
     		auto& processor = processors[i];
@@ -178,13 +191,19 @@ public:
 
 	    {
     		juce::dsp::ProcessContextReplacing<float> processorContext{highBlock};
-		    processors[NumFilters].process(processorContext);
+		    processors[numFilters].process(processorContext);
 
     		if constexpr(AddBandSolo)
-    			muters[NumFilters].process(processorContext);
+    			muters[numFilters].process(processorContext);
 
     		outputBlock.add(highBlock);
 	    }
+
+    	for (auto i = numFilters; i < NumFilters; ++i)
+    		filters[i].reset();
+
+    	for (auto i = numFilters+1; i < NumBands; ++i)
+    		processors[i].reset();
     }
 
     //==============================================================================
@@ -253,6 +272,31 @@ public:
     	for (auto & processor : processors)
 			sjf::optional_calls::attachToState(processor, parentTree);
     }
+
+	Processor& getProcessor(size_t index)
+    {
+    	jassert(index < processors.size());
+	    return processors[index];
+    }
+
+
+	sjf::dsp::CrossoverFilter& getFilter(size_t index)
+    {
+    	jassert(index < filters.size());
+    	return filters[index];
+    }
+
+
+	[[nodiscard]] size_t getNumFilters() const
+    {
+	    return NumFilters;
+    }
+
+	[[nodiscard]] size_t getNumProcessor() const
+    {
+	    return NumBands;
+    }
+
 private:
 	void setMutes()
 	{
@@ -270,6 +314,14 @@ private:
 		}
 
 		parameters.lastSoloSet = parameters.soloSet;
+	}
+
+	size_t getNumActiveFilters()
+	{
+		if constexpr (FixedNumBands)
+			return NumFilters;
+
+		return parameters.numBands.currentValue;
 	}
 
 	std::array<Processor, NumBands> processors;

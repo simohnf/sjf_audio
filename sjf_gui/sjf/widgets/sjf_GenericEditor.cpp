@@ -529,6 +529,9 @@ namespace sjf::generic_editor
 				auto params = group.getParameters(false);
 				for (const auto& name : getBypassWrapperParamNames())
 				{
+					if ( name == "Mix")
+						continue;
+
 					for (auto param : params)
 					{
 						if (const auto ranged = dynamic_cast<juce::RangedAudioParameter*>(param))

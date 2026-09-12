@@ -26,6 +26,8 @@
 #include <sjf/processors/sjf_Tremolo.h>
 #include <sjf/processors/sjf_SpectralProcessor.h>
 
+#include <sjf/processors/sjf_Gate_juce.h>
+
 namespace
 {
 	using LFO = sjf::dsp::oscillators::lfo::LFO<sjf::dsp::oscillators::lfo::DefaultWaveformProvider,
@@ -82,7 +84,9 @@ namespace sjf::tests
 	static GenericTests<dsp::RotateDelayDiffuser<>> diff2("RotateDelayDiffuser");
 	static GenericTests<dsp::StereoSpread> spread("StereoSpreader");
 	static GenericTests<dsp::BasicTremolo> tremolo("Tremolo");
-	static GenericTests<dsp::SpectralProcessor<>> spectralProcessor("Tremolo");
+	static GenericTests<dsp::SpectralProcessor<>> spectralProcessor("SpectralProcessor");
+	static GenericTests<dsp::Gate> gate("Gate");
+
 
 
 

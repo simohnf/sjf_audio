@@ -321,7 +321,7 @@ private:
 		if constexpr (FixedNumBands)
 			return NumFilters;
 
-		return parameters.numBands.currentValue;
+		return static_cast<size_t>(parameters.numBands.currentValue);
 	}
 
 	std::array<Processor, NumBands> processors;

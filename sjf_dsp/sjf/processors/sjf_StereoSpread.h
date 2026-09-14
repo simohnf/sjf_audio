@@ -16,63 +16,13 @@
 
 #include <sjf/processors/sjf_CrossoverFilter.h>
 
+#include "sjf/helpers/sjf_MultiCrossoverWrapper.h"
+
 namespace sjf::dsp{
 class StereoSpread
 {
-	struct PannedCrossoverFilter
-	{
-		explicit PannedCrossoverFilter(CrossoverFilter& filt) : crossoverFilter(filt) {}
-
-		void prepare (const juce::dsp::ProcessSpec& spec_)
-		{
-			for (auto& p : pan)
-				p.reset(spec_.sampleRate, 0.05f);
-		}
-
-		void reset()
-		{
-			pan[0].setCurrentAndTargetValue(std::sqrt(1.0f - panning));
-			pan[1].setCurrentAndTargetValue(std::sqrt(panning));
-		}
-
-		void process(const juce::dsp::AudioBlock<float>& inputBlock, juce::dsp::AudioBlock<float>& lowBlock, juce::dsp::AudioBlock<float>& highBlock)
-		{
-			if (!(pan[0].isSmoothing() || pan[1].isSmoothing()))
-			{
-				pan[0].setTargetValue(std::sqrt(1.0f - panning));
-				pan[1].setTargetValue(std::sqrt(panning));
-			}
-
-			auto lowMono = lowBlock.getSingleChannelBlock(0);
-			auto highMono = highBlock.getSingleChannelBlock(0);
-			crossoverFilter.process(inputBlock, lowMono, highMono);
-
-			lowBlock.getSingleChannelBlock(1).copyFrom(lowMono);
-			highBlock.getSingleChannelBlock(1).copyFrom(highMono);
-
-
-			lowBlock.getSingleChannelBlock(0).multiplyBy(pan[0]);
-			lowBlock.getSingleChannelBlock(1).multiplyBy(pan[1]);
-		}
-
-		void setPanning(const float targetPan)
-		{
-			panning = targetPan;
-		}
-	private:
-		float panning = 0.5f;
-		std::array<juce::LinearSmoothedValue<float>, 2> pan;
-		CrossoverFilter& crossoverFilter;
-	};
-
 public:
 	static constexpr auto maxOrder = 12;
-
-	StereoSpread()
-	{
-		for (auto i = 0ul; i < crossoverFilters.size(); ++i)
-			pannedCrossoverFilters[i] = std::make_unique<PannedCrossoverFilter>(crossoverFilters[i]);
-	}
 
     struct Parameters : public helpers::AudioParametersBase
     {
@@ -105,17 +55,19 @@ public:
         spec = spec_;
         parameters.prepare(spec);
 
-    	auto monoSpec = spec;
-    	monoSpec.numChannels = 1;
     	for (auto& filt : crossoverFilters)
-    		filt.prepare(monoSpec);
+    		filt.prepare(spec);
 
-    	for (const auto & panned : pannedCrossoverFilters)
-    		panned->prepare(spec);
+    	for ( auto& band : compensationFilters)
+    		for (auto& filt : band)
+    			filt.prepare(spec);
 
-    	inputBuffer.setSize(static_cast<int>(1), static_cast<int>(spec.maximumBlockSize));
-    	filteredBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
-    	filteredBuffer2.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
+    	for (auto & panner : panners)
+    		panner.prepare(spec);
+
+    	inputBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
+    	lowBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
+    	highBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
         reset();
     }
 
@@ -128,12 +80,20 @@ public:
     	for (auto& filt : crossoverFilters)
     		filt.reset();
 
-    	for (const auto & panned : pannedCrossoverFilters)
-    		panned->reset();
+    	for ( auto& band : compensationFilters)
+    		for (auto& filt : band)
+    			filt.reset();
+
+    	for (auto & panner : panners)
+    	{
+    		panner.setRule(juce::dsp::Panner<float>::Rule::squareRoot3dB);
+    		panner.reset();
+
+    	}
 
     	inputBuffer.clear();
-    	filteredBuffer.clear();
-    	filteredBuffer2.clear();
+    	lowBuffer.clear();
+    	highBuffer.clear();
 
 
     }
@@ -141,53 +101,80 @@ public:
     template <typename ProcessContext>
     void process (const ProcessContext& context) noexcept
     {
+
         [[maybe_unused]] const auto& inputBlock = context.getInputBlock();
         [[maybe_unused]] auto& outputBlock      = context.getOutputBlock();
+
         [[maybe_unused]] const auto numChannels = outputBlock.getNumChannels();
         [[maybe_unused]] const auto numSamples  = outputBlock.getNumSamples();
 
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);
 
-    	auto inBlock = juce::dsp::AudioBlock<float> (inputBuffer).getSubBlock(0, numSamples);
-    	inBlock.copyFrom(inputBlock.getSingleChannelBlock(0));
-    	inBlock.add(inputBlock.getSingleChannelBlock(1));
-    	inBlock.multiplyBy(0.7071f);
+
+    	if (parameters.checkForStateChange())
+    	{
+    		parameters.reset();
+    		updateFilterParameters();
+    	}
+
+    	auto inBlock = juce::dsp::AudioBlock<float>(inputBuffer).getSubBlock(0, inputBlock.getNumSamples());
+    	inBlock.copyFrom(inputBlock);
+
+        {
+        	constexpr auto sqrtPoint5 = 1.0f / juce::MathConstants<float>::sqrt2;
+        	inBlock.getSingleChannelBlock(0).add(inBlock.getSingleChannelBlock(1));
+        	inBlock.getSingleChannelBlock(0).multiplyBy(0.5f);
+        	inBlock.getSingleChannelBlock(1).copyFrom(inBlock.getSingleChannelBlock(0));
+        }
 
     	outputBlock.clear();
 
-    	auto filteredBlock = juce::dsp::AudioBlock<float> (filteredBuffer).getSubBlock(0, numSamples);
-    	auto filteredBlock2 = juce::dsp::AudioBlock<float> (filteredBuffer2).getSubBlock(0, numSamples);
+    	auto lowBlock = juce::dsp::AudioBlock<float>(lowBuffer).getSubBlock(0, inputBlock.getNumSamples());
+    	auto highBlock = juce::dsp::AudioBlock<float>(highBuffer).getSubBlock(0, inputBlock.getNumSamples());
 
-        if (parameters.checkForStateChange())
-        {
-        	parameters.reset();
-            updateFilterParameters();
-        }
+    	const auto numBands = static_cast<size_t>(parameters.order.currentValue);
 
 
-    	for (auto i = 0ul; i < static_cast<size_t>(parameters.order.currentValue) +1; i++)
+    	for (auto i = 0ul; i < numBands; i++)
     	{
-    		pannedCrossoverFilters[i]->process(inBlock, filteredBlock, filteredBlock2);
-    		outputBlock.add(filteredBlock);
-    		inBlock.copyFrom(filteredBlock2);
+    		auto& filter = crossoverFilters[i];
+    		auto& panner = panners[i];
+
+    		filter.process(inBlock, lowBlock, highBlock);
+    		juce::dsp::ProcessContextReplacing<float> processorContext{lowBlock};
+
+    		panner.process(processorContext);
+
+    		for ( auto j = i+1ul; j < numBands; j++)
+    			compensationFilters[i][j].process(processorContext);
+
+    		outputBlock.add(lowBlock);
+
+    		inBlock.copyFrom(highBlock);
     	}
 
-    	for (auto i = static_cast<size_t>(parameters.order.currentValue) + 1ul; i < pannedCrossoverFilters.size(); i++)
+	    {
+        	// last block is centred
+        	outputBlock.add(highBlock);
+	    }
+
+    	for (auto i = numBands; i < crossoverFilters.size(); ++i)
     	{
-    		pannedCrossoverFilters[i]->reset();
     		crossoverFilters[i].reset();
+    		for ( auto j = i + 1; j < compensationFilters[i].size(); j++)
+    			compensationFilters[i][j].reset();
     	}
 
-    	outputBlock.add(filteredBlock2);
+    	for (auto i = numBands; i < panners.size(); ++i)
+    		panners[i].reset();
 
     }
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
     {
     	crossoverFiltersParams = helpers::ParameterFactory::create("Filters", "Filters");
-    	for (auto i = 0ul; i < crossoverFilters.size(); ++i)
-    		crossoverFiltersParams->addChild(crossoverFilters[i].createParameters(juce::String{i}, " " + juce::String{i}));
+
         return parameters.createParameters (factoryID, factoryName);
     }
 
@@ -213,31 +200,42 @@ private:
 		{
 			crossoverFilters[i].setFrequency(maxF);
 		}
+		for ( auto i= 0ul; i < nXOvers; ++i)
+		{
+			for ( auto j = i+1ul; j < nXOvers; j++)
+			{
+				compensationFilters[i][j].setFrequency(crossoverFilters[j].getTargetFrequency());
+			}
+		}
 
 		auto getPan = [low = parameters.lowAmount.currentValue, high = parameters.highAmount.currentValue, nXOvers](const size_t index){
 			if (index == 0 || index >= nXOvers)
-				return 0.5f;
+				return 0.0f;
 
 			const auto pol = (index - 1) % 2 ? 1.0f : -1.0f;
 			const auto end = static_cast<float>(index - 1) / static_cast<float>(nXOvers - 2);
 			const auto start = 1.0f - end;
 
 
-			return 0.5f* (1.0f + pol * ((start *low) + (end*high)));
+			return pol * ((start *low) + (end*high));
 		};
 
 
-		for ( auto i = 0ul; i < pannedCrossoverFilters.size(); i++)
-			pannedCrossoverFilters[i]->setPanning(getPan(i));
+		for ( auto i = 0ul; i < panners.size(); i++)
+			panners[i].setPan(getPan(i));
     }
 
-	std::array<CrossoverFilter, maxOrder + 1> crossoverFilters;
-	std::array<std::unique_ptr<PannedCrossoverFilter>, maxOrder + 1> pannedCrossoverFilters;
+	std::array<helpers::crossover::Filter<>, maxOrder + 1> crossoverFilters;
+	std::array<std::array<helpers::crossover::Filter<true>, maxOrder + 1>, maxOrder + 1> compensationFilters;
+	std::array<juce::dsp::Panner<float>, maxOrder + 1> panners;
+
 
     juce::dsp::ProcessSpec spec{};
 	std::unique_ptr<juce::AudioProcessorParameterGroup> crossoverFiltersParams {nullptr};
-	juce::AudioBuffer<float> inputBuffer, filteredBuffer, filteredBuffer2;
-};
+	juce::AudioBuffer<float> inputBuffer, lowBuffer, highBuffer;
+
+
+	};
 
 }
 

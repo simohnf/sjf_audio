@@ -95,7 +95,7 @@ public:
 
     	[[maybe_unused]] juce::BigInteger soloSet, lastSoloSet;
     private:
-    	[[maybe_unused]] std::array<juce::AudioParameterFloat*, NumFilters> filterParams;
+    	[[maybe_unused]] std::array<juce::RangedAudioParameter*, NumFilters> filterParams;
     } parameters;
 
     //==============================================================================

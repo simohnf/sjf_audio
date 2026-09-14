@@ -1342,6 +1342,8 @@ namespace sjf::generic_editor
 						childSequenceEditors.push_back(childEditors[i].get());
 					for (auto i = metadata.numProcessorsInDynamicSequence; i < childEditors.size(); i++)
 						extraChildEditors.push_back(childEditors[i].get());
+
+					onLayoutChanged();
 				}
 
 

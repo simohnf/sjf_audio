@@ -1563,6 +1563,9 @@ namespace sjf::generic_editor
 		setResizable(true, true);
 		autoEditor->buildChildEditors();
 		autoEditor->initialisePresetPanel(true);
+
+
+		addAndMakeVisible(tooltipWindow);
 		setSize(600, 600);
 	}
 
@@ -1689,6 +1692,8 @@ namespace
 
 	void GenericEditor::paint(juce::Graphics& g)
 	{
+		undo.setTooltip(undoManager ? undoManager->getUndoDescription() : "");
+		redo.setTooltip(undoManager ? undoManager->getRedoDescription() : "");
 		static const auto bg = createBackground();
 
 		g.drawImageTransformed(bg, juce::AffineTransform{});

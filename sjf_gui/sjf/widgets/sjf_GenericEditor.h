@@ -55,6 +55,7 @@ namespace sjf::generic_editor
 			sjf::gui::PresetPanel presets;
 			juce::Label label;
 			juce::TextButton undo, redo;
+			TooltipWindow tooltipWindow;
 	};
 }
 

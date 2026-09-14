@@ -328,6 +328,10 @@ namespace sjf::generic_editor
 								   juce::sendNotification);
 
 				auto addComponent = [&] (juce::AudioProcessorParameter* param_){
+					const auto groupName = [this](){
+						return helpers::ParameterFactory::getNameWithoutParentPrefix(parameterGroup);
+					}();
+
 					auto addComboBox = [&](juce::AudioProcessorParameter* param, const juce::AudioParameterChoice* choice){
 
 						comboBoxes.push_back(std::make_unique<juce::ComboBox>(paramName(param)));
@@ -336,6 +340,13 @@ namespace sjf::generic_editor
 						comboBoxes.back()->addItemList(choice->choices, 1);
 						comboBoxes.back()->setText(choice->getCurrentValueAsText());
 
+						if (undoManager)
+						{
+							comboBoxes.back()->onChange = [this, c_ = comboBoxes.back().get(), pName = paramName(param), groupName]{
+								undoManager->setCurrentTransactionName("Set " + groupName + " " + pName + " to " + c_->getText());
+							};
+						}
+
 						paramComponents.push_back(comboBoxes.back().get());
 					};
 
@@ -343,19 +354,34 @@ namespace sjf::generic_editor
 						buttons.push_back(std::make_unique<juce::ToggleButton>(paramName(param)));
 						buttonAttachments.push_back(
 							std::make_unique<ButtonAttachment>(apvts, paramId(param), *buttons.back()));
+						if (undoManager)
+						{
+							buttons.back()->onClick = [this, b_ = buttons.back().get(), pName = paramName(param), groupName]{
+								undoManager->setCurrentTransactionName("Set " + groupName + " " + pName + " to " + (b_->getToggleState() ? "On" : "Off"));
+							};
+						}
 						paramComponents.push_back(buttons.back().get());
 					};
 
 					auto addSlider = [&](juce::AudioProcessorParameter* param){
 						jassert(dynamic_cast<juce::AudioParameterInt*>(param) ||
 						dynamic_cast<juce::AudioParameterFloat*>(param));
-						sliders.push_back(std::make_unique<juce::Slider>(paramName(param)));
+						sliders.push_back(std::make_unique<Slider>(paramName(param)));
 						const auto& s = sliders.back();
 						sliderAttachments.push_back(std::make_unique<SliderAttachment>(apvts, paramId(param), *s));
 						s->setTextValueSuffix(" " + dynamic_cast<juce::RangedAudioParameter*>(param)->getLabel());
 						s->setTextBoxStyle(juce::Slider::TextBoxRight, false, s->getTextBoxWidth(),
 										   s->getTextBoxHeight());
+
+						if (undoManager)
+						{
+							s->onDragEnd = [this, s_ = s.get(), pName = paramName(param), groupName]{
+								undoManager->setCurrentTransactionName("Changed " + groupName + " " + pName + " to " + s_->getTextFromValue(s_->getValue()));
+							};
+						}
 						paramComponents.push_back(s.get());
+
+
 					};
 
 					if (auto choice = dynamic_cast<juce::AudioParameterChoice*>(param_))
@@ -1053,6 +1079,9 @@ namespace sjf::generic_editor
 
 			void onItemRemoveRequested(const size_t processorID) override
 			{
+				if (undoManager)
+					undoManager->beginNewTransaction();
+
 				std::vector<size_t> updatedSequence{};
 				updatedSequence.reserve(masterPool.size());
 				for (const auto& i : activeSequence)
@@ -1072,6 +1101,9 @@ namespace sjf::generic_editor
 
 			void onItemSwapRequested(const size_t targetProcessorID, const size_t newProcessorTypeID) override
 			{
+				if (undoManager)
+					undoManager->beginNewTransaction();
+
 				std::vector<size_t> updatedSequence{};
 				updatedSequence.reserve(masterPool.size());
 				for (const auto& i : activeSequence)
@@ -1094,6 +1126,9 @@ namespace sjf::generic_editor
 
 			void onItemAddRequested(const size_t newProcessorTypeID)
 			{
+				if (undoManager)
+					undoManager->beginNewTransaction();
+
 				std::vector<size_t> updatedSequence{};
 				updatedSequence.reserve(masterPool.size());
 				for (const auto& i : activeSequence)
@@ -1116,6 +1151,9 @@ namespace sjf::generic_editor
 
 				if ( currentIndex == activeSequence.end() || static_cast<size_t>(std::distance(activeSequence.begin(), currentIndex)) == newIndex)
 					return; // dropping back to original position, bail early
+
+				if (undoManager)
+					undoManager->beginNewTransaction();
 
 				std::vector<size_t> updatedSequence{};
 				updatedSequence.reserve(masterPool.size());

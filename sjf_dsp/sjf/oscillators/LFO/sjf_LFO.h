@@ -246,12 +246,6 @@ public:
                 filter.process(filterContext);
             }
         }
-
-    	if constexpr (hasUnipolar)
-    	{
-    		getLfoOutput().add(1.0f);
-    		getLfoOutput().multiplyBy(0.5f);
-    	}
     }
 
     juce::dsp::AudioBlock<float> getLfoOutput()
@@ -336,6 +330,12 @@ private:
             }
         }
 
+    	if constexpr (hasUnipolar)
+    	{
+    		getLfoOutput().add(1.0f);
+    		getLfoOutput().multiplyBy(0.5f);
+    	}
+
         if constexpr(hasDepth)
             lfoOutput.applyGain(getDepthValue());
 
@@ -358,6 +358,17 @@ private:
                 return phase;
         };
 
+    	auto makeUnipolar = [](float x)
+    	{
+    		if constexpr (hasUnipolar)
+    		{
+    			x += 1.0f;
+    			x *= 0.5f;
+    		}
+
+    		return x;
+    	};
+
         for (size_t i = 0; i < numSamples; ++i)
         {
             // Remember to tick the smoothers!!! for every sample
@@ -370,7 +381,7 @@ private:
             {
                 // per channel changes if necessary
                 const auto offsetPhase = getOffsetPhase(channel, phase, phaseOffset);
-                wptrs[channel][i] = depth * waveformProvider.template processSample<WaveformIndex>(offsetPhase);
+                wptrs[channel][i] = depth * makeUnipolar(waveformProvider.template processSample<WaveformIndex>(offsetPhase));
             }
         }
     }

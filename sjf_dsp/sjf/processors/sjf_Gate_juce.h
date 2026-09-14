@@ -25,7 +25,7 @@ public:
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
-            createTrackedTimeParameter  (*factory, attack, "Att",  "Attack",  1.0f, 200.0f, 20.0f, 1.0f, {});
+            createTrackedTimeParameter  (*factory, attack, "Att",  "Attack",  0.0f, 200.0f, 20.0f, 1.0f, {});
             createTrackedTimeParameter  (*factory, release, "Rel",  "Release",  1.0f, 2000.0f, 200.0f, 100.0f, {});
             createTrackedDecibelParameter(*factory, threshold, "Thr", "Threshold", -60.0f, 0.0f, -6.0f, -6.0f, {});
 	        {

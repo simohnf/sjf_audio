@@ -14,12 +14,154 @@
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/helpers/sjf_OptionalCalls.h>
+#include <sjf/helpers/sjf_Passthrough.h>
 
-#include "sjf/processors/sjf_CrossoverFilter.h"
-#include "sjf_Passthrough.h"
 
 namespace sjf::helpers
 {
+namespace crossover
+{
+		template< bool Compensation = false>
+		class Filter
+		{
+		public:
+			void prepare (const juce::dsp::ProcessSpec& spec_)
+			{
+				spec = spec_;
+				if constexpr (Compensation)
+					filter.setType(juce::dsp::LinkwitzRileyFilterType::allpass);
+
+				filter.prepare(spec);
+				frequency.reset(spec.sampleRate, 0.1f);
+				reset();
+			}
+
+			void reset()
+			{
+				frequency.setCurrentAndTargetValue(frequency.getTargetValue());
+
+				filter.setCutoffFrequency(juce::jmin(frequency.getCurrentValue(), static_cast<float>(spec.sampleRate*0.499)));
+				filter.reset();
+			}
+
+
+			void process(const juce::dsp::AudioBlock<float>& inputBlock, juce::dsp::AudioBlock<float>& lowBlock, juce::dsp::AudioBlock<float>& highBlock)
+			{
+				static_assert(!Compensation, "This method is only used for main crossover filters");
+
+				if (frequency.isSmoothing())
+				{
+					processSmoothedState(inputBlock, lowBlock, highBlock);
+				}
+				else
+				{
+					processStaticState(inputBlock, lowBlock, highBlock);
+				}
+
+				#if JUCE_DSP_ENABLE_SNAP_TO_ZERO
+				filter.snapToZero();
+				#endif
+			}
+
+			template<typename ProcessContext>
+			void process(const ProcessContext& context)
+			{
+				static_assert(Compensation, "This method is only used for the compensation filters");
+				if (frequency.isSmoothing())
+				{
+					processSmoothedState(context);
+				}
+				else
+				{
+					filter.process(context);
+				}
+
+				#if JUCE_DSP_ENABLE_SNAP_TO_ZERO
+				filter.snapToZero();
+				#endif
+			}
+
+			void setFrequency(const float frequency_)
+			{
+				frequency.setTargetValue(frequency_);
+			}
+
+			float getTargetFrequency() const
+			{
+				return frequency.getTargetValue();
+			}
+
+		private:
+			void processStaticState (const juce::dsp::AudioBlock<float>& inputBlock, juce::dsp::AudioBlock<float>& lowBlock, juce::dsp::AudioBlock<float>& highBlock) noexcept
+			{
+				const auto numChannels = inputBlock.getNumChannels();
+				const auto numSamples  = inputBlock.getNumSamples();
+
+				jassert (inputBlock.getNumChannels() == lowBlock.getNumChannels() && inputBlock.getNumSamples() == highBlock.getNumSamples());
+				jassert (inputBlock.getNumSamples() == lowBlock.getNumSamples() && inputBlock.getNumSamples() == highBlock.getNumSamples());
+
+				for (size_t channel = 0; channel < numChannels; ++channel)
+				{
+					const auto* inputSamples  = inputBlock.getChannelPointer (channel);
+					auto* lowSamples = lowBlock.getChannelPointer (channel);
+					auto* highSamples = highBlock.getChannelPointer (channel);
+
+					for (size_t i = 0; i < numSamples; ++i)
+						filter.processSample(static_cast<int>(channel), inputSamples[i], lowSamples[i], highSamples[i]);
+				}
+			}
+
+			void processSmoothedState (const juce::dsp::AudioBlock<float>& inputBlock, juce::dsp::AudioBlock<float>& lowBlock, juce::dsp::AudioBlock<float>& highBlock) noexcept
+			{
+				const auto numChannels = inputBlock.getNumChannels();
+				const auto numSamples  = inputBlock.getNumSamples();
+
+				jassert (inputBlock.getNumChannels() == lowBlock.getNumChannels() && inputBlock.getNumSamples() == highBlock.getNumSamples());
+				jassert (inputBlock.getNumSamples() == lowBlock.getNumSamples() && inputBlock.getNumSamples() == highBlock.getNumSamples());
+				for (size_t i = 0; i < numSamples; ++i)
+				{
+					filter.setCutoffFrequency(juce::jmin(frequency.getNextValue(), static_cast<float>(spec.sampleRate * 0.4999)));
+
+					for (size_t channel = 0; channel < numChannels; ++channel)
+					{
+						const auto* inputSamples  = inputBlock.getChannelPointer (channel);
+						auto* lowSamples = lowBlock.getChannelPointer (channel);
+						auto* highSamples = highBlock.getChannelPointer (channel);
+
+						filter.processSample(static_cast<int>(channel), inputSamples[i], lowSamples[i], highSamples[i]);
+					}
+				}
+			}
+
+			template<typename ProcessContext>
+			void processSmoothedState (const ProcessContext& context) noexcept
+			{
+				const auto inputBlock = context.getInputBlock();
+				auto outputBlock = context.getOutputBlock();
+				const auto numChannels = inputBlock.getNumChannels();
+				const auto numSamples  = inputBlock.getNumSamples();
+
+
+				for (size_t i = 0; i < numSamples; ++i)
+				{
+					filter.setCutoffFrequency(juce::jmin(frequency.getNextValue(), static_cast<float>(spec.sampleRate * 0.4999)));
+
+					for (size_t channel = 0; channel < numChannels; ++channel)
+					{
+						const auto* inputSamples  = inputBlock.getChannelPointer (channel);
+						auto* outputSamples = outputBlock.getChannelPointer (channel);
+
+						outputSamples[i] = filter.processSample(static_cast<int>(channel), inputSamples[i]);
+					}
+				}
+			}
+
+			juce::dsp::LinkwitzRileyFilter<float> filter;
+			juce::dsp::ProcessSpec spec{};
+			juce::LinearSmoothedValue<float> frequency;
+		};
+}
+
 template <typename Processor, size_t NumBands, bool FixedFrequencies = false, bool AddBandSolo = false, bool FixedNumBands = true>
 class MultiCrossoverWrapper
 {
@@ -38,8 +180,8 @@ public:
         	auto factory = ParameterFactory::create(factoryID, factoryName, true, false);
 
 
-        	constexpr auto defaultMinF = 100.0f;
-        	constexpr auto defaultMaxF = 10000.0f;
+        	constexpr auto defaultMinF = 50.0f;
+        	constexpr auto defaultMaxF = 15000.0f;
 
             const auto nOctaves = std::log2f(defaultMaxF/defaultMinF);
             const auto inc = nOctaves/ static_cast<float>(NumFilters-1);
@@ -75,6 +217,24 @@ public:
             return factory;
         }
 
+    	void prepare (const juce::dsp::ProcessSpec& spec_)
+        {
+	        AudioParametersBase::prepare (spec_);
+
+        	if constexpr (FixedFrequencies)
+        	{
+        		constexpr auto defaultMinF = 100.0f;
+				constexpr auto defaultMaxF = 10000.0f;
+
+				const auto nOctaves = std::log2f(defaultMaxF/defaultMinF);
+				const auto inc = nOctaves/ static_cast<float>(NumFilters-1);
+				for (auto i = 0ul; i < NumFilters; i++)
+				{
+					auto defaultF = defaultMinF * std::pow(2.0f, static_cast<float>(i) *inc);
+					filters[i].currentValue = defaultF;
+				}
+			}
+        }
 
     	void createSoloParameter(helpers::ParameterFactory& factory, const size_t index, std::array<RangedAudioParameter*, NumBands>& soloParams_)
         {
@@ -83,14 +243,6 @@ public:
         		return x;
         	};
 	        soloParams_[index] = createTrackedParameter(factory, solos[index], "Solo", "Solo", false, mapping);
-        }
-
-    	void setFilterFrequency(size_t filter, float frequency)
-        {
-	        if constexpr (FixedFrequencies)
-	        	filters[filter].currentValue(frequency);
-        	else
-        		filterParams[filter]->setValueNotifyingHost(filterParams[filter]->convertTo0to1(frequency));
         }
 
     	[[maybe_unused]] juce::BigInteger soloSet, lastSoloSet;
@@ -113,6 +265,10 @@ public:
     	for (auto& filter : filters)
     		filter.prepare (spec);
 
+    	for (auto & band : compensationFilters)
+    		for (auto& filter : band)
+    			filter.prepare (spec);
+
     	inputBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
     	lowBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
     	highBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
@@ -124,7 +280,15 @@ public:
     {
     	parameters.reset();
     	for (auto i = 0ul; i < NumFilters; i++)
+    	{
     		filters[i].setFrequency(parameters.filters[i].currentValue);
+    		for (auto j = i+1ul; j < NumFilters; j++)
+    		{
+    			compensationFilters[i][j].setFrequency(parameters.filters[j].currentValue);
+    			compensationFilters[i][j].reset();
+    		}
+    	}
+
 
     	for (auto & processor : processors)
     		processor.reset();
@@ -151,13 +315,20 @@ public:
     	if (parameters.checkForStateChange())
     	{
     		parameters.reset();
-    		for (auto i = 0ul; i < NumFilters; i++)
-    			filters[i].setFrequency(parameters.filters[i].currentValue);
 
     		if constexpr(AddBandSolo)
     		{
     			if (parameters.soloSet != parameters.lastSoloSet)
     				setMutes();
+    		}
+    	}
+
+    	for (auto i = 0ul; i < NumFilters; i++)
+    	{
+    		filters[i].setFrequency(parameters.filters[i].currentValue);
+    		for (auto j = i+1ul; j < NumFilters; j++)
+    		{
+    			compensationFilters[i][j].setFrequency(parameters.filters[j].currentValue);
     		}
     	}
 
@@ -179,7 +350,11 @@ public:
 
     		filter.process(inBlock, lowBlock, highBlock);
     		juce::dsp::ProcessContextReplacing<float> processorContext{lowBlock};
+
     		processor.process(processorContext);
+
+    		for ( auto j = i+1ul; j < numFilters; j++)
+    			compensationFilters[i][j].process(processorContext);
 
     		if constexpr(AddBandSolo)
     			muters[i].process(processorContext);
@@ -200,7 +375,11 @@ public:
 	    }
 
     	for (auto i = numFilters; i < NumFilters; ++i)
+    	{
     		filters[i].reset();
+    		for (auto j = i+1ul; j < NumFilters; ++j)
+    			compensationFilters[i][j].reset();
+    	}
 
     	for (auto i = numFilters+1; i < NumBands; ++i)
     		processors[i].reset();
@@ -239,15 +418,6 @@ public:
 
     		factory->addChildFactory (std::move(processorFactory));
     	}
-
-    	filterParams = dummy.createParameters ("Filters", "Filters");
-
-    	for (auto i = 0ul; i < filters.size(); i++)
-    	{
-    		auto& filter = filters[i];
-    		filterParams->addChildFactory (filter.createParameters("Filters" + juce::String{i+1}, "Filters " + juce::String{i+1}));
-    	}
-
 
         return factory;
     }
@@ -325,8 +495,8 @@ private:
 	}
 
 	std::array<Processor, NumBands> processors;
-	std::array<sjf::dsp::CrossoverFilter, NumFilters> filters;
-	std::unique_ptr<sjf::helpers::ParameterFactory> filterParams;
+	std::array<crossover::Filter<>, NumFilters> filters;
+	std::array<std::array<crossover::Filter<true>, NumFilters>, NumFilters> compensationFilters;
     juce::dsp::ProcessSpec spec{};
 	juce::AudioProcessorParameterGroup muteParams;
 	[[maybe_unused]] std::array<juce::RangedAudioParameter*, NumBands> soloParams;

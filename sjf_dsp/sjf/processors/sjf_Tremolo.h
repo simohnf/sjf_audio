@@ -72,6 +72,8 @@ public:
 
     	lfo.process(context);
     	auto lfoBlock = lfo.getLfoOutput().getSubBlock(0, numSamples);
+    	lfoBlock.multiplyBy(-1.0f);
+    	lfoBlock.add(1.0f);
 
     	for ( auto channel = 0ul; channel < numChannels; ++channel )
     	{

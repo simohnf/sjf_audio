@@ -23,6 +23,8 @@ class StereoSpread
 {
 public:
 	static constexpr auto maxOrder = 12;
+	static constexpr auto maxNumFilters = maxOrder + 1;
+	static constexpr auto maxNumBands = maxNumFilters + 1;
 
     struct Parameters : public helpers::AudioParametersBase
     {
@@ -122,7 +124,6 @@ public:
     	inBlock.copyFrom(inputBlock);
 
         {
-        	constexpr auto sqrtPoint5 = 1.0f / juce::MathConstants<float>::sqrt2;
         	inBlock.getSingleChannelBlock(0).add(inBlock.getSingleChannelBlock(1));
         	inBlock.getSingleChannelBlock(0).multiplyBy(0.5f);
         	inBlock.getSingleChannelBlock(1).copyFrom(inBlock.getSingleChannelBlock(0));
@@ -133,20 +134,21 @@ public:
     	auto lowBlock = juce::dsp::AudioBlock<float>(lowBuffer).getSubBlock(0, inputBlock.getNumSamples());
     	auto highBlock = juce::dsp::AudioBlock<float>(highBuffer).getSubBlock(0, inputBlock.getNumSamples());
 
-    	const auto numBands = static_cast<size_t>(parameters.order.currentValue);
+    	const auto numXOvers = static_cast<size_t>(parameters.order.currentValue) + 1;
+    	const auto numBands  = numXOvers + 1;
 
 
-    	for (auto i = 0ul; i < numBands; i++)
+    	for (auto i = 0ul; i < numXOvers; i++)
     	{
     		auto& filter = crossoverFilters[i];
     		auto& panner = panners[i];
 
     		filter.process(inBlock, lowBlock, highBlock);
-    		juce::dsp::ProcessContextReplacing<float> processorContext{lowBlock};
+    		const juce::dsp::ProcessContextReplacing<float> processorContext{lowBlock};
 
     		panner.process(processorContext);
 
-    		for ( auto j = i+1ul; j < numBands; j++)
+    		for ( auto j = i+1ul; j < numXOvers; j++)
     			compensationFilters[i][j].process(processorContext);
 
     		outputBlock.add(lowBlock);
@@ -156,10 +158,12 @@ public:
 
 	    {
         	// last block is centred
+			const juce::dsp::ProcessContextReplacing<float> processorContext{highBlock};
+        	panners[numBands-1].process(processorContext);
         	outputBlock.add(highBlock);
 	    }
 
-    	for (auto i = numBands; i < crossoverFilters.size(); ++i)
+    	for (auto i = numXOvers; i < crossoverFilters.size(); ++i)
     	{
     		crossoverFilters[i].reset();
     		for ( auto j = i + 1; j < compensationFilters[i].size(); j++)
@@ -185,7 +189,8 @@ private:
     {
 		const auto minF = juce::jmin(parameters.lowFreq.currentValue, parameters.highFreq.currentValue);
 		const auto maxF = juce::jmax(parameters.highFreq.currentValue, parameters.lowFreq.currentValue);
-		const auto nXOvers = static_cast<size_t>(parameters.order.currentValue) +1;
+		const auto nXOvers = static_cast<size_t>(parameters.order.currentValue) + 1;
+		const auto nBands = nXOvers + 1;
 
 		const auto nOctaves = std::log2f(maxF/minF);
 		const auto inc = nOctaves/ static_cast<float>(nXOvers-1);
@@ -196,20 +201,21 @@ private:
 			crossoverFilters[i].setFrequency(f);
 		}
 
-		for (auto i = nXOvers; i < crossoverFilters.size(); i++)
+		for (auto i = nXOvers; i < maxNumFilters; i++)
 		{
 			crossoverFilters[i].setFrequency(maxF);
 		}
-		for ( auto i= 0ul; i < nXOvers; ++i)
+
+		for ( auto i= 0ul; i < maxNumFilters; ++i)
 		{
-			for ( auto j = i+1ul; j < nXOvers; j++)
+			for ( auto j = i+1ul; j < maxNumFilters; j++)
 			{
 				compensationFilters[i][j].setFrequency(crossoverFilters[j].getTargetFrequency());
 			}
 		}
 
-		auto getPan = [low = parameters.lowAmount.currentValue, high = parameters.highAmount.currentValue, nXOvers](const size_t index){
-			if (index == 0 || index >= nXOvers)
+		auto getPan = [low = parameters.lowAmount.currentValue, high = parameters.highAmount.currentValue, nXOvers, nBands](const size_t index){
+			if (index == 0 || index >= nBands-1)
 				return 0.0f;
 
 			const auto pol = (index - 1) % 2 ? 1.0f : -1.0f;
@@ -225,9 +231,9 @@ private:
 			panners[i].setPan(getPan(i));
     }
 
-	std::array<helpers::crossover::Filter<>, maxOrder + 1> crossoverFilters;
-	std::array<std::array<helpers::crossover::Filter<true>, maxOrder + 1>, maxOrder + 1> compensationFilters;
-	std::array<juce::dsp::Panner<float>, maxOrder + 1> panners;
+	std::array<helpers::crossover::Filter<>, maxNumFilters> crossoverFilters;
+	std::array<std::array<helpers::crossover::Filter<true>, maxNumFilters>, maxNumFilters> compensationFilters;
+	std::array<juce::dsp::Panner<float>, maxNumBands> panners;
 
 
     juce::dsp::ProcessSpec spec{};

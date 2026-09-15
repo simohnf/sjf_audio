@@ -31,84 +31,106 @@ namespace crossover
 	 * @tparam Compensation If `true`, configures the internal filter as an `allpass` type for phase compensation.
 	 *                      If `false`, operates as a main crossover splitting stage.
 	 */
-		template< bool Compensation = false>
-		class Filter
+	template< bool Compensation = false>
+	class Filter
+	{
+	public:
+		void prepare (const juce::dsp::ProcessSpec& spec_)
 		{
-		public:
-			void prepare (const juce::dsp::ProcessSpec& spec_)
-			{
-				spec = spec_;
-				if constexpr (Compensation)
-					filter.setType(juce::dsp::LinkwitzRileyFilterType::allpass);
+			spec = spec_;
+			if constexpr (Compensation)
+				filter.setType(juce::dsp::LinkwitzRileyFilterType::allpass);
 
-				filter.prepare(spec);
-				frequency.reset(spec.sampleRate, 0.1f);
-				reset();
+			filter.prepare(spec);
+			frequency.reset(spec.sampleRate, 0.1f);
+			reset();
+		}
+
+		void reset()
+		{
+			frequency.setCurrentAndTargetValue(frequency.getTargetValue());
+
+			filter.setCutoffFrequency(juce::jmin(frequency.getCurrentValue(), static_cast<float>(spec.sampleRate*0.499)));
+			filter.reset();
+		}
+
+
+		void process(const juce::dsp::AudioBlock<float>& inputBlock, juce::dsp::AudioBlock<float>& lowBlock, juce::dsp::AudioBlock<float>& highBlock)
+		{
+			static_assert(!Compensation, "This method is only used for main crossover filters");
+
+			if (frequency.isSmoothing())
+			{
+				processSmoothedState(inputBlock, lowBlock, highBlock);
+			}
+			else
+			{
+				processStaticState(inputBlock, lowBlock, highBlock);
 			}
 
-			void reset()
-			{
-				frequency.setCurrentAndTargetValue(frequency.getTargetValue());
+			#if JUCE_DSP_ENABLE_SNAP_TO_ZERO
+			filter.snapToZero();
+			#endif
+		}
 
-				filter.setCutoffFrequency(juce::jmin(frequency.getCurrentValue(), static_cast<float>(spec.sampleRate*0.499)));
-				filter.reset();
+		template<typename ProcessContext>
+		void process(const ProcessContext& context)
+		{
+			static_assert(Compensation, "This method is only used for the compensation filters");
+			if (frequency.isSmoothing())
+			{
+				processSmoothedState(context);
+			}
+			else
+			{
+				filter.process(context);
 			}
 
+			#if JUCE_DSP_ENABLE_SNAP_TO_ZERO
+			filter.snapToZero();
+			#endif
+		}
 
-			void process(const juce::dsp::AudioBlock<float>& inputBlock, juce::dsp::AudioBlock<float>& lowBlock, juce::dsp::AudioBlock<float>& highBlock)
+		void setFrequency(const float frequency_)
+		{
+			frequency.setTargetValue(frequency_);
+		}
+
+		float getTargetFrequency() const
+		{
+			return frequency.getTargetValue();
+		}
+
+	private:
+		void processStaticState (const juce::dsp::AudioBlock<float>& inputBlock, juce::dsp::AudioBlock<float>& lowBlock, juce::dsp::AudioBlock<float>& highBlock) noexcept
+		{
+			const auto numChannels = inputBlock.getNumChannels();
+			const auto numSamples  = inputBlock.getNumSamples();
+
+			jassert (inputBlock.getNumChannels() == lowBlock.getNumChannels() && inputBlock.getNumSamples() == highBlock.getNumSamples());
+			jassert (inputBlock.getNumSamples() == lowBlock.getNumSamples() && inputBlock.getNumSamples() == highBlock.getNumSamples());
+
+			for (size_t channel = 0; channel < numChannels; ++channel)
 			{
-				static_assert(!Compensation, "This method is only used for main crossover filters");
+				const auto* inputSamples  = inputBlock.getChannelPointer (channel);
+				auto* lowSamples = lowBlock.getChannelPointer (channel);
+				auto* highSamples = highBlock.getChannelPointer (channel);
 
-				if (frequency.isSmoothing())
-				{
-					processSmoothedState(inputBlock, lowBlock, highBlock);
-				}
-				else
-				{
-					processStaticState(inputBlock, lowBlock, highBlock);
-				}
-
-				#if JUCE_DSP_ENABLE_SNAP_TO_ZERO
-				filter.snapToZero();
-				#endif
+				for (size_t i = 0; i < numSamples; ++i)
+					filter.processSample(static_cast<int>(channel), inputSamples[i], lowSamples[i], highSamples[i]);
 			}
+		}
 
-			template<typename ProcessContext>
-			void process(const ProcessContext& context)
+		void processSmoothedState (const juce::dsp::AudioBlock<float>& inputBlock, juce::dsp::AudioBlock<float>& lowBlock, juce::dsp::AudioBlock<float>& highBlock) noexcept
+		{
+			const auto numChannels = inputBlock.getNumChannels();
+			const auto numSamples  = inputBlock.getNumSamples();
+
+			jassert (inputBlock.getNumChannels() == lowBlock.getNumChannels() && inputBlock.getNumSamples() == highBlock.getNumSamples());
+			jassert (inputBlock.getNumSamples() == lowBlock.getNumSamples() && inputBlock.getNumSamples() == highBlock.getNumSamples());
+			for (size_t i = 0; i < numSamples; ++i)
 			{
-				static_assert(Compensation, "This method is only used for the compensation filters");
-				if (frequency.isSmoothing())
-				{
-					processSmoothedState(context);
-				}
-				else
-				{
-					filter.process(context);
-				}
-
-				#if JUCE_DSP_ENABLE_SNAP_TO_ZERO
-				filter.snapToZero();
-				#endif
-			}
-
-			void setFrequency(const float frequency_)
-			{
-				frequency.setTargetValue(frequency_);
-			}
-
-			float getTargetFrequency() const
-			{
-				return frequency.getTargetValue();
-			}
-
-		private:
-			void processStaticState (const juce::dsp::AudioBlock<float>& inputBlock, juce::dsp::AudioBlock<float>& lowBlock, juce::dsp::AudioBlock<float>& highBlock) noexcept
-			{
-				const auto numChannels = inputBlock.getNumChannels();
-				const auto numSamples  = inputBlock.getNumSamples();
-
-				jassert (inputBlock.getNumChannels() == lowBlock.getNumChannels() && inputBlock.getNumSamples() == highBlock.getNumSamples());
-				jassert (inputBlock.getNumSamples() == lowBlock.getNumSamples() && inputBlock.getNumSamples() == highBlock.getNumSamples());
+				filter.setCutoffFrequency(juce::jmin(frequency.getNextValue(), static_cast<float>(spec.sampleRate * 0.4999)));
 
 				for (size_t channel = 0; channel < numChannels; ++channel)
 				{
@@ -116,60 +138,38 @@ namespace crossover
 					auto* lowSamples = lowBlock.getChannelPointer (channel);
 					auto* highSamples = highBlock.getChannelPointer (channel);
 
-					for (size_t i = 0; i < numSamples; ++i)
-						filter.processSample(static_cast<int>(channel), inputSamples[i], lowSamples[i], highSamples[i]);
+					filter.processSample(static_cast<int>(channel), inputSamples[i], lowSamples[i], highSamples[i]);
 				}
 			}
+		}
 
-			void processSmoothedState (const juce::dsp::AudioBlock<float>& inputBlock, juce::dsp::AudioBlock<float>& lowBlock, juce::dsp::AudioBlock<float>& highBlock) noexcept
+		template<typename ProcessContext>
+		void processSmoothedState (const ProcessContext& context) noexcept
+		{
+			const auto inputBlock = context.getInputBlock();
+			auto outputBlock = context.getOutputBlock();
+			const auto numChannels = inputBlock.getNumChannels();
+			const auto numSamples  = inputBlock.getNumSamples();
+
+
+			for (size_t i = 0; i < numSamples; ++i)
 			{
-				const auto numChannels = inputBlock.getNumChannels();
-				const auto numSamples  = inputBlock.getNumSamples();
+				filter.setCutoffFrequency(juce::jmin(frequency.getNextValue(), static_cast<float>(spec.sampleRate * 0.4999)));
 
-				jassert (inputBlock.getNumChannels() == lowBlock.getNumChannels() && inputBlock.getNumSamples() == highBlock.getNumSamples());
-				jassert (inputBlock.getNumSamples() == lowBlock.getNumSamples() && inputBlock.getNumSamples() == highBlock.getNumSamples());
-				for (size_t i = 0; i < numSamples; ++i)
+				for (size_t channel = 0; channel < numChannels; ++channel)
 				{
-					filter.setCutoffFrequency(juce::jmin(frequency.getNextValue(), static_cast<float>(spec.sampleRate * 0.4999)));
+					const auto* inputSamples  = inputBlock.getChannelPointer (channel);
+					auto* outputSamples = outputBlock.getChannelPointer (channel);
 
-					for (size_t channel = 0; channel < numChannels; ++channel)
-					{
-						const auto* inputSamples  = inputBlock.getChannelPointer (channel);
-						auto* lowSamples = lowBlock.getChannelPointer (channel);
-						auto* highSamples = highBlock.getChannelPointer (channel);
-
-						filter.processSample(static_cast<int>(channel), inputSamples[i], lowSamples[i], highSamples[i]);
-					}
+					outputSamples[i] = filter.processSample(static_cast<int>(channel), inputSamples[i]);
 				}
 			}
+		}
 
-			template<typename ProcessContext>
-			void processSmoothedState (const ProcessContext& context) noexcept
-			{
-				const auto inputBlock = context.getInputBlock();
-				auto outputBlock = context.getOutputBlock();
-				const auto numChannels = inputBlock.getNumChannels();
-				const auto numSamples  = inputBlock.getNumSamples();
-
-
-				for (size_t i = 0; i < numSamples; ++i)
-				{
-					filter.setCutoffFrequency(juce::jmin(frequency.getNextValue(), static_cast<float>(spec.sampleRate * 0.4999)));
-
-					for (size_t channel = 0; channel < numChannels; ++channel)
-					{
-						const auto* inputSamples  = inputBlock.getChannelPointer (channel);
-						auto* outputSamples = outputBlock.getChannelPointer (channel);
-
-						outputSamples[i] = filter.processSample(static_cast<int>(channel), inputSamples[i]);
-					}
-				}
-			}
-
-			juce::dsp::LinkwitzRileyFilter<float> filter;
-			juce::dsp::ProcessSpec spec{};
-			juce::LinearSmoothedValue<float> frequency;
-		};
+		juce::dsp::LinkwitzRileyFilter<float> filter;
+		juce::dsp::ProcessSpec spec{};
+		juce::LinearSmoothedValue<float> frequency;
+	};
 }
 
 /**

@@ -72,11 +72,16 @@ public:
 
         if (parameters.checkForStateChange())
         {
+        	parameters.reset();
         	jassertfalse;
         }
 
-    	trem.process(context);
-    	delay.process(context);
+    	if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
+    		context.getOutputBlock().copyFrom(context.getInputBlock());
+
+    	const juce::dsp::ProcessContextReplacing<float> replacingContext { context.getOutputBlock() };
+    	trem.process(replacingContext);
+    	delay.process(replacingContext);
     }
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)

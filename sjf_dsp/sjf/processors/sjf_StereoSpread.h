@@ -19,6 +19,22 @@
 #include "sjf/helpers/sjf_MultiCrossoverWrapper.h"
 
 namespace sjf::dsp{
+
+/**
+ * @brief A multi-band stereo spreading DSP class that pans intermediate frequency bands across the sound field while leaving the lowest and highest bands centered.
+ *
+ * This class splits the stereo input signal into multiple frequency bands using a serial chain of Linkwitz-Riley (LR4) crossover filters.
+ * To maintain a flat magnitude response (0 dB summation) upon reconstruction, lower bands pass through dedicated downstream All-Pass filter
+ * instances to preserve phase alignment with higher bands.
+ *
+ * Key features and design rules:
+ * 1. **Band Layout**: For a user-specified `order` (\f$N \ge 2\f$), the processor constructs \f$N + 1\f$ crossover filters and \f$N + 2\f$ output bands.
+ * 2. **Centered Boundaries**: The lowest band (index 0) and the highest band (index \f$N + 1\f$) are strictly locked to center (Pan = 0.0).
+ * 3. **Interleaved Stereo Width**: Intermediate bands (\f$1 \dots N\f$) alternate pan polarity (Left/Right) while interpolating pan position smoothly between `lowAmount` and `highAmount`.
+ * 4. **State-Isolated All-Pass Compensation**: Downstream All-Pass filters maintain dedicated state buffers per band and per crossover index, avoiding memory state corruption across bands during buffer processing.
+ *
+ * @note Input signals must be stereo (`numChannels == 2`). Mono summing is applied internally before the multiband split.
+ */
 class StereoSpread
 {
 public:

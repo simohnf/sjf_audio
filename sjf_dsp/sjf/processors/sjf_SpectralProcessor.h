@@ -22,6 +22,13 @@
 
 namespace sjf::dsp{
 
+/**
+ * @brief Individual frequency-band DSP node combining amplitude modulation and delay effects.
+ *
+ * `BandProcessor` encapsulates a serial processing chain comprising a `BasicTremolo` stage followed by
+ * a modulated `Delay` effect wrapped in wet/mix bypass controls. Designed to be managed as a child processor
+ * within multiband wrapper architectures such as `sjf::helpers::MultiCrossoverWrapper`.
+ */
 class BandProcessor
 {
 	using DelayLFO = sjf::dsp::oscillators::lfo::LFO<dsp::oscillators::lfo::LFOWaveformProvider	<	dsp::oscillators::lfo::Sine>,
@@ -105,7 +112,15 @@ private:
     juce::dsp::ProcessSpec spec{};
 };
 
-
+/**
+ * @brief High-density spectral processor dividing audio into N statically spaced crossover bands.
+ *
+ * `SpectralProcessor` instantiates `MultiCrossoverWrapper` with 16 fixed frequency bands. Each band is individually
+ * modulated by `BandProcessor`, wrapped in gain control (`GainWrapper`), and governed by dedicated solo/mute
+ * routing parameters (`BypassWrapper`).
+ *
+ * @tparam NumBands Total number of static frequency bands (defaults to 16).
+ */
 template <size_t NumBands = 16>
 using SpectralProcessor = helpers::MultiCrossoverWrapper<helpers::BypassWrapper<helpers::GainWrapper<BandProcessor, true, false>, helpers::bypass_wrapper_config::Mute>, NumBands, true, true>;
 

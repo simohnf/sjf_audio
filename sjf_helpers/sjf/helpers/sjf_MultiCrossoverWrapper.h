@@ -21,6 +21,16 @@ namespace sjf::helpers
 {
 namespace crossover
 {
+	/**
+	 * @brief Encapsulates a Linkwitz-Riley crossover or phase-compensation filter stage with parameter smoothing.
+	 *
+	 * This wrapper manages a 4th-order Linkwitz-Riley filter (`juce::dsp::LinkwitzRileyFilter`), supporting both
+	 * dual-output band splits (low-pass / high-pass) and single-input/output all-pass phase alignment stages.
+	 * Cutoff frequencies are smoothed per-sample using `juce::LinearSmoothedValue` to eliminate parameter zippering.
+	 *
+	 * @tparam Compensation If `true`, configures the internal filter as an `allpass` type for phase compensation.
+	 *                      If `false`, operates as a main crossover splitting stage.
+	 */
 		template< bool Compensation = false>
 		class Filter
 		{
@@ -162,6 +172,26 @@ namespace crossover
 		};
 }
 
+/**
+ * @brief A multiband processor wrapper that splits audio across N crossover stages and applies dedicated per-band processing.
+ *
+ * `MultiCrossoverWrapper` constructs a serial Linkwitz-Riley (LR4) crossover tree to divide incoming audio into `NumBands`
+ * distinct frequency ranges, processes each band using an instance of `Processor`, and sums the results back to the output buffer.
+ * To ensure phase alignment across all reconstructed bands, lower bands are automatically routed through dedicated, state-isolated
+ * All-Pass filter networks corresponding to downstream crossover frequencies.
+ *
+ * ### Key Features:
+ * - **Compile-Time Static Allocation**: Zero dynamic heap allocations during audio thread execution.
+ * - **Phase Accuracy**: Dedicated per-band All-Pass networks compensate for phase rotation introduced by higher-order crossovers.
+ * - **Smooth Crossover Shifts**: Per-sample frequency smoothing guarantees glitch-free frequency modulation.
+ * - **Dynamic or Fixed Band Modes**: Supports fixed frequency layouts or dynamic band enables via template configuration policies.
+ *
+ * @tparam Processor The DSP class instantiated for each frequency band. Must implement `prepare`, `reset`, `process`, and `createParameters`.
+ * @tparam NumBands Total number of frequency bands to generate (\f$\text{NumBands} \ge 2\f$).
+ * @tparam FixedFrequencies If `true`, crossover frequencies remain locked to pre-calculated logarithmic defaults.
+ * @tparam AddBandSolo If `true`, appends solo/mute logic parameters for individual band isolation.
+ * @tparam FixedNumBands If `true`, all `NumBands` are active continuously. If `false`, exposes a runtime parameter to scale active bands.
+ */
 template <typename Processor, size_t NumBands, bool FixedFrequencies = false, bool AddBandSolo = false, bool FixedNumBands = true>
 class MultiCrossoverWrapper
 {

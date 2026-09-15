@@ -18,6 +18,22 @@
 
 namespace sjf::dsp
 {
+/**
+ * @brief A templated amplitude modulation (tremolo) DSP class driven by a customizable LFO engine.
+ *
+ * This class applies low-frequency amplitude modulation to an incoming audio stream. It delegates
+ * LFO signal generation, parameter creation, and tempo synchronization to an internal `LFO` instance.
+ *
+ * Key features and design rules:
+ * 1. **LFO Policy Validation**: Enforces at compile time that the template parameter `LFO` is a valid
+ *    instantiation of `sjf::dsp::oscillators::lfo::LFO`.
+ * 2. **Flexible Channel Routing**: Supports arbitrary input/output channel counts by wrapping LFO channel
+ *    indices via modulo (`channel % lfoBlock.getNumChannels()`), permitting mono LFOs to modulate stereo audio.
+ * 3. **Context Sensitivity**: Correctly handles both in-place (`ProcessContextReplacing`) and separate buffer
+ *    (`ProcessContextNonReplacing`) processing contexts.
+ *
+ * @tparam LFO An oscillator class type instantiated from `sjf::dsp::oscillators::lfo::LFO`.
+ */
 template<typename LFO>
 class Tremolo
 {

@@ -232,16 +232,11 @@ public:
             		filterParams[i] = createTrackedFrequencyParameter(*factory, filters[i], "XOver" + juce::String{i+1}, "XOver " + juce::String{i+1}, 20.0f, 20000.0f, 2000.0f, defaultF, mapping);
             	}
 
-            	if constexpr (!FixedNumBands && NumBands > 2)
-            	{
-            		createTrackedParameter(*factory, numBands, "NumBands", "NumBands", 2, NumBands, NumBands);
-            	}
             }
 
-        	if constexpr(AddBandSolo)
+        	if constexpr (!FixedNumBands && NumBands > 2)
         	{
-        		soloSet.setRange(0, NumBands, false);
-        		lastSoloSet = soloSet;
+        		createTrackedParameter(*factory, numBands, "NumBands", "NumBands", 2, NumBands, NumBands);
         	}
 
             return factory;

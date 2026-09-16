@@ -12,6 +12,8 @@
 //
 #pragma once
 #include <JuceHeader.h>
+
+#include "sjf_SoloSet.h"
 namespace sjf::optional_calls
 {
 
@@ -63,6 +65,18 @@ namespace internal
 
 	template <typename T>
     void attachToState(T&, juce::ValueTree&, long)
+    {}
+
+	template <typename T>
+	auto attachToSoloSet(T& processor, helpers::SoloSet* soloSet_, int)
+	-> decltype(processor.attachToSoloSet(soloSet_), void())
+    {
+    	processor.attachToSoloSet(soloSet_);
+    	return;
+    }
+
+	template <typename T>
+    void attachToSoloSet(T&, helpers::SoloSet*, long)
     {}
 }
 
@@ -141,5 +155,12 @@ template <typename T>
 void attachToState(T& processor, juce::ValueTree& apvtsState)
 {
 	optional_calls::internal::attachToState(processor, apvtsState, 0);
+}
+
+
+template<typename T>
+void attachToSoloSet (T& processor, helpers::SoloSet* soloSet_)
+{
+	optional_calls::internal::attachToSoloSet(processor, soloSet_, 0);
 }
 }

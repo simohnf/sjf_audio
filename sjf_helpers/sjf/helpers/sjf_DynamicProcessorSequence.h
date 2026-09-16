@@ -286,14 +286,14 @@ public:
     			const auto strArr = StringArray::fromTokens(v.toString(), "/", "");
 
     			jassert(strArr.size() <= static_cast<int>(NumProcessors));
-    			for ( auto i = 0ul; i < static_cast<size_t>(strArr.size()); ++i)
-    			{
-    				// if you hit this you changed the number of processors
-    				jassert(strArr[static_cast<int>(i)].getIntValue() == InactiveSlot || strArr[static_cast<int>(i)].getIntValue() < static_cast<int>(NumProcessors));
-    			}
 
     			for ( auto i = 0ul; i < jmin(static_cast<size_t>(strArr.size()), NumProcessors); ++i)
     			{
+    				if (!(strArr[static_cast<int>(i)].getIntValue() == InactiveSlot || strArr[static_cast<int>(i)].getIntValue() < static_cast<int>(NumProcessors)))
+    				{
+    					jassertfalse; // if you hit this you changed the number of processors
+    					continue;
+    				}
     				auto processor = static_cast<size_t>(strArr[static_cast<int>(i)].getIntValue());
     				if (processor == InactiveSlot)
     					break;

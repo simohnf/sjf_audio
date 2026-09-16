@@ -47,6 +47,7 @@ public:
 		const juce::String groupID;
 		const bool supportsSubPresets = false;
 		const bool supportsChildSubPresets = false;
+		const bool isMultiBand = false;
 		const size_t numProcessorsInDynamicSequence{0};
 		const juce::AudioParameterChoice* selectorParameter = nullptr;
 		std::vector<GroupMetadata> children;
@@ -60,6 +61,11 @@ public:
 		[[nodiscard]] bool isDynamicProcessorSequenceGroup() const noexcept
 		{
 			return numProcessorsInDynamicSequence > 0;
+		}
+
+		[[nodiscard]] bool isMultiBandProcessor() const noexcept
+		{
+			return isMultiBand;
 		}
 
 		[[nodiscard]] const GroupMetadata* findChild (const juce::String& targetID) const noexcept
@@ -76,10 +82,27 @@ public:
 
 	[[nodiscard]] static GroupMetadata createMetadataTree (const ParameterFactory& rootFactory)
 	{
+		auto isMultiBand{false};
+		for (const auto* childFactory : rootFactory.childFactories)
+		{
+			if (childFactory != nullptr)
+			{
+				auto id = ParameterFactory::getIDWithoutParentPrefix(*childFactory);
+				auto name = ParameterFactory::getNameWithoutParentPrefix(*childFactory);
+				if (id.startsWith("B") && name.startsWith("Band"))
+				{
+					id   = id.substring(1);
+					name = name.substring(4).removeCharacters(" ");
+					if (id == name)
+						isMultiBand = true;
+				}
+			}
+		}
 		GroupMetadata node{
 			.groupID = rootFactory.getID(),
 			.supportsSubPresets = rootFactory.supportsSubPresets(),
 			.supportsChildSubPresets = rootFactory.supportsChildSubPresets(),
+			.isMultiBand = isMultiBand,
 			.numProcessorsInDynamicSequence = rootFactory.getNumProcessorsInDynamicSequence(),
 			.children = {},
 		};

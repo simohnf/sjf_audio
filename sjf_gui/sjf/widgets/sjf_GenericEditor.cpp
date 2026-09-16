@@ -239,7 +239,7 @@ namespace sjf::generic_editor
 
 			}
 
-			void buildChildEditors();
+			virtual void buildChildEditors();
 
 
 			void callAfterSave(ValueTree vt) const
@@ -268,6 +268,10 @@ namespace sjf::generic_editor
 				}
 			}
 
+			const juce::AudioProcessorParameterGroup& getParameterGroup() const
+			{
+				return parameterGroup;
+			}
 		protected:
 			juce::AudioProcessorValueTreeState& apvts;
 			const juce::AudioProcessorParameterGroup& parameterGroup;
@@ -525,6 +529,153 @@ namespace sjf::generic_editor
 				onLayoutChanged();
 			}
 			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DeviceSelectorEditor)
+		};
+
+
+		class MultiBandEditor : public AutoEditor
+		{
+		public:
+			MultiBandEditor(juce::AudioProcessorValueTreeState& apvts_,
+								 const juce::AudioProcessorParameterGroup& group_,
+								 const helpers::ParameterFactory::GroupMetadata& metadata_,
+								 UndoManager* undoManager_)
+			: AutoEditor(apvts_, group_, metadata_, undoManager_)
+			{
+
+			}
+
+			void resized() override
+			{
+				AutoEditor::resized();
+
+				auto y = childEditors[0]->getBounds().getY();
+
+				{
+					// first shift all other child editors up
+					auto band = 0ul;
+					auto other = 0ul;
+					for (auto i = 0ul; i < childEditors.size(); i++)
+					{
+						if (!otherChildEditors.empty() && otherChildEditors[other] == childEditors[i].get())
+						{
+							jassert(otherChildEditors[other] == childEditors[i].get());
+							otherChildEditors[other]->setVisible(true);
+							otherChildEditors[other]->setBounds(otherChildEditors[other]->getBounds().withY(y));
+
+							y += otherChildEditors[other]->getHeight() + VerticalSpacing;
+
+							other++;
+						}
+						else
+						{
+							jassert(bandEditors[band] == childEditors[i].get());
+							band++;
+						}
+
+					}
+				}
+
+				visibleBand.setBounds(visibleBand.getBounds().withY(y).withX(childEditors[0]->getX()).withWidth(childEditors[0]->getWidth()).withHeight(ComponentHeight));
+				y += visibleBand.getHeight() + VerticalSpacing;
+
+				const auto visibleBand_ = bandEditors[static_cast<size_t>(visibleBand.getSelectedId() - 1)];
+				for (const auto band_ : bandEditors)
+				{
+					band_->setBounds(band_->getBounds().withY(y));
+					band_->setVisible(visibleBand_ == band_);
+				}
+			}
+
+			juce::Rectangle<int> getRequiredSize() const override
+			{
+				// will need additional logic if changing from single column...
+				auto heightOfChildren = [&]()
+				{
+					auto ret = 0;
+					for (auto child : otherChildEditors)
+					{
+						if (auto autoEditor = dynamic_cast<AutoEditor*>(child))
+						{
+							ret += autoEditor->getRequiredSize().getHeight() + VerticalSpacing;
+						}
+					}
+					ret += visibleBand.getHeight() + VerticalSpacing;
+
+
+					const auto ch = dynamic_cast<AutoEditor*>(bandEditors[static_cast<size_t>(visibleBand.getSelectedId() - 1)])->getRequiredSize().getHeight();
+					return ret + ch + (ch > 0 ? VerticalSpacing : 0);
+				};
+
+
+				auto w = getWidth();
+				auto h = (!expanded ? 0
+									: static_cast<int>(sliders.size() + comboBoxes.size() + buttons.size()) *
+								  (ComponentHeight + VerticalSpacing)) +
+					VerticalSpacing // extra spacing at bottom
+					+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0) +
+					juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
+					(expanded ? heightOfChildren() : 0);
+				return {w, h};
+			}
+
+			void setExpanded(const bool shouldBeExpanded) override
+			{
+				expanded = shouldBeExpanded;
+				for (const auto c : paramComponents)
+					c->setVisible(expanded);
+
+				for (const auto& l : paramNames)
+					l->setVisible(expanded);
+
+				const auto selected = static_cast<size_t>(visibleBand.getSelectedId() - 1);
+				for (auto i = 0ul; i < bandEditors.size(); i++)
+					bandEditors[i]->setVisible(i == selected && expanded);
+
+				for (const auto other : otherChildEditors)
+					other->setVisible(expanded);
+
+				onLayoutChanged();
+			}
+
+			void buildChildEditors() override
+			{
+				AutoEditor::buildChildEditors();
+				for (auto& child : childEditors)
+				{
+					if (helpers::ParameterFactory::getNameWithoutParentPrefix(child->getParameterGroup()).trim().startsWith("Band"))
+					{
+						bandEditors.push_back(child.get());
+					}
+					else
+					{
+						otherChildEditors.push_back(child.get());
+					}
+				}
+
+				addAndMakeVisible(visibleBand);
+				for (auto i = 0ul; i < bandEditors.size(); i++)
+					visibleBand.addItem( "Band "+ juce::String(i+1), static_cast<int>(i + 1));
+				visibleBand.setSelectedId(1);
+				visibleBand.onChange = [&](){
+					for (auto i = 0ul; i < bandEditors.size(); i++)
+					{
+						const auto isVisibleBand = static_cast<int>(i + 1) == visibleBand.getSelectedId();
+						bandEditors[i]->setVisible(isVisibleBand);
+						if (isVisibleBand)
+							dynamic_cast<AutoEditor*>(bandEditors[i])->setExpanded(true);
+					}
+
+				};
+			}
+
+
+			juce::ComboBox visibleBand;
+			std::vector<juce::Component*> bandEditors{};
+			std::vector<juce::Component*> otherChildEditors{};
+
+
+
+			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MultiBandEditor)
 		};
 
 
@@ -1489,6 +1640,11 @@ namespace sjf::generic_editor
 				{
 					childEditors.push_back(
 						std::make_unique<DynamicProcessorSequenceEditor>(apvts, *child, childMetaData, undoManager));
+				}
+				else if (childMetaData.isMultiBandProcessor())
+				{
+					childEditors.push_back(
+						std::make_unique<MultiBandEditor>(apvts, *child, childMetaData, undoManager));
 				}
 				else
 				{

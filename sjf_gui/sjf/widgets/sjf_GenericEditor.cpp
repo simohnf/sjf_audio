@@ -41,8 +41,14 @@ namespace sjf::generic_editor
 
 				buildUIFromGroup();
 
+				collapseButton.onStateChange = [this](){
+					if (ModifierKeys::getCurrentModifiers().getNumMouseButtonsDown() == 0)
+						return; // only act on mouse down
+					modifierKeys = ModifierKeys::getCurrentModifiers();
+				};
+
 				collapseButton.onClick = [this](){
-					if (ModifierKeys::getCurrentModifiers().isPopupMenu())
+					if (modifierKeys.isPopupMenu())
 					{
 						auto safeThis = SafePointer(this);
 						auto menu = PopupMenu{};
@@ -298,6 +304,8 @@ namespace sjf::generic_editor
 			std::vector<std::unique_ptr<juce::Label>> paramNames;
 
 			UndoManager* undoManager;
+
+			ModifierKeys modifierKeys;
 
 
 		private:

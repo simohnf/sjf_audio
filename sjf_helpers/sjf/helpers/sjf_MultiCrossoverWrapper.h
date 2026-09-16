@@ -305,7 +305,10 @@ public:
     		parameters.filters[i].currentValue = i < numFilters ?
 										parameters.calculateFixedFilterFrequency(i, numFilters) :
 										parameters.filters[numFilters-1].currentValue;
+    	}
 
+    	for (auto i = 0ul; i < NumFilters; i++)
+    	{
     		filters[i].setFrequency(parameters.filters[i].currentValue);
     		for (auto j = i+1ul; j < NumFilters; j++)
     		{

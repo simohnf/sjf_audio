@@ -122,7 +122,7 @@ private:
  * @tparam NumBands Total number of static frequency bands (defaults to 16).
  */
 template <size_t NumBands = 16>
-using SpectralProcessor = helpers::MultiCrossoverWrapper<helpers::BypassWrapper<helpers::GainWrapper<BandProcessor, true, false>, helpers::bypass_wrapper_config::Mute>, NumBands, true, true>;
+using SpectralProcessor = helpers::MultiCrossoverWrapper<helpers::BypassWrapper<helpers::GainWrapper<BandProcessor, true, false>, helpers::bypass_wrapper_config::Mute, helpers::bypass_wrapper_config::Solo>, NumBands, true, false>;
 
 }
 

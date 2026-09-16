@@ -17,6 +17,7 @@
 
 #include "sjf_AsyncCallbackInvoker.h"
 #include "sjf_OptionalCalls.h"
+#include "sjf_SoloSet.h"
 
 namespace sjf::helpers
 {
@@ -47,6 +48,9 @@ namespace bypass_wrapper_config
 
     /** @brief Configuration tag enabling a hard mute switch parameter with a 50ms gain ramp down. */
     struct Mute{};
+
+    /** @brief Configuration tag enabling a solo, requires an enclosing processor that has a SoloSet, see @MultiCrossoverWrapper. */
+    struct Solo{};
 
     /** @brief Configuration tag disabling auto reset of processor when muted bypassed. */
     struct SoftBypass{};
@@ -79,6 +83,7 @@ class BypassWrapper
     static constexpr auto hasMix		= helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mix, Configs...>;
     static constexpr auto hasMute		= helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Mute, Configs...>;
     static constexpr auto forceReset	= !helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::SoftBypass, Configs...>;
+    static constexpr auto hasSolo		= helpers::functions::utilities::configurationAvailable<bypass_wrapper_config::Solo, Configs...>;
 public:
     BypassWrapper() = default;
     ~BypassWrapper() = default;
@@ -89,7 +94,7 @@ public:
     struct Parameters : public helpers::AudioParametersBase
     {
         FloatState mix;
-        BoolState bypass, mute;
+        BoolState bypass, mute, solo;
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String&, const juce::String&) override
         {
@@ -134,6 +139,11 @@ public:
             	{
             		mix.currentValue = 1.0f;
             	}
+
+            	if constexpr (hasSolo)
+            	{
+            		soloParam = createTrackedParameter (*targetFactory, solo, "Solo", "Solo", false);
+            	}
             }
             else
             {
@@ -150,8 +160,24 @@ public:
             targetFactory = factoryToUse;
         }
 
+    	void attachToSoloSet(SoloSet* soloSet_) const
+        {
+	        if constexpr (hasSolo)
+	        {
+		        if (soloParam)
+		        {
+		        	soloSet_->addToSoloSet(soloParam);
+		        }
+	        	else
+	        	{
+	        		jassertfalse;
+	        	}
+	        }
+        }
+
     private:
         ParameterFactory* targetFactory{nullptr};
+    	RangedAudioParameter* soloParam{nullptr};
     } parameters;
 
     //==============================================================================
@@ -291,6 +317,20 @@ public:
     {
     	sjf::optional_calls::attachToState(processor, parentTree);
     }
+
+	void attachToSoloSet (SoloSet* soloSet_)
+    {
+	    if constexpr (hasSolo)
+	    {
+		    soloSet = soloSet_;
+	    	parameters.attachToSoloSet(soloSet);
+	    }
+    	else
+    	{
+    		DBG("BypassWrapper: attachToSoloSet called, but this instance does not have bypass_wrapper_config::Solo tag.");
+    	}
+    }
+
 private:
 
     float getWetTargetLevel()
@@ -298,6 +338,13 @@ private:
         if constexpr (hasMute)
             if (parameters.mute.currentValue)
                 return 0.0f;
+
+    	if constexpr (hasSolo)
+    	{
+    		jassert(soloSet);
+    		if (soloSet && !parameters.solo.currentValue && soloSet->numberOfActiveSolos() > 0)
+    			return 0.0f;
+    	}
 
         if constexpr (hasBypass || hasOnOff)
             if (parameters.bypass.currentValue)
@@ -315,9 +362,22 @@ private:
             if (parameters.mute.currentValue)
                 return 0.0f;
 
+
+
         if constexpr (hasBypass || hasOnOff)
             if (parameters.bypass.currentValue)
                 return 1.0f;
+
+    	if constexpr (hasSolo)
+    	{
+    		jassert(soloSet);
+    		if (soloSet && !parameters.solo.currentValue && soloSet->numberOfActiveSolos() > 0)
+    		{
+    			// Parallel: Mute dry path completely
+    			// Serial: Force dry path to unity (1.0) to pass signal through
+    			return soloSet->isParallelSolo() ? 0.0f : 1.0f;
+    		}
+    	}
 
         if constexpr (hasMix)
             return std::sqrt (1.0f - parameters.mix.currentValue);
@@ -333,7 +393,6 @@ private:
     juce::LinearSmoothedValue<float> wetRamp, dryRamp;
 	juce::dsp::DelayLine<float> latencyDelay;
 
-
 	bool processorNeedsReset{false};
 
 	using Callback = std::function<void()>;
@@ -347,6 +406,8 @@ private:
 				reset();
 			}
 		}};
+
+	[[maybe_unused]] SoloSet* soloSet{nullptr};
 };
 
 }

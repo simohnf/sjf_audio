@@ -834,7 +834,12 @@ namespace sjf::generic_editor
 			{
 				for (const auto& [name, param] : popupMenuParams)
 					if (param->getParameterIndex() == parameterIndex)
-						repaint();
+					{
+						if (MessageManager::existsAndIsCurrentThread())
+							repaint();
+						else
+							asyncRepaint.triggerUpdate();
+					}
 			}
 
 			void parameterGestureChanged (int, bool) override {}
@@ -902,6 +907,12 @@ namespace sjf::generic_editor
 			Listener& listener;
 
 			std::unordered_map<String, RangedAudioParameter*> popupMenuParams;
+
+			using Callback = std::function<void()>;
+			helpers::AsyncCallbackInvoker<Callback> asyncRepaint{[safeThis = SafePointer(this)](){
+				if (safeThis)
+					safeThis->repaint();
+			}};
 
 			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SequenceItemComponent)
 		};

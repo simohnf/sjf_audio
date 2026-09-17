@@ -335,6 +335,7 @@ public:
     	const auto inputBlock = context.getInputBlock();
     	auto outputBlock = context.getOutputBlock();
 
+    	auto resetProcessors = false;
     	const auto prevNumFilters = getNumActiveFilters();
     	if (parameters.checkForStateChange())
     	{
@@ -342,6 +343,7 @@ public:
 
     		if (const auto numFilters = getNumActiveFilters(); numFilters != prevNumFilters)
     		{
+    			resetProcessors = true;
     			for ( auto i = 0ul; i < NumFilters; i++)
     			{
     				parameters.filters[i].currentValue = i < numFilters ?
@@ -398,15 +400,18 @@ public:
     		outputBlock.add(highBlock);
 	    }
 
-    	for (auto i = numFilters; i < NumFilters; ++i)
-    	{
-    		filters[i].reset();
-    		for (auto j = i+1ul; j < NumFilters; ++j)
-    			compensationFilters[i][j].reset();
-    	}
+    	if (resetProcessors)
+	    {
+		    for (auto i = numFilters; i < NumFilters; ++i)
+		    {
+		    	filters[i].reset();
+		    	for (auto j = i+1ul; j < NumFilters; ++j)
+		    		compensationFilters[i][j].reset();
+		    }
 
-    	for (auto i = numFilters+1; i < NumBands; ++i)
-    		processors[i].reset();
+    		for (auto i = numFilters+1; i < NumBands; ++i)
+    			processors[i].reset();
+	    }
     }
 
     //==============================================================================

@@ -90,7 +90,7 @@ public:
         parameters.prepare(spec);
     	auto max = 0ul;
     	for ( auto& dt : parameters.tapTimes)
-    		max = jmax(max, dt.back());
+    		max = juce::jmax<size_t>(max, dt.back());
 
     	for ( auto& dl : delayLine)
     	{

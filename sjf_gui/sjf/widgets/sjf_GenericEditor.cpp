@@ -112,7 +112,7 @@ namespace sjf::generic_editor
 						auto b_ = b;
 						const auto c = paramComponents[i];
 						const auto& l = paramNames[i];
-						l->setBounds(b_.removeFromLeft(jmax(ComponentHeight * 2, getWidth() / 4)));
+						l->setBounds(b_.removeFromLeft(juce::jmax<int>(ComponentHeight * 2, getWidth() / 4)));
 						c->setBounds(b_.withWidth(b_.getWidth() - HorizontalSpacing));
 						b = b.withY(b.getY() + ComponentHeight + VerticalSpacing);
 					}
@@ -170,7 +170,7 @@ namespace sjf::generic_editor
 								  (ComponentHeight + VerticalSpacing)) +
 									VerticalSpacing // extra spacing at bottom
 									+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0) +
-									juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
+									juce::jmax<int>(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
 									(expanded ? heightOfChildren() : VerticalSpacing));
 
 
@@ -505,7 +505,7 @@ namespace sjf::generic_editor
 								  (ComponentHeight + VerticalSpacing)) +
 					VerticalSpacing // extra spacing at bottom
 					+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0) +
-					juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
+					juce::jmax<int>(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
 					(expanded ? heightOfChildren() : 0);
 				return {w, h};
 			}
@@ -613,7 +613,7 @@ namespace sjf::generic_editor
 								  (ComponentHeight + VerticalSpacing)) +
 					VerticalSpacing // extra spacing at bottom
 					+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0) +
-					juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
+					juce::jmax<int>(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
 					(expanded ? heightOfChildren() : 0);
 				return {w, h};
 			}
@@ -1081,7 +1081,7 @@ namespace sjf::generic_editor
 
 				const auto insertionHighlight = getUIColour(this, juce::LookAndFeel_V4::ColourScheme::highlightedText).withAlpha(0.7f);
 				g.setColour(insertionHighlight);
-				g.fillRect(0, jmax(0, lineY - 1), getWidth(), 3);
+				g.fillRect(0, jmax<int>(0, lineY - 1), getWidth(), 3);
 
 				g.setColour(outline);
 				g.drawRect(getLocalBounds());
@@ -1588,8 +1588,8 @@ namespace sjf::generic_editor
 								  (ComponentHeight + VerticalSpacing)) +
 					VerticalSpacing // extra spacing at bottom
 					+ (presetPanel ? PresetPanelHeight + VerticalSpacing : 0) +
-					juce::jmax(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
-					jmax((expanded ? heightOfChildren() : 0), heightOfListComponents);
+					juce::jmax<int>(titleLabel.getHeight(), collapseButton.getHeight()) + VerticalSpacing +
+					juce::jmax<int>((expanded ? heightOfChildren() : 0), heightOfListComponents);
 				return {w, h};
 			}
 

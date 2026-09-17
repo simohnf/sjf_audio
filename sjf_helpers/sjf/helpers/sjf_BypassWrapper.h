@@ -229,7 +229,7 @@ public:
     	if (getLatencySamples() > latencyDelay.getMaximumDelayInSamples())
     		asyncCallback.triggerUpdate();
     	else
-			latencyDelay.setDelay(getLatencySamples());
+			latencyDelay.setDelay(static_cast<float>(getLatencySamples()));
 
         if (!wetRamp.isSmoothing() && !dryRamp.isSmoothing() && wetRamp.getCurrentValue() == 0.0f)
         {
@@ -402,7 +402,7 @@ private:
 			if (!safeGuard.expired())
 			{
 				latencyDelay.setMaximumDelayInSamples(getLatencySamples() + 10);
-				latencyDelay.setDelay(getLatencySamples());
+				latencyDelay.setDelay(static_cast<float>(getLatencySamples()));
 				reset();
 			}
 		}};

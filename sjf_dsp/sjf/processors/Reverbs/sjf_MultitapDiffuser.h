@@ -88,15 +88,15 @@ public:
     {
         spec = spec_;
         parameters.prepare(spec);
-    	auto max = 0ul;
+    	auto max = 0.0f;
     	for ( auto& dt : parameters.tapTimes)
-    		max = juce::jmax<size_t>(max, dt.back());
+    		max = juce::jmax<float>(max, static_cast<float>(dt.back()));
 
     	for ( auto& dl : delayLine)
     	{
     		dl.prepare(spec);
 
-    		dl.setMaxDelayTimeSamps(static_cast<int>(max * 2));
+    		dl.setMaxDelayTimeSamps(static_cast<int>(max * 2.0f));
     	}
         reset();
     }

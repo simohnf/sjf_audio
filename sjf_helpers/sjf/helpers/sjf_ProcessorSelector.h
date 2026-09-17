@@ -143,7 +143,7 @@ public:
     		{
     			lastActiveIndex = static_cast<size_t>(previousIndex);
     			mainDelay = (mainDelay + 1) & 1;
-    			delayLines[mainDelay].setDelay(getLatencySamples() - getProcessorLatencySamples(static_cast<size_t>(parameters.selectedProcessor.currentValue)));
+    			delayLines[mainDelay].setDelay(static_cast<float>(getLatencySamples() - getProcessorLatencySamples(static_cast<size_t>(parameters.selectedProcessor.currentValue))));
     			delayLines[mainDelay].reset();
     			fadeInSmoother .setCurrentAndTargetValue(0.0f);
     			fadeOutSmoother.setCurrentAndTargetValue(1.0f);

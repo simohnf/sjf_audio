@@ -117,7 +117,7 @@ public:
     	mainDelay = 0;
     	for (auto& dl : delayLines)
     		dl.reset();
-    	delayLines[mainDelay].setDelay(getLatencySamples() - getProcessorLatencySamples(static_cast<size_t>(parameters.selectedProcessor.currentValue)));
+    	delayLines[mainDelay].setDelay(static_cast<float>(getLatencySamples() -getProcessorLatencySamples(static_cast<size_t>(parameters.selectedProcessor.currentValue))));
 	    sjf::helpers::functions::utilities::forEach (processors, [](auto& proc) { proc.reset(); });
     }
 

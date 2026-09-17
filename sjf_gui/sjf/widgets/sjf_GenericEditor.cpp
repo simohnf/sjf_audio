@@ -552,7 +552,7 @@ namespace sjf::generic_editor
 
 				{
 					// first shift all other child editors up
-					auto band = 0ul;
+					[[maybe_unused]] auto band = 0ul;
 					auto other = 0ul;
 					for (auto i = 0ul; i < childEditors.size(); i++)
 					{

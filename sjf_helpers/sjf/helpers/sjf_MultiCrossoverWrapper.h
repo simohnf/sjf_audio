@@ -212,10 +212,12 @@ public:
         	constexpr auto defaultMaxF = 15000.0f;
 
             const auto nOctaves = std::log2f(defaultMaxF/defaultMinF);
-            const auto inc = nOctaves/ static_cast<float>(NumFilters-1);
+            const auto inc = NumFilters > 1 ? nOctaves/ static_cast<float>(NumFilters-1) : 0.0f;
             for (auto i = 0ul; i < NumFilters; i++)
             {
             	auto defaultF = defaultMinF * std::pow(2.0f, static_cast<float>(i) *inc);
+            	jassert(std::isfinite(defaultF));
+
             	if constexpr (FixedFrequencies)
             	{
             		filters[i].currentValue = defaultF;
@@ -250,11 +252,12 @@ public:
 				constexpr auto defaultMaxF = 10000.0f;
 
 				const auto nOctaves = std::log2f(defaultMaxF/defaultMinF);
-				const auto inc = nOctaves/ static_cast<float>(NumFilters-1);
+				const auto inc = NumFilters > 1 ? nOctaves/ static_cast<float>(NumFilters-1) : 0.0f;
 				for (auto i = 0ul; i < NumFilters; i++)
 				{
 					auto defaultF = defaultMinF * std::pow(2.0f, static_cast<float>(i) *inc);
 					filters[i].currentValue = defaultF;
+					jassert(std::isfinite(defaultF));
 				}
 			}
         }
@@ -265,9 +268,11 @@ public:
         	constexpr auto defaultMaxF = 15000.0f;
 
         	const auto nOctaves = std::log2f(defaultMaxF/defaultMinF);
-        	const auto inc = nOctaves/ static_cast<float>(numFilters-1);
+        	const auto inc = numFilters > 1 ? nOctaves/ static_cast<float>(numFilters-1) : 0.0f;
 
-        	return defaultMinF * std::pow(2.0f, static_cast<float>(index) *inc);
+        	auto ret = defaultMinF * std::pow(2.0f, static_cast<float>(index) *inc);
+        	jassert(std::isfinite(ret));
+        	return ret;
         }
     private:
     	[[maybe_unused]] std::array<juce::RangedAudioParameter*, NumFilters> filterParams;

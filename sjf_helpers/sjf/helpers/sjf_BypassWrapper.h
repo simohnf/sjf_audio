@@ -231,7 +231,7 @@ public:
     	else
 			latencyDelay.setDelay(static_cast<float>(getLatencySamples()));
 
-        if (!wetRamp.isSmoothing() && !dryRamp.isSmoothing() && wetRamp.getCurrentValue() == 0.0f)
+        if (!wetRamp.isSmoothing() && !dryRamp.isSmoothing() && juce::approximatelyEqual(wetRamp.getCurrentValue(), 0.0f))
         {
         	if constexpr (forceReset)
         	{

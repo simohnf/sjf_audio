@@ -155,7 +155,7 @@ private:
 					delayLine[chan].writeSample(x);
 					x = 0.0f;
 					for ( auto tap = 0ul; tap < MaxNumTaps; ++tap)
-						x += delayLine[chan].template readSample<sjf::interpolation::InterpolatorTypes::linear>(parameters.tapTimes[chan][tap])
+						x += delayLine[chan].template readSample<sjf::interpolation::InterpolatorTypes::linear>(static_cast<float>(parameters.tapTimes[chan][tap]))
 								* parameters.tapAmplitudes[tap].currentValue;
 					return x;
 				}(inSamples[i]);
@@ -185,7 +185,7 @@ private:
 					delayLine[chan].writeSample(x);
 					x = 0.0f;
 					for ( auto tap = 0ul; tap < MaxNumTaps; ++tap)
-						x += delayLine[chan].template readSample<sjf::interpolation::InterpolatorTypes::linear>(parameters.tapTimes[chan][tap])
+						x += delayLine[chan].template readSample<sjf::interpolation::InterpolatorTypes::linear>(static_cast<float>(parameters.tapTimes[chan][tap]))
 									* parameters.tapAmplitudes[tap].currentValue;
 					return x;
 				}(inSamples[i]);

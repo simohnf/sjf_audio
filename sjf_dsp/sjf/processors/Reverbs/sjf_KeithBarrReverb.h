@@ -167,7 +167,7 @@ public:
     	{
     		auto& m = modulators[i];
     		m.prepare(spec);
-    		m.setFrequency(jmap( fmod(juce::MathConstants<float>::euler * static_cast<float>(i) / static_cast<float>(NumStages), 1.0f), 0.1f, 3.75f));
+    		m.setFrequency(juce::jmap<float>( fmod(juce::MathConstants<float>::euler * static_cast<float>(i) / static_cast<float>(NumStages), 1.0f), 0.1f, 3.75f));
     	}
 
     	// calculateDelayTimes();

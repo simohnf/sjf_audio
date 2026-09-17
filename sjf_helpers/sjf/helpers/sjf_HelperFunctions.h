@@ -547,7 +547,7 @@ namespace waveforms
      */
     forcedinline float getSquare( const float phase )
     {
-        return phase < 0.5 ? - 1 : 1;
+        return phase < 0.5 ? - 1.0f : 1.0f;
     }
 
     /**
@@ -650,7 +650,7 @@ namespace dsp_functions
 	forcedinline float calculateOnepoleCoefficient(const float cutOffFrequency, const float sampleRate)
 	{
 		const float omega = juce::MathConstants<float>::twoPi * (juce::jmin(cutOffFrequency, sampleRate) / sampleRate);
-		return 1.0f - std::expf(-omega);
+		return 1.0f - static_cast<float>(std::exp(-omega));
 	}
 }
 

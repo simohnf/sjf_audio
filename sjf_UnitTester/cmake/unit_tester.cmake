@@ -1,7 +1,7 @@
 function(sjf_add_juce_unit_test_target PLUGIN_NAME)
     cmake_parse_arguments(ARG          ""       ""       "MODULES;FLAGS" ${ARGN})
 
-    set(TEST_TARGET_NAME "${PLUGIN_NAME}Tests")
+    set(TEST_TARGET_NAME "${PLUGIN_NAME}_Tests")
 
     # 1. Create console application for testing
     juce_add_console_app(${TEST_TARGET_NAME}
@@ -50,4 +50,5 @@ function(sjf_add_juce_unit_test_target PLUGIN_NAME)
     # 7. Register with CTest
     enable_testing()
     add_test(NAME "Run_${TEST_TARGET_NAME}" COMMAND ${TEST_TARGET_NAME})
+
 endfunction()

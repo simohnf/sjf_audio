@@ -633,7 +633,7 @@ public:
 			auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
 			auto range = NormalisableRange<float>{MinTimeMs, MaxTimeMs, 0.01f};
 			range.setSkewForCentre(SkewForCentreMs);
-			createTrackedParameter  (*factory, time, "Time",  "Time",  range, DefaultTimeMs, [&](const float x){ return 1.0f + x * 0.001f * static_cast<float>(spec.sampleRate); });
+			createTrackedTimeParameter  (*factory, time, "Time",  "Time",  MinTimeMs, MaxTimeMs, SkewForCentreMs, DefaultTimeMs, [&](const float x){ return 1.0f + x * 0.001f * static_cast<float>(spec.sampleRate); });
 
 			return factory;
 		}

@@ -90,15 +90,15 @@ public:
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
-        	createTrackedParameter(*factory, size, "Size", "Size", {0.0f, 100.0f, 0.01f}, 50.0f, sizeMapping);
+        	createTrackedPercentParameter(*factory, size, "Size", "Size", 0.0f, 100.0f, 50.0f, 50.0f, sizeMapping);
         	auto fRange = NormalisableRange<float>{100.0f, 20000.0f, 0.01f};
         	fRange.setSkewForCentre(1000.0f);
-        	createTrackedParameter(*factory, damping, "Damping", "Damping", fRange, 2000.0f, [&](const float x){
+        	createTrackedFrequencyParameter(*factory, damping, "Damping", "Damping", 100.0f, 20000.0f, 1000.0f, 2000.0f, [&](const float x){
         		return helpers::functions::dsp_functions::calculateOnepoleCoefficient(x, static_cast<float>(spec.sampleRate));
         	});
-        	createTrackedParameter(*factory, decay, "Decay", "Decay", {0.0f, 100.0f, 0.01f}, 50.0f, [](const float x){ return pow(jmap(x*0.01f, 0.01f, 0.99f), 0.5f);});
-        	createTrackedParameter(*factory, diffusion, "Diffusion", "Diffusion", {0.0f, 100.0f, 0.01f}, 50.0f, [&](const float x){return 0.25f + x*0.01f*0.249f;});
-        	createTrackedParameter(*factory, modulation, "Modulation", "Modulation", {0.0f, 100.0f, 0.01f}, 50.0f, [&](const float x){return x*0.001f;});
+        	createTrackedPercentParameter(*factory, decay, "Decay", "Decay", 0.0f, 100.0f, 50.0f, 50.0f, [](const float x){ return pow(jmap(x*0.01f, 0.01f, 0.99f), 0.5f);});
+        	createTrackedPercentParameter(*factory, diffusion, "Diffusion", "Diffusion", 0.0f, 100.0f, 50.0f, 50.0f, [&](const float x){return 0.25f + x*0.01f*0.249f;});
+        	createTrackedPercentParameter(*factory, modulation, "Modulation", "Modulation", 0.0f, 100.0f, 50.0f, 50.0f, [&](const float x){return x*0.001f;});
 
         	delayTimeGroup = helpers::ParameterFactory::create("delayTimes", "DelayTimes");
         	for ( auto s = 0ul; s < NumStages; ++s )

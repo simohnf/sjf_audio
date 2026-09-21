@@ -35,7 +35,7 @@ public:
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
-        	createTrackedParameter(*factory, diffusion, "Diff", "Diffusion", {0.0f, 100.0f, 0.01f}, 50.0f, [](const float x){return x*0.01f;});
+        	createTrackedPercentParameter(*factory, diffusion, "Diff", "Diffusion", 0.0f, 100.0f, 50.0f, 50.0f, [](const float x){return x*0.01f;});
 
         	tapGroup = helpers::ParameterFactory::create(factoryID+"Taps", factoryName+"Taps");
         	for ( auto i = 0ul; i < MaxNumTaps; ++i )

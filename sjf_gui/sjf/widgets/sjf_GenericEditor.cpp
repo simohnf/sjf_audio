@@ -458,21 +458,13 @@ namespace sjf::generic_editor
 			: AutoEditor(apvts_, group_, metadata_, undoManager_)
 			{
 
-			}
-
-			void resized() override
-			{
-				AutoEditor::resized();
-				for (auto i = 0ul; i < childEditors.size(); ++i)
-					childEditors[i]->setBounds(childEditors[i]->getBounds().withY(childEditors[0]->getY()));
-
-
 				const auto selectorComboBox = dynamic_cast<juce::ComboBox*>(
 					paramMap[dynamic_cast<const juce::AudioProcessorParameter*>(metadata.selectorParameter)]);
 				jassert(selectorComboBox);
-				if (!selectorComboBox->onChange)
+				if (selectorComboBox)
 				{
-					selectorComboBox->onChange = [&]()
+					auto oldOnChange = selectorComboBox->onChange;
+					selectorComboBox->onChange = [&, oldOnChange]()
 					{
 						auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()),
 												   childEditors.size() - 1);
@@ -482,9 +474,17 @@ namespace sjf::generic_editor
 							onLayoutChanged();
 						}
 						childEditors[selected]->setExpanded(true);
+						onLayoutChanged();
 					};
-					selectorComboBox->onChange();
+					MessageManager::callAsync([safeBox = SafePointer(selectorComboBox)](){if (safeBox) safeBox->onChange();});
 				}
+			}
+
+			void resized() override
+			{
+				AutoEditor::resized();
+				for (auto i = 0ul; i < childEditors.size(); ++i)
+					childEditors[i]->setBounds(childEditors[i]->getBounds().withY(childEditors[0]->getY()));
 			}
 
 			juce::Rectangle<int> getRequiredSize() const override

@@ -20,7 +20,9 @@
 #include <sjf/helpers/sjf_ProcessorSelector.h>
 #include <sjf/processors/Reverbs/sjf_RotateDelayDiffuser.h>
 
-#include "sjf/processors/sjf_Delay.h"
+#include <sjf/processors/Reverbs/sjf_Reverb_juce.h>
+#include <sjf/processors/sjf_Delay.h>
+
 
 namespace sjf::dsp
 {
@@ -64,7 +66,10 @@ namespace sjf::dsp
 																		helpers::processor_sequence::SubFactoryConfig{"MT", "MT"},
 																		helpers::processor_sequence::SubFactoryConfig{"RD", "RD"}
 																		));
-			mainFactory->addChildFactory(tank.createParameters(factoryID + "Tank", factoryName + " Reverb Tank"));
+			mainFactory->addChildFactory(tank.createParameters(factoryID + "Tank", factoryName + " Reverb Tank",
+																		helpers::processor_sequence::SubFactoryConfig{"Rng", "Ring"},
+																		helpers::processor_sequence::SubFactoryConfig{"Free", "Freeverb"}
+																		));
 
 
 
@@ -79,7 +84,7 @@ namespace sjf::dsp
 		SimpleDelay<0, 100, 0, 50> preDelay;
 		SVF<FixedFilterType::LowPass, true> filter;
 		sjf::helpers::ProcessorSelector<MultiTapDiffuser<>, RotateDelayDiffuser<>> inputDiffuser;
-		helpers::BypassWrapper<keith_barr::reverb::Tank<>, helpers::bypass_wrapper_config::Mix> tank;
+		helpers::BypassWrapper<sjf::helpers::ProcessorSelector<keith_barr::reverb::Tank<>, Reverb_juce>, helpers::bypass_wrapper_config::Mix, helpers::bypass_wrapper_config::DefaultMixLevel<90.0f>> tank;
 	};
 }
 

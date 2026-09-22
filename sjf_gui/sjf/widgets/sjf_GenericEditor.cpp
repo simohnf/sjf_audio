@@ -56,6 +56,18 @@ namespace sjf::generic_editor
 							if (safeThis)
 								safeThis->setExpanded(!safeThis->isExpanded());
 						});
+						auto parent = dynamic_cast<AutoEditor*>(getParentComponent());
+						if (parent && parent->childEditors.size() > 1)
+						{
+							menu.addItem((isExpanded() ? "Collapse All" : "Expand All"), true, false, [safeThis, parent](){
+								if (safeThis)
+								{
+									auto expand = !safeThis->isExpanded();
+									for (const auto & child : parent->childEditors)
+										child->setExpanded(expand);
+								}
+							});
+						}
 
 						menu.addSeparator();
 

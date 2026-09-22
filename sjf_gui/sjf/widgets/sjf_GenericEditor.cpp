@@ -1613,9 +1613,14 @@ namespace sjf::generic_editor
 			void onItemSelectionChanged(const size_t processorID) override
 			{
 				if (processorID < childEditors.size())
+				{
 					mainEditor = childEditors[processorID].get();
+					mainEditor->setExpanded(true);
+				}
 				else
+				{
 					mainEditor = nullptr;
+				}
 
 				sequenceListView.setSelectItem(processorID);
 				onLayoutChanged();

@@ -28,6 +28,8 @@
 
 #include <sjf/processors/sjf_Gate_juce.h>
 
+#include "sjf/processors/sjf_Phaser.h"
+
 namespace
 {
 	using LFO = sjf::dsp::oscillators::lfo::LFO<sjf::dsp::oscillators::lfo::DefaultWaveformProvider,
@@ -67,6 +69,7 @@ namespace sjf::tests
 	static GenericTests<sjf::dsp::Delay<>> delayTestMinimal("Minimal Delay");
 	static GenericTests<sjf::dsp::modulation_effects::Chorus> chorus("Chorus");
 	static GenericTests<sjf::dsp::modulation_effects::Flanger> flanger("Flanger");
+	static GenericTests<sjf::dsp::modulation_effects::BasicPhaser> phaser("Phaser");
 
 	static GenericTests<dsp::SimpleDelay<0, 100, 0, 50>> delay1("SimpleDelay");
 

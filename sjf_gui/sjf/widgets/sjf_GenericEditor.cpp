@@ -1803,7 +1803,7 @@ namespace sjf::generic_editor
 		const auto pos = viewport.getViewPosition();
 		viewport.setBounds(bounds);
 
-		mainEditor->setBounds(0, 0, getWidth(),
+		mainEditor->setBounds(0, 0, getWidth()-AutoEditor::HorizontalSpacing*2,
 							  dynamic_cast<AutoEditor*>(mainEditor.get())->getRequiredSize().getHeight());
 
 		viewport.setViewPosition(pos);
@@ -1889,5 +1889,22 @@ namespace
 		static const auto bg = createBackground();
 
 		g.drawImageTransformed(bg, juce::AffineTransform{});
+	}
+
+	void GenericEditor::timerCallback()
+	{
+		if (const auto desktop = juce::Desktop::getInstanceWithoutCreating())
+		{
+			if (const auto display = desktop->getDisplays().getDisplayForPoint(getScreenBounds().getCentre().toFloat()); display != currentDisplay)
+			{
+				currentDisplay = display;
+				juce::MessageManager::callAsync([&, safeThis = SafePointer(this)](){
+					if (!safeThis)
+						return;
+					const auto displayBounds = (currentDisplay->userBounds * 0.95f).toNearestInt();
+					setResizeLimits(juce::jmin(400, displayBounds.getWidth()), juce::jmin(displayBounds.getHeight(), 400), displayBounds.getWidth(), displayBounds.getHeight());
+				});
+			}
+		}
 	}
 } // namespace sjf::generic_editor

@@ -44,6 +44,7 @@ namespace sjf::generic_editor
 			void paint(juce::Graphics& g) override;
 
 		private:
+			void timerCallback();
 			void initialiseMainEditor(juce::AudioProcessorValueTreeState& apvts,
 											const juce::AudioProcessorParameterGroup& parameterGroup,
 											const helpers::ParameterFactory::GroupMetadata& metadata);
@@ -56,6 +57,8 @@ namespace sjf::generic_editor
 			juce::Label label;
 			juce::TextButton undo, redo;
 			TooltipWindow tooltipWindow;
+			const Displays::Display* currentDisplay{nullptr};
+			juce::VBlankAttachment vBlankAttachment{this, [&, safeThis = SafePointer(this)](){ if (safeThis) this->timerCallback();}};
 	};
 }
 

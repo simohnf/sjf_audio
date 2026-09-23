@@ -17,9 +17,11 @@
 #include <sjf/processors/Waveshaper/sjf_WaveshaperTypeProvider.h>
 #include <sjf/helpers/sjf_HelperFunctions.h>
 
-#include "sjf/processors/sjf_Filter_juce.h"
+#include <sjf/processors/sjf_Filter_juce.h>
 #include <sjf_helpers/sjf/helpers/sjf_ProcessorSequence.h>
 #include <sjf_helpers/sjf/helpers/sjf_OversamplingWrapper.h>
+
+#include <sjf/helpers/sjf_BiasWrapper.h>
 
 namespace sjf::dsp::waveshaper
 {
@@ -238,8 +240,10 @@ private:
  *
  * @tparam WaveshaperTypes A type provider supplying saturator types for the core waveshaper.
  * @tparam NUM_CHANNELS The number of audio channels to process concurrently (defaults to 2).
+ * @tparam AddOversampling Optionally wrap saturation in oversampling (defaults to true).
+ * @tparam AddBias Optionally add a bias parameter to the saturator (defaults to true).
  */
-template <typename WaveshaperTypes, size_t NUM_CHANNELS = 2>
+template <typename WaveshaperTypes, size_t NUM_CHANNELS = 2, bool AddOversampling = true, bool AddBias = true>
 class FilteredWaveshaper
 {
 public:
@@ -278,10 +282,15 @@ private:
 
     using Filter = helpers::BypassWrapper<SVF<>, helpers::bypass_wrapper_config::Bypass>;
 
+	// if AddBias is true we wrap the waveshaper in a bias wrapper (with dcBlocking)
+	using Sat_ = std::conditional_t<AddBias, sjf::helpers::BiasWrapper<Waveshaper<WaveshaperTypes, NUM_CHANNELS>>, Waveshaper<WaveshaperTypes, NUM_CHANNELS>>;
+	// if AddOversampling is true we wrap the waveshaper (potentially with bias) in an oversampling wrapper
+	using Sat = std::conditional_t<AddOversampling, helpers::OversamplingWrapper<Sat_>, Sat_>;
+
     /**
-     * @brief Internal DSP processing sequence: [Pre-Filter] -> [Oversampled Waveshaper] -> [Post-Filter].
+     * @brief Internal DSP processing sequence: [Pre-Filter] -> [(Oversampled)(Bias added) Waveshaper] -> [Post-Filter].
      */
-    sjf::helpers::ProcessorSequence<Filter, helpers::OversamplingWrapper<Waveshaper<WaveshaperTypes, NUM_CHANNELS>>, Filter> sequence{false};
+    sjf::helpers::ProcessorSequence<Filter, Sat, Filter> sequence{false};
 };
 
 }

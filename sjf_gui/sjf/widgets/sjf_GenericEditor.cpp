@@ -1100,6 +1100,12 @@ namespace sjf::generic_editor
 				g.drawRect(getLocalBounds());
 			}
 
+			void paint(Graphics& g) override
+			{
+				const auto fill = getUIColour(this, juce::LookAndFeel_V4::ColourScheme::UIColour::windowBackground);
+				g.fillAll(fill.withAlpha(0.5f));
+			}
+
 			// DragAndDropTarget Overrides
 			void itemDragEnter(const SourceDetails& dragSourceDetails) override
 			{

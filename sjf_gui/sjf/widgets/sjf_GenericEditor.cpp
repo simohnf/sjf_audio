@@ -1037,15 +1037,18 @@ namespace sjf::generic_editor
 
 			void resized() override
 			{
-				const auto x = AutoEditor::HorizontalSpacing;
-				const auto w = getWidth() - AutoEditor::HorizontalSpacing * 2;
+				constexpr auto x = AutoEditor::HorizontalSpacing;
+
 				auto y = AutoEditor::VerticalSpacing;
+				const auto w = getWidth() - AutoEditor::HorizontalSpacing * 2;
+
 				for (const auto& item : activeSequence)
 				{
 					item->setBounds(x, y, w, AutoEditor::ComponentHeight);
 					y += AutoEditor::ComponentHeight + AutoEditor::VerticalSpacing;
 				}
 				addButton.setBounds(x, y, w, AutoEditor::ComponentHeight);
+
 
 				if (!activeSequence.empty() && selectedId > masterPool.size())
 				{
@@ -1550,10 +1553,10 @@ namespace sjf::generic_editor
 				else
 				{
 					viewport.setBounds(
-						childEditors[0]
-							->getBounds()
+							getLocalBounds()
 							.withHeight(sequenceListView.getCalculatedHeight() + AutoEditor::VerticalSpacing)
-							.withY(y));
+							.withY(y)
+							.withX(childEditors[0]->getBounds().getX()));
 					y += viewport.getHeight() + AutoEditor::VerticalSpacing;
 				}
 
@@ -1753,6 +1756,7 @@ namespace sjf::generic_editor
 		addAndMakeVisible(viewport);
 
 		setResizable(true, true);
+
 		autoEditor->buildChildEditors();
 		autoEditor->initialisePresetPanel(true);
 

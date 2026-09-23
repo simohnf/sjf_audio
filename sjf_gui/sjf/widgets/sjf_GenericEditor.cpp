@@ -28,10 +28,10 @@ namespace sjf::generic_editor
 		class AutoEditor : public juce::Component
 		{
 		public:
-			static constexpr auto ComponentHeight = 30; // not sure about this yet...
+			static constexpr auto ComponentHeight = 25; // not sure about this yet...
 			static constexpr auto VerticalSpacing = 5; // not sure about this yet... space above + below
 			static constexpr auto HorizontalSpacing = 5;
-			static constexpr auto PresetPanelHeight = 30;
+			static constexpr auto PresetPanelHeight = 25;
 
 			AutoEditor(juce::AudioProcessorValueTreeState& apvts_, const juce::AudioProcessorParameterGroup& group_,
 					   const helpers::ParameterFactory::GroupMetadata& metadata_, UndoManager* undoManager_)

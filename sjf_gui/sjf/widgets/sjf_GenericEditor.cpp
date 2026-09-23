@@ -1495,7 +1495,7 @@ namespace sjf::generic_editor
 					}
 				};
 
-				afterLoad = [this, id = group_.getID(), safeThis = SafePointer(this)](ValueTree vt)
+				afterLoad = [this, safeThis = SafePointer(this)](ValueTree vt)
 				{
 					if (!safeThis)
 						return;

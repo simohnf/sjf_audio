@@ -65,7 +65,7 @@ public:
     	if constexpr (AddDCBlock)
     		dcBlock.prepare (spec);
 
-    	biasValues.setSize(1, spec.maximumBlockSize);
+    	biasValues.setSize(1, static_cast<int>(spec.maximumBlockSize));
         reset();
     }
 

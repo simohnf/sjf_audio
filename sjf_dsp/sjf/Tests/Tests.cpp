@@ -28,6 +28,7 @@
 
 #include <sjf/processors/sjf_Gate_juce.h>
 
+#include "sjf/processors/sjf_Ladder_juce.h"
 #include "sjf/processors/sjf_Phaser.h"
 
 namespace
@@ -74,6 +75,7 @@ namespace sjf::tests
 	static GenericTests<dsp::SimpleDelay<0, 100, 0, 50>> delay1("SimpleDelay");
 
 	static GenericTests<sjf::dsp::SVF<>> filter{"SVF Filter"};
+	static GenericTests<sjf::dsp::LadderFilter> ladder{"Ladder Filter"};
 	static GenericTests<sjf::dsp::Compressor> compressor{"Compressor"};
 	static GenericTests<sjf::dsp::Limiter> limiter{"Limiter"};
 	static GenericTests<sjf::dsp::LiveUtility> utility{"Utility"};

@@ -478,15 +478,13 @@ namespace sjf::generic_editor
 					auto oldOnChange = selectorComboBox->onChange;
 					selectorComboBox->onChange = [&, oldOnChange]()
 					{
-						auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()),
+						const auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()),
 												   childEditors.size() - 1);
 						for (auto i = 0ul; i < childEditors.size(); i++)
-						{
 							childEditors[i]->setVisible(i == selected && expanded);
-							onLayoutChanged();
-						}
-						childEditors[selected]->setExpanded(true);
+
 						onLayoutChanged();
+						oldOnChange();
 					};
 					MessageManager::callAsync([safeBox = SafePointer(selectorComboBox)](){if (safeBox) safeBox->onChange();});
 				}

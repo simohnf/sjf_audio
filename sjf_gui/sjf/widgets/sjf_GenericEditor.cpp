@@ -1799,6 +1799,8 @@ namespace sjf::generic_editor
 		}
 		presets.setBounds(bounds.removeFromTop(AutoEditor::ComponentHeight).reduced(viewport.getScrollBarThickness()*2, 0));
 		bounds.removeFromTop(AutoEditor::VerticalSpacing);
+		bounds.removeFromLeft(AutoEditor::HorizontalSpacing);
+		bounds.removeFromRight(AutoEditor::HorizontalSpacing);
 
 		const auto pos = viewport.getViewPosition();
 		viewport.setBounds(bounds);

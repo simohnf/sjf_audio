@@ -1186,6 +1186,7 @@ namespace sjf::generic_editor
 					ret.add(static_cast<juce::String>(i));
 				updateValueTree(ret.joinIntoString("/"));
 			}
+
 			void valueTreePropertyChanged(ValueTree& treeWhosePropertyHasChanged, const Identifier& property) override
 			{
 				if (treeWhosePropertyHasChanged.hasType(sequenceID) &&

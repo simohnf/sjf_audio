@@ -33,6 +33,16 @@ namespace sjf::helpers
 class PresetManager
 {
     public:
+
+    	struct APVTSProvider
+    	{
+    		APVTSProvider(juce::AudioProcessorValueTreeState& apvts_) : apvts(apvts_) {}
+    		juce::AudioProcessorValueTreeState& getAPVTS() const { return apvts;}
+    	private:
+    		juce::AudioProcessorValueTreeState& apvts;
+    	};
+
+    	
     	using AfterSaveCallback = std::function<void(juce::ValueTree)>;
     	using AfterLoadCallback = std::function<void(juce::ValueTree)>;
 
@@ -196,7 +206,7 @@ class PresetManager
                     if (const auto ranged = dynamic_cast<juce::RangedAudioParameter*>(parameter))
                         if (auto pVT = vt.getChildWithName(ParameterFactory::getIDWithoutParentPrefix(*ranged, group)); pVT.isValid())
                             if (pVT.hasProperty(preset_manager::ids::value))
-                                ranged->setValueNotifyingHost(ranged->convertTo0to1(pVT.getProperty(preset_manager::ids::value)));
+	                            ranged->setValueNotifyingHost(ranged->convertTo0to1(pVT.getProperty(preset_manager::ids::value)));
                 }
                 else if (recursive)
                 {
@@ -224,8 +234,52 @@ class PresetManager
         	return id;
         }
 
-    private:
 
+		static void initAPVTS(juce::ValueTree apvtsState, const juce::AudioProcessorParameterGroup& group, const sjf::helpers::ParameterFactory::GroupMetadata* groupMetaData)
+    	{
+    		if (!apvtsState.isValid())
+    			return;
+    		struct FindTopLevelGroup
+    		{
+    			static const juce::AudioProcessorParameterGroup* find(const juce::AudioProcessorParameterGroup& grp, const juce::String& id)
+    			{
+    				if (grp.getID() == id)
+    				{
+    					return &grp;
+    				}
+    				for (const auto & child : grp.getSubgroups(false))
+    				{
+    					if (const auto child_ = find(*child, id))
+    						return child_;
+    				}
+    				return nullptr;
+
+    			}
+    		};
+
+    		if (groupMetaData)
+    		{
+    			if (auto grp_ = FindTopLevelGroup::find(group, groupMetaData->groupID))
+    			{
+    				if (grp_ != &group && !apvtsState.hasProperty(preset_manager::ids::presetNameId))
+    					apvtsState.setProperty(preset_manager::ids::presetNameId, "", nullptr);
+    				initAPVTSInternal(apvtsState, *grp_);
+    				return;
+    			}
+    		}
+
+    		initAPVTSInternal(apvtsState, group);
+    	}
+
+    private:
+		static void initAPVTSInternal(juce::ValueTree apvtsState, const juce::AudioProcessorParameterGroup& group)
+		{
+			auto vt_ = apvtsState.getOrCreateChildWithName(group.getID(), nullptr);
+			if (!vt_.hasProperty(preset_manager::ids::presetNameId))
+				vt_.setProperty(preset_manager::ids::presetNameId, "", nullptr);
+			for (auto child : group.getSubgroups(true))
+				initAPVTSInternal(apvtsState, *child);
+		}
 
 
         static void saveToFile(const juce::ValueTree& vt, const juce::File& targetFile)

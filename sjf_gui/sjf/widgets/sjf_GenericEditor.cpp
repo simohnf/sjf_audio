@@ -1716,6 +1716,7 @@ namespace sjf::generic_editor
 								 const helpers::ParameterFactory::GroupMetadata& metadata_,
 								 UndoManager* undoManager_)
 	: AudioProcessorEditor(processor_)
+	, helpers::PresetManager::APVTSProvider(apvts_)
 	, undoManager(undoManager_)
 	, presets(processor.getParameterTree(), helpers::PresetManager::getDefaultExtension(),
 					[this, id = metadata_.groupID, safeThis = SafePointer(this)](ValueTree vt){

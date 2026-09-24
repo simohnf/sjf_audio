@@ -14,6 +14,7 @@
 #include <JuceHeader.h>
 #include <sjf/widgets/sjf_PresetPanel.h>
 
+#include "sjf/helpers/sjf_PresetManager.h"
 #include "sjf_LookAndFeel.h"
 
 namespace sjf::generic_editor
@@ -33,7 +34,7 @@ namespace sjf::generic_editor
 	 *
 	 * @see ParameterFactory::GroupMetadata, juce::AudioProcessorValueTreeState
 	 */
-	class GenericEditor : public juce::AudioProcessorEditor
+	class GenericEditor : public juce::AudioProcessorEditor, public helpers::PresetManager::APVTSProvider
 	{
 		public:
 

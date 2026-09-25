@@ -110,6 +110,17 @@ public:
 			 ), ...);
 		}(std::make_index_sequence<sizeof...(Processors)>{});
 
+	    {
+		    auto i = 0ul;
+	    	for (auto child : mainFactory->getSubgroups(false))
+	    	{
+	    		auto id = helpers::ParameterFactory::getIDWithoutParentPrefix(*child);
+	    		idToTupleIndexMap[id] = i;
+	    		indexToID[i] = id;
+	    		i++;
+	    	}
+	    }
+
     	return mainFactory;
     }
 
@@ -256,29 +267,26 @@ public:
 	}
 
 	// Helper functions to convert between SequenceOrder and juce::var (Array)
-	static juce::var sequenceToVar (const SequenceOrder& order)
+	juce::var sequenceToVar (const SequenceOrder& order)
     {
-    	auto ret = juce::StringArray{};
+    	auto ret = StringArray{};
     	for (auto i : order)
     	{
-    		if (i == InactiveSlot  || ret.contains(static_cast<juce::String>(i)))
+    		if (i == InactiveSlot  || ret.contains(indexToID[i]))
     			break;
 
-    		ret.add(static_cast<juce::String>(i));
+    		ret.add(indexToID[i]);
     	}
 
-    	while (ret.size() < static_cast<int>(NumProcessors))
-    		ret.add(juce::var{static_cast<juce::String>(InactiveSlot)});
-
-    	return juce::var{ret.joinIntoString("/")};
+    	return ret.joinIntoString("/");
     }
 
-	static SequenceOrder varToSequence (const juce::var& v)
+	SequenceOrder varToSequence (const juce::var& v)
     {
-    	jassert(!(v.isUndefined() || v.isVoid()));
+	    jassert(!(v.isUndefined() || v.isVoid()));
     	if (v.isString())
     	{
-    		return [&v](){
+    		return [&v, this](){
     			std::array<bool, NumProcessors> alreadyAdded;
     			alreadyAdded.fill(false);
     			SequenceOrder ret{};
@@ -289,51 +297,31 @@ public:
 
     			for ( auto i = 0ul; i < jmin(static_cast<size_t>(strArr.size()), NumProcessors); ++i)
     			{
-    				if (!(strArr[static_cast<int>(i)].getIntValue() == InactiveSlot || strArr[static_cast<int>(i)].getIntValue() < static_cast<int>(NumProcessors)))
+    				const auto& token = strArr[static_cast<int>(i)];
+    				auto processor = InactiveSlot;
+    				if (idToTupleIndexMap.contains (token))
+    				{
+    					processor = idToTupleIndexMap[token];
+    				}
+    				else if (token.containsOnly("0123456789"))
+    				{
+    					if (!(strArr[static_cast<int>(i)].getIntValue() == InactiveSlot || strArr[static_cast<int>(i)].getIntValue() < static_cast<int>(NumProcessors)))
+    					{
+    						jassertfalse; // if you hit this you changed the number of processors
+    						continue;
+    					}
+    					processor = static_cast<size_t>(strArr[static_cast<int>(i)].getIntValue());
+    				}
+    				else
     				{
     					jassertfalse; // if you hit this you changed the number of processors
-    					continue;
     				}
-    				auto processor = static_cast<size_t>(strArr[static_cast<int>(i)].getIntValue());
     				if (processor == InactiveSlot)
     					break;
 
     				if (!alreadyAdded[processor])
     				{
     					ret[i] = processor;
-    					alreadyAdded[processor] = true;
-    				}
-    			}
-    			return ret;
-    		}();
-    	}
-    	else
-    	{
-    		jassertfalse;
-    		return {};
-    	}
-    }
-
-	static std::vector<size_t> varToVector (const juce::var& v)
-    {
-    	if (v.isArray())
-    	{
-    		return [&v](){
-    			std::array<bool, NumProcessors> alreadyAdded;
-    			alreadyAdded.fill(false);
-    			std::vector<size_t> ret{};
-    			ret.reserve(NumProcessors);
-    			jassert(v.size() == NumProcessors);
-    			const auto array = *v.getArray();
-    			for ( auto i = 0ul; i < jmin(static_cast<size_t>(array.size()), NumProcessors); ++i)
-    			{
-    				auto processor = static_cast<size_t>(static_cast<int>(array[static_cast<int>(i)]));
-    				if (processor == InactiveSlot)
-    					break;
-
-    				if (!alreadyAdded[processor])
-    				{
-    					ret.push_back(processor);
     					alreadyAdded[processor] = true;
     				}
     			}
@@ -397,6 +385,7 @@ private:
     	{
     		if (const auto prop = stateTree.getPropertyPointer(dynamic_processor_sequence::ids::sequencePropertyId))
     		{
+
     			if (prop->isUndefined() || prop->isVoid())
     				return;
 
@@ -457,5 +446,7 @@ private:
 	juce::AudioPlayHead::PositionInfo positionInfo{};
 	std::atomic<int> latency{0};
 	std::shared_ptr<int> guard = std::make_shared<int>(42);
+	std::unordered_map<juce::String, size_t> idToTupleIndexMap;
+	std::array<juce::String, sizeof...(Processors)> indexToID;
 };
 }

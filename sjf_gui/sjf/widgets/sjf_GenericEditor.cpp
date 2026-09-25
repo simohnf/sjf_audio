@@ -260,7 +260,6 @@ namespace sjf::generic_editor
 					afterSave(vt);
 				for (auto& childEditor : childEditors)
 				{
-					auto xml = vt.toXmlString();
 					auto id = helpers::PresetManager::getGroupIDWithNoSpaces(childEditor->parameterGroup);
 					if (auto childVT = vt.getChildWithName(id); childVT.isValid())
 						childEditor->callAfterSave(childVT);
@@ -1160,7 +1159,7 @@ namespace sjf::generic_editor
 					item->setSelected(itemId == item->getProcessorID());
 			}
 
-			void updateValueTree(const juce::String& updatedSequence) const
+			void updateValueTree(const juce::var& updatedSequence) const
 			{
 				if (auto seq = state.getChildWithName(sequenceID); seq.isValid())
 				{
@@ -1169,23 +1168,26 @@ namespace sjf::generic_editor
 				}
 			}
 
-			juce::String getActiveSequenceString() const
+			juce::var getActiveSequenceVar() const
 			{
-				StringArray ret{};
+				juce::StringArray ret{};
 				for (auto item : activeSequence)
-					ret.add(juce::String(item->getProcessorID()));
+					ret.add(helpers::ParameterFactory::getIDWithoutParentPrefix(item->getGroup()));
 				return ret.joinIntoString("/");
 			}
 
 		private:
 
-			void updateValueTree(const std::vector<size_t>& updatedSequence) const
-			{
-				auto ret = juce::StringArray{};
-				for (const auto i : updatedSequence)
-					ret.add(static_cast<juce::String>(i));
-				updateValueTree(ret.joinIntoString("/"));
-			}
+			// void updateValueTree(const std::vector<size_t>& updatedSequence) const
+			// {
+			// 	auto ret = juce::Array<juce::var>();
+			// 	for (const auto i : updatedSequence)
+			// 	{
+			// 		auto item = masterPool[i].get();
+			// 		ret.add(sjf::helpers::ParameterFactory::getIDWithoutParentPrefix(item->getGroup()));
+			// 	}
+			// 	updateValueTree(ret);
+			// }
 
 			void valueTreePropertyChanged(ValueTree& treeWhosePropertyHasChanged, const Identifier& property) override
 			{
@@ -1219,7 +1221,6 @@ namespace sjf::generic_editor
 
 			void valueTreeUpdated()
 			{
-				auto xml = state.toXmlString();
 
 				if (const auto vt = state.getChildWithName(sequenceID); vt.isValid())
 				{
@@ -1232,8 +1233,32 @@ namespace sjf::generic_editor
 							std::vector<size_t> updatedSequence;
 							updatedSequence.reserve(masterPool.size());
 							for (const auto& i : seq_)
-								updatedSequence.push_back(static_cast<size_t>(i.getIntValue()));
+							{
+								if (i.containsOnly("0123456789"))
+								{
+									updatedSequence.push_back(static_cast<size_t>(i.getIntValue()));
+								}
+								else
+								{
+									auto pos = std::find_if(masterPool.begin(), masterPool.end(), [&](auto& x){
+										return helpers::ParameterFactory::getIDWithoutParentPrefix(x->getGroup()) == i;
+									});
+									if (pos != masterPool.end())
+									{
+										updatedSequence.push_back (static_cast<size_t> (std::distance (masterPool.begin(), pos)));
+									}
+									else
+									{
+										jassertfalse;
+									}
+								}
+
+							}
 							setActiveSequence(updatedSequence);
+						}
+						else
+						{
+							jassertfalse;
 						}
 					}
 				}
@@ -1272,15 +1297,16 @@ namespace sjf::generic_editor
 				if (undoManager)
 					undoManager->beginNewTransaction();
 
-				std::vector<size_t> updatedSequence{};
-				updatedSequence.reserve(masterPool.size());
+				juce::StringArray updatedSequence{};
 				for (const auto& i : activeSequence)
 				{
 					if (i->getProcessorID() != processorID)
-						updatedSequence.push_back(i->getProcessorID());
+					{
+						updatedSequence.add(sjf::helpers::ParameterFactory::getIDWithoutParentPrefix(i->getGroup()));
+					}
 				}
 
-				updateValueTree(updatedSequence);
+				updateValueTree(updatedSequence.joinIntoString("/"));
 
 				if (undoManager)
 				{
@@ -1294,17 +1320,22 @@ namespace sjf::generic_editor
 				if (undoManager)
 					undoManager->beginNewTransaction();
 
-				std::vector<size_t> updatedSequence{};
-				updatedSequence.reserve(masterPool.size());
+				juce::StringArray updatedSequence{};
 				for (const auto& i : activeSequence)
 				{
 					if (i->getProcessorID() == targetProcessorID)
-						updatedSequence.push_back(newProcessorTypeID);
+					{
+						auto newItem = masterPool[newProcessorTypeID].get();
+						updatedSequence.add(sjf::helpers::ParameterFactory::getIDWithoutParentPrefix(newItem->getGroup()));
+					}
 					else
-						updatedSequence.push_back(i->getProcessorID());
+					{
+						updatedSequence.add(sjf::helpers::ParameterFactory::getIDWithoutParentPrefix(i->getGroup()));
+					}
 				}
+
 				onItemClicked(masterPool[newProcessorTypeID].get());
-				updateValueTree(updatedSequence);
+				updateValueTree(updatedSequence.joinIntoString("/"));
 
 				if (undoManager)
 				{
@@ -1319,13 +1350,17 @@ namespace sjf::generic_editor
 				if (undoManager)
 					undoManager->beginNewTransaction();
 
-				std::vector<size_t> updatedSequence{};
-				updatedSequence.reserve(masterPool.size());
+				juce::StringArray updatedSequence{};
 				for (const auto& i : activeSequence)
-					updatedSequence.push_back(i->getProcessorID());
-				updatedSequence.push_back(newProcessorTypeID);
+				{
+					updatedSequence.add(sjf::helpers::ParameterFactory::getIDWithoutParentPrefix(i->getGroup()));
+				}
+				{
+					auto newItem = masterPool[newProcessorTypeID].get();
+					updatedSequence.add(sjf::helpers::ParameterFactory::getIDWithoutParentPrefix(newItem->getGroup()));
+				}
 				onItemClicked(masterPool[newProcessorTypeID].get());
-				updateValueTree(updatedSequence);
+				updateValueTree(updatedSequence.joinIntoString("/"));
 
 				if (undoManager)
 				{
@@ -1354,8 +1389,14 @@ namespace sjf::generic_editor
 				const auto targetPos =
 					static_cast<std::vector<size_t>::difference_type>(juce::jmin(updatedSequence.size(), newIndex));
 				updatedSequence.insert(updatedSequence.begin() + targetPos, processorID);
+				juce::StringArray newSequence{};
+				for (auto& i : updatedSequence)
+				{
+					auto item = masterPool[i].get();
+					newSequence.add(helpers::ParameterFactory::getIDWithoutParentPrefix(item->getGroup()));
+				}
 
-				updateValueTree(updatedSequence);
+				updateValueTree(newSequence.joinIntoString("/"));
 
 				if (undoManager)
 				{
@@ -1490,9 +1531,8 @@ namespace sjf::generic_editor
 					{
 
 						auto sequenceVT = ValueTree(sjf::helpers::dynamic_processor_sequence::ids::sequenceTreeId);
-						sequenceVT.setProperty(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId, sequenceListView.getActiveSequenceString(), nullptr);
+						sequenceVT.setProperty(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId, sequenceListView.getActiveSequenceVar(), nullptr);
 						vt.addChild(sequenceVT, -1, nullptr);
-						auto xml = vt.toXmlString();
 					}
 				};
 
@@ -1503,13 +1543,12 @@ namespace sjf::generic_editor
 
 					if (vt.isValid())
 					{
-						auto xml = vt.toXmlString();
 						if (auto seqTree = vt.getChildWithName(sjf::helpers::dynamic_processor_sequence::ids::sequenceTreeId); seqTree.isValid())
 						{
 							auto seq = seqTree.getPropertyPointer(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId);
 							if (seq)
 							{
-								sequenceListView.updateValueTree(seq->toString());
+								sequenceListView.updateValueTree(*seq);
 							}
 							else
 							{

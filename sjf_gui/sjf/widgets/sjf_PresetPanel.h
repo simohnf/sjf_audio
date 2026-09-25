@@ -60,7 +60,7 @@ public:
 			auto name_ = vt.getPropertyPointer(helpers::preset_manager::ids::presetNameId);
 			auto name = name_ ? name_->toString() : "";
 			auto paramsName =  helpers::ParameterFactory::getNameWithoutParentPrefix(parameters);
-			paramsName = paramsName.isEmpty() ? juce::String(JucePlugin_Name) : paramsName;
+			paramsName = paramsName.isEmpty() ? helpers::preset_manager::strings::PluginName : paramsName;
 			undoManager->setCurrentTransactionName("Load \"" + name + "\" preset for " + paramsName);
 			// undoManager->beginNewTransaction();
 		}
@@ -80,7 +80,7 @@ public:
 				apvts.addListener(this);
 				if (parameters.getID().isEmpty())
 					return;
-				if (auto child = apvtsProvider->getAPVTS().state.getChildWithName(parameters.getID()); child.isValid())
+				if (auto child = apvts.getChildWithName(parameters.getID()); child.isValid())
 				{
 					child.addListener(this);
 					paramVT = child;

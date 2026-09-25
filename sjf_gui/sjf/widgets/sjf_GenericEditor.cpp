@@ -1615,6 +1615,13 @@ namespace sjf::generic_editor
 					ce->setVisible(expanded && ce == mainEditor);
 			}
 
+			void paintOverChildren(Graphics& g) override
+			{
+				g.setColour(getUIColour(this, juce::LookAndFeel_V4::ColourScheme::UIColour::outline));
+				const auto h = juce::jmin(viewport.getBoundsInParent().getHeight(), sequenceListView.getCalculatedHeight());
+				g.drawRect(viewport.getBoundsInParent().withHeight(h).withWidth(sequenceListView.getWidth()));
+			}
+
 			juce::Rectangle<int> getRequiredSize() const override
 			{
 				auto heightOfSequenceChildren = [&]()

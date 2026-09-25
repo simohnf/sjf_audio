@@ -28,6 +28,9 @@ namespace sjf::helpers
 	namespace preset_manager::strings
     {
     	const static juce::String savePreset = "Save Preset";
+    	const static juce::String PluginName = JucePlugin_Name;
+    	const static juce::String PluginNameNoSpaces = PluginName.replace(" ", "");
+
     }
 
 class PresetManager
@@ -55,7 +58,7 @@ class PresetManager
         static juce::File getProjectWriteableRoot()
         {
             const static auto userMusicDir = juce::File::getSpecialLocation(juce::File::SpecialLocationType::userMusicDirectory);
-            const static auto projectDir = userMusicDir.getChildFile("sjf").getChildFile(JucePlugin_Name);
+            const static auto projectDir = userMusicDir.getChildFile("sjf").getChildFile(preset_manager::strings::PluginName);
             ignoreUnused(projectDir.createDirectory());
             return projectDir;
         }
@@ -222,7 +225,7 @@ class PresetManager
         {
             auto id = ParameterFactory::getNameWithoutParentPrefix(group).replace(" ", "");
             if (id.isEmpty())
-                id = juce::String(JucePlugin_Name).replace(" ", "");
+                id = preset_manager::strings::PluginNameNoSpaces;
             return id;
         }
 
@@ -230,7 +233,7 @@ class PresetManager
         {
         	auto id = ParameterFactory::getIDWithoutParentPrefix(group).replace(" ", "");
         	if (id.isEmpty())
-        		id = juce::String(JucePlugin_Name).replace(" ", "");
+        		id = preset_manager::strings::PluginNameNoSpaces;
         	return id;
         }
 

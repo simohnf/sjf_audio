@@ -274,6 +274,122 @@ class PresetManager
     		initAPVTSInternal(apvtsState, group);
     	}
 
+
+    	static bool presetChanged(const juce::AudioProcessorValueTreeState& apvts, const juce::AudioProcessorParameterGroup& group, const juce::String& presetName, const juce::String& extension = getDefaultExtension())
+    	{
+    		jassert(MessageManager::existsAndIsLockedByCurrentThread());
+    		jassert(extension.startsWith ("."));
+
+    		const auto folderName = getGroupNameWithNoSpaces(group);
+    		auto presetFile = getProjectWriteableRoot().getChildFile(folderName).getChildFile(presetName + extension);
+
+    		if (presetFile.existsAsFile())
+    		{
+    			auto vt = loadFromFile(presetFile);
+    			if (vt.isValid())
+    			{
+    				const auto groupID = group.getID();
+    				const auto parentID = groupID.upToFirstOccurrenceOf(helpers::ParameterFactory::getIDWithoutParentPrefix(group), false, true);
+    				auto count = 0ul;
+    				struct RecursePresetTree
+    				{
+    					static bool check(const juce::AudioProcessorValueTreeState& apvts, const juce::ValueTree vt, const juce::String& parentId, size_t& count)
+    					{
+    						auto xml = vt.toXmlString();
+    						auto vtType = vt.getType().toString();
+    						auto groupId = (parentId == preset_manager::strings::PluginNameNoSpaces ? "" : parentId)+  vtType ;
+    						if (vt.hasProperty(preset_manager::ids::value))
+    						{
+    							auto param = apvts.getParameter(groupId);
+    							if (!juce::approximatelyEqual(param->convertFrom0to1(param->getValue()), static_cast<float>(vt.getProperty(preset_manager::ids::value))))
+    								return false;
+    							count ++;
+    						}
+    						else
+    						{
+    							for (auto i = 0ul; i < static_cast<size_t>(vt.getNumProperties()); ++i)
+    							{
+    								auto propName = vt.getPropertyName(static_cast<int>(i));
+    								auto paramID = groupId + propName;
+    								if (apvts.state.getProperty(paramID))
+    								{
+    									if (apvts.state.getProperty(paramID) != vt.getProperty(propName))
+    										return false;
+    									count ++;
+    								}
+    								else if (auto child = apvts.state.getChildWithName(groupId); child.isValid())
+    								{
+    									if (auto prop = child.getPropertyPointer(propName))
+    									{
+    										if (*prop != vt.getProperty(propName))
+    											return false;
+    										count ++;
+    									}
+    									else
+    									{
+    										return false;
+    									}
+    								}
+    							}
+    						}
+
+
+    						for (auto i = 0ul; i < static_cast<size_t>(vt.getNumChildren()); ++i)
+    						{
+    							if (!check(apvts, vt.getChild(static_cast<int>(i)), groupId, count))
+    								return false;
+    						}
+    						return true;
+    					}
+    				};
+
+    				if (!RecursePresetTree::check(apvts, vt, parentID, count))
+    					return true; // we hit a change
+
+    				auto apvtsCount = static_cast<size_t>(group.getParameters(true).size());
+    				for ( auto i = 0ul; i < static_cast<size_t>(apvts.state.getNumChildren()); ++i)
+    				{
+    					static const auto ParamID = juce::Identifier("PARAM");
+    					auto apvtsChild = apvts.state.getChild(static_cast<int>(i));
+    					if (apvtsChild.getType() == ParamID)
+    						continue;
+						if (apvtsChild.isValid() && apvtsChild.getType().toString().startsWith(groupID))
+						{
+							struct RecurseAPVTSTree
+							{
+								static void check(const ValueTree vt, size_t& count)
+								{
+									if (!vt.isValid())
+										return;
+
+									for (auto i = 0ul; i < static_cast<size_t>(vt.getNumProperties()); ++i)
+										count ++;
+
+									for (auto i = 0ul; i < static_cast<size_t>(vt.getNumChildren()); ++i)
+										check(vt.getChild(static_cast<int>(i)), count);
+								}
+							};
+
+							RecurseAPVTSTree::check(apvtsChild, apvtsCount);
+						}
+    				}
+
+    				return count != apvtsCount;
+    			}
+    			else
+    			{
+    				jassertfalse;
+    			}
+    		}
+    		else
+    		{
+    			jassertfalse;
+    		}
+
+    		return false;
+
+    	}
+
     private:
 		static void initAPVTSInternal(juce::ValueTree apvtsState, const juce::AudioProcessorParameterGroup& group)
 		{

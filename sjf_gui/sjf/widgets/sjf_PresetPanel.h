@@ -12,6 +12,7 @@
 
 #pragma once
 #include <sjf/helpers/sjf_PresetManager.h>
+#include <sjf/helpers/sjf_AsyncCallbackInvoker.h>
 
 namespace sjf::gui
 {
@@ -43,6 +44,7 @@ public:
 
 			ValueTreeRecurser::afterSave(vt, apvts, parameters, nullptr);
 
+			checkForPresetChange();
 		}
 	})
 	, afterLoad([this, afterLoad_](ValueTree vt){
@@ -62,19 +64,23 @@ public:
 			undoManager->setCurrentTransactionName("Load \"" + name + "\" preset for " + paramsName);
 			// undoManager->beginNewTransaction();
 		}
+
+		checkForPresetChange();
 	})
 	{
 		juce::MessageManager::callAsync([&, safeThis = SafePointer(this)]()
 		{
 			if (!safeThis)
 				return;
-			if (auto apvts_ = findParentComponentOfClass<helpers::PresetManager::APVTSProvider>())
+
+			apvtsProvider = findParentComponentOfClass<helpers::PresetManager::APVTSProvider>();
+			if (apvtsProvider)
 			{
-				apvts = apvts_->getAPVTS().state;
+				apvts = apvtsProvider->getAPVTS().state;
 				apvts.addListener(this);
 				if (parameters.getID().isEmpty())
 					return;
-				if (auto child = apvts_->getAPVTS().state.getChildWithName(parameters.getID()); child.isValid())
+				if (auto child = apvtsProvider->getAPVTS().state.getChildWithName(parameters.getID()); child.isValid())
 				{
 					child.addListener(this);
 					paramVT = child;
@@ -88,6 +94,10 @@ public:
 					jassertfalse;
 				}
 			}
+
+			checkForPresetChange();
+
+
 		});
 	}
 
@@ -171,6 +181,7 @@ private:
 
 	void valueTreePropertyChanged (ValueTree& vt, const Identifier& property) override
 	{
+		const static auto idID = juce::Identifier("id");
 		if (vt == paramVT)
 		{
 			if (property == helpers::preset_manager::ids::presetNameId)
@@ -181,6 +192,17 @@ private:
 		else if (parameters.getID().isEmpty() && vt == apvts && property == helpers::preset_manager::ids::presetNameId)
 		{
 			setText(vt.getProperty(property).toString());
+		}
+		else if (apvtsProvider)
+		{
+			auto forThisGroup = vt.getType().toString().startsWith(parameters.getID());
+			forThisGroup = forThisGroup | (vt.hasProperty(idID) && vt.getProperty(idID).toString().startsWith(parameters.getID()));
+			if (!forThisGroup)
+				return;
+
+			// ensure all params are properly updated before trying to trigger
+			// also means we only update once per batch updat of parameters (e.g. changing preset)
+			asyncUpdate.triggerUpdate();
 		}
 	}
 
@@ -211,12 +233,36 @@ private:
 		}
 	}
 
+
+	void checkForPresetChange()
+	{
+		if (!apvtsProvider)
+			return;
+
+		auto name = getText().upToLastOccurrenceOf("*", false, false);
+		if (name.isEmpty())
+			return;
+
+		if (helpers::PresetManager::presetChanged(apvtsProvider->getAPVTS(), parameters, name))
+			name += "*";
+
+		if (getText() != name)
+			setText(name);
+	}
+
 	const juce::AudioProcessorParameterGroup& parameters;
 	const juce::String extension;
 	UndoManager* undoManager = nullptr;
 	const AfterSave afterSave = {};
 	const AfterLoad afterLoad = {};
 	ValueTree apvts, paramVT;
+	helpers::PresetManager::APVTSProvider* apvtsProvider{nullptr};
+	using Callback = std::function<void()>;
+	helpers::AsyncCallbackInvoker<Callback> asyncUpdate{ [safeThis = SafePointer(this), this](){
+		if (!safeThis) return;
+
+		checkForPresetChange();
+	}};
 };
 }
 

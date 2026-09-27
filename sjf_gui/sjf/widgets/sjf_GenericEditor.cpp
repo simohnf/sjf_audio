@@ -422,6 +422,9 @@ namespace sjf::generic_editor
 					paramNames.push_back(std::make_unique<juce::Label>(paramName(param_) + "Label"));
 					paramNames.back()->setText(paramName(param_), juce::sendNotification);
 					paramMap[param_] = paramComponents.back();
+					if (const auto ranged = dynamic_cast<RangedAudioParameter*>(param_))
+						paramComponents.back()->setComponentID(ranged->getParameterID());
+
 				};
 
 				auto params = parameterGroup.getParameters(false);

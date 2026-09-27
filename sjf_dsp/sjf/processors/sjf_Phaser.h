@@ -119,7 +119,7 @@ public:
 private:
 	float calculateSkewForCentreFrequency()
 	{
-		return juce::jmin(static_cast<float>(spec.sampleRate * 0.4),parameters.centreF.currentValue);
+		return juce::jmin(frequencyRange.end * 0.99f,parameters.centreF.currentValue);
 	}
     template <typename ProcessContext>
     void processStaticState (const ProcessContext& context) noexcept

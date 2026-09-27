@@ -480,10 +480,14 @@ public:
     }
 
     void reset() {
-        resetAllStates (floatStates, floatMappings);
-        resetAllStates (intStates, intMappings);
-        resetAllStates (boolStates, boolMappings);
-        resetAllStates (choiceStates, choiceMappings);
+    	anyStatesDiverged (floatStates, floatMappings, mappedFloatValues);
+    	anyStatesDiverged (intStates, intMappings, mappedIntValues);
+    	anyStatesDiverged (boolStates, boolMappings, mappedBoolValues);
+    	anyStatesDiverged (choiceStates, choiceMappings, mappedChoiceValues);
+        resetAllStates (floatStates, mappedFloatValues);
+        resetAllStates (intStates, mappedIntValues);
+        resetAllStates (boolStates, mappedBoolValues);
+        resetAllStates (choiceStates, mappedChoiceValues);
         masterRamp.setCurrentAndTargetValue (1.0f);
     }
 
@@ -517,14 +521,20 @@ public:
 
         if (masterRamp.isSmoothing()) return true;
 
-        const bool parametersHaveChanged = anyStatesDiverged (floatStates, floatMappings) || anyStatesDiverged (intStates, intMappings)
-                                        || anyStatesDiverged (boolStates, boolMappings)  || anyStatesDiverged (choiceStates, choiceMappings);
+        const bool parametersHaveChanged = [&]()
+        {
+        	auto ret = anyStatesDiverged (floatStates, floatMappings, mappedFloatValues);
+        	ret = anyStatesDiverged (intStates, intMappings, mappedIntValues) || ret;
+        	ret = anyStatesDiverged (boolStates, boolMappings, mappedBoolValues) || ret;
+        	ret = anyStatesDiverged (choiceStates, choiceMappings, mappedChoiceValues) || ret;
+        	return ret;
+        }();
 
         if (parametersHaveChanged) {
-            latchAllStates (floatStates, floatMappings);
-            resetAllStates (intStates, intMappings);
-            resetAllStates (boolStates, boolMappings);
-            resetAllStates (choiceStates, choiceMappings);
+            latchAllStates (floatStates, mappedFloatValues);
+            resetAllStates (intStates, mappedIntValues);
+            resetAllStates (boolStates, mappedBoolValues);
+            resetAllStates (choiceStates, mappedChoiceValues);
 
         	if (floatStates.empty())
         	{
@@ -680,46 +690,48 @@ public:
     			}
     		}
     	}
-    	jassertfalse; // you've tried to change a mapping for a parameter that's not tracked by this obect
+    	jassertfalse; // you've tried to change a mapping for a parameter that's not tracked by this object
     }
 
 private:
 
-    template<typename TrackedStateType, typename TrackedStateMappingType>
-    bool anyStatesDiverged( const std::vector<std::reference_wrapper<TrackedStateType>>& states, const std::vector<TrackedStateMappingType>& mappings ) noexcept
+    template<typename TrackedStateType, typename TrackedStateMappingType, typename TrackedStateValueType>
+    bool anyStatesDiverged( const std::vector<std::reference_wrapper<TrackedStateType>>& states, const std::vector<TrackedStateMappingType>& mappings, std::vector<TrackedStateValueType>& mappedValues ) noexcept
     {
         jassert(states.size() == mappings.size());
+        jassert(states.size() == mappedValues.size());
+    	auto anyDiverged = false;
         for ( auto i = 0ul; i < states.size(); ++i)
         {
-            const auto mappedValue = mappings[i](states[i].get().getParameterValue());
+            mappedValues[i] = mappings[i](states[i].get().getParameterValue());
             if constexpr (std::is_same_v<TrackedStateType, FloatState>)
             {
-                if (!(juce::approximatelyEqual(states[i].get().targetValue, mappedValue)))
-                    return true;
+                if (!(juce::approximatelyEqual(states[i].get().targetValue, mappedValues[i])))
+                    anyDiverged = true;
             }
             else
             {
-                if (states[i].get().targetValue != mappedValue)
-                    return true;
+                if (states[i].get().targetValue != mappedValues[i])
+                    anyDiverged = true;
             }
         }
-        return false;
+        return anyDiverged;
     }
 
-    template<typename TrackedStateType, typename TrackedStateMappingType>
-    void latchAllStates( const std::vector<std::reference_wrapper<TrackedStateType>>& states, const std::vector<TrackedStateMappingType>& mappings ) noexcept
+    template<typename TrackedStateType, typename TrackedStateValueType>
+    void latchAllStates( const std::vector<std::reference_wrapper<TrackedStateType>>& states, const std::vector<TrackedStateValueType>& mappedValues ) noexcept
     {
-        jassert(states.size() == mappings.size());
+        jassert(states.size() == mappedValues.size());
         for ( auto i = 0ul; i < states.size(); ++i)
-            states[i].get().latchTarget(mappings[i](states[i].get().getParameterValue()));
+            states[i].get().latchTarget(mappedValues[i]);
     }
 
-    template<typename TrackedStateType, typename TrackedStateMappingType>
-    void resetAllStates( const std::vector<std::reference_wrapper<TrackedStateType>>& states, const std::vector<TrackedStateMappingType>& mappings ) noexcept
+    template<typename TrackedStateType, typename TrackedStateValueType>
+    void resetAllStates( const std::vector<std::reference_wrapper<TrackedStateType>>& states, const std::vector<TrackedStateValueType>& mappedValues) noexcept
     {
-        jassert(states.size() == mappings.size());
+    	jassert(states.size() == mappedValues.size());
         for ( auto i = 0ul; i < states.size(); ++i)
-            states[i].get().reset(mappings[i](states[i].get().getParameterValue()));
+            states[i].get().reset(mappedValues[i]);
     }
 
     template <typename StateType, typename ParamType, typename MapType>
@@ -810,6 +822,7 @@ protected:
         initState(tracker, param, mapping);
         floatStates.push_back (tracker);
         floatMappings.push_back (mapping ? mapping : [](const float x) { return x; });
+		mappedFloatValues.push_back({});
 		return param;
     }
 
@@ -826,6 +839,7 @@ protected:
 
         intStates.push_back (tracker);
         intMappings.push_back (mapping ?  mapping : [](const int x) { return x; });
+		mappedIntValues.push_back({});
 		return param;
     }
 
@@ -842,7 +856,7 @@ protected:
 
         boolStates.push_back (tracker);
         boolMappings.push_back (mapping ? mapping : [](const bool x) { return x; });
-
+		mappedBoolValues.push_back({});
 		return param;
     }
 
@@ -860,29 +874,33 @@ protected:
 
         choiceStates.push_back (tracker);
         choiceMappings.push_back (mapping ? mapping : [](const int x) { return x; });
-
+		mappedChoiceValues.push_back({});
 		return param;
     }
 
     void addTrackedChildParameters(AudioParametersBase& childParameters_)
     {
-        auto addTrackedChild = [](auto& stateVector, auto& mappingVector, auto& childStateVector, auto& childMappingVector)
+        auto addTrackedChild = [](auto& stateVector, auto& mappingVector, auto& mappedValues, auto& childStateVector, auto& childMappingVector, auto& childMappedValues)
         {
             jassert(childStateVector.size() == childMappingVector.size());
+            jassert(childStateVector.size() == childMappedValues.size());
             jassert(stateVector.size() == mappingVector.size());
+            jassert(stateVector.size() == mappedValues.size());
             for (auto i = 0ul; i < childStateVector.size(); ++i)
             {
                 stateVector.push_back (childStateVector[i]);
                 mappingVector.push_back (childMappingVector[i]);
+            	mappedValues.push_back (childMappedValues[i]);
             }
             childStateVector.clear();
             childMappingVector.clear();
+        	childMappedValues.clear();
         };
 
-        addTrackedChild(floatStates, floatMappings, childParameters_.floatStates, childParameters_.floatMappings);
-        addTrackedChild(intStates, intMappings, childParameters_.intStates, childParameters_.intMappings);
-        addTrackedChild(boolStates, boolMappings, childParameters_.boolStates, childParameters_.boolMappings);
-        addTrackedChild(choiceStates, choiceMappings, childParameters_.choiceStates, childParameters_.choiceMappings);
+        addTrackedChild(floatStates, floatMappings, mappedFloatValues, childParameters_.floatStates, childParameters_.floatMappings, childParameters_.mappedFloatValues);
+        addTrackedChild(intStates, intMappings, mappedIntValues, childParameters_.intStates, childParameters_.intMappings, childParameters_.mappedIntValues);
+        addTrackedChild(boolStates, boolMappings, mappedBoolValues, childParameters_.boolStates, childParameters_.boolMappings, childParameters_.mappedBoolValues);
+        addTrackedChild(choiceStates, choiceMappings, mappedChoiceValues, childParameters_.choiceStates, childParameters_.choiceMappings, childParameters_.mappedChoiceValues);
 
     	preprableParameters.push_back(childParameters_);
     }
@@ -899,6 +917,11 @@ private:
     std::vector<IntMapping> intMappings;
     std::vector<BoolMapping> boolMappings;
     std::vector<ChoiceMapping> choiceMappings;
+
+	std::vector<float> mappedFloatValues;
+	std::vector<int> mappedIntValues;
+	std::vector<bool> mappedBoolValues;
+	std::vector<int> mappedChoiceValues;
 
     std::vector<AudioParametersBase*> childParameters;
 	std::vector<std::reference_wrapper<AudioParametersBase>> preprableParameters;

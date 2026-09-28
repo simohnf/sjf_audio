@@ -437,15 +437,16 @@ private:
 
 
 
+	std::shared_ptr<int> guard = std::make_shared<int>(42);
 	using Callback = std::function<void()>;
-	AsyncCallbackInvoker<Callback> asyncUpdater{[this](){
-		publishSequenceUpdate();
+	AsyncCallbackInvoker<Callback> asyncUpdater{[this, g = std::weak_ptr(guard)](){
+		if (!g.expired())
+			publishSequenceUpdate();
 	}};
 
 	juce::dsp::ProcessSpec spec{};
 	juce::AudioPlayHead::PositionInfo positionInfo{};
 	std::atomic<int> latency{0};
-	std::shared_ptr<int> guard = std::make_shared<int>(42);
 	std::unordered_map<juce::String, size_t> idToTupleIndexMap;
 	std::array<juce::String, sizeof...(Processors)> indexToID;
 };

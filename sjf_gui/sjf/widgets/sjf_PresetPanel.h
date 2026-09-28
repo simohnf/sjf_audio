@@ -44,7 +44,11 @@ public:
 
 			ValueTreeRecurser::afterSave(vt, apvts, parameters, nullptr);
 
-			checkForPresetChange();
+			MessageManager::callAsync([&, safeThis = SafePointer(this)](){
+				if (safeThis)
+					checkForPresetChange();
+			});
+
 		}
 	})
 	, afterLoad([this, afterLoad_](ValueTree vt){

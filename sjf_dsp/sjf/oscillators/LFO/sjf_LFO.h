@@ -136,7 +136,7 @@ public:
         {
             static_assert(numWaveforms > 0, "There must be at least one waveform!!!");
 
-            auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
+            auto factory = helpers::ParameterFactory::create (factoryID, factoryName, true, false);
 
             if constexpr (hasTempoSync)
             {

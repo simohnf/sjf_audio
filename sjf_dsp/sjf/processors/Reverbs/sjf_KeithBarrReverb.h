@@ -90,7 +90,10 @@ public:
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
-        	createTrackedPercentParameter(*factory, size, "Size", "Size", 0.0f, 100.0f, 50.0f, 50.0f, sizeMapping);
+        	auto sizeAtt = juce::AudioParameterFloatAttributes{}.withAutomatable(false).withLabel("%");
+        	auto p = createTrackedPercentParameter(*factory, size, "Size", "Size", 0.0f, 100.0f, 50.0f, 50.0f, sizeMapping, sizeAtt);
+        	if (auto m = dynamic_cast<helpers::parameters::ParameterBase*>(p))
+        		m->setModulatable(false);
         	auto fRange = NormalisableRange<float>{100.0f, 20000.0f, 0.01f};
         	fRange.setSkewForCentre(1000.0f);
         	createTrackedFrequencyParameter(*factory, damping, "Damping", "Damping", 100.0f, 20000.0f, 1000.0f, 2000.0f, [&](const float x){

@@ -47,8 +47,12 @@ namespace sjf::helpers
             {
                 auto factory = ParameterFactory::create (factoryID, factoryName);
                 const auto attributes = AudioParameterChoiceAttributes {}.withAutomatable(false);
-                createTrackedParameter(*factory, ratio, "Ratio", "Ratio",{"Off", "2X", "4X", "8X", "16X"}, 0, {}, attributes);
-                createTrackedParameter(*factory, filterType, "FilterType", "Filter Type", {"FIR Equiripple", "IIR Polyphase"}, 0, {}, attributes);
+                auto p = createTrackedParameter(*factory, ratio, "Ratio", "Ratio",{"Off", "2X", "4X", "8X", "16X"}, 0, {}, attributes);
+            	if (auto m = dynamic_cast<parameters::ParameterBase*>(p))
+            		m->setModulatable(false);
+                p = createTrackedParameter(*factory, filterType, "FilterType", "Filter Type", {"FIR Equiripple", "IIR Polyphase"}, 0, {}, attributes);
+            	if (auto m = dynamic_cast<parameters::ParameterBase*>(p))
+            		m->setModulatable(false);
                 return factory;
             }
 

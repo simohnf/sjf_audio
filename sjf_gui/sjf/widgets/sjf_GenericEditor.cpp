@@ -1763,18 +1763,29 @@ namespace sjf::generic_editor
 
 	GenericEditor::GenericEditor(juce::AudioProcessorValueTreeState& apvts_, juce::AudioProcessor& processor_,
 								 const helpers::ParameterFactory::GroupMetadata& metadata_,
-								 UndoManager* undoManager_)
+								 UndoManager* undoManager_,
+								helpers::PresetManager::AfterSaveCallback mainPresetPanelAfterSave,
+								helpers::PresetManager::AfterLoadCallback mainPresetPanelAfterLoad)
 	: AudioProcessorEditor(processor_)
 	, helpers::PresetManager::APVTSProvider(apvts_)
 	, undoManager(undoManager_)
 	, presets(processor.getParameterTree(), helpers::PresetManager::getDefaultExtension(),
-					[this, id = metadata_.groupID, safeThis = SafePointer(this)](ValueTree vt){
+					[this, id = metadata_.groupID, safeThis = SafePointer(this), mainPresetPanelAfterSave](ValueTree vt){
 								if (safeThis && mainEditor && vt.getChildWithName(id).isValid())
+								{
 									dynamic_cast<AutoEditor*>(mainEditor.get())->callAfterSave(vt.getChildWithName(id));
+									if (mainPresetPanelAfterSave)
+										mainPresetPanelAfterSave(vt);
+								}
+
 						},
-						[this, id = metadata_.groupID, safeThis = SafePointer(this)](ValueTree vt){
+						[this, id = metadata_.groupID, safeThis = SafePointer(this), mainPresetPanelAfterLoad](ValueTree vt){
 								if (safeThis && mainEditor && vt.getChildWithName(id).isValid())
+								{
 									dynamic_cast<AutoEditor*>(mainEditor.get())->callAfterLoad(vt.getChildWithName(id));
+									if (mainPresetPanelAfterLoad)
+										mainPresetPanelAfterLoad(vt);
+								}
 						},
 						undoManager)
 	{

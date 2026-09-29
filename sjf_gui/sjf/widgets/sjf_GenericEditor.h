@@ -14,8 +14,8 @@
 #include <JuceHeader.h>
 #include <sjf/widgets/sjf_PresetPanel.h>
 
-#include "sjf/helpers/sjf_PresetManager.h"
-#include "sjf_LookAndFeel.h"
+#include <sjf/helpers/sjf_PresetManager.h>
+#include <sjf/widgets/sjf_LookAndFeel.h>
 
 namespace sjf::generic_editor
 {
@@ -38,7 +38,12 @@ namespace sjf::generic_editor
 	{
 		public:
 
-			explicit GenericEditor(juce::AudioProcessorValueTreeState&, juce::AudioProcessor&, const helpers::ParameterFactory::GroupMetadata&, UndoManager* undoManager = nullptr);
+			explicit GenericEditor(	juce::AudioProcessorValueTreeState&,
+									juce::AudioProcessor&,
+									const helpers::ParameterFactory::GroupMetadata&,
+									UndoManager* undoManager = nullptr,
+									helpers::PresetManager::AfterSaveCallback mainPresetPanelAfterSave = {},
+									helpers::PresetManager::AfterLoadCallback mainPresetPanelAfterLoad = {});
 			~GenericEditor() override;
 			void resized() override;
 

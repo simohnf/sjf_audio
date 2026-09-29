@@ -53,6 +53,7 @@ public:
     {
         spec = spec_;
         parameters.prepare(spec);
+    	parameters.setSmootherLength(0.05f);
     	filter.prepare(spec);
     	driveSmoother.reset(spec.sampleRate, 0.05f);
         reset();
@@ -79,12 +80,13 @@ public:
 
     	if (parameters.checkForStateChange())
         {
-        	parameters.reset();
         	updateFilterParameters(false);
 
         	for (auto i = 0u; i < numSamples; i++)
         	{
+        		parameters.tickSmoothers();
         		filter.setDrive(driveSmoother.getNextValue());
+        		filter.updateSmoothers_();
         		for (auto ch = 0ul; ch < numChannels; ++ch)
         			outputBlock.getChannelPointer (ch)[i] = filter.processSample_ (inputBlock.getChannelPointer (ch)[i], ch);
         	}
@@ -93,6 +95,7 @@ public:
     	{
     		filter.process(context);
     	}
+    	DBG(parameters.cutoff.currentValue);
     }
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)

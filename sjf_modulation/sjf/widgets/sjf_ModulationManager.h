@@ -1,0 +1,269 @@
+/*
+███████╗     ██╗███████╗    █████╗ ██╗   ██╗██████╗ ██╗ ██████╗
+██╔════╝     ██║██╔════╝   ██╔══██╗██║   ██║██╔══██╗██║██╔═══██╗
+███████╗     ██║█████╗     ███████║██║   ██║██║  ██║██║██║   ██║
+╚════██║██   ██║██╔══╝     ██╔══██║██║   ██║██║  ██║██║██║   ██║
+███████║╚█████╔╝██║███████╗██║  ██║╚██████╔╝██████╔╝██║╚██████╔╝
+╚══════╝ ╚════╝ ╚═╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝ ╚═════╝
+ */
+//
+// Created by Simon Fay on 28/09/2026.
+//
+
+#pragma once
+#include <JuceHeader.h>
+#include <sjf/dsp/sjf_Modulation.h>
+#include <sjf/widgets/sjf_GenericEditor.h>
+
+namespace sjf::gui::modulation{
+	namespace ids
+	{
+		const static auto modulatedID = juce::Identifier{"modulated"};
+	}
+
+template<typename ...Modulators>
+class ModulationManager : private juce::MouseListener
+{
+public:
+	using ModulationSystem = sjf::dsp::modulation::ModulationSystem<Modulators...>;
+	using Modulatable = ModulationSystem::Modulatable;
+	using Modulator = ModulationSystem::Modulator;
+	using Connection = ModulationSystem::Connection;
+
+    ModulationManager (juce::AudioProcessorEditor& editor,
+                        juce::AudioProcessorValueTreeState& apvts,
+                        ModulationSystem& modSystem,
+                        UndoManager* undoManager_)
+        : globalAPVTS (apvts), system (modSystem), undoManager (undoManager_)
+    {
+        // 1. Recurse through the entire editor component tree
+        attachToComponentTree (&editor);
+    }
+
+    ~ModulationManager() override
+    {
+        for (auto* comp : attachedComponents)
+            comp->removeMouseListener (this);
+    }
+
+	ModulationSystem& getModulationSystem ()
+    {
+	    return system;
+    }
+
+private:
+    void attachToComponentTree (juce::Component* parent)
+    {
+        if (parent == nullptr) return;
+
+        // Check if component has a tagged parameter ID
+        juce::String paramID = parent->getProperties().getWithDefault ("parameterID", parent->getComponentID());
+
+        if (paramID.isNotEmpty())
+        {
+            if (auto* rawParam = globalAPVTS.getParameter (paramID))
+            {
+                if (auto* modTarget = dynamic_cast<Modulatable*> (rawParam); modTarget && modTarget->isModulatable())
+                {
+                    // Map this component to its parameter and target interface
+                    targetMap[parent] = { paramID, modTarget };
+
+                    // Attach mouse listener with recursive child capture enabled!
+                    parent->addMouseListener (this, true);
+                    attachedComponents.push_back (parent);
+
+                	componentMap[paramID] = parent;
+                	if (system.isModulated(modTarget))
+                		parent->getProperties().set(ids::modulatedID, true);
+                }
+            }
+        }
+
+        // Recurse into children
+        for (int i = 0; i < parent->getNumChildComponents(); ++i)
+            attachToComponentTree (parent->getChildComponent (i));
+    }
+
+    // Intercept mouse events across Sliders, ComboBoxes, and Buttons
+    void mouseDown (const juce::MouseEvent& e) override
+    {
+        if (e.mods.isPopupMenu())
+        {
+            // Find which registered component triggered the event
+            auto* targetComp = e.eventComponent;
+            while (targetComp != nullptr && !targetMap.contains(targetComp))
+                targetComp = targetComp->getParentComponent();
+
+            if (targetComp != nullptr)
+            {
+                const auto& info = targetMap[targetComp];
+                showModulationMenu (info.paramID);
+            }
+        }
+    }
+
+    void showModulationMenu (const juce::String& paramID)
+    {
+        juce::PopupMenu menu;
+        menu.addSectionHeader ("Modulation: " + dynamic_cast<RangedAudioParameter*>(system.apvts->getParameter(paramID))->name);
+
+        auto activeSources = system.modulators.getIndexToId();
+    	modControlPanels.clear();
+        for (auto i = 0ul; i < activeSources.size(); ++i)
+        {
+            const auto& modId = activeSources[i];
+        	if (paramID.startsWith(modId))
+        		continue;
+
+        	auto connection = system.getConnection(modId, paramID);
+			if (connection.target && connection.source)
+        	{
+        		auto sub = PopupMenu{};
+        		modControlPanels.push_back(std::make_unique<ModControlPanel>());
+				auto v = connection.depth;
+        		modControlPanels.back()->depthSlider.setValue( v * 100.0f);
+				modControlPanels.back()->depthSlider.onMouseUp = [&, v, modId, paramID, slider = Component::SafePointer(&modControlPanels.back()->depthSlider)](){
+					if (slider && !approximatelyEqual(static_cast<float>(slider->getValue()) *0.01f, v))
+					{
+						if (undoManager)
+						{
+							undoManager->beginNewTransaction();
+						}
+						system.addConnection(modId, paramID, static_cast<float>(slider->getValue()) * 0.01f, undoManager);
+						if (undoManager)
+						{
+							undoManager->setCurrentTransactionName("Changed depth of modulation connection: " + modId + " ==> " + paramID + " to: " + slider->getTextFromValue(slider->getValue()));
+							undoManager->beginNewTransaction();
+						}
+					}
+				};
+				modControlPanels.back()->remove.onClick = [&, modId, paramID, safeComp = Component::SafePointer(modControlPanels.back().get())](){
+					if (safeComp)
+					{
+						if (undoManager)
+						{
+							undoManager->beginNewTransaction();
+						}
+						system.removeConnection(modId, paramID, undoManager);
+						if (auto comp = componentMap[paramID])
+						{
+							comp->getProperties().remove(ids::modulatedID);
+							comp->repaint();
+						}
+
+						if (undoManager)
+						{
+							undoManager->setCurrentTransactionName("Removed modulation connection: " + modId + " ==> " + paramID );
+							undoManager->beginNewTransaction();
+						}
+
+						juce::PopupMenu::dismissAllActiveMenus();
+					}
+				};
+
+        		sub.addCustomItem(1, *modControlPanels.back(), 500, 100, false, nullptr, modId);
+        		menu.addSubMenu(modId, sub);
+        	}
+        	else
+        	{
+        		menu.addItem (modId, true, false, [this, modId, paramID](){
+        			if (undoManager)
+        			{
+        				undoManager->beginNewTransaction();
+					}
+					system.addConnection (modId, paramID, 1.0f, undoManager);
+					if (auto comp = componentMap[paramID])
+					{
+						comp->getProperties().set(ids::modulatedID, true);
+						comp->repaint();
+					}
+
+        			if (undoManager)
+        			{
+        				undoManager->setCurrentTransactionName("Added modulation connection: " + modId + " ==> " + paramID );
+        				undoManager->beginNewTransaction();
+        			}
+				});
+        	}
+
+        }
+
+        menu.showMenuAsync ({});
+    }
+
+	struct ModControlPanel : juce::Component
+    {
+    	ModControlPanel()
+    	{
+    		addAndMakeVisible(remove);
+    		remove.setButtonText("Remove");
+
+    		addAndMakeVisible(depthSlider);
+    		depthSlider.setRange(-100.0f , 100.0f, 0.01f);
+    		depthSlider.setDoubleClickReturnValue(true, 0.0f);
+    		depthSlider.setTextValueSuffix("%");
+    		// setSize (100, 200);
+    	}
+
+    	void resized() override
+    	{
+    		remove.setBounds(5, 5, getWidth() - 10, 30);
+    		depthSlider.setBounds(remove.getX(), remove.getBottom() + 5, remove.getWidth(),  (getHeight() - 15) - 30);
+    	}
+
+    	struct DepthSlider : public juce::Slider
+    	{
+    		void mouseUp(const MouseEvent& e) override
+    		{
+    			juce::Slider::mouseUp(e);
+    			onMouseUp();
+    		}
+    		std::function<void()> onMouseUp;
+    	};
+
+
+    	juce::TextButton remove;
+    	DepthSlider depthSlider;
+    };
+
+	std::vector<std::unique_ptr<ModControlPanel>> modControlPanels;
+
+    struct TargetInfo { juce::String paramID; Modulatable* target; };
+    std::unordered_map<juce::Component*, TargetInfo> targetMap;
+    std::unordered_map<juce::String, juce::Component::SafePointer<juce::Component>> componentMap;
+    std::vector<juce::Component*> attachedComponents;
+
+    juce::AudioProcessorValueTreeState& globalAPVTS;
+    ModulationSystem& system;
+	UndoManager* undoManager{nullptr};
+};
+
+template<typename ...Modulators>
+struct GenericEditorWithModulation : sjf::generic_editor::GenericEditor
+{
+
+	GenericEditorWithModulation(juce::AudioProcessorValueTreeState& apvts_, juce::AudioProcessor& processor_,
+								 const helpers::ParameterFactory::GroupMetadata& metadata_,
+								 dsp::modulation::ModulationSystem<Modulators...>& modSystem_,
+								 UndoManager* undoManager_)
+	: GenericEditor(apvts_, processor_, metadata_, undoManager_,
+	[this](ValueTree vt){
+		const auto& connections = modulationManager.getModulationSystem().getCurrentConnectionsAsValueTree();
+		auto newVT = ValueTree{connections.getType()};
+		newVT.copyPropertiesAndChildrenFrom(connections, nullptr);
+		vt.addChild(newVT, -1, nullptr);
+		},
+[this](ValueTree vt){
+		auto connections = vt.getChildWithName(modulationManager.getModulationSystem().getFactoryID() + sjf::dsp::modulation::ids::modulationConnectionsID);
+		auto edit = modulationManager.getModulationSystem().getCurrentConnectionsAsValueTree();
+		edit.copyPropertiesAndChildrenFrom(connections, nullptr);
+	})
+	, modulationManager(*this, apvts_, modSystem_, undoManager_)
+	{}
+
+
+	ModulationManager<Modulators...> modulationManager;
+};
+}
+
+

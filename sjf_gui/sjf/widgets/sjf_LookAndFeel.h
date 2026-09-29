@@ -20,7 +20,11 @@ namespace look_and_feel::ids
 	{
 		static const juce::Identifier drawText{"drawText"};
 	}
+
+	const static auto modulatedID = juce::Identifier ("modulated");
+
 }
+
 class LookAndFeel : public juce::LookAndFeel_V4
 {
 	int getSliderThumbRadius (Slider& slider) override
@@ -66,14 +70,56 @@ class LookAndFeel : public juce::LookAndFeel_V4
 	{
 		const Rectangle<float> tickBounds (x, y, w, h);
 
-		g.setColour (component.findColour (ToggleButton::tickDisabledColourId));
+		auto col = [&]()
+		{
+			const auto hue = (component.getProperties().getWithDefault(look_and_feel::ids::modulatedID, false)) ? 0.3f : 0.0f;
+			auto c1 = component.findColour (ToggleButton::tickDisabledColourId);
+			auto c1h = component.findColour (ToggleButton::tickDisabledColourId).withRotatedHue(hue);
+			if (hue < 0.3f || c1h != c1)
+			{
+				return c1h;
+			}
+			else if (const auto c2 = component.findColour(juce::Slider::trackColourId); c2 != c1)
+			{
+				return c2.withRotatedHue(hue);
+			}
+			return c1;
+		}();
+
+		g.setColour(col);
+
 		g.drawRoundedRectangle (tickBounds, 4.0f, 1.0f);
 
 		if (ticked)
 		{
-			g.setColour (component.findColour (ToggleButton::tickColourId));
 			g.fillRoundedRectangle (tickBounds.reduced(2), 2.0f);
 		}
+	}
+
+	void drawLinearSlider (Graphics& g, int x, int y, int width, int height,
+									   float sliderPos,
+									   float minSliderPos,
+									   float maxSliderPos,
+									   const Slider::SliderStyle style, Slider& slider) override
+	{
+		if (auto parent = slider.getParentComponent())
+		{
+			const auto hue = (slider.getProperties().getWithDefault(look_and_feel::ids::modulatedID, false)) ? 0.3f : 0.0f;
+			slider.setColour(Slider::trackColourId, parent->findColour (Slider::trackColourId).withRotatedHue(hue));
+			slider.setColour(Slider::backgroundColourId, parent->findColour (Slider::backgroundColourId).withRotatedHue(hue));
+		}
+		LookAndFeel_V4::drawLinearSlider(g, x, y, width, height, sliderPos, minSliderPos, maxSliderPos, style, slider);
+	}
+
+	void drawComboBox (Graphics& g, int width, int height, bool isButtonDown,
+					   int buttonX, int buttonY, int buttonW, int buttonH, ComboBox& box) override
+	{
+		if (auto parent = box.getParentComponent())
+		{
+			const auto hue = (box.getProperties().getWithDefault(look_and_feel::ids::modulatedID, false)) ? 0.3f : 0.0f;
+			box.setColour(juce::ComboBox::backgroundColourId, parent->findColour(juce::ComboBox::backgroundColourId).withRotatedHue(hue));
+		}
+		juce::LookAndFeel_V4::drawComboBox(g, width, height, isButtonDown, buttonX, buttonY, buttonW, buttonH, box);
 	}
 };
 

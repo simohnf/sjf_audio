@@ -12,7 +12,7 @@
 //
 #pragma once
 #include <JuceHeader.h>
-
+#include <sjf/helpers/sjf_Parameters.h>
 #include "sjf_HelperFunctions.h"
 #if __has_include("VersionHints.h")
 	#include "VersionHints.h"
@@ -49,7 +49,7 @@ public:
 		const bool supportsChildSubPresets = false;
 		const bool isMultiBand = false;
 		const size_t numProcessorsInDynamicSequence{0};
-		const juce::AudioParameterChoice* selectorParameter = nullptr;
+		const sjf::helpers::parameters::ChoiceParameter* selectorParameter = nullptr;
 		std::vector<GroupMetadata> children;
 
 
@@ -111,7 +111,7 @@ public:
 		{
 			for (const auto rangedParam : rootFactory.getParameters(false))
 			{
-				if (const auto* choiceParam = dynamic_cast<const juce::AudioParameterChoice*> (rangedParam))
+				if (const auto* choiceParam = dynamic_cast<const sjf::helpers::parameters::ChoiceParameter*> (rangedParam))
 				{
 					const auto& choices = choiceParam->choices;
 
@@ -162,7 +162,7 @@ public:
     {}
 
     //==============================================================================
-    juce::AudioParameterFloat* createFloatParameter (const juce::ParameterID& parameterID,
+    sjf::helpers::parameters::FloatParameter* createFloatParameter (const juce::ParameterID& parameterID,
                                                      const juce::String& parameterName,
                                                      juce::NormalisableRange<float> normalisableRange,
                                                      float defaultValue,
@@ -170,7 +170,7 @@ public:
     {
         const auto id =  baseID + parameterID.getParamID();
         const auto versionHint = parameterID.getVersionHint() != 0 ? parameterID.getVersionHint() : sjf::version_hints::getVersionHint(id);
-        auto p = std::make_unique<juce::AudioParameterFloat> (
+        auto p = std::make_unique<sjf::helpers::parameters::FloatParameter> (
             juce::ParameterID (id, versionHint),
             baseName + " " + parameterName,
             normalisableRange,
@@ -183,14 +183,14 @@ public:
         return rawPtr;
     }
 
-    juce::AudioParameterInt* createIntParameter (const juce::ParameterID& parameterID,
+    sjf::helpers::parameters::IntParameter* createIntParameter (const juce::ParameterID& parameterID,
                                                  const juce::String& parameterName,
                                                  int minValue, int maxValue, int defaultValue,
                                                  const juce::AudioParameterIntAttributes& attributes = {})
     {
         const auto id =  baseID + parameterID.getParamID();
         const auto versionHint = parameterID.getVersionHint() != 0 ? parameterID.getVersionHint() : sjf::version_hints::getVersionHint(id);
-        auto p = std::make_unique<juce::AudioParameterInt> (
+        auto p = std::make_unique<sjf::helpers::parameters::IntParameter> (
             juce::ParameterID (id, versionHint),
             baseName + " " + parameterName,
             minValue, maxValue, defaultValue,
@@ -202,14 +202,14 @@ public:
         return rawPtr;
     }
 
-    juce::AudioParameterBool* createBoolParameter (const juce::ParameterID& parameterID,
+    sjf::helpers::parameters::BoolParameter* createBoolParameter (const juce::ParameterID& parameterID,
                                                    const juce::String& parameterName,
                                                    bool defaultValue,
                                                    const juce::AudioParameterBoolAttributes& attributes = {})
     {
         const auto id =  baseID + parameterID.getParamID();
         const auto versionHint = parameterID.getVersionHint() != 0 ? parameterID.getVersionHint() : sjf::version_hints::getVersionHint(id);
-        auto p = std::make_unique<juce::AudioParameterBool> (
+        auto p = std::make_unique<sjf::helpers::parameters::BoolParameter> (
             juce::ParameterID (id, versionHint),
             baseName + " " + parameterName,
             defaultValue,
@@ -221,7 +221,7 @@ public:
         return rawPtr;
     }
 
-    juce::AudioParameterChoice* createChoiceParameter (const juce::ParameterID& parameterID,
+    sjf::helpers::parameters::ChoiceParameter* createChoiceParameter (const juce::ParameterID& parameterID,
                                                        const juce::String& parameterName,
                                                        const juce::StringArray& choices,
                                                        int defaultChoiceIndex,
@@ -229,7 +229,7 @@ public:
     {
         const auto id =  baseID + parameterID.getParamID();
         const auto versionHint = parameterID.getVersionHint() != 0 ? parameterID.getVersionHint() : sjf::version_hints::getVersionHint(id);
-        auto p = std::make_unique<juce::AudioParameterChoice> (
+        auto p = std::make_unique<sjf::helpers::parameters::ChoiceParameter> (
             juce::ParameterID (id, versionHint),
             baseName + " " + parameterName,
             choices,
@@ -416,8 +416,8 @@ public:
     template <typename JuceParamType>
     struct TrackedState
     {
-        using ValueType = std::conditional_t<std::is_same_v<JuceParamType, juce::AudioParameterFloat>, float,
-                          std::conditional_t<std::is_same_v<JuceParamType, juce::AudioParameterBool>, bool,
+        using ValueType = std::conditional_t<std::is_same_v<JuceParamType, sjf::helpers::parameters::FloatParameter>, float,
+                          std::conditional_t<std::is_same_v<JuceParamType, sjf::helpers::parameters::BoolParameter>, bool,
                           int>>;
 
 
@@ -432,10 +432,10 @@ public:
     public:
         inline ValueType getParameterValue() const noexcept {
             jassert (juceParameter != nullptr);
-            if constexpr (std::is_same_v<JuceParamType, juce::AudioParameterChoice>)
-                return juceParameter->getIndex();
-            else
-                return juceParameter->get();
+            // if constexpr (std::is_same_v<JuceParamType, juce::AudioParameterChoice>)
+            //     return juceParameter->getIndex();
+            // else
+                return static_cast<ValueType>(juceParameter->get());
         }
 
         inline void reset( ValueType mappedTargetValue ) noexcept {
@@ -444,7 +444,7 @@ public:
 
     	bool isSmoothing()
         {
-        	if constexpr (std::is_same_v<JuceParamType, juce::AudioParameterFloat>)
+        	if constexpr (std::is_same_v<JuceParamType, sjf::helpers::parameters::FloatParameter>)
 				return !juce::approximatelyEqual(currentValue, targetValue);
         	else
 				return currentValue != targetValue;
@@ -460,10 +460,10 @@ public:
         friend class AudioParametersBase;
     };
 
-    using FloatState  = TrackedState<juce::AudioParameterFloat>;
-    using IntState    = TrackedState<juce::AudioParameterInt>;
-    using BoolState   = TrackedState<juce::AudioParameterBool>;
-    using ChoiceState = TrackedState<juce::AudioParameterChoice>;
+    using FloatState  = TrackedState<sjf::helpers::parameters::FloatParameter>;
+    using IntState    = TrackedState<sjf::helpers::parameters::IntParameter>;
+    using BoolState   = TrackedState<sjf::helpers::parameters::BoolParameter>;
+    using ChoiceState = TrackedState<sjf::helpers::parameters::ChoiceParameter>;
 
     using FloatMapping  = std::function<float(float)>;
     using IntMapping    = std::function<int (int)>;

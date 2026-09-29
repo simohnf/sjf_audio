@@ -40,7 +40,7 @@ namespace sjf::dsp::waveshaper
  *
  * see @WaveshaperTypeProvider
  */
-template<typename WaveshaperTypes, size_t NUM_CHANNELS = 2>
+template<typename WaveshaperTypes, size_t NUM_CHANNELS = 2, bool AddAutoGain = false>
 class Waveshaper
 {
 public:
@@ -60,7 +60,8 @@ public:
         	else
         		waveshaper.currentValue = 0;
 
-            createTrackedParameter(*factory, autoGain, "AutoGain", "Auto Gain", false);
+        	if constexpr (AddAutoGain)
+				createTrackedParameter(*factory, autoGain, "AutoGain", "Auto Gain", false);
 
             return factory;
         }
@@ -170,7 +171,7 @@ private:
         jassert (inputBlock.getNumSamples() == numSamples);
 
         const auto drive = parameters.drive.currentValue;
-        const auto autoGain = parameters.autoGain.currentValue;
+        const auto autoGain = getAutoGain();
         for (size_t channel = 0; channel < NUM_CHANNELS; ++channel)
         {
             const auto input = inputBlock.getChannelPointer (channel);
@@ -208,7 +209,7 @@ private:
         }
 
 
-        const auto autoGain = parameters.autoGain.currentValue;
+        const auto autoGain = getAutoGain();
 
         for (size_t i = 0; i < numSamples; ++i)
         {
@@ -220,6 +221,15 @@ private:
                 outputChannelPointers[channel][i] = gainCompensation * waveshapers[channel].template processSample<WaveshaperIndex>(inputChannelPointers[channel][i]*drive);
             }
         }
+    }
+
+
+	bool getAutoGain()
+    {
+	    if constexpr (AddAutoGain)
+	    	return parameters.autoGain.currentValue;
+
+    	return false;
     }
 
     std::array<WaveshaperTypes, NUM_CHANNELS> waveshapers;

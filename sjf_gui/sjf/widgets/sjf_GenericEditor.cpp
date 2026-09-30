@@ -1838,21 +1838,21 @@ namespace sjf::generic_editor
 		LookAndFeel::setDefaultLookAndFeel(nullptr);
 	}
 
-	void GenericEditor::initialiseMainEditor(juce::AudioProcessorValueTreeState& apvts,
+	void GenericEditor::initialiseMainEditor(juce::AudioProcessorValueTreeState& apvts_,
 											 const juce::AudioProcessorParameterGroup& parameterGroup,
 											 const helpers::ParameterFactory::GroupMetadata& metadata)
 	{
 		if (metadata.isSelectorGroup())
 		{
-			mainEditor = std::make_unique<DeviceSelectorEditor>(apvts, parameterGroup, metadata, undoManager);
+			mainEditor = std::make_unique<DeviceSelectorEditor>(apvts_, parameterGroup, metadata, undoManager);
 		}
 		else if (metadata.isDynamicProcessorSequenceGroup())
 		{
-			mainEditor = std::make_unique<DynamicProcessorSequenceEditor>(apvts, parameterGroup, metadata, undoManager);
+			mainEditor = std::make_unique<DynamicProcessorSequenceEditor>(apvts_, parameterGroup, metadata, undoManager);
 		}
 		else
 		{
-			mainEditor = std::make_unique<AutoEditor>(apvts, parameterGroup, metadata, undoManager);
+			mainEditor = std::make_unique<AutoEditor>(apvts_, parameterGroup, metadata, undoManager);
 		}
 	}
 

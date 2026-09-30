@@ -70,8 +70,7 @@ private:
 namespace default_modulator_lfo_config
 {
 	using LFO = sjf::dsp::modulation::ModulatorLFO<oscillators::lfo::DefaultWaveformProvider,
-										dsp::oscillators::lfo::lfo_config::TempoSync,
-										dsp::oscillators::lfo::lfo_config::Smooth>;
+										dsp::oscillators::lfo::lfo_config::TempoSync>;
 }
 
 using BasicLFO = default_modulator_lfo_config::LFO;

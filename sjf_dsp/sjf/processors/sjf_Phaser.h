@@ -36,7 +36,7 @@ public:
 
         	static_assert(MaxOrder >= 1);
         	if (MaxOrder > 1)
-				createTrackedParameter(*factory, order, "Order", "Order", 1, MaxOrder, juce::jmin(6ul, MaxOrder), [](const int x){ return x * 2;});
+				createTrackedParameter(*factory, order, "Order", "Order", 1, MaxOrder, juce::jmin(size_t{6}, MaxOrder), [](const int x){ return x * 2;});
             return factory;
         }
     } parameters;

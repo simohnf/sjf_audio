@@ -351,9 +351,12 @@ class PresetManager
     				{
     					static const auto ParamID = juce::Identifier("PARAM");
     					auto apvtsChild = apvts.state.getChild(static_cast<int>(i));
+
     					if (apvtsChild.getType() == ParamID)
+    					{
     						continue;
-						if (apvtsChild.isValid() && apvtsChild.getType().toString().startsWith(groupID))
+    					}
+    					if (apvtsChild.isValid() && apvtsChild.getType().toString().startsWith(groupID))
 						{
 							struct RecurseAPVTSTree
 							{

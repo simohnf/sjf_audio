@@ -37,7 +37,7 @@ namespace sjf::gui::modulation{
  * @see ModulationSystem, GenericEditorWithModulation
  */
 template<typename ...Modulators>
-class ModulationManager : private juce::MouseListener
+class ModulationManager : private juce::MouseListener, juce::ValueTree::Listener
 {
 public:
 	using ModulationSystem = sjf::dsp::modulation::ModulationSystem<Modulators...>;
@@ -53,12 +53,21 @@ public:
     {
         // 1. Recurse through the entire editor component tree
         attachToComponentTree (&editor);
+    	if (system.stateTree.isValid())
+			system.stateTree.addListener(this);
+    	else
+    		jassertfalse;
     }
 
     ~ModulationManager() override
     {
         for (auto* comp : attachedComponents)
             comp->removeMouseListener (this);
+
+    	if (system.stateTree.isValid())
+    		system.stateTree.removeListener(this);
+    	else
+    		jassertfalse;
     }
 
 	ModulationSystem& getModulationSystem ()
@@ -67,6 +76,36 @@ public:
     }
 
 private:
+	void valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged,
+									   const juce::Identifier&) override
+	{
+		if (treeWhosePropertyHasChanged == system.stateTree)
+		{
+			if (juce::MessageManager::existsAndIsCurrentThread())
+				checkModulationStateOfComponents();
+			else
+				asyncUpdater.triggerUpdate();
+		}
+	}
+
+	void checkModulationStateOfComponents()
+	{
+		jassert(juce::MessageManager::existsAndIsCurrentThread());
+		for (auto& [comp, targetInfo] : targetMap)
+		{
+			if (auto targetComp = componentMap[targetInfo.paramID])
+			{
+				auto wasModulated = static_cast<bool>(targetComp->getProperties().getWithDefault(ids::modulatedID, false));
+				auto isModulated = system.isModulated (targetInfo.target);
+				if (isModulated != wasModulated)
+				{
+					targetComp->getProperties().set(ids::modulatedID,isModulated);
+					targetComp->repaint();
+				}
+			}
+		}
+	}
+
     void attachToComponentTree (juce::Component* parent)
     {
         if (parent == nullptr) return;
@@ -88,7 +127,7 @@ private:
                     attachedComponents.push_back (parent);
 
                 	componentMap[paramID] = parent;
-                	if (system.isModulated(modTarget))
+                	if (auto modCount = system.isModulated(modTarget))
                 		parent->getProperties().set(ids::modulatedID, true);
                 }
             }
@@ -119,8 +158,15 @@ private:
 
     void showModulationMenu (const juce::String& paramID)
     {
+    	if (!system.apvts)
+    		return;
+
+    	const auto ranged = dynamic_cast<RangedAudioParameter*>(system.apvts->getParameter(paramID));
+    	if (!ranged)
+    		return;
+
         juce::PopupMenu menu;
-        menu.addSectionHeader ("Modulation: " + dynamic_cast<RangedAudioParameter*>(system.apvts->getParameter(paramID))->name);
+        menu.addSectionHeader ("Modulation: " + ranged->name);
 
         auto activeSources = system.modulators.getIndexToId();
     	modControlPanels.clear();
@@ -137,7 +183,10 @@ private:
         		modControlPanels.push_back(std::make_unique<ModControlPanel>());
 				auto v = connection.depth;
         		modControlPanels.back()->depthSlider.setValue( v * 100.0f);
-				modControlPanels.back()->depthSlider.onMouseUp = [&, v, modId, paramID, slider = Component::SafePointer(&modControlPanels.back()->depthSlider)](){
+				modControlPanels.back()->depthSlider.onMouseUp = [this, safeThis = std::weak_ptr(guard), v, modId, paramID, slider = Component::SafePointer(&modControlPanels.back()->depthSlider)](){
+					if (safeThis.expired())
+						return;
+
 					if (slider && !approximatelyEqual(static_cast<float>(slider->getValue()) *0.01f, v))
 					{
 						if (undoManager)
@@ -152,7 +201,10 @@ private:
 						}
 					}
 				};
-				modControlPanels.back()->remove.onClick = [&, modId, paramID, safeComp = Component::SafePointer(modControlPanels.back().get())](){
+				modControlPanels.back()->remove.onClick = [this, safeThis = std::weak_ptr(guard), modId, paramID, safeComp = Component::SafePointer(modControlPanels.back().get())](){
+					if (safeThis.expired())
+						return;
+
 					if (safeComp)
 					{
 						if (undoManager)
@@ -160,17 +212,14 @@ private:
 							undoManager->beginNewTransaction();
 						}
 						system.removeConnection(modId, paramID, undoManager);
-						if (auto comp = componentMap[paramID])
-						{
-							comp->getProperties().remove(ids::modulatedID);
-							comp->repaint();
-						}
+
 
 						if (undoManager)
 						{
 							undoManager->setCurrentTransactionName("Removed modulation connection: " + modId + " ==> " + paramID );
 							undoManager->beginNewTransaction();
 						}
+
 
 						juce::PopupMenu::dismissAllActiveMenus();
 					}
@@ -181,17 +230,16 @@ private:
         	}
         	else
         	{
-        		menu.addItem (modId, true, false, [this, modId, paramID](){
+        		menu.addItem (modId, true, false, [this, safeThis = std::weak_ptr(guard), modId, paramID](){
+        			if (safeThis.expired() || system.isConnected(modId, paramID))
+        				return;
+
+
         			if (undoManager)
         			{
         				undoManager->beginNewTransaction();
 					}
 					system.addConnection (modId, paramID, 1.0f, undoManager);
-					if (auto comp = componentMap[paramID])
-					{
-						comp->getProperties().set(ids::modulatedID, true);
-						comp->repaint();
-					}
 
         			if (undoManager)
         			{
@@ -231,7 +279,8 @@ private:
     		void mouseUp(const MouseEvent& e) override
     		{
     			juce::Slider::mouseUp(e);
-    			onMouseUp();
+    			if (onMouseUp)
+					onMouseUp();
     		}
     		std::function<void()> onMouseUp;
     	};
@@ -247,10 +296,17 @@ private:
     std::unordered_map<juce::Component*, TargetInfo> targetMap;
     std::unordered_map<juce::String, juce::Component::SafePointer<juce::Component>> componentMap;
     std::vector<juce::Component*> attachedComponents;
+	ModulationSystem::Connections activeModulations;
 
     juce::AudioProcessorValueTreeState& globalAPVTS;
     ModulationSystem& system;
 	UndoManager* undoManager{nullptr};
+	std::shared_ptr<int> guard = std::make_shared<int>(42);
+	using Callback = std::function<void()>;
+	sjf::helpers::AsyncCallbackInvoker<Callback> asyncUpdater{[this, safeThis = std::weak_ptr(guard)](){
+		if (!safeThis.expired())
+			checkModulationStateOfComponents();
+	}};
 };
 
 

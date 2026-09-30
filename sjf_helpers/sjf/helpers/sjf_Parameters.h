@@ -104,7 +104,7 @@ namespace sjf::helpers::parameters{
 		float get() const override
 		{
 			auto direct = getDirect();
-			auto mod = applyModulationOffset(getNormalisableRange().convertTo0to1(direct));
+			auto mod = applyModulationOffset(getNormalisableRange().convertTo0to1(static_cast<float>(direct)));
 			return getNormalisableRange().convertFrom0to1(mod);
 		}
 	};

@@ -111,6 +111,95 @@ struct ComplexSine
     }
 };
 
+
+namespace random_type
+{
+	enum class Type{Step, Linear, Smooth};
+}
+
+template<random_type::Type Type>
+struct Random
+{
+	static const juce::String& getName()
+	{
+		if constexpr (Type == random_type::Type::Step)
+		{
+			static const juce::String name = "Random Step";
+			return name;
+		}
+		else if constexpr (Type == random_type::Type::Linear)
+		{
+			static const juce::String name = "Random Linear";
+			return name;
+		}
+		else if constexpr (Type == random_type::Type::Smooth)
+		{
+			static const juce::String name = "Random Smooth";
+			return name;
+		}
+		else
+		{
+			static_assert(false, "Set the name if you add a new type");
+			static const juce::String name = "NONE";
+			return name;
+		}
+
+	}
+
+	float processSample (const float phase)
+	{
+		if (phase < lastPhase*0.5f)
+		{
+			start = target;
+			constexpr auto scale = 1.0f + std::numeric_limits<float>::epsilon();
+			target = juce::jmap(rng.nextFloat() * scale, -1.0f, 1.0f);
+			difference = target - start;
+		}
+
+		if constexpr (Type == random_type::Type::Step)
+		{
+			return target;
+		}
+		else if constexpr (Type == random_type::Type::Linear)
+		{
+			return start + (phase*difference);
+		}
+		else if constexpr (Type == random_type::Type::Smooth)
+		{
+			auto cos_ = sjf::helpers::functions::waveforms::getCos(phase);
+			cos_ *= -0.5f;
+			cos_ += 0.5f;
+			return start + (cos_*difference);
+		}
+		else
+		{
+			static_assert(false, "No algorithm for that mode yet");
+		}
+		return sjf::helpers::functions::waveforms::getSin(phase);
+	}
+
+	void reset(const juce::int64 seed = 0)
+	{
+		if (seed > 0)
+			setSeed(seed);
+		lastPhase = 1.0f;
+		start = target = difference = 0.0f;
+	}
+
+	void setSeed(const juce::int64 seed)
+	{
+		rng.setSeed(seed);
+	}
+
+	juce::Random rng;
+	float lastPhase{1.0f}, start{}, target{};
+	[[maybe_unused]] float difference{};
+};
+
+using RandomStep = Random<random_type::Type::Step>;
+using RandomLinear = Random<random_type::Type::Linear>;
+using RandomSmooth = Random<random_type::Type::Smooth>;
+
 /**
  * @brief A compile-time collection manager and dispatcher for low-frequency oscillator waveforms.
  *
@@ -200,6 +289,6 @@ struct LFOWaveformProvider
     }
 };
 
-using DefaultWaveformProvider = LFOWaveformProvider<Sine, Triangle, Sawtooth, Square>;
+using DefaultWaveformProvider = LFOWaveformProvider<Sine, Triangle, Sawtooth, Square, RandomStep, RandomLinear, RandomSmooth>;
 
 }

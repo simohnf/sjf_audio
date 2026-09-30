@@ -259,6 +259,11 @@ namespace sjf::dsp::modulation{
 			Modulator* source	= nullptr;
 			Modulatable* target	= nullptr;
 			float depth         = 0.0f;
+
+			bool isValid() const
+			{
+				return source && target && dynamic_cast<RangedAudioParameter*>(target);
+			}
 		};
 
 		using Connections = std::vector<Connection>;
@@ -403,15 +408,21 @@ namespace sjf::dsp::modulation{
 
 		juce::String connectionAsString(Connection& connection)
 		{
-			jassert(connection.source != nullptr);
-			jassert(connection.target != nullptr);
-			jassert(dynamic_cast<RangedAudioParameter*>(connection.target));
-			auto ret = juce::StringArray{};
-			ret.add(connection.source->getModulatorID());
-			ret.add(dynamic_cast<RangedAudioParameter*>(connection.target)->paramID);
-			ret.add(juce::String(connection.depth));
 
-			return ret.joinIntoString(ids::seperator1);
+			if (connection.isValid())
+			{
+				auto ret = juce::StringArray{};
+				ret.add(connection.source->getModulatorID());
+				ret.add(dynamic_cast<RangedAudioParameter*>(connection.target)->paramID);
+				ret.add(juce::String(connection.depth));
+
+				return ret.joinIntoString(ids::seperator1);
+			}
+			else
+			{
+				jassertfalse;
+				return {};
+			}
 		}
 
 
@@ -428,7 +439,12 @@ namespace sjf::dsp::modulation{
 		{
 			const auto arr = juce::StringArray::fromTokens(connectionString, ids::seperator1, "");
 
+
 			Connection result{};
+
+			if (arr.size() < 3 || !apvts)
+				return result;
+
 			result.source = modulators.getModulator(arr[0]);
 			result.target = dynamic_cast<Modulatable*>(apvts->getParameter(arr[1]));
 			result.depth = arr[2].getFloatValue();
@@ -448,13 +464,17 @@ namespace sjf::dsp::modulation{
 			return result;
 		}
 
+
 		Connections stringToConnections(const juce::String& connectionsString)
 		{
 			Connections ret{};
 			const auto arr = juce::StringArray::fromTokens(connectionsString, ids::seperator2, "");
 			ret.reserve(static_cast<size_t>(arr.size()));
 			for (const auto& str : arr)
-				ret.push_back(stringToConnection(str));
+			{
+				if (auto connection = stringToConnection(str); connection.isValid())
+					ret.push_back(connection);
+			}
 
 			return ret;
 		}

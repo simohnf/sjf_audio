@@ -290,7 +290,7 @@ class PresetManager
     			{
     				const auto groupID = group.getID();
     				const auto parentID = groupID.upToFirstOccurrenceOf(helpers::ParameterFactory::getIDWithoutParentPrefix(group), false, true);
-    				auto count = 0ul;
+    				auto count = size_t{0};
     				struct RecursePresetTree
     				{
     					static bool check(const juce::AudioProcessorValueTreeState& apvts, const juce::ValueTree vt, const juce::String& parentId, size_t& count)

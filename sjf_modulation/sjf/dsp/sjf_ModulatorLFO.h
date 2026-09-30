@@ -69,13 +69,7 @@ private:
 
 	namespace default_modulator_lfo_config
 	{
-
-		using DefaultWaveformProvider = oscillators::lfo::LFOWaveformProvider<	oscillators::lfo::Sine,
-																				oscillators::lfo::Triangle,
-																				oscillators::lfo::Sawtooth,
-																				oscillators::lfo::Square>;
-
-		using LFO = sjf::dsp::modulation::ModulatorLFO<DefaultWaveformProvider,
+		using LFO = sjf::dsp::modulation::ModulatorLFO<oscillators::lfo::DefaultWaveformProvider,
 											dsp::oscillators::lfo::lfo_config::TempoSync,
 											dsp::oscillators::lfo::lfo_config::Smooth>;
 	}

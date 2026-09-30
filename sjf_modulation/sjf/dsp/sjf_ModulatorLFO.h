@@ -17,6 +17,31 @@
 #include <sjf/oscillators/LFO/sjf_LFO.h>
 
 namespace sjf::dsp::modulation{
+/**
+ * @brief Bridge adapter wrapping a compile-time configured LFO for the modulation system.
+ *
+ * `ModulatorLFO` adapts `sjf::dsp::oscillators::lfo::LFO<Configurations...>` to inherit from
+ * `ModulatorBase`, enabling variadic LFO instances to function directly within `ModulatorChain`
+ * and `ModulationSystem`.
+ *
+ * The class delegates internal parameter creation, state tracking, host transport position syncing,
+ * and DSP calculation to the underlying template LFO instance while exposing lock-free sample reads
+ * via `getModulationSample()`.
+ *
+ * ### Example Usage:
+ * @code
+ * // Wrap an LFO configured with tempo sync capabilities
+ * using MyModulatorLFO = sjf::dsp::modulation::ModulatorLFO<
+ *     sjf::dsp::oscillators::lfo::DefaultWaveformProvider,
+ *     sjf::dsp::oscillators::lfo::lfo_config::TempoSync
+ * >;
+ *
+ * MyModulatorLFO modulatorLfo;
+ * @endcode
+ *
+ * @tparam Configurations Variadic type pack consisting of an `LFOWaveformProvider` and `lfo_config` feature tags.
+ * @see ModulatorBase, ModulatorChain, ModulationSystem
+ */
 template<typename... Configurations>
 class ModulatorLFO : public ModulatorBase
 {

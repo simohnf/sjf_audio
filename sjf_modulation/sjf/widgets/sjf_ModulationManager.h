@@ -21,6 +21,21 @@ namespace sjf::gui::modulation{
 		const static auto modulatedID = juce::Identifier{"modulated"};
 	}
 
+
+/**
+ * @brief Manages GUI component binding, context menus, and visual modulation indicators for modulatable parameters.
+ *
+ * `ModulationManager` recurses through a JUCE `AudioProcessorEditor` component hierarchy to discover controls
+ * mapped to `Modulatable` parameters in an `AudioProcessorValueTreeState` (APVTS). It attaches mouse listeners
+ * to handle right-click context menus, allowing users to dynamically add, remove, or adjust modulation connection
+ * depths with full `UndoManager` support.
+ *
+ * It updates component properties (such as setting `sjf::gui::modulation::ids::modulatedID`) to allow look-and-feel
+ * classes or custom components to visually draw modulation rings, arcs, or indicators.
+ *
+ * @tparam Modulators Variadic parameter pack representing all concrete modulator types managed by the underlying system.
+ * @see ModulationSystem, GenericEditorWithModulation
+ */
 template<typename ...Modulators>
 class ModulationManager : private juce::MouseListener
 {
@@ -238,6 +253,17 @@ private:
 	UndoManager* undoManager{nullptr};
 };
 
+
+/**
+ * @brief Extension of `GenericEditor` providing automated modulation GUI binding and preset state handling.
+ *
+ * `GenericEditorWithModulation` wraps `GenericEditor` and initializes an internal `ModulationManager`.
+ * It automatically injects modulation connection state properties into the preset `ValueTree` during serialization
+ * and restores active connection maps upon preset loading.
+ *
+ * @tparam Modulators Variadic parameter pack representing all concrete modulator types managed by the system.
+ * @see ModulationManager, sjf::generic_editor::GenericEditor
+ */
 template<typename ...Modulators>
 struct GenericEditorWithModulation : sjf::generic_editor::GenericEditor
 {

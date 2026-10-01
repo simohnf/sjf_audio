@@ -245,6 +245,9 @@ public:
 
 		stateTree = parentTree.getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
 
+    	if (!stateTree.hasProperty(dynamic_processor_sequence::ids::sequencePropertyId))
+    		stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(activeControlSequence), nullptr);
+
     	if (MessageManager::existsAndIsCurrentThread())
     	{
     		apvtsTree.addListener(this);
@@ -385,7 +388,6 @@ private:
     	{
     		if (const auto prop = stateTree.getPropertyPointer(dynamic_processor_sequence::ids::sequencePropertyId))
     		{
-
     			if (prop->isUndefined() || prop->isVoid())
     				return;
 
@@ -408,7 +410,7 @@ private:
     		}
     		else
     		{
-    			stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(activeControlSequence), nullptr);
+    			jassertfalse;
     		}
     	}
     }

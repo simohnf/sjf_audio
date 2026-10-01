@@ -248,19 +248,17 @@ public:
     	if (!stateTree.hasProperty(dynamic_processor_sequence::ids::sequencePropertyId))
     		stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(activeControlSequence), nullptr);
 
+    	apvtsTree.addListener(this);
+
     	if (MessageManager::existsAndIsCurrentThread())
     	{
-    		apvtsTree.addListener(this);
     		publishSequenceUpdate();
     	}
     	else if (auto mm = MessageManager::getInstanceWithoutCreating())
     	{
     		mm->callAsync([this, g = std::weak_ptr(guard)](){
     			if (!g.expired() && apvtsTree.isValid() && stateTree.isValid())
-    			{
-    				apvtsTree.addListener(this);
     				publishSequenceUpdate();
-    			}
     		});
     	}
 

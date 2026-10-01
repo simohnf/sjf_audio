@@ -72,8 +72,8 @@ public:
 
     ~DynamicProcessorSequence() override
     {
-    	if (stateTree.isValid())
-    		stateTree.removeListener(this);
+    	if ((apvtsTree && apvtsTree->isValid()))
+    		apvtsTree->removeListener(this);
     }
 
     //==============================================================================
@@ -210,16 +210,24 @@ public:
 
     	if (MessageManager::existsAndIsCurrentThread())
     	{
-    		if (stateTree.isValid())
+    		if ((apvtsTree && apvtsTree->isValid()))
+    		{
+    			auto stateTree = apvtsTree->getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
     			stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(newOrder), nullptr);
+    		}
     		else
+    		{
     			jassertfalse; // you need to call attachToState()
+    		}
     	}
     	else if ( auto mm = MessageManager::getInstanceWithoutCreating())
     	{
     		mm->callAsync([newOrder, this, g = std::weak_ptr(guard)](){
-    			if (!g.expired() && stateTree.isValid())
-    				stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(newOrder), nullptr);
+    			if (!g.expired() && (apvtsTree && apvtsTree->isValid()))
+    			{
+    				auto stateTree = apvtsTree->getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
+					stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(newOrder), nullptr);
+    			}
     		});
     	}
     }
@@ -236,19 +244,17 @@ public:
     	if (!parentTree.isValid())
     		return;
 
-    	if (apvtsTree.isValid())
-    		apvtsTree.removeListener(this);
-    	if (stateTree.isValid() && stateTree != apvtsTree)
-    		stateTree.removeListener(this);
+    	if ((apvtsTree && apvtsTree->isValid()))
+    		apvtsTree->removeListener(this);
 
-    	apvtsTree = parentTree;
+    	apvtsTree = &parentTree;
 
-		stateTree = parentTree.getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
+		auto stateTree = apvtsTree->getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
 
     	if (!stateTree.hasProperty(dynamic_processor_sequence::ids::sequencePropertyId))
     		stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(activeControlSequence), nullptr);
 
-    	apvtsTree.addListener(this);
+    	apvtsTree->addListener(this);
 
     	if (MessageManager::existsAndIsCurrentThread())
     	{
@@ -257,7 +263,7 @@ public:
     	else if (auto mm = MessageManager::getInstanceWithoutCreating())
     	{
     		mm->callAsync([this, g = std::weak_ptr(guard)](){
-    			if (!g.expired() && apvtsTree.isValid() && stateTree.isValid())
+    			if (!g.expired() && (apvtsTree && apvtsTree->isValid()))
     				publishSequenceUpdate();
     		});
     	}
@@ -343,7 +349,10 @@ private:
 	void valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged,
 								   const juce::Identifier& propertyId) override
 	{
-		if (treeWhosePropertyHasChanged == stateTree && propertyId == dynamic_processor_sequence::ids::sequencePropertyId)
+		if (!(apvtsTree && apvtsTree->isValid()))
+			return;
+		auto stateTree = apvtsTree->getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
+		if ((treeWhosePropertyHasChanged == *apvtsTree || treeWhosePropertyHasChanged == stateTree) && propertyId == dynamic_processor_sequence::ids::sequencePropertyId)
 		{
 			if (MessageManager::existsAndIsCurrentThread())
 				publishSequenceUpdate();
@@ -354,7 +363,11 @@ private:
 
 	void valueTreeRedirected(ValueTree& treeWhichHasBeenChanged) override
 	{
-		if (treeWhichHasBeenChanged == stateTree || treeWhichHasBeenChanged == apvtsTree)
+		if (!(apvtsTree && apvtsTree->isValid()))
+			return;
+		auto stateTree = apvtsTree->getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
+
+		if (treeWhichHasBeenChanged == stateTree || treeWhichHasBeenChanged == *apvtsTree)
 		{
 			if (MessageManager::existsAndIsCurrentThread())
 				publishSequenceUpdate();
@@ -387,6 +400,10 @@ private:
     void publishSequenceUpdate()
     {
     	jassert(MessageManager::existsAndIsCurrentThread());
+		if (!(apvtsTree && apvtsTree->isValid()))
+			return;
+		auto stateTree = apvtsTree->getChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId);
+
     	if (stateTree.isValid())
     	{
     		if (const auto prop = stateTree.getPropertyPointer(dynamic_processor_sequence::ids::sequencePropertyId))
@@ -436,7 +453,7 @@ private:
     SPSCTripleBuffer<SequenceOrder> sequenceBuffer{activeControlSequence};
 	std::array<std::atomic<bool>, NumProcessors> pendingResets{};
 
-	juce::ValueTree stateTree, apvtsTree;
+	juce::ValueTree* apvtsTree{nullptr};
 
 	String factoryId{};
 

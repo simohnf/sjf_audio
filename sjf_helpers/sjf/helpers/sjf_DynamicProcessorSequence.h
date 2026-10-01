@@ -70,11 +70,7 @@ public:
     // Fixed-capacity sequence payload matching maximum available tuple elements
     using SequenceOrder = std::array<size_t, NumProcessors>;
 
-    ~DynamicProcessorSequence() override
-    {
-    	if ((apvtsTree && apvtsTree->isValid()))
-    		apvtsTree->removeListener(this);
-    }
+    ~DynamicProcessorSequence() override {}
 
     //==============================================================================
     // EXISTING PUBLIC INTERFACE (Preserved from ProcessorSequence)

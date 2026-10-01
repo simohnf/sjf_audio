@@ -20,12 +20,14 @@ public:
 	SoloSet(const bool parallel_) : parallel(parallel_)
 	{}
 
-	~SoloSet() override
+	~SoloSet() override {}
+
+	void removeAllListeners()
 	{
 		for (auto parameter : parameters)
 			parameter->removeListener(this);
+		parameters.clear();
 	}
-
 	void addToSoloSet(RangedAudioParameter* soloParam)
 	{
 		jassert(std::ranges::find(parameters, soloParam) == parameters.end());

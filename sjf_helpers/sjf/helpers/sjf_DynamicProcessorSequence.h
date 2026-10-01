@@ -354,8 +354,13 @@ private:
 
 	void valueTreeRedirected(ValueTree& treeWhichHasBeenChanged) override
 	{
-		if (treeWhichHasBeenChanged == apvtsTree)
-			attachToState(treeWhichHasBeenChanged);
+		if (treeWhichHasBeenChanged == stateTree || treeWhichHasBeenChanged == apvtsTree)
+		{
+			if (MessageManager::existsAndIsCurrentThread())
+				publishSequenceUpdate();
+			else
+				asyncUpdater.triggerUpdate();
+		}
 	}
 
     //==============================================================================

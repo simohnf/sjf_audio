@@ -134,7 +134,7 @@ struct Waveshapers
         
         static float xOverYthRootOf1PlusXpowY( const float input, const float power = 2 )
         {
-            return input / std::pow( 1.0f + std::pow(input, power), 1.0f/power );
+            return input / static_cast<float>(std::pow(1.0f + std::pow(input, power), 1.0f / power));
         }
 
         /**
@@ -161,7 +161,7 @@ struct Waveshapers
         {
             static constexpr float oneOverTwoPi = 1 / (2*juce::MathConstants<float>::pi);
             auto x = oneOverTwoPi * input;
-            return std::abs( x - floor(x + 0.75f)  + 0.25f ) * 4.0f- 1.0f;
+            return static_cast<float>(std::abs(x - floor(x + 0.75f) + 0.25f)) * 4.0f- 1.0f;
 
         }
 

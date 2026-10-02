@@ -508,7 +508,7 @@ namespace waveforms
 
     forcedinline float getTriangle( const float phase ) // no duty cycle .... need to add that!!!
     {
-        return abs( phase - utilities::floor(phase + 0.75f)  + 0.25f ) * 4.0f- 1.0f;
+        return static_cast<float>(std::abs(phase - utilities::floor(phase + 0.75f) + 0.25f)) * 4.0f- 1.0f;
     }
 
     /**

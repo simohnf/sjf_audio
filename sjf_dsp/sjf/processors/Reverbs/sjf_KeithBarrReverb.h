@@ -165,12 +165,13 @@ public:
     	parameters.setSmootherLength(100.0f);
     	delayLine.prepare(spec);
 
-    	inputScaling = 1.0f / (sqrtf(NumStages) * sqrt(2.0f));
+    	inputScaling = 1.0f / static_cast<float>(sqrtf(NumStages) * sqrt(2.0f));
     	for (auto i = 0ul; i < NumStages; i++)
     	{
     		auto& m = modulators[i];
     		m.prepare(spec);
-    		m.setFrequency(juce::jmap<float>( fmod(juce::MathConstants<float>::euler * static_cast<float>(i) / static_cast<float>(NumStages), 1.0f), 0.1f, 3.75f));
+    		m.setFrequency(juce::jmap<float>( static_cast<float>(fmod(
+					juce::MathConstants<float>::euler * static_cast<float>(i) / static_cast<float>(NumStages), 1.0f)), 0.1f, 3.75f));
     	}
 
     	// calculateDelayTimes();

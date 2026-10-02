@@ -70,7 +70,8 @@ public:
 	        	const auto scale = pow(2.0f, jmap(1.0f-diffusion.getParameterValue()*0.01f, -1.0f, 1.0f ));
 	        	const auto exponent = juce::MathConstants<float>::euler * scale;
 	        	const auto polarity = helpers::functions::waveforms::wrapPhase(static_cast<float>(t) * juce::MathConstants<float>::sqrt2 / juce::MathConstants<float>::euler) > 0.75f ? -1.0f : 1.0f;
-	        	tapAmplitudesPreCompute[t] =  polarity * std::pow(1.0f - static_cast<float>(t) / static_cast<float>(MaxNumTaps), exponent);
+	        	tapAmplitudesPreCompute[t] =  polarity * static_cast<float>(std::pow(1.0f - static_cast<float>(t) / static_cast<float>(MaxNumTaps),
+												exponent));
 	        }
 
         	return AudioParametersBase::checkForStateChange();

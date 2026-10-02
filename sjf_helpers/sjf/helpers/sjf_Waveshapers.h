@@ -42,7 +42,7 @@ struct Waveshapers
        */
         static float hard( const float value, const float clippingPoint = 1.0f )
         {
-            return 0.5f * ( abs(value+clippingPoint) - abs(value-clippingPoint) );
+            return 0.5f * ( std::abs(value+clippingPoint) - std::abs(value-clippingPoint) );
         }
 
         /**
@@ -55,7 +55,7 @@ struct Waveshapers
             value = Clippers::hard( value);
             const auto sign = value < 0.0f ? -1.0f : 1.0f;
             const auto raised = std::pow(value, static_cast<float>(clipType));
-            const auto clipped = value - (sign*abs(raised/static_cast<float>(clipType)));
+            const auto clipped = value - (sign * std::abs(raised/static_cast<float>(clipType)));
             return clipped * (shouldNormalise ? static_cast<float>(clipType)/(static_cast<float>(clipType)-1.0f) : 1.0f);
         }
 
@@ -128,7 +128,7 @@ struct Waveshapers
         
         static float xOverOnePlusAbsX( const float input )
         {
-            return input / ( 1 + abs( input ) );
+            return input / ( 1 + std::abs( input ) );
         }
 
         
@@ -161,7 +161,7 @@ struct Waveshapers
         {
             static constexpr float oneOverTwoPi = 1 / (2*juce::MathConstants<float>::pi);
             auto x = oneOverTwoPi * input;
-            return abs( x - floor(x + 0.75f)  + 0.25f ) * 4.0f- 1.0f;
+            return std::abs( x - floor(x + 0.75f)  + 0.25f ) * 4.0f- 1.0f;
 
         }
 
@@ -171,7 +171,7 @@ struct Waveshapers
         
         static float dual( const float input ) // from pigments
         {
-            return input < 0 ? abs( Wavefolders::sin( input ))*-1.0f : abs( Wavefolders::tri( input ) );
+            return input < 0 ? std::abs( Wavefolders::sin( input ))*-1.0f : std::abs( Wavefolders::tri( input ) );
         }
 
     };
@@ -188,7 +188,7 @@ struct Waveshapers
             x = Clippers::hard(x);
             const auto x2 = x*x;
             const auto x3 = x2*x;
-            return x - alpha*x2 - beta*x3 + alpha*abs(x); // I've modified this from the DAFX paper so that the dc offset is 0 at 0 input --> it was causing a nasty click on load
+            return x - alpha*x2 - beta*x3 + alpha*std::abs(x); // I've modified this from the DAFX paper so that the dc offset is 0 at 0 input --> it was causing a nasty click on load
         }
 
 
@@ -199,7 +199,7 @@ struct Waveshapers
         static float distortion( float value )
         {
             value = Clippers::hard( value, 4.0f );
-            return (value < 0.0f ? -1 : 1) * (1.0f - juce::dsp::FastMathApproximations::exp(-abs(value)) );
+            return (value < 0.0f ? -1 : 1) * (1.0f - juce::dsp::FastMathApproximations::exp(-std::abs(value)) );
 
         }
     };

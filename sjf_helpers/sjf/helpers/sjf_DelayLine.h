@@ -292,7 +292,7 @@ namespace sjf::helpers
 			for ( auto head = 0ul; head < NUM_HEADS; ++head)
 				sum += helpers::functions::waveforms::getHannWindow(static_cast<float>(head)*headOffset);
 			if (EQUAL_POWER)
-				return 1.0f / sqrt(sum);
+				return 1.0f / static_cast<float>(std::sqrt(sum));
 			return 1.0f/sum;
 		}
 

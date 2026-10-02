@@ -626,12 +626,12 @@ namespace waveforms
         {
             const auto frac = ((static_cast<float>(i) / static_cast<float>(count)) -0.5f)* 0.001f;
             const auto posCos = wrapPhase(1.0f + frac);
-            const auto cos = abs(getCos(posCos));
+            const auto cos = std::abs(getCos(posCos));
             if( cos > max )
                 max = cos;
 
             const auto posSin = wrapPhase(0.25f + frac);
-            const auto sin =abs( getSin(posSin));
+            const auto sin = std::abs( getSin(posSin));
             if( sin > max )
                 max = sin;
         }

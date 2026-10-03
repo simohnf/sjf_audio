@@ -94,7 +94,7 @@ struct Waveshapers
             if (value < oneThird)
                 value  *= 2.0f;
             else if (value < twoThirds)
-                value = 3.0f - pow( 2 - 3*value, 3.0f)/3.0f;
+                value = 3.0f - static_cast<float>(std::pow(2 - 3 * value, 3.0f)) /3.0f;
             else
                 value = 1;
             return value * sign;

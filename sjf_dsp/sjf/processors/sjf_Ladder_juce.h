@@ -95,7 +95,6 @@ public:
     	{
     		filter.process(context);
     	}
-    	DBG(parameters.cutoff.currentValue);
     }
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)

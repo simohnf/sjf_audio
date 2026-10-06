@@ -461,8 +461,8 @@ public:
 
         testCase("createParameters returns valid factory", [&](){
             DynamicProcessorSequence<TestGain, TestGain, TestGain> dps;
-            auto params = dps.createParameters("Test", "Test",
-                SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+            auto params = std::move(dps.createParameters("Test", "Test",
+                SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"})->getAudioProcessorParameterGroup());
 
             expect(params != nullptr, "createParameters should return a valid ParameterFactory");
             expect(params->getParameters(true).size() > 0,

@@ -36,7 +36,7 @@ namespace sjf::helpers
  * local ID and local display name to these roots, producing grouped parameters with standardized
  * prefixes (e.g., ID: "baseID.paramID", Name: "baseName: paramName").
  */
-class ParameterFactory : public juce::AudioProcessorParameterGroup
+class ParameterFactory
 {
 private:
     struct ConstructorToken { explicit ConstructorToken (int) {} };
@@ -80,15 +80,24 @@ public:
 
 	};
 
+
 	[[nodiscard]] static GroupMetadata createMetadataTree (const ParameterFactory& rootFactory)
 	{
+		return createMetadataTree(rootFactory, *rootFactory.getAudioProcessorParameterGroup());
+	}
+
+	[[nodiscard]] static GroupMetadata createMetadataTree (const ParameterFactory& rootFactory, const juce::AudioProcessorParameterGroup& rootGroup)
+	{
 		auto isMultiBand{false};
-		for (const auto* childFactory : rootFactory.childFactories)
+		jassert(rootFactory.childFactories.size() == static_cast<size_t>(rootGroup.getSubgroups(false).size()));
+		for (auto i = 0ul; i < rootFactory.childFactories.size(); ++i)
 		{
+			auto& childFactory = rootFactory.childFactories[i];
+			auto childGroup = rootGroup.getSubgroups(false)[static_cast<int>(i)];
 			if (childFactory != nullptr)
 			{
-				auto id = ParameterFactory::getIDWithoutParentPrefix(*childFactory);
-				auto name = ParameterFactory::getNameWithoutParentPrefix(*childFactory);
+				auto id = ParameterFactory::getIDWithoutParentPrefix(*childGroup);
+				auto name = ParameterFactory::getNameWithoutParentPrefix(*childGroup);
 				if (id.startsWith("B") && name.startsWith("Band"))
 				{
 					id   = id.substring(1);
@@ -98,8 +107,9 @@ public:
 				}
 			}
 		}
+
 		GroupMetadata node{
-			.groupID = rootFactory.getID(),
+			.groupID = rootGroup.getID(),
 			.supportsSubPresets = rootFactory.supportsSubPresets(),
 			.supportsChildSubPresets = rootFactory.supportsChildSubPresets(),
 			.isMultiBand = isMultiBand,
@@ -109,19 +119,20 @@ public:
 
 		if (!rootFactory.childFactories.empty())
 		{
-			for (const auto rangedParam : rootFactory.getParameters(false))
+			for (const auto rangedParam : rootGroup.getParameters(false))
 			{
 				if (const auto* choiceParam = dynamic_cast<const sjf::helpers::parameters::ChoiceParameter*> (rangedParam))
 				{
 					const auto& choices = choiceParam->choices;
 
-					if (static_cast<size_t>(choices.size()) == rootFactory.childFactories.size())
+					if (choices.size() == rootGroup.getSubgroups(false).size())
 					{
 						bool matchesAll = true;
 						for (auto i = 0; i < choices.size(); ++i)
 						{
-							const auto relativeName = getNameWithoutParentPrefix (*rootFactory.childFactories[static_cast<size_t>(i)]);
-							if (choices[i] != rootFactory.childFactories[static_cast<size_t>(i)]->getName() && choices[i] != relativeName)
+							auto childGroup = rootGroup.getSubgroups(false)[i];
+							const auto relativeName = getNameWithoutParentPrefix (*childGroup);
+							if (choices[i] != childGroup->getName() && choices[i] != relativeName)
 							{
 								matchesAll = false;
 								break;
@@ -138,10 +149,13 @@ public:
 			}
 		}
 
-		for (const auto* childFactory : rootFactory.childFactories)
+		for (auto i = 0ul; i < rootFactory.childFactories.size(); ++i)
 		{
-			if (childFactory != nullptr)
-				node.children.push_back (createMetadataTree (*childFactory));
+			auto& childFactory = rootFactory.childFactories[i];
+			auto childGroup = rootGroup.getSubgroups(false)[static_cast<int>(i)];
+
+			if (childFactory != nullptr && childGroup != nullptr)
+				node.children.push_back (createMetadataTree (*childFactory, *childGroup));
 		}
 		return node;
 	}
@@ -157,7 +171,7 @@ public:
     }
 
     ParameterFactory (ConstructorToken, const juce::String& factoryID, const juce::String& factoryName, const size_t numProcessorsForDynamicSequence = 0, const bool supportsSubPresets = true, const bool supportsChildSubPresets = true)
-        : juce::AudioProcessorParameterGroup (factoryID, factoryName, " "),
+        : appGroup (std::make_unique<juce::AudioProcessorParameterGroup>(factoryID, factoryName, " ")),
           baseID (factoryID), baseName (factoryName), dynamicProcessorSequence(numProcessorsForDynamicSequence), supportsPresets(supportsSubPresets), supportsChildPresets(supportsChildSubPresets)
     {}
 
@@ -179,7 +193,7 @@ public:
         );
 
         auto* rawPtr = p.get();
-        AudioProcessorParameterGroup::addChild (std::move (p));
+        appGroup->addChild (std::move (p));
         return rawPtr;
     }
 
@@ -198,7 +212,7 @@ public:
         );
 
         auto* rawPtr = p.get();
-        AudioProcessorParameterGroup::addChild (std::move (p));
+        appGroup->addChild (std::move (p));
         return rawPtr;
     }
 
@@ -217,7 +231,7 @@ public:
         );
 
         auto* rawPtr = p.get();
-        AudioProcessorParameterGroup::addChild (std::move (p));
+        appGroup->addChild (std::move (p));
         return rawPtr;
     }
 
@@ -238,7 +252,7 @@ public:
         );
 
         auto* rawPtr = p.get();
-        AudioProcessorParameterGroup::addChild (std::move (p));
+        appGroup->addChild (std::move (p));
         return rawPtr;
     }
 
@@ -256,13 +270,14 @@ public:
 
     void addChildFactory (std::unique_ptr<ParameterFactory> child)
     {
-        jassert(child->getID().startsWith(baseID));
-        jassert(child->getName().startsWith(baseName));
+        jassert(child->appGroup->getID().startsWith(baseID));
+        jassert(child->appGroup->getName().startsWith(baseName));
 
         if (child != nullptr)
         {
-        	childFactories.push_back(child.get());
-	        AudioProcessorParameterGroup::addChild (std::move (child));
+        	appGroup->addChild (std::move(child->appGroup));
+        	childFactories.push_back(std::move(child));
+
         }
     }
 
@@ -275,10 +290,10 @@ public:
             return groupID;
     }
 
-    [[nodiscard]] static juce::String getIDWithoutParentPrefix(const ParameterFactory& group)
-    {
-        return getIDWithoutParentPrefix(*dynamic_cast<const AudioProcessorParameterGroup*>(&group));
-    }
+    // [[nodiscard]] static juce::String getIDWithoutParentPrefix(const ParameterFactory& group)
+    // {
+    //     return getIDWithoutParentPrefix(*group.appGroup);
+    // }
 
     [[nodiscard]] static juce::String getNameWithoutParentPrefix(const juce::AudioProcessorParameterGroup& group)
     {
@@ -289,10 +304,10 @@ public:
             return groupName;
     }
 
-    [[nodiscard]] static juce::String getNameWithoutParentPrefix(const ParameterFactory& group)
-    {
-        return getNameWithoutParentPrefix(*dynamic_cast<const AudioProcessorParameterGroup*>(&group));
-    }
+    // [[nodiscard]] static juce::String getNameWithoutParentPrefix(const ParameterFactory& group)
+    // {
+    //     return getNameWithoutParentPrefix(*group.appGroup);
+    // }
 
     [[nodiscard]] static juce::String getIDWithoutParentPrefix(const juce::RangedAudioParameter& param, const juce::AudioProcessorParameterGroup& group)
     {
@@ -302,7 +317,7 @@ public:
 
     [[nodiscard]] static juce::String getIDWithoutParentPrefix(const juce::RangedAudioParameter& param, const ParameterFactory& group)
     {
-        return getIDWithoutParentPrefix(param, *dynamic_cast<const AudioProcessorParameterGroup*>(&group));
+        return getIDWithoutParentPrefix(param, *group.appGroup);
     }
 
     [[nodiscard]] static juce::String getNameWithoutParentPrefix(const juce::RangedAudioParameter& param, const juce::AudioProcessorParameterGroup& group)
@@ -313,12 +328,12 @@ public:
 
     [[nodiscard]] static juce::String getNameWithoutParentPrefix(const juce::RangedAudioParameter& param, const ParameterFactory& group)
     {
-        return getNameWithoutParentPrefix(param, *dynamic_cast<const AudioProcessorParameterGroup*>(&group));
+        return getNameWithoutParentPrefix(param, *group.appGroup);
     }
 
 	void setAllToDefault(const bool recursive = true)
     {
-	    for (auto p : getParameters(recursive))
+	    for (auto p : appGroup->getParameters(recursive))
 	    	p->setValue(p->getDefaultValue());
     }
 
@@ -336,12 +351,43 @@ public:
 	{
 		return dynamicProcessorSequence;
 	}
+
+	std::unique_ptr<juce::AudioProcessorParameterGroup>& getAudioProcessorParameterGroup()
+	{
+		return appGroup;
+	}
+
+
+	const std::unique_ptr<juce::AudioProcessorParameterGroup>& getAudioProcessorParameterGroup() const
+	{
+		return appGroup;
+	}
+
+	/** Returns the group's ID. */
+	String getID() const
+	{
+		return appGroup->getID();
+	}
+
+	/** Returns the group's name. */
+	String getName() const
+	{
+		return appGroup->getName();
+	}
+
+	Array<const AudioProcessorParameterGroup*> getSubgroups (bool recursive) const
+	{
+		return appGroup->getSubgroups(recursive);
+	}
 private:
-	std::vector<const ParameterFactory*> childFactories;
+	std::unique_ptr<juce::AudioProcessorParameterGroup> appGroup{nullptr};
+	std::vector<std::unique_ptr<ParameterFactory>> childFactories;
     const juce::String baseID, baseName;
 	const size_t dynamicProcessorSequence{0};
 	const bool supportsPresets{false};
 	const bool supportsChildPresets{true};
+
+	friend struct GroupMetadata;
 };
 
 //===========//===========//===========//===========//===========//===========

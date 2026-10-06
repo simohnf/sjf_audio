@@ -233,10 +233,11 @@ public:
                     {
                         auto delayFactory_ = delayTime.createParameters(factoryID+"Time" + str.substring(0, 1), factoryName + " Time " + str);
                         auto& delayFactory = *delayFactory_;
-                        factory->addChildFactory(std::move(delayFactory_));
 
-                        if constexpr (hasOffset)
-                            createTrackedOffsetParameter(delayFactory, i);
+                    	if constexpr (hasOffset)
+                    		createTrackedOffsetParameter(delayFactory, i);
+
+                    	factory->addChildFactory(std::move(delayFactory_));
 
                         addTrackedChildParameters(delayTime);
                     }

@@ -229,8 +229,8 @@ public:
 
     	if constexpr (AddFilters)
     	{
-    		dummyGroup = inputFilter.createParameters("Dummy", "Dummy");
-    		dummyGroup->addChild(outputFilter.createParameters("Out", "Out"));
+    		inputFilterDummyGroup = inputFilter.createParameters("InputDummy", "Input Dummy");
+    		outputFilterDummyGroup = outputFilter.createParameters("OutputDummy", "Output Dummy");
 
     		inputFilter.getProcessor().parameters.updateMapping(inputFilter.getProcessor().parameters.cutoff, [this](float){
     			return juce::jmax(0.0f, parameters.sampleRate.getParameterValue() * 0.49f);
@@ -286,7 +286,7 @@ private:
 
 	using Filter = sjf::dsp::SVF<FixedFilterType::LowPass, true, filter_config::FrequencyRange<>, false>;
 	[[maybe_unused]] sjf::helpers::BypassWrapper<Filter, helpers::bypass_wrapper_config::OnOff> inputFilter, outputFilter;
-	[[maybe_unused]] std::unique_ptr<AudioProcessorParameterGroup> dummyGroup{nullptr};
+	[[maybe_unused]] std::unique_ptr<helpers::ParameterFactory> inputFilterDummyGroup{nullptr}, outputFilterDummyGroup{nullptr};
 	[[maybe_unused]] juce::Random rnd;
     juce::dsp::ProcessSpec spec{};
 	float phase{};

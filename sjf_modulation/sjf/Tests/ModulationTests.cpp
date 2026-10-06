@@ -96,11 +96,11 @@ public:
 
 			auto modParams = mods.createParameters("Mod", "Mod", SFC{"LFO1", "LFO1"});
 
-			layout.add(std::move(modParams));
+			layout.add(std::move(modParams->getAudioProcessorParameterGroup()));
 
 			auto processorParams = gain.createParameters("Gain", "Gain");
-    		auto processorParams_ = processorParams.get();
-			layout.add(std::move(processorParams));
+    		auto processorParams_ = processorParams->getAudioProcessorParameterGroup().get();
+			layout.add(std::move(processorParams->getAudioProcessorParameterGroup()));
 
 			TestProcessor mainProcessor(layout);
 

@@ -106,7 +106,7 @@ private:
 		//============//============//============//============//==========*/
 		Processor processor;
 
-		auto params = createParameters(processor, "Test", "Test");
+		auto params = std::move(createParameters(processor, "Test", "Test")->getAudioProcessorParameterGroup());
 		processor.prepare(spec);
 		// params->setAllToDefault();
 
@@ -145,7 +145,7 @@ private:
 	{
 		Processor processor;
 		auto rng = getRandom();
-		auto params = createParameters(processor, "Test", "Test");
+		auto params = std::move(createParameters(processor, "Test", "Test")->getAudioProcessorParameterGroup());
 		if (!params)
 			return true;
 		processor.prepare(spec);

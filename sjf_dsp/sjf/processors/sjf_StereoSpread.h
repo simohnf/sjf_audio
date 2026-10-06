@@ -253,7 +253,7 @@ private:
 
 
     juce::dsp::ProcessSpec spec{};
-	std::unique_ptr<juce::AudioProcessorParameterGroup> crossoverFiltersParams {nullptr};
+	std::unique_ptr<helpers::ParameterFactory> crossoverFiltersParams {nullptr};
 	juce::AudioBuffer<float> inputBuffer, lowBuffer, highBuffer;
 
 

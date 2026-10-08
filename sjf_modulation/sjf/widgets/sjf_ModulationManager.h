@@ -181,19 +181,20 @@ private:
         	{
         		auto sub = PopupMenu{};
         		modControlPanels.push_back(std::make_unique<ModControlPanel>());
-				auto v = connection.depth;
-        		modControlPanels.back()->depthSlider.setValue( v * 100.0f);
-				modControlPanels.back()->depthSlider.onMouseUp = [this, safeThis = std::weak_ptr(guard), v, modId, paramID, slider = Component::SafePointer(&modControlPanels.back()->depthSlider)](){
+				auto depth = connection.depth;
+				auto bipolar = connection.bipolar;
+        		modControlPanels.back()->depthSlider.setValue( depth * 100.0f);
+				modControlPanels.back()->depthSlider.onMouseUp = [this, safeThis = std::weak_ptr(guard), depth, modId, paramID, bipolar, slider = Component::SafePointer(&modControlPanels.back()->depthSlider)](){
 					if (safeThis.expired())
 						return;
 
-					if (slider && !approximatelyEqual(static_cast<float>(slider->getValue()) *0.01f, v))
+					if (slider && !approximatelyEqual(static_cast<float>(slider->getValue()) *0.01f, depth))
 					{
 						if (undoManager)
 						{
 							undoManager->beginNewTransaction();
 						}
-						system.addConnection(modId, paramID, static_cast<float>(slider->getValue()) * 0.01f, undoManager);
+						system.addConnection(modId, paramID, static_cast<float>(slider->getValue()) * 0.01f, bipolar, undoManager);
 						if (undoManager)
 						{
 							undoManager->setCurrentTransactionName("Changed depth of modulation connection: " + modId + " ==> " + paramID + " to: " + slider->getTextFromValue(slider->getValue()));
@@ -224,8 +225,32 @@ private:
 						juce::PopupMenu::dismissAllActiveMenus();
 					}
 				};
+				modControlPanels.back()->polarity.setButtonText(bipolar ? "Bipolar" : "Unipolar");
+				modControlPanels.back()->polarity.onClick = [this, safeThis = std::weak_ptr(guard), modId, paramID, depth, button = Component::SafePointer(&modControlPanels.back()->polarity)] ()
+				{
+					if (safeThis.expired())
+						return;
 
-        		sub.addCustomItem(1, *modControlPanels.back(), 500, 100, false, nullptr, modId);
+					if (button)
+					{
+						auto connection_ = system.getConnection(modId, paramID);
+						auto bipolar_ = !connection_.bipolar;
+
+						if (undoManager)
+						{
+							undoManager->beginNewTransaction();
+						}
+						system.addConnection(modId, paramID, depth, bipolar_, undoManager);
+						if (undoManager)
+						{
+							undoManager->setCurrentTransactionName("Changed polarity of modulation connection: " + modId + " ==> " + paramID + " to: " + (bipolar_ ? "Bipolar" : "Unipolar"));
+							undoManager->beginNewTransaction();
+						}
+						button->setButtonText(bipolar_ ? "Bipolar" : "Unipolar");
+					}
+				};
+
+        		sub.addCustomItem(1, *modControlPanels.back(), 400, 20+(30*3), false, nullptr, modId);
         		menu.addSubMenu(modId, sub);
         	}
         	else
@@ -239,7 +264,7 @@ private:
         			{
         				undoManager->beginNewTransaction();
 					}
-					system.addConnection (modId, paramID, 1.0f, undoManager);
+					system.addConnection (modId, paramID, 1.0f, true, undoManager);
 
         			if (undoManager)
         			{
@@ -261,21 +286,32 @@ private:
     		addAndMakeVisible(remove);
     		remove.setButtonText("Remove");
 
+    		addAndMakeVisible(behindSlider);
+    		behindSlider.setInterceptsMouseClicks(false, false);
     		addAndMakeVisible(depthSlider);
     		depthSlider.setRange(-100.0f , 100.0f, 0.01f);
     		depthSlider.setDoubleClickReturnValue(true, 0.0f);
     		depthSlider.setTextValueSuffix("%");
-    		// setSize (100, 200);
+    		depthSlider.setColour(juce::Slider::backgroundColourId, findColour(juce::TextButton::buttonColourId));
+    		depthSlider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::black.withAlpha(0.0f));
+
+    		addAndMakeVisible(polarity);
     	}
 
     	void resized() override
     	{
     		remove.setBounds(5, 5, getWidth() - 10, 30);
-    		depthSlider.setBounds(remove.getX(), remove.getBottom() + 5, remove.getWidth(),  (getHeight() - 15) - 30);
+    		polarity.setBounds(5, remove.getBottom() + 5, getWidth() - 10, 30);
+    		behindSlider.setBounds(remove.getX(), polarity.getBottom() + 5, remove.getWidth(),  30);
+    		depthSlider.setBounds(behindSlider.getX()+5, behindSlider.getY(), behindSlider.getWidth()-5, behindSlider.getHeight());
     	}
 
     	struct DepthSlider : public juce::Slider
     	{
+    		DepthSlider()
+    		: juce::Slider(juce::Slider::SliderStyle::LinearHorizontal, juce::Slider::TextBoxRight)
+    		{}
+
     		void mouseUp(const MouseEvent& e) override
     		{
     			juce::Slider::mouseUp(e);
@@ -286,7 +322,7 @@ private:
     	};
 
 
-    	juce::TextButton remove;
+    	juce::TextButton remove, polarity, behindSlider;
     	DepthSlider depthSlider;
     };
 

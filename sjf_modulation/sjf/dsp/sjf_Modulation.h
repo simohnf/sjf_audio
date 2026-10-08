@@ -259,6 +259,7 @@ namespace sjf::dsp::modulation{
 			Modulator* source	= nullptr;
 			Modulatable* target	= nullptr;
 			float depth         = 0.0f;
+			bool bipolar = true;
 
 			bool isValid() const
 			{
@@ -316,12 +317,19 @@ namespace sjf::dsp::modulation{
 					conn.target->setModulationOffset(0.0f);
 
 			// 3. Accumulate weighted modulation sums
+			auto calculateOffset = [](float val, const float depth, const bool bipolar)
+			{
+				if (!bipolar)
+					val = (val+1.0f)*0.5f;
+				return val * depth;
+			};
+
 			for (const auto& conn : connections)
 			{
 				if (conn.source != nullptr && conn.target != nullptr)
 				{
 					const float currentOffset = conn.target->getModulationOffset();
-					const float addedOffset   = conn.source->getModulationSample() * conn.depth;
+					const float addedOffset   = calculateOffset(conn.source->getModulationSample(), conn.depth, conn.bipolar);
 
 					conn.target->setModulationOffset(currentOffset + addedOffset);
 				}
@@ -415,6 +423,7 @@ namespace sjf::dsp::modulation{
 				ret.add(connection.source->getModulatorID());
 				ret.add(dynamic_cast<RangedAudioParameter*>(connection.target)->paramID);
 				ret.add(juce::String(connection.depth));
+				ret.add(juce::String(connection.bipolar ? "Bipolar" : "Unipolar"));
 
 				return ret.joinIntoString(ids::seperator1);
 			}
@@ -449,6 +458,8 @@ namespace sjf::dsp::modulation{
 			result.target = dynamic_cast<Modulatable*>(apvts->getParameter(arr[1]));
 			result.depth = arr[2].getFloatValue();
 
+			result.bipolar = arr.size() < 4 ? true : arr[3]=="Bipolar";
+
 			if (!result.target)
 			{
 				jassertfalse;
@@ -479,7 +490,7 @@ namespace sjf::dsp::modulation{
 			return ret;
 		}
 
-		void addConnection(const juce::String& modId, const juce::String& paramId, const float depth, UndoManager* undoManager)
+		void addConnection(const juce::String& modId, const juce::String& paramId, const float depth, bool bipolar, UndoManager* undoManager)
 		{
 			if (apvts && stateTree.isValid())
 			{
@@ -490,7 +501,7 @@ namespace sjf::dsp::modulation{
 				auto param = apvts->getParameter(paramId);
 				if (mod && param && dynamic_cast<Modulatable*>(param))
 				{
-					addConnection(Connection{mod, dynamic_cast<Modulatable*>(param), depth}, undoManager);
+					addConnection(Connection{mod, dynamic_cast<Modulatable*>(param), depth, bipolar}, undoManager);
 				}
 				else
 				{
@@ -512,6 +523,7 @@ namespace sjf::dsp::modulation{
 				if (auto pos = std::find_if(connections.begin(), connections.end(),[&](auto& c){ return c.source == connection.source && c.target == connection.target; }); pos != connections.end())
 				{
 					pos->depth = connection.depth;
+					pos->bipolar = connection.bipolar;
 				}
 				else
 				{

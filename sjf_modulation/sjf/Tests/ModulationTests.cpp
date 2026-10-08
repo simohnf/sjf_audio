@@ -142,7 +142,7 @@ public:
 
 			processBlocks(after1);
 
-    		mods.addConnection(mods.modulators.getIndexToId()[0], dynamic_cast<RangedAudioParameter*>(processorParams_->getParameters(true)[0])->paramID, 1.0f, nullptr);
+    		mods.addConnection(mods.modulators.getIndexToId()[0], dynamic_cast<RangedAudioParameter*>(processorParams_->getParameters(true)[0])->paramID, 1.0f, true,  nullptr);
 
 			mods.reset();
     		gain.reset();

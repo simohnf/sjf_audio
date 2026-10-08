@@ -9,6 +9,7 @@
 //
 // Created by Simon Fay on 05/08/2026.
 //
+
 #include <JuceHeader.h>
 #include "sjf_UnitTester/sjf_GenericTests.h"
 #include <sjf/helpers/sjf_Gain.h>
@@ -19,9 +20,20 @@
 // #include <chrono>
 // #include <cstdlib>
 // #include <new>
+#if !defined(__has_feature)
+  #define __has_feature(x) 0
+#endif
 
+#if !__has_feature(thread_sanitizer) && !__has_feature(address_sanitizer) && !defined(__SANITIZE_ADDRESS__) && !defined(__SANITIZE_THREAD__)
+	#define CUSTOM_ALLOCATOR true
+#else
+	#define CUSTOM_ALLOCATOR false
+#endif
+
+#if CUSTOM_ALLOCATOR
 static thread_local bool trackAllocations = false;
 static thread_local int  allocationCount  = 0;
+
 
 void* operator new(std::size_t size)
 {
@@ -45,6 +57,7 @@ void operator delete(void* p) noexcept   { std::free(p); }
 void operator delete[](void* p) noexcept { std::free(p); }
 void operator delete(void* p, std::size_t) noexcept   { std::free(p); }
 void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
+#endif
 
 namespace sjf::tests
 {
@@ -623,6 +636,7 @@ public:
             expect(&g2_before == &g2_after, "Processor 2 address should not change");
         });
 
+		#if CUSTOM_ALLOCATOR
         testCase("Process with no allocation on audio thread", [&](){
             using DPS = DynamicProcessorSequence<AttenuatingGain, AttenuatingGain, AttenuatingGain>;
         	DPS dps;
@@ -652,6 +666,7 @@ public:
                 "process() allocated " + juce::String(allocationCount) +
                 " time(s) on the audio thread. Must be 0.");
         });
+		#endif
 
         testCase("process() does not lock", [&](){
             using DPS = DynamicProcessorSequence<AttenuatingGain, AttenuatingGain, AttenuatingGain>;

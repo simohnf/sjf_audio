@@ -140,6 +140,13 @@ public:
     	});
     }
 
+	void attachAPVTS(juce::AudioProcessorValueTreeState& apvts)
+	{
+		sjf::helpers::functions::utilities::forEach(processors,[&](auto& proc){
+			sjf::optional_calls::attachAPVTS(proc, apvts);
+		});
+	}
+
 private:
 
 

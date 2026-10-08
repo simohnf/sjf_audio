@@ -67,6 +67,19 @@ namespace internal
     void attachToState(T&, juce::ValueTree&, long)
     {}
 
+
+	template <typename T>
+	auto attachAPVTS(T& processor, juce::AudioProcessorValueTreeState& apvts, int)
+	-> decltype(processor.attachAPVTS(apvts), void())
+    {
+    	processor.attachAPVTS(apvts);
+    	return;
+    }
+
+	template <typename T>
+    void attachAPVTS(T&, juce::AudioProcessorValueTreeState&, long)
+    {}
+
 	template <typename T>
 	auto attachToSoloSet(T& processor, helpers::SoloSet* soloSet_, int)
 	-> decltype(processor.attachToSoloSet(soloSet_), void())
@@ -155,6 +168,12 @@ template <typename T>
 void attachToState(T& processor, juce::ValueTree& apvtsState)
 {
 	optional_calls::internal::attachToState(processor, apvtsState, 0);
+}
+
+template <typename T>
+void attachAPVTS(T& processor, juce::AudioProcessorValueTreeState& apvts)
+{
+	optional_calls::internal::attachAPVTS(processor, apvts, 0);
 }
 
 

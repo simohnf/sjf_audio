@@ -142,6 +142,11 @@ public:
 
     }
 
+	/**
+	 * @brief Attach the processor to the plugins apvts
+	 * /
+	void attachAPVTS(juce::AudioProcessorValueTreeState& apvts) {  }
+
 private:
     /**
      * @brief Processes audio using vectorizable, channel-by-channel loops when parameters are stationary.

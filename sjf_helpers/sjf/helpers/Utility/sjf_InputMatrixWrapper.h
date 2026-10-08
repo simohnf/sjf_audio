@@ -172,6 +172,8 @@ public:
     {
     	sjf::optional_calls::attachToState(processor, parentTree);
     }
+
+	void attachAPVTS(juce::AudioProcessorValueTreeState& apvts) { sjf::optional_calls::attachAPVTS(processor, apvts); }
 private:
 	forcedinline static void convertToMono(const juce::dsp::AudioBlock<float>& block)
 	{

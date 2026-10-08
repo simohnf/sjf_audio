@@ -117,6 +117,11 @@ struct ProcessorDuplicator
     	sjf::optional_calls::attachToState(processors[1], parentTree);
     }
 
+    void attachAPVTS(juce::AudioProcessorValueTreeState& apvts)
+    {
+        sjf::optional_calls::attachAPVTS(processors[0], apvts);
+        sjf::optional_calls::attachAPVTS(processors[1], apvts);
+    }
 private:
 
     void updateMasterParameters()

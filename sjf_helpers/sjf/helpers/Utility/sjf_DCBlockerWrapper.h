@@ -147,6 +147,8 @@ public:
     {
     	sjf::optional_calls::attachToState(processor, parentTree);
     }
+
+    void attachAPVTS(juce::AudioProcessorValueTreeState& apvts) { sjf::optional_calls::attachAPVTS(processor, apvts); }
 private:
 	bool applyDCBlocker()
 	{

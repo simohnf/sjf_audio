@@ -214,6 +214,13 @@ public:
     	});
     }
 
+	void attachAPVTS(juce::AudioProcessorValueTreeState& apvts)
+    {
+    	sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc){
+    		sjf::optional_calls::attachAPVTS(proc, apvts);
+    	});
+    }
+
 private:
 	template<typename ProcessContext>
 	void dispatchAndDelay(const ProcessContext& context, const size_t index, const size_t delayLineIndex)

@@ -475,6 +475,12 @@ public:
 			sjf::optional_calls::attachToState(processor, parentTree);
     }
 
+	void attachAPVTS(juce::AudioProcessorValueTreeState& apvts)
+    {
+    	for ( auto & processor : processors)
+			sjf::optional_calls::attachAPVTS(processor, apvts);
+    }
+
 	Processor& getProcessor(size_t index)
     {
     	jassert(index < processors.size());

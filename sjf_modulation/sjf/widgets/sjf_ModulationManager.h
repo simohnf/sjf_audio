@@ -53,10 +53,7 @@ public:
     {
         // 1. Recurse through the entire editor component tree
         attachToComponentTree (&editor);
-    	if (system.stateTree.isValid())
-			system.stateTree.addListener(this);
-    	else
-    		jassertfalse;
+    	globalAPVTS.state.addListener(this);
     }
 
     ~ModulationManager() override
@@ -64,10 +61,7 @@ public:
         for (auto* comp : attachedComponents)
             comp->removeMouseListener (this);
 
-    	if (system.stateTree.isValid())
-    		system.stateTree.removeListener(this);
-    	else
-    		jassertfalse;
+    	globalAPVTS.state.removeListener(this);
     }
 
 	ModulationSystem& getModulationSystem ()
@@ -79,7 +73,18 @@ private:
 	void valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged,
 									   const juce::Identifier&) override
 	{
-		if (treeWhosePropertyHasChanged == system.stateTree)
+		if (treeWhosePropertyHasChanged == globalAPVTS.state)
+		{
+			if (juce::MessageManager::existsAndIsCurrentThread())
+				checkModulationStateOfComponents();
+			else
+				asyncUpdater.triggerUpdate();
+		}
+	}
+
+	void valueTreeRedirected(ValueTree& treeWhichHasBeenChanged) override
+	{
+		if (treeWhichHasBeenChanged == globalAPVTS.state)
 		{
 			if (juce::MessageManager::existsAndIsCurrentThread())
 				checkModulationStateOfComponents();
@@ -128,7 +133,10 @@ private:
 
                 	componentMap[paramID] = parent;
                 	if (auto modCount = system.isModulated(modTarget))
+                	{
                 		parent->getProperties().set(ids::modulatedID, true);
+                		parent->repaint();
+                	}
                 }
             }
         }
@@ -184,17 +192,19 @@ private:
 				auto depth = connection.depth;
 				auto bipolar = connection.bipolar;
         		modControlPanels.back()->depthSlider.setValue( depth * 100.0f);
-				modControlPanels.back()->depthSlider.onMouseUp = [this, safeThis = std::weak_ptr(guard), depth, modId, paramID, bipolar, slider = Component::SafePointer(&modControlPanels.back()->depthSlider)](){
+				modControlPanels.back()->depthSlider.onMouseUp = [this, safeThis = std::weak_ptr(guard), depth, modId, paramID, slider = Component::SafePointer(&modControlPanels.back()->depthSlider)](){
 					if (safeThis.expired())
 						return;
 
 					if (slider && !approximatelyEqual(static_cast<float>(slider->getValue()) *0.01f, depth))
 					{
+						auto connection_ = system.getConnection(modId, paramID);
+
 						if (undoManager)
 						{
 							undoManager->beginNewTransaction();
 						}
-						system.addConnection(modId, paramID, static_cast<float>(slider->getValue()) * 0.01f, bipolar, undoManager);
+						system.addConnection(modId, paramID, static_cast<float>(slider->getValue()) * 0.01f, connection_.bipolar, undoManager);
 						if (undoManager)
 						{
 							undoManager->setCurrentTransactionName("Changed depth of modulation connection: " + modId + " ==> " + paramID + " to: " + slider->getTextFromValue(slider->getValue()));
@@ -226,7 +236,7 @@ private:
 					}
 				};
 				modControlPanels.back()->polarity.setButtonText(bipolar ? "Bipolar" : "Unipolar");
-				modControlPanels.back()->polarity.onClick = [this, safeThis = std::weak_ptr(guard), modId, paramID, depth, button = Component::SafePointer(&modControlPanels.back()->polarity)] ()
+				modControlPanels.back()->polarity.onClick = [this, safeThis = std::weak_ptr(guard), modId, paramID, button = Component::SafePointer(&modControlPanels.back()->polarity)] ()
 				{
 					if (safeThis.expired())
 						return;
@@ -240,7 +250,7 @@ private:
 						{
 							undoManager->beginNewTransaction();
 						}
-						system.addConnection(modId, paramID, depth, bipolar_, undoManager);
+						system.addConnection(modId, paramID, connection_.depth, bipolar_, undoManager);
 						if (undoManager)
 						{
 							undoManager->setCurrentTransactionName("Changed polarity of modulation connection: " + modId + " ==> " + paramID + " to: " + (bipolar_ ? "Bipolar" : "Unipolar"));

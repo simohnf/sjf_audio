@@ -273,10 +273,7 @@ namespace sjf::dsp::modulation{
 
 		~ModulationSystem() override
 		{
-			if (apvtsTree.isValid())
-				apvtsTree.removeListener(this);
-			if (stateTree.isValid())
-				stateTree.removeListener(this);
+			apvts->state.removeListener(this);
 		}
 
 		void prepare (const juce::dsp::ProcessSpec& spec_)
@@ -302,8 +299,6 @@ namespace sjf::dsp::modulation{
 		void process(const ProcessContext& context)
 		{
 			jassert(apvts);
-			jassert(apvtsTree.isValid());
-			jassert(stateTree.isValid());
 			// 1. Advance modulators in chain
 			modulators.process(context);
 
@@ -365,6 +360,24 @@ namespace sjf::dsp::modulation{
 			attachToState(apvts->state);
 
 			connectionRemover.resize(static_cast<size_t>(apvts->processor.getParameters().size()));
+
+			auto stateTree = apvts->state.getOrCreateChildWithName(id, nullptr);
+
+			if (MessageManager::existsAndIsCurrentThread())
+			{
+				apvts->state.addListener(this);
+				publishConnectionsUpdate();
+			}
+			else if (auto mm = MessageManager::getInstanceWithoutCreating())
+			{
+				mm->callAsync([this, g = std::weak_ptr(guard)](){
+					if (!g.expired() && apvts->state.isValid())
+					{
+						apvts->state.addListener(this);
+						publishConnectionsUpdate();
+					}
+				});
+			}
 		}
 
 		void attachToState (juce::ValueTree& parentTree)
@@ -372,29 +385,6 @@ namespace sjf::dsp::modulation{
 			jassert(apvts);
 			modulators.attachToState(parentTree);
 
-			if (apvtsTree.isValid())
-				apvtsTree.removeListener(this);
-			if (stateTree.isValid() && stateTree != apvtsTree)
-				stateTree.removeListener(this);
-
-			apvtsTree = parentTree;
-			stateTree = apvtsTree.getOrCreateChildWithName(id, nullptr);
-
-			if (MessageManager::existsAndIsCurrentThread())
-			{
-				apvtsTree.addListener(this);
-				publishConnectionsUpdate();
-			}
-			else if (auto mm = MessageManager::getInstanceWithoutCreating())
-			{
-				mm->callAsync([this, g = std::weak_ptr(guard)](){
-					if (!g.expired() && apvtsTree.isValid() && stateTree.isValid())
-					{
-						apvtsTree.addListener(this);
-						publishConnectionsUpdate();
-					}
-				});
-			}
 		}
 
 		const juce::String& getFactoryID()
@@ -402,12 +392,10 @@ namespace sjf::dsp::modulation{
 			return factoryId;
 		}
 
-		const ValueTree& getCurrentConnectionsAsValueTree()
+		ValueTree getCurrentConnectionsAsValueTree() const
 		{
-			jassert(apvtsTree.isValid());
 			jassert(apvts);
-			jassert(stateTree.isValid());
-			return stateTree;
+			return apvts->state.getChildWithName(id);
 		}
 
 				//==============================================================================
@@ -492,7 +480,7 @@ namespace sjf::dsp::modulation{
 
 		void addConnection(const juce::String& modId, const juce::String& paramId, const float depth, bool bipolar, UndoManager* undoManager)
 		{
-			if (apvts && stateTree.isValid())
+			if (apvts)
 			{
 				if (paramId.startsWith(modId))
 					return; // don't allow attaching mods to their own parameters
@@ -516,8 +504,9 @@ namespace sjf::dsp::modulation{
 
 		void addConnection(const Connection& connection, UndoManager* undoManager)
 		{
-			if (apvts && stateTree.isValid())
+			if (apvts)
 			{
+				auto stateTree = apvts->state.getChildWithName(id);
 				auto str = stateTree.getProperty(ids::connectionID, "").toString();
 				auto connections = str.isEmpty() ? Connections{} : stringToConnections(str);
 				if (auto pos = std::find_if(connections.begin(), connections.end(),[&](auto& c){ return c.source == connection.source && c.target == connection.target; }); pos != connections.end())
@@ -540,8 +529,9 @@ namespace sjf::dsp::modulation{
 
 		void removeConnection(const juce::String& modId, const juce::String& paramId, UndoManager* undoManager)
 		{
-			if (apvts && stateTree.isValid())
+			if (apvts)
 			{
+				auto stateTree = apvts->state.getChildWithName(id);
 				auto mod = modulators.getModulator(modId);
 				auto param = apvts->getParameter(paramId);
 
@@ -562,8 +552,9 @@ namespace sjf::dsp::modulation{
 
 		void removeConnection(const Connection& connection, UndoManager* undoManager)
 		{
-			if (apvts && stateTree.isValid())
+			if (apvts)
 			{
+				auto stateTree = apvts->state.getChildWithName(id);
 				auto str = stateTree.getProperty(ids::connectionID, "").toString();
 				auto connections = str.isEmpty() ? Connections{} : stringToConnections(str);
 				if (auto pos = std::find_if(connections.begin(), connections.end(),[&](auto& c){ return c.source == connection.source && c.target == connection.target; }); pos != connections.end())
@@ -585,8 +576,9 @@ namespace sjf::dsp::modulation{
 
 		void removeAllConnections(UndoManager* undoManager)
 		{
-			if (apvts && stateTree.isValid())
+			if (apvts)
 			{
+				auto stateTree = apvts->state.getChildWithName(id);
 				stateTree.setProperty(ids::connectionID, "", undoManager);
 			}
 			else
@@ -597,8 +589,9 @@ namespace sjf::dsp::modulation{
 
 		bool isConnected(const juce::String& modulatorID, const juce::String& modulatableId)
 		{
-			if (apvts && stateTree.isValid())
+			if (apvts)
 			{
+				auto stateTree = apvts->state.getChildWithName(id);
 				auto modulator = modulators.getModulator(modulatorID);
 				auto modulatable = dynamic_cast<Modulatable*>(apvts->getParameter(modulatableId));
 				return isConnected(modulator, modulatable);
@@ -610,8 +603,9 @@ namespace sjf::dsp::modulation{
 
 		bool isConnected(const Modulator* modulator, const Modulatable* modulatable)
 		{
-			if (apvts && stateTree.isValid())
+			if (apvts)
 			{
+				auto stateTree = apvts->state.getChildWithName(id);
 				if (!(modulator && modulatable))
 					return false;
 				const auto str = stateTree.getProperty(ids::connectionID, "").toString();
@@ -625,10 +619,11 @@ namespace sjf::dsp::modulation{
 
 		bool isModulated(const Modulatable* modulatable)
 		{
-			if (apvts && stateTree.isValid() )
+			if (apvts)
 			{
 				if (!modulatable)
 					return false;
+				auto stateTree = apvts->state.getChildWithName(id);
 				const auto str = stateTree.getProperty(ids::connectionID, "").toString();
 				auto connections = str.isEmpty() ? Connections{} : stringToConnections(str);
 				return std::find_if(connections.begin(), connections.end(),[&](auto& c){ return c.target == modulatable; }) != connections.end();
@@ -641,8 +636,9 @@ namespace sjf::dsp::modulation{
 
 		Connection getConnection(const juce::String& modulatorID, const juce::String& modulatableId)
 		{
-			if (apvts && stateTree.isValid())
+			if (apvts)
 			{
+				auto stateTree = apvts->state.getChildWithName(id);
 				auto modulator = modulators.getModulator(modulatorID);
 				auto modulatable = dynamic_cast<Modulatable*>(apvts->getParameter(modulatableId));
 				return getConnection(modulator, modulatable);
@@ -654,8 +650,9 @@ namespace sjf::dsp::modulation{
 
 		Connection getConnection(const Modulator* modulator, const Modulatable* modulatable)
 		{
-			if (apvts && stateTree.isValid())
+			if (apvts)
 			{
+				auto stateTree = apvts->state.getChildWithName(id);
 				const auto str = stateTree.getProperty(ids::connectionID, "").toString();
 				auto connections = str.isEmpty() ? Connections{} : stringToConnections(str);
 				if (auto conn = std::find_if(connections.begin(), connections.end(),[&](auto& c){ return c.source == modulator && c.target == modulatable; }); conn != connections.end())
@@ -676,6 +673,7 @@ namespace sjf::dsp::modulation{
 		void publishConnectionsUpdate()
 		{
 			jassert(MessageManager::existsAndIsCurrentThread());
+			auto stateTree = apvts->state.getChildWithName(id);
 			if (stateTree.isValid())
 			{
 				auto xml = stateTree.toXmlString();
@@ -736,7 +734,7 @@ namespace sjf::dsp::modulation{
 
 		void valueTreeRedirected(ValueTree& treeWhichHasBeenChanged) override
 		{
-			if (treeWhichHasBeenChanged == apvtsTree)
+			if (treeWhichHasBeenChanged == apvts->state)
 				attachToState(treeWhichHasBeenChanged);
 		}
 
@@ -833,7 +831,6 @@ namespace sjf::dsp::modulation{
 
 
 		juce::AudioProcessorValueTreeState* apvts{nullptr};
-		juce::ValueTree stateTree, apvtsTree;
 		juce::String factoryId{};
 		juce::Identifier id;
 

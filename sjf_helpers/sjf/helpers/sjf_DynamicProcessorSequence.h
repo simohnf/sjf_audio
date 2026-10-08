@@ -240,6 +240,7 @@ public:
     	if (!parentTree.isValid())
     		return;
 
+    	sjf::helpers::functions::utilities::forEach(processors, [&parentTree](auto& proc) { optional_calls::attachToState(proc, parentTree); });
     	if ((apvtsTree && apvtsTree->isValid()))
     		apvtsTree->removeListener(this);
 
@@ -268,6 +269,11 @@ public:
 			sjf::optional_calls::attachToState(proc, parentTree);
 		});
 	}
+
+	void attachAPVTS(juce::AudioProcessorValueTreeState& apvts)
+    {
+    	helpers::functions::utilities::forEach(processors, [&apvts](auto& proc){optional_calls::attachAPVTS(proc, apvts);});
+    }
 
 	// Helper functions to convert between SequenceOrder and juce::var (Array)
 	juce::var sequenceToVar (const SequenceOrder& order)

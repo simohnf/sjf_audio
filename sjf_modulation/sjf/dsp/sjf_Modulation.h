@@ -273,7 +273,6 @@ namespace sjf::dsp::modulation{
 
 		~ModulationSystem() override
 		{
-			apvts->state.removeListener(this);
 		}
 
 		void prepare (const juce::dsp::ProcessSpec& spec_)

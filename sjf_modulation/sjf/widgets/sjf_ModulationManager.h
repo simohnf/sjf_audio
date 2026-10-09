@@ -69,6 +69,11 @@ public:
 	    return system;
     }
 
+	void disconnectModulatable(Modulatable& modulatable)
+    {
+	    system.disconnect(modulatable, undoManager);
+    }
+
 private:
 	void valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged,
 									   const juce::Identifier&) override
@@ -389,6 +394,18 @@ struct GenericEditorWithModulation : sjf::generic_editor::GenericEditor
 	, modulationManager(*this, apvts_, modSystem_, undoManager_)
 	{}
 
+
+	void resetParameters(const juce::AudioProcessorParameterGroup& parameterGroup) override
+	{
+		for ( auto p : parameterGroup.getParameters(true))
+		{
+			p->beginChangeGesture();
+			p->setValueNotifyingHost(p->getDefaultValue());
+			p->endChangeGesture();
+			if ( auto modulatable_ = dynamic_cast<ModulationManager<Modulators...>::Modulatable*>(p))
+				modulationManager.disconnectModulatable(*modulatable_);
+		}
+	}
 
 	ModulationManager<Modulators...> modulationManager;
 };

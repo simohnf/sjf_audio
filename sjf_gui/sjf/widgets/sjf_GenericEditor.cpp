@@ -71,6 +71,22 @@ namespace sjf::generic_editor
 
 						menu.addSeparator();
 
+						menu.addItem("Reset all parameters to default", [safeThis, this](){
+							if (!safeThis)
+								return;
+							if (undoManager)
+							{
+								undoManager->beginNewTransaction();
+							}
+							if (auto genericEditor = findParentComponentOfClass<GenericEditor>())
+								genericEditor->resetParameters(parameterGroup);
+
+							if (undoManager)
+							{
+								undoManager->setCurrentTransactionName("Reset " + parameterGroup.getName() + " parameters to default");
+							}
+						});
+
 						for (const auto param : parameterGroup.getParameters(false))
 						{
 							const auto ranged = dynamic_cast<juce::RangedAudioParameter*>(param);
@@ -1983,6 +1999,16 @@ namespace
 					setResizeLimits(juce::jmin(400, displayBounds.getWidth()), juce::jmin(displayBounds.getHeight(), 400), displayBounds.getWidth(), displayBounds.getHeight());
 				});
 			}
+		}
+	}
+
+	void GenericEditor::resetParameters(const juce::AudioProcessorParameterGroup& parameterGroup)
+	{
+		for ( auto p : parameterGroup.getParameters(true))
+		{
+			p->beginChangeGesture();
+			p->setValueNotifyingHost(p->getDefaultValue());
+			p->endChangeGesture();
 		}
 	}
 } // namespace sjf::generic_editor

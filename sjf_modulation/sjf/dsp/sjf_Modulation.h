@@ -587,6 +587,34 @@ namespace sjf::dsp::modulation{
 			}
 		}
 
+		void disconnect(Modulatable& modulatable, UndoManager* undoManager)
+		{
+			jassert(MessageManager::existsAndIsLockedByCurrentThread());
+
+			if (apvts)
+			{
+				if (!isModulated(&modulatable))
+					return;
+
+				auto stateTree = apvts->state.getChildWithName(id);
+
+				const auto str = stateTree.getProperty(ids::connectionID, "").toString();
+				auto connections = str.isEmpty() ? Connections{} : stringToConnections(str);
+				auto newConnections = Connections{};
+				newConnections.reserve(connections.size());
+				for (auto connection : connections)
+				{
+					if (connection.target != &modulatable)
+						newConnections.push_back(connection);
+				}
+				stateTree.setProperty(ids::connectionID, connectionsAsString(newConnections), undoManager);
+			}
+			else
+			{
+				jassertfalse;
+			}
+		}
+
 		bool isConnected(const juce::String& modulatorID, const juce::String& modulatableId)
 		{
 			if (apvts)

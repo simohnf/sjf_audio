@@ -49,6 +49,7 @@ namespace sjf::generic_editor
 
 			void paint(juce::Graphics& g) override;
 
+			virtual void resetParameters(const juce::AudioProcessorParameterGroup& parameterGroup);
 		private:
 			void timerCallback();
 			void initialiseMainEditor(juce::AudioProcessorValueTreeState& apvts,

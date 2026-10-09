@@ -66,6 +66,33 @@ using SFC = processor_sequence::SubFactoryConfig;
 using TestGain = Gain<>;
 using AttenuatingGain = Gain<-60, 0, -12>;
 
+
+struct TestProcessor : juce::AudioProcessor
+{
+	TestProcessor(juce::AudioProcessorValueTreeState::ParameterLayout& layout)
+	: apvts(*this, nullptr, "Params", std::move(layout))
+	{}
+
+	const String getName() const override { return "Test"; }
+	void prepareToPlay(double, int) override {}
+	void releaseResources() override {}
+	void processBlock(AudioBuffer<float>&, MidiBuffer&) override {}
+	double getTailLengthSeconds() const override { return 0;}
+	bool acceptsMidi() const override { return false;}
+	bool producesMidi() const override { return false;}
+	AudioProcessorEditor* createEditor() override { return nullptr;}
+	bool hasEditor() const override { return false;}
+	int getNumPrograms() override { return 0;}
+	int getCurrentProgram() override { return 0;}
+	void setCurrentProgram(int) override {}
+	const String getProgramName(int) override { return "";}
+	void changeProgramName(int, const String&) override {}
+	void getStateInformation(MemoryBlock&) override {}
+	void setStateInformation(const void*, int) override {}
+
+	juce::AudioProcessorValueTreeState apvts;
+};
+
 struct TanhProcessor
 {
     void prepare(const juce::dsp::ProcessSpec&) {}
@@ -140,6 +167,13 @@ public:
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
             dps.prepare(spec);
             dps.reset();
 
@@ -170,15 +204,22 @@ public:
         	static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
         	Sequence seq;
-        	ValueTree state{"Params"};
 
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+        	layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+        	dps.attachAPVTS(mainProcessor.apvts);
+
             dps.prepare(spec);
             dps.reset();
 
-        	dps.attachToState(state);
+
 
             auto beforeBuffer = processAndCapture(dps, spec);
 
@@ -198,14 +239,21 @@ public:
 			static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
 			Sequence seq;
-			ValueTree state{"Params"};
+
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
+
             dps.prepare(spec);
             dps.reset();
 
-        	dps.attachToState(state);
 
             updateSequence(seq, InactiveSlot, 0, 1);
         	dps.setSequence(seq);
@@ -226,14 +274,20 @@ public:
 			static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
 			Sequence seq;
-			ValueTree state{"Params"};
+
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
+
             dps.prepare(spec);
             dps.reset();
-
-        	dps.attachToState(state);
 
             updateSequence(seq, InactiveSlot, 0);
         	dps.setSequence(seq);
@@ -268,14 +322,20 @@ public:
 			static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
 			Sequence seq;
-			ValueTree state{"Params"};
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"T1", "T1"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
+
             dps.prepare(spec);
             dps.reset();
 
-        	dps.attachToState(state);
 
         	updateSequence(seq, InactiveSlot, 0, 1);
         	dps.setSequence(seq);
@@ -298,14 +358,19 @@ public:
 			static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
 			Sequence seq;
-			ValueTree state{"Params"};
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
-            dps.prepare(spec);
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
+        	dps.prepare(spec);
             dps.reset();
 
-        	dps.attachToState(state);
 
             updateSequence(seq, InactiveSlot, 0, 1);
         	dps.setSequence(seq);
@@ -333,15 +398,20 @@ public:
 			static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
 			Sequence seq;
-			ValueTree state{"Params"};
 
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
             dps.prepare(spec);
             dps.reset();
 
-        	dps.attachToState(state);
 
         	updateSequence(seq, InactiveSlot, 2, 1);
         	dps.setSequence(seq);
@@ -366,14 +436,18 @@ public:
 			[[maybe_unused]] static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
 			[[maybe_unused]] Sequence seq;
-        	ValueTree state{"Params"};
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
             dps.prepare(spec);
         	dps.reset();
-
-        	dps.attachToState(state);
 
             auto& g0 = dps.get<0>();
             auto& g1 = dps.get<1>();
@@ -383,31 +457,6 @@ public:
             expect(&g1 != &g2, "get<1>() and get<2>() should return different processors");
             expect(&g0 != &g2, "get<0>() and get<2>() should return different processors");
         });
-   //
-   //      testCase("prepare calls prepare on all processors", [&](){
-   //          using DPS = DynamicProcessorSequence<AttenuatingGain, AttenuatingGain, AttenuatingGain>;
-   //      	DPS dps;
-			// static constexpr auto InactiveSlot = DPS::InactiveSlot;
-			// using Sequence = DPS::SequenceOrder;
-			// Sequence seq;
-			// ValueTree state{"Params"};
-   //
-   //          auto params = dps.createParameters("Test", "Test",
-   //              SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
-   //          dps.prepare(spec);
-   //      	dps.reset();
-   //
-   //      	dps.attachToState(state);
-   //
-   //      	updateSequence(seq, InactiveSlot, 0, 1, 2);
-   //
-   //          auto rms = processAndGetRms(dps, spec);
-   //          auto inputRms = getInputRms();
-   //
-   //          expect(rms < inputRms * 0.3f,
-   //              "All three -12dB processors should attenuate ~36dB total. "
-   //              "Input: " + juce::String(inputRms) + " Output: " + juce::String(rms));
-   //      });
 
         testCase("reset is called before first process on added processor", [&](){
             using DPS = DynamicProcessorSequence<AttenuatingGain, AttenuatingGain, AttenuatingGain>;
@@ -415,14 +464,19 @@ public:
 			static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
 			Sequence seq;
-			ValueTree state{"Params"};
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
+
             dps.prepare(spec);
             dps.reset();
-
-        	dps.attachToState(state);
 
         	updateSequence(seq, InactiveSlot, 0);
 
@@ -488,14 +542,20 @@ public:
 			static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
 			Sequence seq;
-        	ValueTree state{"Params"};
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
+
             dps.prepare(spec);
         	dps.reset();
 
-        	dps.attachToState(state);
 
         	updateSequence(seq, InactiveSlot, 0);
         	dps.setSequence(seq);
@@ -523,14 +583,18 @@ public:
 			static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
 			Sequence seq;
-        	ValueTree state{"Params"};
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"T1", "T1"}, SFC{"G2", "G2"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
             dps.prepare(spec);
             dps.reset();
-
-        	dps.attachToState(state);
 
         	updateSequence(seq, InactiveSlot, 0, 1, 2);
         	dps.setSequence(seq);
@@ -563,6 +627,13 @@ public:
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
             dps.prepare(spec);
             dps.reset();
 
@@ -616,6 +687,13 @@ public:
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
             dps.prepare(spec);
 
             auto& g0_before = dps.get<0>();
@@ -646,6 +724,13 @@ public:
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
             dps.prepare(spec);
             dps.reset();
 
@@ -677,6 +762,13 @@ public:
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"G2", "G2"}, SFC{"G3", "G3"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
             dps.prepare(spec);
             dps.reset();
 
@@ -736,13 +828,18 @@ public:
 			static constexpr auto InactiveSlot = DPS::InactiveSlot;
 			using Sequence = DPS::SequenceOrder;
 			Sequence seq;
-        	ValueTree state{"Params"};
 
             auto params = dps.createParameters("Test", "Test",
                 SFC{"G1", "G1"}, SFC{"T1", "T1"});
+
+        	juce::AudioProcessorValueTreeState::ParameterLayout layout;
+			layout.add(std::move(params->getAudioProcessorParameterGroup()));
+
+			TestProcessor mainProcessor(layout);
+			dps.attachAPVTS(mainProcessor.apvts);
+
             dps.prepare(spec);
             dps.reset();
-        	dps.attachToState(state);
 
         	updateSequence(seq, InactiveSlot, 0, 1);
         	dps.setSequence(seq);

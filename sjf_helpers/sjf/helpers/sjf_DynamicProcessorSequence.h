@@ -138,6 +138,8 @@ public:
     template <typename ProcessContextType>
     void process(const ProcessContextType& context)
     {
+    	jassert(apvts);
+
     	const auto activeSequence = sequenceBuffer.getRead();
     	if (activeSequence[0]==InactiveSlot)
     	{
@@ -206,9 +208,9 @@ public:
 
     	if (MessageManager::existsAndIsCurrentThread())
     	{
-    		if ((apvtsTree && apvtsTree->isValid()))
+    		if (apvts)
     		{
-    			auto stateTree = apvtsTree->getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
+    			auto stateTree = apvts->state.getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
     			stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(newOrder), nullptr);
     		}
     		else
@@ -219,9 +221,9 @@ public:
     	else if ( auto mm = MessageManager::getInstanceWithoutCreating())
     	{
     		mm->callAsync([newOrder, this, g = std::weak_ptr(guard)](){
-    			if (!g.expired() && (apvtsTree && apvtsTree->isValid()))
+    			if (!g.expired() && apvts)
     			{
-    				auto stateTree = apvtsTree->getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
+    				auto stateTree = apvts->state.getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
 					stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(newOrder), nullptr);
     			}
     		});
@@ -236,22 +238,25 @@ public:
 
 
 	void attachToState (juce::ValueTree& parentTree)
-	{
-    	if (!parentTree.isValid())
-    		return;
+    {
+    	sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){
+			   sjf::optional_calls::attachToState(proc, parentTree);
+		   });
+    }
 
-    	sjf::helpers::functions::utilities::forEach(processors, [&parentTree](auto& proc) { optional_calls::attachToState(proc, parentTree); });
-    	if ((apvtsTree && apvtsTree->isValid()))
-    		apvtsTree->removeListener(this);
+	void attachAPVTS(juce::AudioProcessorValueTreeState& apvts_)
+    {
+    	if (apvts)
+    		apvts->state.removeListener(this);
 
-    	apvtsTree = &parentTree;
+    	apvts = &apvts_;
 
-		auto stateTree = apvtsTree->getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
+    	auto stateTree = apvts->state.getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
 
     	if (!stateTree.hasProperty(dynamic_processor_sequence::ids::sequencePropertyId))
     		stateTree.setProperty(dynamic_processor_sequence::ids::sequencePropertyId, sequenceToVar(activeControlSequence), nullptr);
 
-    	apvtsTree->addListener(this);
+    	apvts->state.addListener(this);
 
     	if (MessageManager::existsAndIsCurrentThread())
     	{
@@ -260,19 +265,14 @@ public:
     	else if (auto mm = MessageManager::getInstanceWithoutCreating())
     	{
     		mm->callAsync([this, g = std::weak_ptr(guard)](){
-    			if (!g.expired() && (apvtsTree && apvtsTree->isValid()))
-    				publishSequenceUpdate();
-    		});
+				if (!g.expired() && apvts)
+					publishSequenceUpdate();
+			});
     	}
 
-    	sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){
-			sjf::optional_calls::attachToState(proc, parentTree);
-		});
-	}
-
-	void attachAPVTS(juce::AudioProcessorValueTreeState& apvts)
-    {
-    	helpers::functions::utilities::forEach(processors, [&apvts](auto& proc){optional_calls::attachAPVTS(proc, apvts);});
+    	helpers::functions::utilities::forEach(processors, [&apvts_](auto& proc){
+    		optional_calls::attachAPVTS(proc, apvts_);
+    	});
     }
 
 	// Helper functions to convert between SequenceOrder and juce::var (Array)
@@ -351,10 +351,12 @@ private:
 	void valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged,
 								   const juce::Identifier& propertyId) override
 	{
-		if (!(apvtsTree && apvtsTree->isValid()))
+		if (!apvts)
+		{
 			return;
-		auto stateTree = apvtsTree->getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
-		if ((treeWhosePropertyHasChanged == *apvtsTree || treeWhosePropertyHasChanged == stateTree) && propertyId == dynamic_processor_sequence::ids::sequencePropertyId)
+		}
+		auto stateTree = apvts->state.getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
+		if ((treeWhosePropertyHasChanged == apvts->state || treeWhosePropertyHasChanged == stateTree) && propertyId == dynamic_processor_sequence::ids::sequencePropertyId)
 		{
 			if (MessageManager::existsAndIsCurrentThread())
 				publishSequenceUpdate();
@@ -365,11 +367,14 @@ private:
 
 	void valueTreeRedirected(ValueTree& treeWhichHasBeenChanged) override
 	{
-		if (!(apvtsTree && apvtsTree->isValid()))
+		if (!apvts)
+		{
 			return;
-		auto stateTree = apvtsTree->getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
+		}
 
-		if (treeWhichHasBeenChanged == stateTree || treeWhichHasBeenChanged == *apvtsTree)
+		auto stateTree = apvts->state.getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
+
+		if (treeWhichHasBeenChanged == stateTree || treeWhichHasBeenChanged == apvts->state)
 		{
 			if (MessageManager::existsAndIsCurrentThread())
 				publishSequenceUpdate();
@@ -402,9 +407,11 @@ private:
     void publishSequenceUpdate()
     {
     	jassert(MessageManager::existsAndIsCurrentThread());
-		if (!(apvtsTree && apvtsTree->isValid()))
+		if (!apvts)
+		{
 			return;
-		auto stateTree = apvtsTree->getChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId);
+		}
+		auto stateTree = apvts->state.getChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId);
 
     	if (stateTree.isValid())
     	{
@@ -455,7 +462,7 @@ private:
     SPSCTripleBuffer<SequenceOrder> sequenceBuffer{activeControlSequence};
 	std::array<std::atomic<bool>, NumProcessors> pendingResets{};
 
-	juce::ValueTree* apvtsTree{nullptr};
+	juce::AudioProcessorValueTreeState* apvts{nullptr};
 
 	String factoryId{};
 

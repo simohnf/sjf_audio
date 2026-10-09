@@ -384,7 +384,8 @@ namespace sjf::generic_editor
 						if (undoManager)
 						{
 							comboBoxes.back()->onChange = [this, c_ = comboBoxes.back().get(), pName = paramName(param), groupName]{
-								undoManager->setCurrentTransactionName("Set " + groupName + " " + pName + " to " + c_->getText());
+								if (undoManager && !undoManager->isPerformingUndoRedo())
+									undoManager->setCurrentTransactionName("Set " + groupName + " " + pName + " to " + c_->getText());
 							};
 						}
 
@@ -398,7 +399,8 @@ namespace sjf::generic_editor
 						if (undoManager)
 						{
 							buttons.back()->onClick = [this, b_ = buttons.back().get(), pName = paramName(param), groupName]{
-								undoManager->setCurrentTransactionName("Set " + groupName + " " + pName + " to " + (b_->getToggleState() ? "On" : "Off"));
+								if (undoManager && !undoManager->isPerformingUndoRedo())
+									undoManager->setCurrentTransactionName("Set " + groupName + " " + pName + " to " + (b_->getToggleState() ? "On" : "Off"));
 							};
 						}
 						paramComponents.push_back(buttons.back().get());
@@ -417,7 +419,8 @@ namespace sjf::generic_editor
 						if (undoManager)
 						{
 							s->onDragEnd = [this, s_ = s.get(), pName = paramName(param), groupName]{
-								undoManager->setCurrentTransactionName("Changed " + groupName + " " + pName + " to " + s_->getTextFromValue(s_->getValue()));
+								if (undoManager && !undoManager->isPerformingUndoRedo())
+									undoManager->setCurrentTransactionName("Changed " + groupName + " " + pName + " to " + s_->getTextFromValue(s_->getValue()));
 							};
 						}
 						paramComponents.push_back(s.get());

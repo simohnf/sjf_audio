@@ -85,7 +85,9 @@ namespace sjf::generic_editor
 								std::ranges::find(getBypassWrapperParamNames(), paramName) != getBypassWrapperParamNames().end())
 							{
 								auto action = [ranged](){
+									ranged->beginChangeGesture();
 									ranged->setValueNotifyingHost(1.0f-(ranged->getValue()));
+									ranged->endChangeGesture();
 								};
 								menu.addItem(paramName, true, ranged->getValue() > 0.0f, action);
 							}
@@ -863,7 +865,9 @@ namespace sjf::generic_editor
 				for (const auto& [name, param] : popupMenuParams)
 				{
 					menu.addItem(name, true, param->getValue() > 0.5f,[safeThis = SafePointer{this}, param](){
+						param->beginChangeGesture();
 						param->setValueNotifyingHost(param->getValue() < 0.5f);
+						param->endChangeGesture();
 						if (safeThis)
 							safeThis->repaint();
 					});

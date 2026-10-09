@@ -298,6 +298,7 @@ namespace sjf::dsp::modulation{
 		template <typename ProcessContext>
 		void process(const ProcessContext& context)
 		{
+
 			jassert(apvts);
 			// 1. Advance modulators in chain
 			modulators.process(context);
@@ -763,7 +764,13 @@ namespace sjf::dsp::modulation{
 		void valueTreeRedirected(ValueTree& treeWhichHasBeenChanged) override
 		{
 			if (treeWhichHasBeenChanged == apvts->state)
+			{
 				attachToState(treeWhichHasBeenChanged);
+				if (MessageManager::existsAndIsCurrentThread())
+					publishConnectionsUpdate();
+				else
+					asyncUpdater.triggerUpdate();
+			}
 		}
 
 

@@ -787,8 +787,8 @@ namespace sjf::dsp::modulation{
 				for (auto& c : activeConnections)
 				{
 					if (auto con = std::find_if(connections.begin(), connections.end(),[&c](auto& x){
-						return c.target == x.target && c.source == x.source;
-						}); con == activeConnections.end())
+							return c.target == x.target && c.source == x.source;
+						}); con == connections.end())
 						addForRemoval(c.target);
 				}
 				activeConnections = connections;

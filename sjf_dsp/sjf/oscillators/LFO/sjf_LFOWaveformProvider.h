@@ -156,6 +156,8 @@ struct Random
 			difference = target - start;
 		}
 
+		lastPhase = phase;
+
 		if constexpr (Type == random_type::Type::Step)
 		{
 			return target;

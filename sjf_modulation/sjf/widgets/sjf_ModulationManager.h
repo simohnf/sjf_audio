@@ -73,7 +73,7 @@ private:
 	void valueTreePropertyChanged (juce::ValueTree& treeWhosePropertyHasChanged,
 									   const juce::Identifier&) override
 	{
-		if (treeWhosePropertyHasChanged == globalAPVTS.state)
+		if (treeWhosePropertyHasChanged == globalAPVTS.state || treeWhosePropertyHasChanged.getType() == system.id)
 		{
 			if (juce::MessageManager::existsAndIsCurrentThread())
 				checkModulationStateOfComponents();
@@ -84,7 +84,7 @@ private:
 
 	void valueTreeRedirected(ValueTree& treeWhichHasBeenChanged) override
 	{
-		if (treeWhichHasBeenChanged == globalAPVTS.state)
+		if (treeWhichHasBeenChanged == globalAPVTS.state || treeWhichHasBeenChanged.getType() == system.id)
 		{
 			if (juce::MessageManager::existsAndIsCurrentThread())
 				checkModulationStateOfComponents();

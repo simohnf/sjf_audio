@@ -481,6 +481,10 @@ public:
             // if constexpr (std::is_same_v<JuceParamType, juce::AudioParameterChoice>)
             //     return juceParameter->getIndex();
             // else
+
+        	if constexpr (std::is_same_v<ValueType, bool>)
+        		return juceParameter->get() >= 0.5f; // Explicit float threshold comparison
+        	else
                 return static_cast<ValueType>(juceParameter->get());
         }
 

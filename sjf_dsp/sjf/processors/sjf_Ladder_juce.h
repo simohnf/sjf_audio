@@ -110,7 +110,7 @@ private:
 		filter.setMode(static_cast<juce::dsp::LadderFilterMode>(parameters.mode.currentValue));
 		if (resetDriveSmoother)
 		{
-			driveSmoother.setCurrentAndTargetValue(parameters.drive.currentValue);
+			driveSmoother.setCurrentAndTargetValue(jmax(1.0f, parameters.drive.currentValue));
 			filter.setDrive(driveSmoother.getNextValue());
 		}
 		else

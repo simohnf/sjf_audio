@@ -1045,7 +1045,7 @@ struct DefaultSyncRatesProvider
     {
         const static std::vector<int>& getValues()
         {
-            const static std::vector<int> values {1, 2, 3, 4, 5, 6, 7, 8};
+            const static std::vector<int> values {1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56, 64};
             return values;
         }
 

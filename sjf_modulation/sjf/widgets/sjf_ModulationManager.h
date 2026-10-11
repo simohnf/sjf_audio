@@ -305,6 +305,7 @@ private:
     		behindSlider.setInterceptsMouseClicks(false, false);
     		addAndMakeVisible(depthSlider);
     		depthSlider.setRange(-100.0f , 100.0f, 0.01f);
+    		depthSlider.setSkewFactorFromMidPoint(0.0f);
     		depthSlider.setDoubleClickReturnValue(true, 0.0f);
     		depthSlider.setTextValueSuffix("%");
     		depthSlider.setColour(juce::Slider::backgroundColourId, findColour(juce::TextButton::buttonColourId));

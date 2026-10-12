@@ -14,6 +14,7 @@
 #include <JuceHeader.h>
 #include <sjf/dsp/sjf_Modulation.h>
 #include <sjf/widgets/sjf_GenericEditor.h>
+#include <sjf/widgets/sjf_ModulationMatrix.h>
 
 namespace sjf::gui::modulation{
 	namespace ids
@@ -387,14 +388,26 @@ struct GenericEditorWithModulation : sjf::generic_editor::GenericEditor
 		newVT.copyPropertiesAndChildrenFrom(connections, nullptr);
 		vt.addChild(newVT, -1, nullptr);
 		},
-[this](ValueTree vt){
+	[this](ValueTree vt){
 		auto connections = vt.getChildWithName(modulationManager.getModulationSystem().getFactoryID() + sjf::dsp::modulation::ids::modulationConnectionsID);
 		auto edit = modulationManager.getModulationSystem().getCurrentConnectionsAsValueTree();
 		edit.copyPropertiesAndChildrenFrom(connections, nullptr);
 	})
 	, modulationManager(*this, apvts_, modSystem_, undoManager_)
-	{}
+	, modMatrix(apvts_, modSystem_, undoManager_)
+	{
+		addAndMakeVisible(tabbedComponent);
+		tabbedComponent.addTab("Main", juce::Colours::white.withAlpha(0.0f), &viewport, false);
+		tabbedComponent.addTab( "Mod Matrix", juce::Colours::white.withAlpha(0.0f), &modMatrix, false);
+		tabbedComponent.setCurrentTabIndex(0);
+		GenericEditorWithModulation::resized();
+	}
 
+	void resized() override
+	{
+		GenericEditor::resized();
+		tabbedComponent.setBounds(viewport.getBounds());
+	}
 
 	void resetParameters(const juce::AudioProcessorParameterGroup& parameterGroup) override
 	{
@@ -408,8 +421,12 @@ struct GenericEditorWithModulation : sjf::generic_editor::GenericEditor
 		}
 	}
 
+
+	juce::TabbedComponent tabbedComponent{juce::TabbedButtonBar::Orientation::TabsAtTop};
 	ModulationManager<Modulators...> modulationManager;
+	sjf::gui::modulation::ModulationMatrix<Modulators...> modMatrix;
 };
+
 }
 
 

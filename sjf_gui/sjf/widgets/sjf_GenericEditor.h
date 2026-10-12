@@ -56,6 +56,7 @@ namespace sjf::generic_editor
 											const juce::AudioProcessorParameterGroup& parameterGroup,
 											const helpers::ParameterFactory::GroupMetadata& metadata);
 
+		protected:
 			sjf::gui::LookAndFeel lookAndFeel;
 			std::unique_ptr<Component> mainEditor;
 			UndoManager* undoManager;

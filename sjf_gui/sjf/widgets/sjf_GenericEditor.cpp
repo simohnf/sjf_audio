@@ -2000,6 +2000,13 @@ namespace
 						return;
 					const auto displayBounds = (currentDisplay->userBounds * 0.95f).toNearestInt();
 					setResizeLimits(juce::jmin(400, displayBounds.getWidth()), juce::jmin(displayBounds.getHeight(), 400), displayBounds.getWidth(), displayBounds.getHeight());
+					auto p = getParentComponent();
+					while (p)
+					{
+						if (auto ae = dynamic_cast<juce::AudioProcessorEditor*>(p))
+							ae->setResizeLimits(juce::jmin(400, displayBounds.getWidth()), juce::jmin(displayBounds.getHeight(), 400), displayBounds.getWidth(), displayBounds.getHeight());
+						p = p->getParentComponent();
+					}
 				});
 			}
 		}

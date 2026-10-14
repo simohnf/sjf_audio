@@ -1766,9 +1766,8 @@ namespace sjf::generic_editor
 		}
 
 
-		const juce::AudioProcessorParameterGroup*
-		getTopLevelParameterGroup(const juce::AudioProcessorParameterGroup& tree,
-								  const helpers::ParameterFactory::GroupMetadata& metadata_)
+		const juce::AudioProcessorParameterGroup* getTopLevelParameterGroup(const juce::AudioProcessorParameterGroup& tree,
+																			const helpers::ParameterFactory::GroupMetadata& metadata_)
 		{
 			auto id = metadata_.groupID;
 			if (tree.getID() == id)

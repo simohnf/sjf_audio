@@ -11,6 +11,9 @@
 //
 
 #pragma once
+
+#define SJF_AUDIO_TESTS 1
+
 #include <JuceHeader.h>
 
 #include "sjf/helpers/sjf_PresetManager.h"

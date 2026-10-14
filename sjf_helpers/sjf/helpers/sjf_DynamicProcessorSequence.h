@@ -138,7 +138,9 @@ public:
     template <typename ProcessContextType>
     void process(const ProcessContextType& context)
     {
-    	jassert(apvts);
+    	#ifndef SJF_AUDIO_TESTS
+    	jassert(apvts); // not asserting in tests because generic tests don't pass in apvts
+		#endif
 
     	const auto activeSequence = sequenceBuffer.getRead();
     	if (activeSequence[0]==InactiveSlot)

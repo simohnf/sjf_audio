@@ -403,7 +403,7 @@ struct GenericEditorWithModulation : sjf::generic_editor::GenericEditor
 		addAndMakeVisible(tabbedComponent);
 		tabbedComponent.addTab("Main", col, &viewport, false);
 		tabbedComponent.addTab( "Mod Matrix", col, &modMatrix, false);
-		tabbedComponent.getTabbedButtonBar().getTabButton(1)->onClick = [this, &modSystem_, safeThis = SafePointer(this)](){
+		tabbedComponent.getTabbedButtonBar().getTabButton(1)->onClick = [this, safeThis = SafePointer(this)](){
 			if (ModifierKeys::getCurrentModifiers().isPopupMenu())
 			{
 				auto menu = juce::PopupMenu{};
@@ -432,7 +432,7 @@ struct GenericEditorWithModulation : sjf::generic_editor::GenericEditor
 				menu.showMenuAsync({});
 			}
 		};
-		
+
 		tabbedComponent.setCurrentTabIndex(0);
 		GenericEditorWithModulation::resized();
 	}

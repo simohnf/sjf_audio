@@ -2003,8 +2003,8 @@ namespace
 
 	void GenericEditor::paint(juce::Graphics& g)
 	{
-		undo.setTooltip(undoManager ? undoManager->getUndoDescription() : "");
-		redo.setTooltip(undoManager ? undoManager->getRedoDescription() : "");
+		undo.setTooltip(undoManager ? "Undo: " + undoManager->getUndoDescription() : "[Nothing to undo]");
+		redo.setTooltip(undoManager ? "Redo: " + undoManager->getRedoDescription() : "[Nothing to redo]");
 		static const auto bg = createBackground();
 
 		g.drawImageTransformed(bg, juce::AffineTransform{});

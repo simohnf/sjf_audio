@@ -403,6 +403,36 @@ struct GenericEditorWithModulation : sjf::generic_editor::GenericEditor
 		addAndMakeVisible(tabbedComponent);
 		tabbedComponent.addTab("Main", col, &viewport, false);
 		tabbedComponent.addTab( "Mod Matrix", col, &modMatrix, false);
+		tabbedComponent.getTabbedButtonBar().getTabButton(1)->onClick = [this, &modSystem_, safeThis = SafePointer(this)](){
+			if (ModifierKeys::getCurrentModifiers().isPopupMenu())
+			{
+				auto menu = juce::PopupMenu{};
+				menu.addItem("Clear All Modulations", [safeThis, this](){
+					if (!safeThis)
+						return;
+
+					if (auto connections = modulationManager.getModulationSystem().getCurrentConnectionsAsValueTree(); connections.isValid())
+					{
+						if (auto prop = connections.getProperty(dsp::modulation::ids::connectionID); !prop.isVoid() && prop.toString().isNotEmpty())
+						{
+							if (undoManager)
+							{
+								undoManager->beginNewTransaction();
+							}
+							connections.setProperty(dsp::modulation::ids::connectionID, "", undoManager);
+							if (undoManager)
+							{
+								undoManager->setCurrentTransactionName("Removed All Modulations");
+								undoManager->beginNewTransaction();
+							}
+						}
+					}
+				});
+
+				menu.showMenuAsync({});
+			}
+		};
+		
 		tabbedComponent.setCurrentTabIndex(0);
 		GenericEditorWithModulation::resized();
 	}

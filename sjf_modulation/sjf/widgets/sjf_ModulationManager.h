@@ -396,9 +396,13 @@ struct GenericEditorWithModulation : sjf::generic_editor::GenericEditor
 	, modulationManager(*this, apvts_, modSystem_, undoManager_)
 	, modMatrix(apvts_, modSystem_, undoManager_)
 	{
+
+		const auto lnf4 = dynamic_cast<juce::LookAndFeel_V4*>(&getLookAndFeel());
+		jassert(lnf4 != nullptr);
+		auto col = lnf4->getCurrentColourScheme().getUIColour(juce::LookAndFeel_V4::ColourScheme::UIColour::windowBackground).withAlpha(0.5f);
 		addAndMakeVisible(tabbedComponent);
-		tabbedComponent.addTab("Main", juce::Colours::white.withAlpha(0.0f), &viewport, false);
-		tabbedComponent.addTab( "Mod Matrix", juce::Colours::white.withAlpha(0.0f), &modMatrix, false);
+		tabbedComponent.addTab("Main", col, &viewport, false);
+		tabbedComponent.addTab( "Mod Matrix", col, &modMatrix, false);
 		tabbedComponent.setCurrentTabIndex(0);
 		GenericEditorWithModulation::resized();
 	}

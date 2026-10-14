@@ -1503,6 +1503,29 @@ namespace sjf::generic_editor
 									 }
 								 });
 				}
+				if (!activeSequence.empty())
+				{
+					menu.addSeparator();
+					menu.addItem("Clear Sequence", [safeThis = SafePointer(this), this](){
+						if (!safeThis)
+							return;
+
+						if (auto seqVT = apvts.state.getChildWithName(sequenceID); seqVT.isValid())
+						{
+							if (undoManager)
+							{
+								undoManager->beginNewTransaction();
+							}
+							seqVT.setProperty(sjf::helpers::dynamic_processor_sequence::ids::sequencePropertyId, "", undoManager);
+							if (undoManager)
+							{
+								undoManager->setCurrentTransactionName("Cleared " + group.getName() + " sequence");
+								undoManager->beginNewTransaction();
+							}
+						}
+
+					});
+				}
 				menu.showMenuAsync({});
 			}
 

@@ -301,7 +301,7 @@ class PresetManager
     						if (vt.hasProperty(preset_manager::ids::value))
     						{
     							auto param = apvts.getParameter(groupId);
-    							if (!juce::approximatelyEqual(param->convertFrom0to1(param->getValue()), static_cast<float>(vt.getProperty(preset_manager::ids::value))))
+    							if (!param || !juce::approximatelyEqual(param->convertFrom0to1(param->getValue()), static_cast<float>(vt.getProperty(preset_manager::ids::value))))
     								return false;
     							count ++;
     						}

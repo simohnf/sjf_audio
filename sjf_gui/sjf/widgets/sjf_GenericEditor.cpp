@@ -37,9 +37,12 @@ namespace sjf::generic_editor
 					   const helpers::ParameterFactory::GroupMetadata& metadata_, UndoManager* undoManager_)
 			: apvts(apvts_), parameterGroup(group_), metadata(metadata_), undoManager(undoManager_)
 			{
+				setComponentID(group_.getID());
 				presetLabel.setText("Preset", juce::dontSendNotification);
 
 				buildUIFromGroup();
+				collapseButton.setComponentID(group_.getID()+"CollapseButton");
+				collapseButton.setTooltip("Collapse/Expand editor (Right click for more options)");
 
 				collapseButton.onStateChange = [this](){
 					if (ModifierKeys::getCurrentModifiers().getNumMouseButtonsDown() == 0)
@@ -373,6 +376,20 @@ namespace sjf::generic_editor
 						return helpers::ParameterFactory::getNameWithoutParentPrefix(parameterGroup);
 					}();
 
+					const auto tooltip = [&](){
+						if (const auto ranged = dynamic_cast<RangedAudioParameter*>(param_))
+						{
+							if (auto p = dynamic_cast<juce::SettableTooltipClient*>(ranged))
+							{
+								if (const auto tt = p->getTooltip(); tt.isNotEmpty())
+									return tt;
+							}
+							return juce::String{"Set the " + helpers::ParameterFactory::getNameWithoutParentPrefix(*ranged, parameterGroup) + " for " + groupName};
+						}
+
+						return juce::String{};
+					}();
+
 					auto addComboBox = [&](juce::AudioProcessorParameter* param, const juce::AudioParameterChoice* choice){
 
 						comboBoxes.push_back(std::make_unique<juce::ComboBox>(paramName(param)));
@@ -389,6 +406,7 @@ namespace sjf::generic_editor
 							};
 						}
 
+						comboBoxes.back()->setTooltip(tooltip);
 						paramComponents.push_back(comboBoxes.back().get());
 					};
 
@@ -403,6 +421,7 @@ namespace sjf::generic_editor
 									undoManager->setCurrentTransactionName("Set " + groupName + " " + pName + " to " + (b_->getToggleState() ? "On" : "Off"));
 							};
 						}
+						buttons.back()->setTooltip(tooltip);
 						paramComponents.push_back(buttons.back().get());
 					};
 
@@ -423,9 +442,8 @@ namespace sjf::generic_editor
 									undoManager->setCurrentTransactionName("Changed " + groupName + " " + pName + " to " + s_->getTextFromValue(s_->getValue()));
 							};
 						}
+						sliders.back()->setTooltip(tooltip);
 						paramComponents.push_back(s.get());
-
-
 					};
 
 					if (auto choice = dynamic_cast<juce::AudioParameterChoice*>(param_))

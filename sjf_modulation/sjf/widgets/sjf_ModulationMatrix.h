@@ -31,6 +31,7 @@ class ModulationMatrix :	public juce::Component,
 		SourceBox(juce::AudioProcessorValueTreeState& apvts_, ModulationSystem& modSystem_, UndoManager* undoManager_, const int connectionNumber, Connections& connections_)
 		: apvts(apvts_), modSystem(modSystem_), undoManager(undoManager_), number(connectionNumber), connections(connections_)
 		{
+			juce::ComboBox::setTooltip("Select a modulator");
 			if (static_cast<size_t>(number) >= connections.size())
 			{
 				setText("Select modulator...");
@@ -176,6 +177,7 @@ class ModulationMatrix :	public juce::Component,
 		TargetBox(juce::AudioProcessorValueTreeState& apvts_, ModulationSystem& modSystem_, UndoManager* undoManager_, const int connectionNumber, Connections& connections_)
 		: apvts(apvts_), modSystem(modSystem_), undoManager(undoManager_), number(connectionNumber), connections(connections_)
 		{
+			juce::ComboBox::setTooltip("Select a modulatable parameter");
 			if (static_cast<size_t>(number) >= connections.size())
 			{
 				setText("Select modulatable parameter...");
@@ -332,6 +334,7 @@ class ModulationMatrix :	public juce::Component,
 		: juce::Slider(juce::Slider::SliderStyle::LinearHorizontal, juce::Slider::TextBoxRight)
 		, modSystem(modSystem_), undoManager(undoManager_), connection(connection_)
 		{
+			juce::Slider::setTooltip("Set the depth of the modulation.");
 			setRange(-100.0f, 100.0f, 0.01f);
 			setSkewFactorFromMidPoint(0.0f);
 
@@ -475,6 +478,7 @@ public:
 			if (columnId == static_cast<int>(TableHeaders::polarity))
 			{
 				auto polarityButton = new TextButton{};
+				polarityButton->setTooltip("Set whether the modulation is bipolar or unipolar.");
 				auto bipolar = currentConnections[static_cast<size_t>(rowNumber)].bipolar;
 				polarityButton->setButtonText(bipolar ? "Bipolar" : "Unipolar");
 				polarityButton->onClick = [this, connection = currentConnections[static_cast<size_t>(rowNumber)], safeThis = SafePointer(this)](){
@@ -505,6 +509,7 @@ public:
 			if (columnId == static_cast<int>(TableHeaders::remove))
 			{
 				auto removeButton = new TextButton{};
+				removeButton->setTooltip("Remove modulation connection.");
 				removeButton->setButtonText("X");
 				removeButton->onClick = [this, connection = currentConnections[static_cast<size_t>(rowNumber)], safeThis = SafePointer(this)](){
 					if (!safeThis) return;

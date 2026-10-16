@@ -310,6 +310,7 @@ private:
     	{
     		addAndMakeVisible(remove);
     		remove.setButtonText("Remove");
+    		remove.setTooltip("Remove modulation connection.");
 
     		addAndMakeVisible(behindSlider);
     		behindSlider.setInterceptsMouseClicks(false, false);
@@ -320,8 +321,10 @@ private:
     		depthSlider.setTextValueSuffix("%");
     		depthSlider.setColour(juce::Slider::backgroundColourId, findColour(juce::TextButton::buttonColourId));
     		depthSlider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::black.withAlpha(0.0f));
+    		depthSlider.setTooltip("Set the depth of the modulation.");
 
     		addAndMakeVisible(polarity);
+    		polarity.setTooltip("Set whether the modulation is bipolar or unipolar.");
     	}
 
     	void resized() override

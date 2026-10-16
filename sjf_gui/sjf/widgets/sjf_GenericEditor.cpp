@@ -1853,8 +1853,8 @@ namespace sjf::generic_editor
 						undoManager)
 	{
 		LookAndFeel::setDefaultLookAndFeel(&lookAndFeel);
-		if (auto lnf4 = dynamic_cast<juce::LookAndFeel_V4*>(&getLookAndFeel()))
-			lnf4->setColourScheme(LookAndFeel_V4::getMidnightColourScheme());
+		// if (auto lnf4 = dynamic_cast<juce::LookAndFeel_V4*>(&getLookAndFeel()))
+		// 	lnf4->setColourScheme(LookAndFeel_V4::getMidnightColourScheme());
 
 		addAndMakeVisible(presets);
 		addAndMakeVisible(label);
@@ -1947,83 +1947,13 @@ namespace sjf::generic_editor
 	}
 
 
-namespace
-	{
-		juce::Image createBackground()
-		{
-			juce::Image img{juce::Image::PixelFormat::ARGB, 5000, 5000, true};
-			Graphics g (img);
-			auto bg = juce::Rectangle<float>{5000, 5000};
-			auto seed = static_cast<size_t>(juce::String(JucePlugin_Name).hashCode());
-			constexpr auto numRandomShapes = static_cast<size_t>(1000);
-			const static auto randomColours = [&](){
-				std::vector<juce::Colour> colours;
-				colours.reserve(numRandomShapes);
-				for (auto i = 0ul; i < numRandomShapes; ++i)
-				{
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto red = static_cast<uint8>(seed % 256);
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto green = static_cast<uint8>(seed % 256);
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto blue = static_cast<uint8>(seed % 256);
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto alpha = static_cast<uint8>(seed % 256);
-					colours.push_back(juce::Colour{red, green, blue, alpha});
-				}
-				return colours;
-			}();
-
-			const static auto randomShapes = [&](){
-				std::vector<std::array<float, 7>> shapes;
-				shapes.reserve(numRandomShapes);
-				for (auto i = 0ul; i < numRandomShapes; ++i)
-				{
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto x = static_cast<float>(seed) / static_cast<float>(std::numeric_limits<size_t>::max());
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto y = static_cast<float>(seed) / static_cast<float>(std::numeric_limits<size_t>::max());
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto w = static_cast<float>(seed) / static_cast<float>(std::numeric_limits<size_t>::max());
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto h = static_cast<float>(seed) / static_cast<float>(std::numeric_limits<size_t>::max());
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto r = static_cast<float>(seed) / static_cast<float>(std::numeric_limits<size_t>::max());
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto sx = static_cast<float>(seed) / static_cast<float>(std::numeric_limits<size_t>::max());
-					seed = helpers::functions::utilities::XORShift(seed);
-					const auto sy = static_cast<float>(seed) / static_cast<float>(std::numeric_limits<size_t>::max());
-					shapes.push_back({x, y, w, h, r, sx, sy});
-				}
-				return shapes;
-			}();
-
-			const auto w_ = static_cast<float>(bg.getWidth());
-			const auto h_ = static_cast<float>(bg.getHeight());
-			for (auto i = 0ul; i < numRandomShapes; ++i)
-			{
-				g.setColour(randomColours[i]);
-
-				const auto& shape = randomShapes[i];
-				const auto rect = juce::Rectangle<float>{shape[0]*w_*1.5f, shape[1]*h_*1.5f, shape[2]*w_, shape[3]*h_};
-				const auto rotation = shape[4] * juce::MathConstants<float>::pi*2.0f;
-				juce::Path p;
-				p.addRectangle(rect);
-
-				p.applyTransform(juce::AffineTransform::rotation(rotation, rect.getX(), rect.getY()));
-				p.applyTransform(juce::AffineTransform::shear(shape[5], shape[6]));
-				g.fillPath(p);
-			}
-			return img;
-		}
-	}
 
 
 	void GenericEditor::paint(juce::Graphics& g)
 	{
 		undo.setTooltip(undoManager ? (undoManager->getUndoDescriptions().size() > 0 ? "Undo: " + undoManager->getUndoDescription() : "[Nothing to undo]") : "");
 		redo.setTooltip(undoManager ? (undoManager->getRedoDescriptions().size() > 0 ? "Redo: " + undoManager->getRedoDescription() : "[Nothing to redo]") : "");
-		static const auto bg = createBackground();
+		static const auto bg = sjf::gui::LookAndFeel::createBackground();
 
 		g.drawImageTransformed(bg, juce::AffineTransform{});
 	}

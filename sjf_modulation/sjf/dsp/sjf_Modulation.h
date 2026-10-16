@@ -102,6 +102,7 @@ namespace sjf::dsp::modulation{
 
 		void reset()
 		{
+			dummyBuffer.clear();
 			seq.reset();
 		}
 
@@ -109,6 +110,7 @@ namespace sjf::dsp::modulation{
 		void process(const ProcessContext& context)
 		{
 			auto block = juce::dsp::AudioBlock<float>(dummyBuffer).getSubBlock(0, context.getOutputBlock().getNumSamples());
+			block.copyFrom(context.getInputBlock());
 			auto modContext = juce::dsp::ProcessContextReplacing<float>(block);
 			seq.process(modContext);
 		}

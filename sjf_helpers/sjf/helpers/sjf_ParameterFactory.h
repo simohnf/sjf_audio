@@ -379,6 +379,28 @@ public:
 	{
 		return appGroup->getSubgroups(recursive);
 	}
+
+	static void setTooltip(juce::AudioProcessorParameter* parameter, const juce::String& tooltip)
+	{
+		if (auto sttc = dynamic_cast<juce::SettableTooltipClient*>(parameter))
+		{
+			sttc->setTooltip(tooltip);
+			return;
+		}
+
+		jassertfalse;
+	}
+
+	static juce::String getTooltip(juce::AudioProcessorParameter* parameter)
+	{
+		if (auto sttc = dynamic_cast<juce::SettableTooltipClient*>(parameter))
+		{
+			return sttc->getTooltip();
+		}
+
+		jassertfalse;
+		return {};
+	}
 private:
 	std::unique_ptr<juce::AudioProcessorParameterGroup> appGroup{nullptr};
 	std::vector<std::unique_ptr<ParameterFactory>> childFactories;

@@ -514,7 +514,7 @@ public:
             startValue = currentValue = targetValue = mappedTargetValue;
         }
 
-    	bool isSmoothing()
+    	bool isSmoothing() const
         {
         	if constexpr (std::is_same_v<JuceParamType, sjf::helpers::parameters::FloatParameter>)
 				return !juce::approximatelyEqual(currentValue, targetValue);

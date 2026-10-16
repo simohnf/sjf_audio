@@ -128,8 +128,8 @@ public:
 
 
 
-        explicit Parameters(const float minFrequency_ = 0.001f, const float maxFrequency_ = 20.0f, const float defaultFrequency_ = 1.0f)
-        : frequency(freq, sync, syncedNumerator, syncedDenominator, FrequencyParam::makeFrequencyRange(minFrequency_, maxFrequency_), defaultFrequency_)
+        explicit Parameters(const float minFrequency_ = 0.001f, const float maxFrequency_ = 20.0f, const float defaultFrequency_ = 1.0f, const float centreF = 1.0f )
+        : frequency(freq, sync, syncedNumerator, syncedDenominator, FrequencyParam::makeFrequencyRange(minFrequency_, maxFrequency_, centreF), defaultFrequency_)
         {}
 
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
@@ -174,8 +174,8 @@ public:
     } parameters;
 
 
-    explicit LFO(const float minFrequency_ = 0.001f, const float maxFrequency_ = 20.0f, const float defaultFrequency_ = 1.0f)
-    : parameters(minFrequency_, maxFrequency_, defaultFrequency_)
+    explicit LFO(const float minFrequency_ = 0.001f, const float maxFrequency_ = 20.0f, const float defaultFrequency_ = 1.0f, const float centreF_ = 1.0f)
+    : parameters(minFrequency_, maxFrequency_, defaultFrequency_, centreF_)
 	, phasor(parameters.frequency)
     {
         static_assert(!std::is_same_v<helpers::functions::utilities::DummyStruct, LFO>, "You have not included an instance of LFOWaveformProvider in the template arguments");

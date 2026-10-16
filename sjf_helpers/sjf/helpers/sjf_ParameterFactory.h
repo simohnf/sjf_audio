@@ -1352,13 +1352,13 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
             positionInfo.setBpm(120);
     }
 
-    static juce::NormalisableRange<float> makeFrequencyRange(const float minHz, const float maxHz)
+    static juce::NormalisableRange<float> makeFrequencyRange(const float minHz, const float maxHz, const float centreF = 0.0f)
     {
         const auto min = juce::jmin(minHz, maxHz) > 0 ? juce::jmin(minHz, maxHz) : 0.001f;
         const auto max = juce::jmax(minHz, maxHz) > min && juce::jmax(minHz, maxHz) <= 20000.0f ? juce::jmax(minHz, maxHz) : 20000.0f;
-        const auto skew = std::sqrt(min * max);
+        const auto skew = centreF > min && centreF < max ? centreF : std::sqrt(min * max);
 
-        auto range = juce::NormalisableRange<float>(min, max, 0.01f);
+        auto range = juce::NormalisableRange<float>(min, max, min > 0.01f ? 0.01f : 0.001f);
         range.setSkewForCentre(skew);
         return range;
     }

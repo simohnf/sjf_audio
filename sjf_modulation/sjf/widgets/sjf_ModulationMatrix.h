@@ -449,9 +449,7 @@ public:
 	}
 
 	void paintCell (Graphics& /*g*/, int /*rowNumber*/, int /*columnId*/, int /*width*/, int /*height*/, bool /*rowIsSelected*/) override
-	{
-		// g.fillAll(juce::Colours::black);
-	}
+	{}
 
 	Component* refreshComponentForCell (int rowNumber, int columnId, bool /*isRowSelected*/, Component* existingComponentToUpdate) override
 	{

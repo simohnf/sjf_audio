@@ -283,6 +283,12 @@ namespace sjf::helpers
 			return sum * outputScale;
 		}
 
+		template<sjf::interpolation::InterpolatorTypes InterpType>
+		[[nodiscard]] float readSampleNoPitchShift(const float delayTimeSamps) const
+		{
+			return delayLine.readSample<InterpType>(delayTimeSamps);
+		}
+
 
 
 	private:

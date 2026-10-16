@@ -384,13 +384,13 @@ public:
             lastSaturationType = currentSaturationType;
 
             if (parameters.saturation.currentValue)
-                dispatch<true>(currentSaturationType, std::make_index_sequence<Saturation::numSaturators>{}, context);
+                dispatchSaturation<true>(currentSaturationType, std::make_index_sequence<Saturation::numSaturators>{}, context);
             else
-                dispatch<false>(currentSaturationType, std::make_index_sequence<Saturation::numSaturators>{}, context);
+                dispatchSaturation<false>(currentSaturationType, std::make_index_sequence<Saturation::numSaturators>{}, context);
         }
         else
         {
-			dispatch<false>(0, std::make_index_sequence<Saturation::numSaturators>{}, context);
+			dispatchSaturation<false>(0, std::make_index_sequence<Saturation::numSaturators>{}, context);
         }
 
         dcBlocker.process(context);
@@ -419,17 +419,32 @@ public:
     }
 
 private:
+	template <bool SaturationActive, std::size_t... Indices, typename ProcessContext>
+	void dispatchSaturation(const size_t targetIndex, std::index_sequence<Indices...>, const ProcessContext& context) noexcept
+	{
+		(void)((targetIndex == static_cast<size_t>(Indices) ? (dispatchPingPong<Indices, SaturationActive>(context), true) : false) || ...);
+	}
 
-    template <bool SaturationActive, std::size_t... Indices, typename ProcessContext>
-    void dispatch (const size_t targetIndex, std::index_sequence<Indices...>, const ProcessContext& context) noexcept
+    template <size_t SaturationIndex, bool SaturationActive, typename ProcessContext>
+    void dispatchPingPong (const ProcessContext& context) noexcept
     {
     	if (getPingPongActive())
-			(void)((targetIndex == static_cast<size_t>(Indices) ? (processInternal<Indices, SaturationActive, true>(context), true) : false) || ...);
+			dispatchDetune<SaturationIndex, SaturationActive, true>(context);
     	else
-    		(void)((targetIndex == static_cast<size_t>(Indices) ? (processInternal<Indices, SaturationActive, false>(context), true) : false) || ...);
+    		dispatchDetune<SaturationIndex, SaturationActive, false>(context);
     }
 
-    template <size_t SaturationIndex, bool SaturationActive, bool PingPong, typename ProcessContext>
+	template <size_t SaturationIndex, bool SaturationActive, bool PingPong, typename ProcessContext>
+	void dispatchDetune (const ProcessContext& context) noexcept
+    {
+    	if (getDetuneActive())
+    		processInternal<SaturationIndex, SaturationActive, PingPong, true>(context);
+    	else
+    		processInternal<SaturationIndex, SaturationActive, PingPong, false>(context);
+    }
+
+
+    template <size_t SaturationIndex, bool SaturationActive, bool PingPong, bool Detune, typename ProcessContext>
     void processInternal (const ProcessContext& context) noexcept
     {
         const auto& inputBlock = context.getInputBlock();
@@ -444,17 +459,6 @@ private:
         juce::dsp::AudioBlock<float> oneSampleBlock(oneSampleBuffer);
         const juce::dsp::ProcessContextReplacing<float> oneSampleContext(oneSampleBlock);
 
-
-        std::array<const float*, NUM_CHANNELS> inputChannelPointers;
-        std::array<float*, NUM_CHANNELS> outputChannelPointers;
-
-        for (auto channel = 0ul; channel < NUM_CHANNELS; ++channel)
-        {
-            inputChannelPointers[channel] = inputBlock.getChannelPointer (channel);
-            outputChannelPointers[channel] = outputBlock.getChannelPointer (channel);
-        }
-
-
         const auto link = getLinkActive();
 
         const auto calculateInput = [&](const size_t channel, const size_t i)
@@ -465,8 +469,8 @@ private:
                 {
                     const auto scale = 1.0f / sqrtf(NUM_CHANNELS);
                     auto input = 0.0f;
-                    for (const auto cptr : inputChannelPointers)
-                        input += cptr[i];
+                    for (auto c = 0; c < NUM_CHANNELS; ++c)
+                        input += inputBlock.getSample(c, static_cast<int>(i));
                     input *= scale;
                     return input;
                 };
@@ -476,7 +480,7 @@ private:
 
                 return 0.0f;
             }
-            return inputChannelPointers[channel][i];
+            return inputBlock.getSample(static_cast<int>(channel), static_cast<int>(i));
         };
 
         const auto calculateWriteChannel = [&](const size_t channel)
@@ -512,13 +516,23 @@ private:
                 auto delayTime = link ? parameters.delayTimes[0].time.currentValue : parameters.delayTimes[channel].time.currentValue;
                 delayTime *= getDelayTimeOffset(channel);
                 delayTime += delayTime * getLFOSample(static_cast<int>(channel), static_cast<int>(i), lfoBlock);
-                if constexpr (hasDetune)
+
+                if constexpr (!hasDetune)
                 {
-                    const auto detune = parameters.detunes[channel].currentValue;
-                    delayLine[channel].setPitchShift(detune);
+	                sample = delayLine[channel].template readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
                 }
-                sample = delayLine[channel].template readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
-                sample = saturation.template processSample<SaturationIndex, SaturationActive>(sample * drive) * norm;
+            	else if constexpr(!Detune)
+            	{
+            		sample = delayLine[channel].template readSampleNoPitchShift<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+            	}
+            	else
+            	{
+		            const auto detune = parameters.detunes[channel].currentValue;
+		            delayLine[channel].setPitchShift(detune);
+			        sample = delayLine[channel].template readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
+	            }
+            	
+            	sample = saturation.template processSample<SaturationIndex, SaturationActive>(sample * drive) * norm;
             }
 
             if constexpr (hasFilter)
@@ -531,7 +545,7 @@ private:
                 const auto wc = calculateWriteChannel(channel);
                 const auto input = calculateInput(channel, i);
                 delayLine[wc].writeSample(input + calculateFeedback(channel, feedback) * sample);
-                outputChannelPointers[channel][i] = sample;
+                outputBlock.setSample(static_cast<int>(channel), static_cast<int>(i), sample);
             }
         }
     }
@@ -573,6 +587,23 @@ private:
             return parameters.pingPong.currentValue;
         else
             return false;
+    }
+
+
+	bool getDetuneActive()
+    {
+    	if constexpr (hasDetune)
+    	{
+    		for (auto& detune_ : parameters.detunes)
+    			if (!approximatelyEqual(detune_.currentValue, 0.0f) || detune_.isSmoothing())
+    				return true;
+
+    		return false;
+    	}
+    	else
+    	{
+    		return false;
+    	}
     }
 
     bool getLinkActive()

@@ -32,7 +32,11 @@ public:
                 /// we insert the parameters into the processors parameter tree,
                 /// BUT The BiasWrapper::Parameters struct handles smoothing/reset etc the
 
-            	createTrackedPercentParameter(*targetFactory, bias, "Bias", "Bias", -100.0f, 100.0f, 0.0f, 0.0f, [](const float x){ return sjf::helpers::Waveshapers::Clippers::tanh( x*0.01f);});
+            	createTrackedPercentParameter(*targetFactory, bias, "Bias", "Bias", -100.0f, 100.0f, 0.0f, 0.0f, [](float x){
+            		x*= 0.01f;
+            		x = sjf::helpers::Waveshapers::Clippers::tanh( x);
+            		return x*x*x;
+            	});
              
             }
             else

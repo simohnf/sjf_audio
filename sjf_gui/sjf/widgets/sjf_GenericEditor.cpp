@@ -1852,6 +1852,7 @@ namespace sjf::generic_editor
 								}
 						},
 						undoManager)
+	, tooltipWindow(this)
 	{
 		LookAndFeel::setDefaultLookAndFeel(&lookAndFeel);
 		// if (auto lnf4 = dynamic_cast<juce::LookAndFeel_V4*>(&getLookAndFeel()))
@@ -1980,6 +1981,20 @@ namespace sjf::generic_editor
 					}
 				});
 			}
+
+			// forces repaint if tooltip was previously visible
+			//	--> if components were transparent this was causing some weirdness
+			static const auto tooltipVisibileId = juce::Identifier("tooltipVisibile");
+			if (tooltipWindow.isVisible())
+			{
+				getProperties().set(tooltipVisibileId, true);
+			}
+			else if ( getProperties().getWithDefault(tooltipVisibileId, false))
+			{
+				getProperties().remove(tooltipVisibileId);
+				repaint();
+			}
+
 		}
 	}
 

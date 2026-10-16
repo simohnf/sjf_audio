@@ -21,10 +21,10 @@ namespace sjf::helpers::parameters{
 	 * @brief Pure interface implemented by custom JUCE parameters
 	 *        that accept real-time audio-thread modulation offsets.
 	 */
-	class ParameterBase
+	class ParameterBase : public juce::SettableTooltipClient
 	{
 	public:
-		virtual ~ParameterBase() = default;
+		~ParameterBase() override = default;
 
 		/**
 		 * @brief Writes a pre-summed, normalized modulation offset [-1.0, +1.0]

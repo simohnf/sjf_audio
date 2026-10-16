@@ -710,7 +710,23 @@ namespace sjf::dsp::modulation{
 				jassert(stateTree.getType() == id);
 				auto& connections = connectionsBuffer.getWrite();
 
-				connections = stringToConnections(stateTree.getProperty(ids::connectionID, "").toString());
+				const auto connectionsString = stateTree.getProperty(ids::connectionID, "").toString();
+
+				{ /// If you hit an assert inside this block you probably loaded a preset that has an old/removed modulator ID
+					auto connectionsStrArr = juce::StringArray::fromTokens(connectionsString, ids::seperator2, "");
+					auto duplicate = juce::StringArray{};
+					for (const auto & connectionString : connectionsStrArr)
+					{
+						if (const auto arr = juce::StringArray::fromTokens(connectionString, ids::seperator1, ""); modulators.getModulator(arr[0]))
+							duplicate.add(connectionString);
+					}
+					if (duplicate.size() != connectionsStrArr.size())
+					{
+						stateTree.setProperty(ids::connectionID, duplicate.joinIntoString(ids::seperator2), nullptr);
+						return;
+					}
+				}
+				connections = stringToConnections(connectionsString);
 
 				connectionRemover.updateActiveConnections(connections);
 				connectionsBuffer.updateWriteIndex();

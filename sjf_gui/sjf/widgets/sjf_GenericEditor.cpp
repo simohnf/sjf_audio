@@ -42,9 +42,9 @@ namespace sjf::generic_editor
 
 				buildUIFromGroup();
 				collapseButton.setComponentID(group_.getID()+"CollapseButton");
-				collapseButton.setTooltip("Collapse/Expand editor (Right click for more options)");
 
 				collapseButton.onStateChange = [this](){
+					collapseButton.setTooltip(juce::String{isExpanded() ? "Collapse" : "Expand"} + " editor (Right click for more options)");
 					if (ModifierKeys::getCurrentModifiers().getNumMouseButtonsDown() == 0)
 						return; // only act on mouse down
 					modifierKeys = ModifierKeys::getCurrentModifiers();
@@ -229,6 +229,7 @@ namespace sjf::generic_editor
 					if (viewport)
 						viewport->setViewPosition(pos); // force viewport not to jump all over the place
 				}
+				collapseButton.setButtonText((isExpanded() ? "-" : "+"));
 			}
 
 
@@ -315,7 +316,7 @@ namespace sjf::generic_editor
 			bool expanded{true};
 
 
-			juce::TextButton collapseButton{"^"};
+			juce::TextButton collapseButton{"-"};
 			juce::Label titleLabel;
 
 

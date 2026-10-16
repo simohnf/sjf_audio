@@ -14,11 +14,12 @@
 #include <JuceHeader.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
 
-#include "sjf_Modulation.h"
-#include "sjf/processors/sjf_EnvelopeFollower_juce.h"
+#include <sjf/dsp/sjf_Modulation.h>
+#include <sjf/processors/sjf_EnvelopeFollower_juce.h>
 
 namespace sjf::dsp::modulation
 {
+template <bool AddFilter>
 class ModulatorEnvelopeFollower : public ModulatorBase
 {
 public:
@@ -75,7 +76,7 @@ public:
 	}
 private:
 	juce::String id{};
-	sjf::dsp::EnvelopeFollower envelopeFollower;
+	sjf::dsp::EnvelopeFollower<AddFilter> envelopeFollower;
 	juce::AudioBuffer<float> buffer;
 	float output{}, inputScale{1.0f};
 };

@@ -15,6 +15,7 @@
 #include <sjf/helpers/sjf_ParameterFactory.h>
 
 namespace sjf::dsp{
+template<bool AddFilter>
 class EnvelopeFollower
 {
 public:
@@ -39,6 +40,8 @@ public:
         spec = spec_;
         parameters.prepare(spec);
         ballistics.prepare(spec);
+        if constexpr (AddFilter)
+            filter.prepare(spec);
         reset();
     }
 
@@ -47,18 +50,29 @@ public:
         parameters.reset();
         updateBallisticsParameters();
         ballistics.reset();
+        if constexpr (AddFilter)
+            filter.reset();
     }
 
     template <typename ProcessContext>
     void process (const ProcessContext& context) noexcept
     {
-        [[maybe_unused]] const auto& inputBlock = context.getInputBlock();
-        [[maybe_unused]] auto& outputBlock      = context.getOutputBlock();
+        auto contextReplacing = juce::dsp::ProcessContextReplacing<float>{context.getOutputBlock()};
+        if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
+            contextReplacing.getOutputBlock().copyFrom(context.getInputBlock());
+
+        if constexpr (AddFilter)
+            filter.process(contextReplacing);
+
+        [[maybe_unused]] const auto& inputBlock = contextReplacing.getInputBlock();
+        [[maybe_unused]] auto& outputBlock      = contextReplacing.getOutputBlock();
         [[maybe_unused]] const auto numChannels = outputBlock.getNumChannels();
         [[maybe_unused]] const auto numSamples  = outputBlock.getNumSamples();
 
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);
+
+
 
         if (parameters.checkForStateChange())
         {
@@ -76,13 +90,18 @@ public:
         }
         else
         {
-            ballistics.process(context);
+            ballistics.process(contextReplacing);
         }
     }
 
-    std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String factoryID, const juce::String factoryName)
+    std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
     {
-        return parameters.createParameters (factoryID, factoryName);
+        auto factory = parameters.createParameters (factoryID, factoryName);
+
+        if constexpr (AddFilter)
+            factory->addChildFactory(filter.createParameters(factoryID + "PreF", factoryName + " Pre Filter"));
+
+        return factory;
     }
 
 private:
@@ -99,6 +118,7 @@ private:
     }
 
     juce::dsp::BallisticsFilter<float> ballistics;
+    [[maybe_unused]] sjf::helpers::BypassWrapper<sjf::dsp::SVF<>, helpers::bypass_wrapper_config::Bypass> filter;
     juce::dsp::ProcessSpec spec{};
     juce::dsp::BallisticsFilter<float>::LevelCalculationType lastCalculationType{juce::dsp::BallisticsFilter<float>::LevelCalculationType::peak};
 };

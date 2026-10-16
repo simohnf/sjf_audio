@@ -143,6 +143,15 @@ private:
                 		parent->getProperties().set(ids::modulatedID, true);
                 		parent->repaint();
                 	}
+
+                	auto setTooltip = [](auto* type){
+                		if (type)
+                			type->setTooltip(type->getTooltip() + "\nRight-click to assign/change modulations");
+                	};
+                	setTooltip(dynamic_cast<juce::ComboBox*>(parent));
+                	setTooltip(dynamic_cast<juce::Button*>(parent));
+                	setTooltip(dynamic_cast<juce::Slider*>(parent));
+
                 }
             }
         }
@@ -454,6 +463,7 @@ struct GenericEditorWithModulation : sjf::generic_editor::GenericEditor
 				modulationManager.disconnectModulatable(*modulatable_);
 		}
 	}
+private:
 
 
 	juce::TabbedComponent tabbedComponent{juce::TabbedButtonBar::Orientation::TabsAtTop};

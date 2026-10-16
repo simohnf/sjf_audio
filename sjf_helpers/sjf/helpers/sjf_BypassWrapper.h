@@ -107,11 +107,13 @@ public:
 
                 if constexpr (hasBypass)
                 {
-                    createTrackedParameter (*targetFactory, bypass, "Bypass", "Bypass", false);
+                    auto p = createTrackedParameter (*targetFactory, bypass, "Bypass", "Bypass", false);
+                	ParameterFactory::setTooltip(p, "Bypass/activate this processor.");
                 }
             	else if constexpr (hasOnOff)
             	{
-            		createTrackedParameter (*targetFactory, bypass, "On", "On", false, [](const bool x){ return !x;});
+            		auto p = createTrackedParameter (*targetFactory, bypass, "On", "On", false, [](const bool x){ return !x;});
+            		ParameterFactory::setTooltip(p, "Turn this processor on/off.");
             	}
                 else
                 {
@@ -120,7 +122,8 @@ public:
 
                 if constexpr (hasMute)
                 {
-                    createTrackedParameter (*targetFactory, mute, "Mute", "Mute", false);
+                    auto p = createTrackedParameter (*targetFactory, mute, "Mute", "Mute", false);
+                	ParameterFactory::setTooltip(p, "Mute this processor.");
                 }
                 else
                 {
@@ -133,7 +136,8 @@ public:
             		const auto attributes = juce::AudioParameterFloatAttributes{}
             		.withLabel("%");
             		const auto mapping = [&](const float x){ return x * 0.01f;};
-            		createTrackedParameter (*targetFactory, mix, "Mix", "Mix", range, DefaultMixLevel::defaultLevel, mapping, attributes);
+            		auto p = createTrackedParameter (*targetFactory, mix, "Mix", "Mix", range, DefaultMixLevel::defaultLevel, mapping, attributes);
+            		ParameterFactory::setTooltip(p, "Set the mix of dry/wet signals for this processor (100% means fully wet).");
             	}
             	else
             	{
@@ -143,6 +147,7 @@ public:
             	if constexpr (hasSolo)
             	{
             		soloParam = createTrackedParameter (*targetFactory, solo, "Solo", "Solo", false);
+            		ParameterFactory::setTooltip(soloParam, "Solo this processor.");
             	}
             }
             else

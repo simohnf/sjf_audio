@@ -1151,7 +1151,11 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
         auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
 
         // Sync
-        createTrackedParameter(*factory, sync, "Sync", "Sync", false);
+	    {
+		    auto p = createTrackedParameter(*factory, sync, "Sync", "Sync", false);
+        	ParameterFactory::setTooltip(p, "Synchronise the time to the current BPM");
+	    }
+
 
         // Delay Time
         {
@@ -1171,18 +1175,21 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
                     return spec.sampleRate * juce::jlimit(timeRange.start, timeRange.end, bar * div) * 0.001f;
                 }
             };
-            createTrackedParameter  (*factory, time, "Time",  "Time  (ms)",  timeRange, defaultTimeMS, mapping, getDurationAttributes());
+            auto p = createTrackedParameter  (*factory, time, "Time",  "Time  (ms)",  timeRange, defaultTimeMS, mapping, getDurationAttributes());
+        	ParameterFactory::setTooltip(p, "Set the time in milliseconds");
         }
 
         // SyncedNumerator
         {
             auto mapping = [&](const int indx){ return SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(indx)];};
-            createTrackedParameter  (*factory, syncedNumerator, "NumDivisions", "NumDivisions", SyncRatesProvider::Numerator::getStrings(), SyncRatesProvider::Numerator::getDefault(), mapping);
+            auto p = createTrackedParameter  (*factory, syncedNumerator, "NumDivisions", "NumDivisions", SyncRatesProvider::Numerator::getStrings(), SyncRatesProvider::Numerator::getDefault(), mapping);
+        	ParameterFactory::setTooltip(p, "The number of divisions for the synchronised time.");
         }
         //syncedDenominator
         {
             auto mapping = [&](const int indx){ return SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(indx)];};
-            createTrackedParameter (*factory, syncedDenominator, "Division", "Division", SyncRatesProvider::Denominator::getStrings(), SyncRatesProvider::Denominator::getDefault(), mapping);
+            auto p = createTrackedParameter (*factory, syncedDenominator, "Division", "Division", SyncRatesProvider::Denominator::getStrings(), SyncRatesProvider::Denominator::getDefault(), mapping);
+        	ParameterFactory::setTooltip(p, "The division type for the synchronised time.");
         }
 
 
@@ -1293,7 +1300,10 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
         auto factory = helpers::ParameterFactory::create (factoryID, factoryName);
 
         // Sync
-        createTrackedParameter(*factory, sync, "Sync", "Sync", false);
+        {
+	        auto p = createTrackedParameter(*factory, sync, "Sync", "Sync", false);
+        	ParameterFactory::setTooltip(p, "Synchronise the frequency to the current BPM.");
+        }
 
         // Frequency
         {
@@ -1314,19 +1324,22 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
                 }
             };
 
-            createTrackedParameter (*factory, frequency, "Freq", "Frequency  (Hz)", frequencyRange, defaultFrequency, mapping, getFrequencyAttributes());
+            auto p = createTrackedParameter (*factory, frequency, "Freq", "Frequency  (Hz)", frequencyRange, defaultFrequency, mapping, getFrequencyAttributes());
+        	ParameterFactory::setTooltip(p, "Set the frequency in Hz.");
         }
 
         // SyncedNumerator
         {
             auto mapping = [&](const int indx){ return SyncRatesProvider::Numerator::getValues()[static_cast<size_t>(indx)];};
-            createTrackedParameter (*factory, syncedNumerator, "NumDivs", "NumDivisions", SyncRatesProvider::Numerator::getStrings(), SyncRatesProvider::Numerator::getDefault(), mapping);
+            auto p = createTrackedParameter (*factory, syncedNumerator, "NumDivs", "NumDivisions", SyncRatesProvider::Numerator::getStrings(), SyncRatesProvider::Numerator::getDefault(), mapping);
+        	ParameterFactory::setTooltip(p, "The number of divisions for the synchronised frequency.");
         }
 
         // SyncedDenominator
         {
             auto mapping = [&](const int indx){ return SyncRatesProvider::Denominator::getValues()[static_cast<size_t>(indx)];};
-            createTrackedParameter (*factory, syncedDenominator, "Div", "Division", SyncRatesProvider::Denominator::getStrings(), SyncRatesProvider::Denominator::getDefault(), mapping);
+            auto p = createTrackedParameter (*factory, syncedDenominator, "Div", "Division", SyncRatesProvider::Denominator::getStrings(), SyncRatesProvider::Denominator::getDefault(), mapping);
+        	ParameterFactory::setTooltip(p, "The division type for the synchronised frequency.");
         }
 
         return factory;

@@ -103,6 +103,10 @@ public:
 
 
 		});
+
+		auto processorName = helpers::ParameterFactory::getNameWithoutParentPrefix(parameters);
+
+		ComboBox::setTooltip("Load/Save preset for " + (processorName.isNotEmpty() ? processorName : JucePlugin_Name));
 	}
 
 	~PresetPanel() override

@@ -139,7 +139,12 @@ public:
 		return img;
 	}
 
-	LookAndFeel(): juce::LookAndFeel_V4(makeColourScheme()) {}
+	LookAndFeel(): juce::LookAndFeel_V4(makeColourScheme())
+	{
+		setColour(juce::TooltipWindow::backgroundColourId, getCurrentColourScheme().getUIColour(ColourScheme::menuBackground));
+		setColour(juce::TooltipWindow::textColourId, getCurrentColourScheme().getUIColour(ColourScheme::menuText));
+	}
+
 	~LookAndFeel() override {}
 private:
 	static juce::LookAndFeel_V4::ColourScheme makeColourScheme()
@@ -153,7 +158,7 @@ private:
 
 			if (id == ColourScheme::defaultFill)
 			{
-				scheme.setUIColour(ColourScheme::defaultFill, scheme.getUIColour(ColourScheme::widgetBackground).contrasting(0.25f));
+				scheme.setUIColour(ColourScheme::defaultFill, scheme.getUIColour(ColourScheme::widgetBackground).contrasting(0.5f));
 				continue;
 			}
 			if (id == ColourScheme::highlightedFill)

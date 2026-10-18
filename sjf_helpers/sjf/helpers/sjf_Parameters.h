@@ -15,8 +15,6 @@
 #include <sjf/helpers/sjf_ParameterFactory.h>
 
 namespace sjf::helpers::parameters{
-#include <atomic>
-
 	/**
 	 * @brief Pure interface implemented by custom JUCE parameters
 	 *        that accept real-time audio-thread modulation offsets.

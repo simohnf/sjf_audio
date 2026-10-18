@@ -117,12 +117,15 @@ public:
 
         using FrequencyParam = helpers::SyncedFrequencyParameter<SyncedRatesProvider>;
         FloatState freq;
-        [[maybe_unused]] FloatState depth, phaseOffset;
+        [[maybe_unused]] FloatState depth;
+        [[maybe_unused]] FloatState phaseOffset;
 
         BoolState sync;
 
-        [[maybe_unused]] ChoiceState waveform, invert;
-        [[maybe_unused]] ChoiceState syncedNumerator, syncedDenominator;
+        [[maybe_unused]] ChoiceState waveform;
+        [[maybe_unused]] ChoiceState invert;
+        [[maybe_unused]] ChoiceState syncedNumerator;
+        [[maybe_unused]] ChoiceState syncedDenominator;
 
         FrequencyParam frequency;
 

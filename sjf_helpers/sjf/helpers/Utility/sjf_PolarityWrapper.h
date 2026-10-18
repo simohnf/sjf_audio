@@ -37,7 +37,8 @@ class PolarityWrapper
 public:
     struct Parameters : public helpers::AudioParametersBase
     {
-    	[[maybe_unused]] std::array<BoolState, NumChannels> input, output;
+    	[[maybe_unused]] std::array<BoolState, NumChannels> input;
+    	[[maybe_unused]] std::array<BoolState, NumChannels>output;
         std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String&, const juce::String&) override
         {
             if (targetFactory)

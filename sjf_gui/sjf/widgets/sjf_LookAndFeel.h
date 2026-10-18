@@ -13,6 +13,8 @@
 #pragma once
 #include <JuceHeader.h>
 
+#include <sjf/helpers/sjf_HelperFunctions.h>
+
 namespace sjf::gui{
 namespace look_and_feel::ids
 {
@@ -243,8 +245,8 @@ private:
 	{
 		static juce::TextLayout layoutTooltipText (TypefaceMetricsKind metrics, const String& text, Colour colour) noexcept
 		{
-			const float tooltipFontSize = 13.0f;
-			const int maxToolTipWidth = 400;
+			constexpr float tooltipFontSize = 13.0f;
+			constexpr int maxToolTipWidth = 400;
 
 			juce::AttributedString s;
 			s.setWordWrap (juce::AttributedString::WordWrap::byChar);
@@ -252,15 +254,15 @@ private:
 			s.append (text, juce::FontOptions (tooltipFontSize, juce::Font::bold).withMetricsKind (metrics), colour);
 
 			juce::TextLayout tl;
-			tl.createLayoutWithBalancedLineLengths (s, (float) maxToolTipWidth);
+			tl.createLayoutWithBalancedLineLengths (s, static_cast<float>(maxToolTipWidth));
 			return tl;
 		}
 	};
 
 	void drawTooltip (Graphics& g, const String& text, int width, int height) override
 	{
-		Rectangle<int> bounds (width, height);
-		auto cornerSize = 1.0f;
+		const Rectangle<int> bounds (width, height);
+		constexpr auto cornerSize = 1.0f;
 
 		g.setColour (findColour (TooltipWindow::backgroundColourId));
 		g.fillRoundedRectangle (bounds.toFloat(), cornerSize);

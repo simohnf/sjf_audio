@@ -107,8 +107,10 @@ public:
     struct Parameters : public helpers::AudioParametersBase
     {
         FloatState    sampleRate; // this ara,eter is actually mapped to the per sample phase increase
-    	[[maybe_unused]] FloatState outputFilterOctave, jitter;
-    	[[maybe_unused]] BoolState inputFilter, outputFilter;
+    	[[maybe_unused]] FloatState outputFilterOctave;
+    	[[maybe_unused]] FloatState jitter;
+    	[[maybe_unused]] BoolState inputFilter;
+    	[[maybe_unused]] BoolState outputFilter;
 		std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
         {
             auto factory = helpers::ParameterFactory::create (factoryID, factoryName);

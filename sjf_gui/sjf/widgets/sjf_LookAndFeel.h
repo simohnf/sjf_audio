@@ -37,7 +37,7 @@ public:
 
 	static juce::LookAndFeel_V4::ColourScheme getBaseColourScheme()
 	{
-		return juce::LookAndFeel_V4::getDarkColourScheme();
+		return juce::LookAndFeel_V4::getGreyColourScheme();
 	}
 
 	static juce::Colour createRandomisedColour(size_t& seed, juce::Colour colour)
@@ -139,40 +139,10 @@ public:
 		return img;
 	}
 
-	LookAndFeel(): juce::LookAndFeel_V4(makeColourScheme())
-	{
-		setColour(juce::TooltipWindow::backgroundColourId, getCurrentColourScheme().getUIColour(ColourScheme::menuBackground));
-		setColour(juce::TooltipWindow::textColourId, getCurrentColourScheme().getUIColour(ColourScheme::menuText));
-	}
+	LookAndFeel(): juce::LookAndFeel_V4(getBaseColourScheme()){}
 
 	~LookAndFeel() override {}
 private:
-	static juce::LookAndFeel_V4::ColourScheme makeColourScheme()
-	{
-		auto scheme = getBaseColourScheme();
-		auto seed = getInitialPluginRandomSeed();
-
-		for ( auto i = 0; i < ColourScheme::numColours; ++i)
-		{
-			auto id = static_cast<ColourScheme::UIColour>(i);
-
-			if (id == ColourScheme::defaultFill)
-			{
-				scheme.setUIColour(ColourScheme::defaultFill, scheme.getUIColour(ColourScheme::widgetBackground).contrasting(0.5f));
-				continue;
-			}
-			if (id == ColourScheme::highlightedFill)
-			{
-				scheme.setUIColour(ColourScheme::highlightedFill, juce::Colour::contrasting(scheme.getUIColour(ColourScheme::defaultFill), scheme.getUIColour(ColourScheme::widgetBackground)));
-				continue;
-			}
-			auto col = scheme.getUIColour(id);
-			auto alpha = col.getAlpha();
-			scheme.setUIColour(id, createRandomisedColour(seed, col).withAlpha(alpha));
-		}
-		return scheme;
-	}
-
 	int getSliderThumbRadius (Slider& slider) override
 	{
 		return jmin (6, slider.isHorizontal() ? static_cast<int> (static_cast<float>(slider.getHeight()) * 0.25f)

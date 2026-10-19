@@ -190,18 +190,12 @@ private:
 
 		auto col = [&]()
 		{
-			const auto hue = (component.getProperties().getWithDefault(look_and_feel::ids::modulatedID, false)) ? 0.3f : 0.0f;
-			auto c1 = component.findColour (ToggleButton::tickDisabledColourId);
-			auto c1h = component.findColour (ToggleButton::tickDisabledColourId).withRotatedHue(hue);
-			if (hue < 0.3f || c1h != c1)
+			if (component.getProperties().getWithDefault(look_and_feel::ids::modulatedID, false))
 			{
-				return c1h;
+				return getCurrentColourScheme().getUIColour(juce::LookAndFeel_V4::ColourScheme::defaultFill).contrasting(0.5f);
 			}
-			else if (const auto c2 = component.findColour(juce::Slider::trackColourId); c2 != c1)
-			{
-				return c2.withRotatedHue(hue);
-			}
-			return c1;
+
+			return component.findColour (ToggleButton::tickDisabledColourId);
 		}();
 
 		g.setColour(col);
@@ -222,9 +216,18 @@ private:
 	{
 		if (auto parent = slider.getParentComponent())
 		{
-			const auto hue = (slider.getProperties().getWithDefault(look_and_feel::ids::modulatedID, false)) ? 0.3f : 0.0f;
-			slider.setColour(Slider::trackColourId, parent->findColour (Slider::trackColourId).withRotatedHue(hue));
-			slider.setColour(Slider::backgroundColourId, parent->findColour (Slider::backgroundColourId).withRotatedHue(hue));
+			if (slider.getProperties().getWithDefault(look_and_feel::ids::modulatedID, false))
+			{
+				auto colour = getCurrentColourScheme().getUIColour(juce::LookAndFeel_V4::ColourScheme::defaultFill);
+				auto colour2 = colour.contrasting(0.5f);
+				slider.setColour(juce::Slider::trackColourId, colour2);
+				slider.setColour(juce::Slider::backgroundColourId, parent->findColour (juce::Slider::backgroundColourId).darker());
+			}
+			else
+			{
+				slider.setColour(juce::Slider::trackColourId, parent->findColour (juce::Slider::trackColourId));
+				slider.setColour(juce::Slider::backgroundColourId, parent->findColour (juce::Slider::backgroundColourId));
+			}
 		}
 		LookAndFeel_V4::drawLinearSlider(g, x, y, width, height, sliderPos, minSliderPos, maxSliderPos, style, slider);
 	}
@@ -234,8 +237,15 @@ private:
 	{
 		if (auto parent = box.getParentComponent())
 		{
-			const auto hue = (box.getProperties().getWithDefault(look_and_feel::ids::modulatedID, false)) ? 0.3f : 0.0f;
-			box.setColour(juce::ComboBox::backgroundColourId, parent->findColour(juce::ComboBox::backgroundColourId).withRotatedHue(hue));
+			if (box.getProperties().getWithDefault(look_and_feel::ids::modulatedID, false))
+			{
+				auto colour = getCurrentColourScheme().getUIColour(juce::LookAndFeel_V4::ColourScheme::defaultFill).contrasting(0.5f);
+				box.setColour(juce::ComboBox::backgroundColourId, colour);
+			}
+			else
+			{
+				box.setColour(juce::ComboBox::backgroundColourId, parent->findColour(juce::ComboBox::backgroundColourId));
+			}
 		}
 		juce::LookAndFeel_V4::drawComboBox(g, width, height, isButtonDown, buttonX, buttonY, buttonW, buttonH, box);
 	}

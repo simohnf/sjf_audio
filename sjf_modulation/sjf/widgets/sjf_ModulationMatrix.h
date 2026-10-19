@@ -152,8 +152,8 @@ class ModulationMatrix :	public juce::Component,
 						{
 							undoManager->beginNewTransaction();
 						}
-						modSystem.removeConnection(oldConnection_, undoManager);
-						modSystem.addConnection(newConnection_, undoManager);
+						modSystem.replaceConnection(oldConnection_, newConnection_, undoManager);
+
 						if (undoManager)
 						{
 							undoManager->setCurrentTransactionName("Changed modulation source from " + oldModID + " to " + modID + "(target: " + ranged->getParameterID() + ")");
@@ -309,8 +309,8 @@ class ModulationMatrix :	public juce::Component,
 							{
 								undoManager->beginNewTransaction();
 							}
-							modSystem.removeConnection(oldConnection_, undoManager);
-							modSystem.addConnection(newConnection_, undoManager);
+							modSystem.replaceConnection(oldConnection_, newConnection_, undoManager);
+
 							if (undoManager)
 							{
 								undoManager->setCurrentTransactionName("Changed target of modulation from " + oldParamID + " to " + paramID + "(source: " + modID + ")");

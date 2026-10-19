@@ -589,6 +589,29 @@ namespace sjf::dsp::modulation{
 			}
 		}
 
+		void replaceConnection(const Connection& oldConnection, const Connection& newConnection, UndoManager* undoManager)
+		{
+			if (apvts)
+			{
+				auto stateTree = apvts->state.getChildWithName(id);
+				auto str = stateTree.getProperty(ids::connectionID, "").toString();
+				auto connections = str.isEmpty() ? Connections{} : stringToConnections(str);
+				if (auto pos = std::find_if(connections.begin(), connections.end(),[&](auto& c){ return c.source == oldConnection.source && c.target == oldConnection.target; }); pos != connections.end())
+				{
+					*pos = newConnection;
+					stateTree.setProperty(ids::connectionID, connectionsAsString(connections), undoManager);
+				}
+				else
+				{
+					jassertfalse;
+				}
+			}
+			else
+			{
+				jassertfalse;
+			}
+		}
+
 		void disconnect(Modulatable& modulatable, UndoManager* undoManager)
 		{
 			jassert(MessageManager::existsAndIsLockedByCurrentThread());

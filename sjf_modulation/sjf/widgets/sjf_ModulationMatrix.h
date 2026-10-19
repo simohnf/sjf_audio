@@ -52,13 +52,14 @@ class ModulationMatrix :	public juce::Component,
 
 		void mouseDown(const MouseEvent& event) override
 		{
-			auto popup = buildPopup();
-			juce::PopupMenu::MenuItemIterator it{popup, true};
+			const auto popup = buildPopup();
 			{
+				juce::PopupMenu::MenuItemIterator it{popup, true};
 				auto itemID = 1;
 				while (it.next())
 				{
-					it.getItem().itemID = itemID++;
+					if (!it.getItem().subMenu)
+						it.getItem().itemID = itemID++;
 				}
 			}
 			(*getRootMenu()) = popup;
@@ -207,12 +208,13 @@ class ModulationMatrix :	public juce::Component,
 
 
 			auto popup = buildPopup(apvts.processor.getParameterTree(), static_cast<size_t>(number) < connections.size() ? &connections[static_cast<size_t>(number)] : defaultConnection());
-			juce::PopupMenu::MenuItemIterator it{popup, true};
 			{
+				juce::PopupMenu::MenuItemIterator it{popup, true};
 				auto itemID = 1;
 				while (it.next())
 				{
-					it.getItem().itemID = itemID++;
+					if (!it.getItem().subMenu)
+						it.getItem().itemID = itemID++;
 				}
 			}
 			(*getRootMenu()) = popup;

@@ -453,8 +453,7 @@ public:
 
 	Component* refreshComponentForCell (int rowNumber, int columnId, bool /*isRowSelected*/, Component* existingComponentToUpdate) override
 	{
-		if (existingComponentToUpdate)
-			delete existingComponentToUpdate;
+		delete existingComponentToUpdate;
 
 		if (!apvts.state.isValid() || !apvts.state.getChildWithName(id).isValid())
 		{

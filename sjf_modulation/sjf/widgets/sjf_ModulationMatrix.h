@@ -552,15 +552,7 @@ private:
 	{
 		if (treeWhosePropertyHasChanged.getType() == id)
 		{
-			if (MessageManager::existsAndIsLockedByCurrentThread())
-			{
-				currentConnections = getCurrentConnections();
-				table.updateContent();
-			}
-			else
-			{
-				asyncUpdate.triggerUpdate();
-			}
+			asyncUpdate.triggerUpdate();
 		}
 	}
 

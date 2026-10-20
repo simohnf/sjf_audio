@@ -65,7 +65,7 @@ public:
 	static constexpr auto InactiveSlot = dynamic_processor_sequence::InactiveSlot;
 
 	static_assert(NumProcessors < InactiveSlot,
-			  "DynamicProcessorSequence can not be instantiated that many processors!");
+			  "DynamicProcessorSequence can not be instantiated with that many processors!");
 
     // Fixed-capacity sequence payload matching maximum available tuple elements
     using SequenceOrder = std::array<size_t, NumProcessors>;

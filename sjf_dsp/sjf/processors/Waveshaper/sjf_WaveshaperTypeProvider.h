@@ -28,12 +28,6 @@ namespace sjf::dsp::waveshaper
         {
             return x;
         }
-
-        // Optional Method 1
-        // void prepare (const juce::dsp::ProcessSpec& spec_){}
-
-        // Optional Method 2
-        // void reset(){}
     };
 
     struct SoftClip

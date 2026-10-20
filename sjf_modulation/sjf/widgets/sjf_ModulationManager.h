@@ -207,7 +207,7 @@ private:
 				auto depth = connection.depth;
 				auto bipolar = connection.bipolar;
         		modControlPanels.back()->depthSlider.setValue( depth * 100.0f);
-				modControlPanels.back()->depthSlider.onMouseUp = [this, safeThis = std::weak_ptr(guard), depth, modId, paramID, slider = Component::SafePointer(&modControlPanels.back()->depthSlider)](){
+				modControlPanels.back()->depthSlider.onDragEnd = [this, safeThis = std::weak_ptr(guard), depth, modId, paramID, slider = Component::SafePointer(&modControlPanels.back()->depthSlider)](){
 					if (safeThis.expired())
 						return;
 
@@ -301,7 +301,7 @@ private:
 
         }
 
-        menu.showMenuAsync ({});
+		menu.showMenuAsync (juce::PopupMenu::Options{});
     }
 
 	struct ModControlPanel : juce::Component
@@ -323,8 +323,16 @@ private:
     		depthSlider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::black.withAlpha(0.0f));
     		depthSlider.setTooltip("Set the depth of the modulation.");
 
+    		depthSlider.onValueChange = [ds = &depthSlider, safeSlider = SafePointer(&depthSlider)](){
+    			if (!safeSlider || !ds->onDragEnd || ds->isMouseButtonDown(true))
+    				return;
+    			ds->onDragEnd();
+    		};
+
     		addAndMakeVisible(polarity);
     		polarity.setTooltip("Set whether the modulation is bipolar or unipolar.");
+
+
     	}
 
     	void resized() override
@@ -335,24 +343,9 @@ private:
     		depthSlider.setBounds(behindSlider.getX()+5, behindSlider.getY(), behindSlider.getWidth()-5, behindSlider.getHeight());
     	}
 
-    	struct DepthSlider : public juce::Slider
-    	{
-    		DepthSlider()
-    		: juce::Slider(juce::Slider::SliderStyle::LinearHorizontal, juce::Slider::TextBoxRight)
-    		{}
-
-    		void mouseUp(const MouseEvent& e) override
-    		{
-    			juce::Slider::mouseUp(e);
-    			if (onMouseUp)
-					onMouseUp();
-    		}
-    		std::function<void()> onMouseUp;
-    	};
-
 
     	juce::TextButton remove, polarity, behindSlider;
-    	DepthSlider depthSlider;
+    	juce::Slider depthSlider{juce::Slider::SliderStyle::LinearHorizontal, juce::Slider::TextBoxRight};
     };
 
 	std::vector<std::unique_ptr<ModControlPanel>> modControlPanels;

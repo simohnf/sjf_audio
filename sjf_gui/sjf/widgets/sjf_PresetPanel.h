@@ -82,16 +82,24 @@ public:
 			{
 				apvts = apvtsProvider->getAPVTS().state;
 				apvts.addListener(this);
-				if (parameters.getID().isEmpty())
-					return;
-				if (auto child = apvts.getChildWithName(parameters.getID()); child.isValid())
+				auto xml = apvts.toXmlString();
+				if (parameters.getID().isEmpty() && apvts.hasProperty(helpers::preset_manager::ids::presetNameId))
 				{
-					child.addListener(this);
-					paramVT = child;
+					const auto prop = apvts.getPropertyPointer(helpers::preset_manager::ids::presetNameId);
+					setText(prop->toString());
+				}
+				else if (auto child = apvts.getChildWithName(parameters.getID()); child.isValid())
+				{
 					if (const auto prop = child.getPropertyPointer(helpers::preset_manager::ids::presetNameId))
+					{
+						child.addListener(this);
+						paramVT = child;
 						setText(prop->toString());
+					}
 					else
+					{
 						jassertfalse;
+					}
 				}
 				else
 				{

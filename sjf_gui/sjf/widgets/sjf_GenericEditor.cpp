@@ -993,7 +993,7 @@ namespace sjf::generic_editor
 							 const juce::AudioProcessorParameterGroup& group_,
 							 const helpers::ParameterFactory::GroupMetadata& metadata_, Listener& listener_,
 							 UndoManager* undoManager_)
-			:	listener(listener_)
+			: listener(listener_)
 			, apvts(apvts_)
 			, group(group_)
 			, metadata(metadata_)

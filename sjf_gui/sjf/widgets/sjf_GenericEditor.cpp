@@ -751,8 +751,8 @@ namespace sjf::generic_editor
 
 			SequenceItemComponent(juce::AudioProcessorValueTreeState&, const juce::AudioProcessorParameterGroup& group_,
 								  const helpers::ParameterFactory::GroupMetadata& metadata_, const size_t processorID_,
-								  Listener& listener_) :
-				group(group_), metadata(metadata_), processorID(processorID_), listener(listener_)
+								  Listener& listener_, UndoManager* undoManager_) :
+				group(group_), metadata(metadata_), processorID(processorID_), listener(listener_), undoManager(undoManager_)
 			{
 				label.setText(sjf::helpers::ParameterFactory::getNameWithoutParentPrefix(group), dontSendNotification);
 				label.setJustificationType(juce::Justification::centred);
@@ -902,7 +902,9 @@ namespace sjf::generic_editor
 
 				for (const auto& [name, param] : popupMenuParams)
 				{
-					menu.addItem(name, true, param->getValue() > 0.5f,[safeThis = SafePointer{this}, param](){
+					menu.addItem(name, true, param->getValue() > 0.5f,[safeThis = SafePointer{this}, undoManager_ = undoManager, param](){
+						if (undoManager_)
+							undoManager_->beginNewTransaction();
 						param->beginChangeGesture();
 						param->setValueNotifyingHost(param->getValue() < 0.5f);
 						param->endChangeGesture();
@@ -959,6 +961,7 @@ namespace sjf::generic_editor
 			bool isSelected{false};
 			juce::Label label;
 			Listener& listener;
+			UndoManager* undoManager{nullptr};
 
 			std::unordered_map<String, RangedAudioParameter*> popupMenuParams;
 
@@ -1008,7 +1011,7 @@ namespace sjf::generic_editor
 					{
 						// Construct the item directly into the master pool
 						auto item =
-							std::make_unique<SequenceItemComponent>(apvts, *subgroup, metadata.children[i], i, *this);
+							std::make_unique<SequenceItemComponent>(apvts, *subgroup, metadata.children[i], i, *this, undoManager);
 
 						addAndMakeVisible(*item);
 						item->setVisible(false); // Initially hidden until setActiveSequence is called

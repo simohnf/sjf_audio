@@ -81,6 +81,7 @@ public:
 
 		juce::Image img{juce::Image::PixelFormat::ARGB, static_cast<int>(bg.getWidth()), static_cast<int>(bg.getHeight()), true};
 		Graphics g (img);
+		g.fillAll(juce::Colours::grey);
 
 
 		auto seed = getInitialPluginRandomSeed();

@@ -531,8 +531,12 @@ private:
 		            delayLine[channel].setPitchShift(detune);
 			        sample = delayLine[channel].template readSample<sjf::interpolation::InterpolatorTypes::cubic>(delayTime);
 	            }
-            	
+
+
             	sample = saturation.template processSample<SaturationIndex, SaturationActive>(sample * drive) * norm;
+
+            	if constexpr (hasFeedback && !SaturationActive)
+            		sample = juce::jlimit(-5.0f, 5.0f, sample);
             }
 
             if constexpr (hasFilter)

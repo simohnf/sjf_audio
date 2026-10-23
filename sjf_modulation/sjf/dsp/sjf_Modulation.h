@@ -644,7 +644,6 @@ namespace sjf::dsp::modulation{
 		{
 			if (apvts)
 			{
-				auto stateTree = apvts->state.getChildWithName(id);
 				auto modulator = modulators.getModulator(modulatorID);
 				auto modulatable = dynamic_cast<Modulatable*>(apvts->getParameter(modulatableId));
 				return isConnected(modulator, modulatable);

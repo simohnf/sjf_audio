@@ -57,8 +57,9 @@ public:
 		[[maybe_unused]] const auto numSamples = outputBlock.getNumSamples();
 
 		auto block = juce::dsp::AudioBlock<float>{buffer}.getSubBlock(0, numSamples);
-		for ( auto i = 0ul; i < numChannels; ++i)
-			block.copyFrom(inputBlock.getSingleChannelBlock(i));
+		block.copyFrom(inputBlock.getSingleChannelBlock(0));
+		for (auto i = 1ul; i < numChannels; ++i)
+			block.add(inputBlock.getSingleChannelBlock(i));
 
 		block.multiplyBy(inputScale);
 

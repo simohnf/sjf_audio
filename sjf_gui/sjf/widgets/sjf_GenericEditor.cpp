@@ -512,21 +512,34 @@ namespace sjf::generic_editor
 			: AutoEditor(apvts_, group_, metadata_, undoManager_)
 			{
 
-				const auto selectorComboBox = dynamic_cast<juce::ComboBox*>(
-					paramMap[dynamic_cast<const juce::AudioProcessorParameter*>(metadata.selectorParameter)]);
+				const auto selectorComboBox = [&](){
+					if (metadata.selectorParameter)
+						return dynamic_cast<juce::ComboBox*>(paramMap[dynamic_cast<const juce::AudioProcessorParameter*>(metadata.selectorParameter)]);
+
+					comboBoxes.push_back(std::make_unique<juce::ComboBox>());
+					comboBoxes.back()->setComponentID(parameterGroup.getID() + "Selector");
+					addAndMakeVisible(comboBoxes.back().get());
+					return comboBoxes.back().get();
+				}();
+
 				jassert(selectorComboBox);
 				if (selectorComboBox)
 				{
 					auto oldOnChange = selectorComboBox->onChange;
 					selectorComboBox->onChange = [&, oldOnChange]()
 					{
-						const auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()),
+						const auto selected = juce::jmin(static_cast<size_t>(getCurrentSelection()),
 												   childEditors.size() - 1);
 						for (auto i = 0ul; i < childEditors.size(); i++)
+						{
 							childEditors[i]->setVisible(i == selected && expanded);
+							if (i == selected && expanded)
+								childEditors[i]->setExpanded(expanded);
+						}
 
 						onLayoutChanged();
-						oldOnChange();
+						if (oldOnChange)
+							oldOnChange();
 					};
 					MessageManager::callAsync([safeBox = SafePointer(selectorComboBox)](){if (safeBox) safeBox->onChange();});
 				}
@@ -535,6 +548,15 @@ namespace sjf::generic_editor
 			void resized() override
 			{
 				AutoEditor::resized();
+				if (!metadata.selectorParameter)
+				{
+					getSelectorComboBox()->setBounds(childEditors[0]->getBounds().withHeight(ComponentHeight));
+					auto b = childEditors[0]->getBounds()
+												.withTop(getSelectorComboBox()->getBottom() + VerticalSpacing)
+												.withHeight(childEditors[0]->getRequiredSize().getHeight());
+					childEditors[0]->setBounds(b);
+				}
+
 				for (auto i = 0ul; i < childEditors.size(); ++i)
 					childEditors[i]->setBounds(childEditors[i]->getBounds().withY(childEditors[0]->getY()));
 			}
@@ -544,8 +566,8 @@ namespace sjf::generic_editor
 				// will need additional logic if changing from single column...
 				auto heightOfChildren = [&]()
 				{
-					const auto selected = juce::jmin(static_cast<size_t>(metadata.selectorParameter->getIndex()),
-													 childEditors.size() - 1);
+					const auto selected = juce::jmin(static_cast<size_t>(getCurrentSelection()), childEditors.size() - 1);
+
 					const auto ch = childEditors[selected]->getRequiredSize().getHeight();
 					return ch + (ch > 0 ? VerticalSpacing : 0);
 				};
@@ -571,8 +593,10 @@ namespace sjf::generic_editor
 				for (const auto& l : paramNames)
 					l->setVisible(expanded);
 
-				jassert(childEditors.size() == static_cast<size_t>(metadata.selectorParameter->choices.size()));
-				auto selected = static_cast<size_t>(metadata.selectorParameter->getIndex());
+				getSelectorComboBox()->setVisible(shouldBeExpanded);
+
+				jassert(childEditors.size() == static_cast<size_t>(getNumSelections()));
+				auto selected = static_cast<size_t>(getCurrentSelection());
 				for (auto i = 0ul; i < childEditors.size(); i++)
 				{
 					childEditors[i]->setVisible(i == selected && expanded);
@@ -580,6 +604,57 @@ namespace sjf::generic_editor
 
 				onLayoutChanged();
 			}
+
+			void buildChildEditors() override
+			{
+				AutoEditor::buildChildEditors();
+				if (!metadata.selectorParameter)
+				{
+					auto selectorComboBox = getSelectorComboBox();
+					selectorComboBox->clear();
+					auto i = 1;
+					for (auto& c : childEditors)
+					{
+						selectorComboBox->addItem(sjf::helpers::ParameterFactory::getNameWithoutParentPrefix(c->getParameterGroup()), i);
+						i++;
+					}
+					selectorComboBox->setSelectedItemIndex(1);
+				}
+
+			}
+
+			[[nodiscard]] int getCurrentSelection() const
+			{
+				if (metadata.selectorParameter)
+					return metadata.selectorParameter->getIndex();
+				else if (const auto selectorComboBox = getSelectorComboBox())
+					return selectorComboBox->getSelectedItemIndex();
+
+				jassertfalse;
+				return 0;
+			}
+
+			int getNumSelections()
+			{
+				if (metadata.selectorParameter)
+					return metadata.selectorParameter->choices.size();
+				else if (const auto selectorComboBox = getSelectorComboBox())
+					return selectorComboBox->getNumItems();
+
+				jassertfalse;
+				return 0;
+			}
+
+			[[nodiscard]] juce::ComboBox* getSelectorComboBox() const
+			{
+				for (auto i = 0ul; i < comboBoxes.size(); i++)
+				{
+					if (comboBoxes[comboBoxes.size() - 1 - i]->getComponentID() == parameterGroup.getID() + "Selector")
+						return comboBoxes[comboBoxes.size() - 1 - i].get();
+				}
+				return nullptr;
+			}
+
 			JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DeviceSelectorEditor)
 		};
 

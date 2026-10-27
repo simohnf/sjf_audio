@@ -50,12 +50,13 @@ public:
 		const bool isMultiBand = false;
 		const size_t numProcessorsInDynamicSequence{0};
 		const sjf::helpers::parameters::ChoiceParameter* selectorParameter = nullptr;
+		const bool addSelectorBox = false;
 		std::vector<GroupMetadata> children;
 
 
 		[[nodiscard]] bool isSelectorGroup() const noexcept
 		{
-			return selectorParameter != nullptr;
+			return selectorParameter != nullptr || (addSelectorBox && children.size() > 1);
 		}
 
 		[[nodiscard]] bool isDynamicProcessorSequenceGroup() const noexcept
@@ -68,12 +69,18 @@ public:
 			return isMultiBand;
 		}
 
-		[[nodiscard]] const GroupMetadata* findChild (const juce::String& targetID) const noexcept
+		[[nodiscard]] const GroupMetadata* findChild (const juce::String& targetID, bool recursive = false) const noexcept
 		{
 			for (const auto& child : children)
 			{
 				if (child.groupID == targetID)
 					return &child;
+
+				if (recursive)
+				{
+					if (const auto ret = child.findChild (targetID, recursive))
+						return ret;
+				}
 			}
 			return nullptr;
 		}
@@ -114,7 +121,9 @@ public:
 			.supportsChildSubPresets = rootFactory.supportsChildSubPresets(),
 			.isMultiBand = isMultiBand,
 			.numProcessorsInDynamicSequence = rootFactory.getNumProcessorsInDynamicSequence(),
+			.addSelectorBox = rootFactory.getIsSelectorGroup(),
 			.children = {},
+
 		};
 
 		if (!rootFactory.childFactories.empty())
@@ -401,6 +410,17 @@ public:
 		jassertfalse;
 		return {};
 	}
+
+
+	void setIsSelectorGroup(const bool shouldBeASelectorGroup)
+	{
+		isSelectorGroup = shouldBeASelectorGroup;
+	}
+
+	[[nodiscard]] bool getIsSelectorGroup() const
+	{
+		return isSelectorGroup;
+	}
 private:
 	std::unique_ptr<juce::AudioProcessorParameterGroup> appGroup{nullptr};
 	std::vector<std::unique_ptr<ParameterFactory>> childFactories;
@@ -408,6 +428,7 @@ private:
 	const size_t dynamicProcessorSequence{0};
 	const bool supportsPresets{false};
 	const bool supportsChildPresets{true};
+	bool isSelectorGroup{false};
 
 	friend struct GroupMetadata;
 };

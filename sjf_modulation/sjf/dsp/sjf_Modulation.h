@@ -123,6 +123,8 @@ namespace sjf::dsp::modulation{
 		{
 			auto mainFactory = seq.createParameters(factoryID, factoryName, std::forward<Configs>(subConfigs)...);
 
+			mainFactory->setIsSelectorGroup(true);
+
 			{
 				auto i = 0ul;
 				for (auto child : mainFactory->getSubgroups(false))

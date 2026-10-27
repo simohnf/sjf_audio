@@ -130,6 +130,9 @@ namespace sjf::helpers
         	return factory;
         }
 
+        [[nodiscard]] Processor& getProcessor() noexcept { return processor; }
+        [[nodiscard]] const Processor& getProcessor() const noexcept { return processor; }
+
         void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
         {
             sjf::optional_calls::setPositionInfo(processor, positionInfo);

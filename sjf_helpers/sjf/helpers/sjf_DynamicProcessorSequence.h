@@ -136,19 +136,20 @@ public:
 
     /** Processes context through processors matching the active sequence order. */
     template <typename ProcessContextType>
-    void process(const ProcessContextType& context)
+    void process(const ProcessContextType& context_)
     {
     	#ifndef SJF_AUDIO_TESTS
     	jassert(apvts); // not asserting in tests because generic tests don't pass in apvts
 		#endif
 
+    	juce::dsp::ProcessContextReplacing<float> context(context_.getOutputBlock());
+    	if constexpr (ProcessContextType::usesSeparateInputAndOutputBlocks())
+    		context.getOutputBlock().copyFrom(context.getInputBlock());
+
     	const auto activeSequence = sequenceBuffer.getRead();
     	if (activeSequence[0]==InactiveSlot)
     	{
     		// nothing in sequence, just bypass
-    		if constexpr (ProcessContextType::usesSeparateInputAndOutputBlocks())
-    			context.getOutputBlock().copyFrom(context.getInputBlock());
-
     		return;
     	}
 

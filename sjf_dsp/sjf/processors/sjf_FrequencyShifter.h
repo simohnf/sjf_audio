@@ -147,18 +147,18 @@ public:
 
             // --- 1. Real Channel: cos(theta)*Real - sin(theta)*Imag ---
             modChannelRealBlock.copyFrom(modRealBlock);
-            tempBuffer.applyGainRamp(0, numSamples, before.first, after.first); // Ramp Cosine
+            tempBuffer.applyGainRamp(0, static_cast<int>(numSamples), before.first, after.first); // Ramp Cosine
 
             tempBlock.copyFrom(modImaginaryBlock);
-            tempBuffer.applyGainRamp(0, numSamples, -before.second, -after.second); // Ramp -Sine
+            tempBuffer.applyGainRamp(0, static_cast<int>(numSamples), -before.second, -after.second); // Ramp -Sine
             modChannelRealBlock.add(tempBlock);
 
             // --- 2. Imaginary Channel: cos(theta)*Imag + sin(theta)*Real ---
             modChannelImaginaryBlock.copyFrom(modImaginaryBlock);
-            tempBuffer.applyGainRamp(0, numSamples, before.first, after.first); // Ramp Cosine
+            tempBuffer.applyGainRamp(0, static_cast<int>(numSamples), before.first, after.first); // Ramp Cosine
 
             tempBlock.copyFrom(modRealBlock);
-            tempBuffer.applyGainRamp(0, numSamples, before.second, after.second); // Ramp +Sine
+            tempBuffer.applyGainRamp(0, static_cast<int>(numSamples), before.second, after.second); // Ramp +Sine
             modChannelImaginaryBlock.add(tempBlock);
 
             sigRealBlock.getSingleChannelBlock(i).multiplyBy(modChannelRealBlock);

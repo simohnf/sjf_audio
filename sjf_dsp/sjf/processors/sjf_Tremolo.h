@@ -18,101 +18,110 @@
 
 namespace sjf::dsp
 {
-/**
- * @brief A templated amplitude modulation (tremolo) DSP class driven by a customizable LFO engine.
- *
- * This class applies low-frequency amplitude modulation to an incoming audio stream. It delegates
- * LFO signal generation, parameter creation, and tempo synchronization to an internal `LFO` instance.
- *
- * Key features and design rules:
- * 1. **LFO Policy Validation**: Enforces at compile time that the template parameter `LFO` is a valid
- *    instantiation of `sjf::dsp::oscillators::lfo::LFO`.
- * 2. **Flexible Channel Routing**: Supports arbitrary input/output channel counts by wrapping LFO channel
- *    indices via modulo (`channel % lfoBlock.getNumChannels()`), permitting mono LFOs to modulate stereo audio.
- * 3. **Context Sensitivity**: Correctly handles both in-place (`ProcessContextReplacing`) and separate buffer
- *    (`ProcessContextNonReplacing`) processing contexts.
- *
- * @tparam LFO An oscillator class type instantiated from `sjf::dsp::oscillators::lfo::LFO`.
- */
-template<typename LFO>
-class Tremolo
-{
-public:
-	static_assert(sjf::helpers::functions::utilities::is_instantiation_of<sjf::dsp::oscillators::lfo::LFO, LFO>, "The LFO must be an instantiation of sjf::dsp::oscillators::lfo");
+	/**
+	 * @brief A templated amplitude modulation (tremolo) DSP class driven by a customizable LFO engine.
+	 *
+	 * This class applies low-frequency amplitude modulation to an incoming audio stream. It delegates
+	 * LFO signal generation, parameter creation, and tempo synchronization to an internal `LFO` instance.
+	 *
+	 * Key features and design rules:
+	 * 1. **LFO Policy Validation**: Enforces at compile time that the template parameter `LFO` is a valid
+	 *    instantiation of `sjf::dsp::oscillators::lfo::LFO`.
+	 * 2. **Flexible Channel Routing**: Supports arbitrary input/output channel counts by wrapping LFO channel
+	 *    indices via modulo (`channel % lfoBlock.getNumChannels()`), permitting mono LFOs to modulate stereo audio.
+	 * 3. **Context Sensitivity**: Correctly handles both in-place (`ProcessContextReplacing`) and separate buffer
+	 *    (`ProcessContextNonReplacing`) processing contexts.
+	 *
+	 * @tparam LFO An oscillator class type instantiated from `sjf::dsp::oscillators::lfo::LFO`.
+	 */
+	template<typename LFO, float minLfoFreq = 0.001f, float maxLfoFreq = 20.0f, float defaultLfoFreq = 1.0f, float centreLfoFreq = 1.0f>
+	class Tremolo
+	{
+	public:
+		static_assert(sjf::helpers::functions::utilities::is_instantiation_of<sjf::dsp::oscillators::lfo::LFO, LFO>, "The LFO must be an instantiation of sjf::dsp::oscillators::lfo");
 
-    struct Parameters : public helpers::AudioParametersBase
-    {
+		struct Parameters : public helpers::AudioParametersBase
+		{
 
-        std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
-        {
-            auto factory = helpers::ParameterFactory::create (factoryID, factoryName, true, false);
+			std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
+			{
+				auto factory = helpers::ParameterFactory::create (factoryID, factoryName, true, false);
 
-            return factory;
-        }
-    } parameters;
-
-
-    void prepare (const juce::dsp::ProcessSpec& spec_)
-    {
-        spec = spec_;
-        parameters.prepare(spec);
-    	lfo.prepare(spec);
-        reset();
-    }
-
-    void reset()
-    {
-        parameters.reset();
-    	lfo.reset();
-    }
-
-    template <typename ProcessContext>
-    void process (const ProcessContext& context) noexcept
-    {
-        [[maybe_unused]] const auto& inputBlock = context.getInputBlock();
-        [[maybe_unused]] auto& outputBlock      = context.getOutputBlock();
-        [[maybe_unused]] const auto numChannels = outputBlock.getNumChannels();
-        [[maybe_unused]] const auto numSamples  = outputBlock.getNumSamples();
-
-        jassert (inputBlock.getNumChannels() == numChannels);
-        jassert (inputBlock.getNumSamples() == numSamples);
-
-        if (parameters.checkForStateChange())
-        {
-        	parameters.reset();
-        	jassertfalse;
-        }
-
-    	if constexpr(ProcessContext::usesSeparateInputAndOutputBlocks())
-    		outputBlock.copyFrom(inputBlock);
-
-    	lfo.process(context);
-    	auto lfoBlock = lfo.getLfoOutput().getSubBlock(0, numSamples);
-    	lfoBlock.multiplyBy(-1.0f);
-    	lfoBlock.add(1.0f);
-
-    	for ( auto channel = 0ul; channel < numChannels; ++channel )
-    	{
-    		auto samples = outputBlock.getSingleChannelBlock(channel);
-    		auto lfoChannel = lfoBlock.getSingleChannelBlock(channel % lfoBlock.getNumChannels());
-    		samples.multiplyBy(lfoChannel);
-    	}
-    }
-
-    std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
-    {
-    	return lfo.createParameters (factoryID, factoryName);
-    }
-
-    void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
-    {
-    	lfo.setPositionInfo(positionInfo);
-    }
+				return factory;
+			}
+		} parameters;
 
 
-private:
-    juce::dsp::ProcessSpec spec{};
-	LFO lfo;
+		void prepare (const juce::dsp::ProcessSpec& spec_)
+		{
+			spec = spec_;
+			parameters.prepare(spec);
+			lfo.prepare(spec);
+			dcAdjusterBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
+			reset();
+		}
+
+		void reset()
+		{
+			parameters.reset();
+			lfo.reset();
+			dcAdjusterBuffer.clear();
+		}
+
+		template <typename ProcessContext>
+		void process (const ProcessContext& context) noexcept
+		{
+			[[maybe_unused]] const auto& inputBlock = context.getInputBlock();
+			[[maybe_unused]] auto& outputBlock      = context.getOutputBlock();
+			[[maybe_unused]] const auto numChannels = outputBlock.getNumChannels();
+			[[maybe_unused]] const auto numSamples  = outputBlock.getNumSamples();
+
+			jassert (inputBlock.getNumChannels() == numChannels);
+			jassert (inputBlock.getNumSamples() == numSamples);
+
+			if (parameters.checkForStateChange())
+			{
+				parameters.reset();
+				jassertfalse;
+			}
+
+			if constexpr(ProcessContext::usesSeparateInputAndOutputBlocks())
+				outputBlock.copyFrom(inputBlock);
+
+			lfo.process(context);
+			auto lfoBlock = lfo.getLfoOutput().getSubBlock(0, numSamples);
+
+			if constexpr (LFO::hasUnipolar)
+			{
+				lfoBlock.multiplyBy(-1.0f);
+				lfoBlock.add(1.0f);
+			}
+
+
+			for ( auto channel = 0ul; channel < numChannels; ++channel )
+			{
+				auto samples = outputBlock.getSingleChannelBlock(channel);
+				auto lfoChannel = lfoBlock.getSingleChannelBlock(channel % lfoBlock.getNumChannels());
+				samples.multiplyBy(lfoChannel);
+			}
+		}
+
+		std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
+		{
+			return lfo.createParameters (factoryID, factoryName);
+		}
+
+		void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
+		{
+			lfo.setPositionInfo(positionInfo);
+		}
+
+
+	private:
+		juce::dsp::ProcessSpec spec{};
+		LFO lfo{minLfoFreq, maxLfoFreq, defaultLfoFreq, centreLfoFreq};
+
+		[[maybe_unused]] juce::AudioBuffer<float> dcAdjusterBuffer;
 };
 
 
@@ -123,9 +132,15 @@ namespace internal
 												   dsp::oscillators::lfo::lfo_config::Smooth,
 												   dsp::oscillators::lfo::lfo_config::Unipolar,
 												   dsp::oscillators::lfo::lfo_config::Depth>;
+
+	using RingModLFO = sjf::dsp::oscillators::lfo::LFO<dsp::oscillators::lfo::LFOWaveformProvider<dsp::oscillators::lfo::Sine>,
+											   dsp::oscillators::lfo::lfo_config::PhaseOffset,
+											   dsp::oscillators::lfo::lfo_config::Smooth>;
 }
 
 using BasicTremolo = Tremolo<internal::TremoloLFO>;
+using AmpMod = Tremolo<internal::TremoloLFO, 20.0f, 20000.0f, 500.0f, 500.0f>;
+using RingMod = Tremolo<internal::RingModLFO, 20.0f, 20000.0f, 500.0f, 500.0f>;
 
 
 }

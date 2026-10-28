@@ -28,8 +28,10 @@
 
 #include <sjf/processors/sjf_Gate_juce.h>
 
-#include "sjf/processors/sjf_Ladder_juce.h"
-#include "sjf/processors/sjf_Phaser.h"
+#include <sjf/processors/sjf_Ladder_juce.h>
+#include <sjf/processors/sjf_Phaser.h>
+
+#include <sjf/processors/sjf_FrequencyShifter.h>
 
 namespace
 {
@@ -89,8 +91,12 @@ namespace sjf::tests
 	static GenericTests<dsp::RotateDelayDiffuser<>> diff2("RotateDelayDiffuser");
 	static GenericTests<dsp::StereoSpread> spread("StereoSpreader");
 	static GenericTests<dsp::BasicTremolo> tremolo("Tremolo");
+	static GenericTests<dsp::RingMod> ringMod("RingMod");
+	static GenericTests<dsp::AmpMod> ampMod("AmpMod");
 	static GenericTests<dsp::SpectralProcessor<>> spectralProcessor("SpectralProcessor");
 	static GenericTests<dsp::Gate> gate("Gate");
+
+	static GenericTests<dsp::FrequencyShifter> freqShifter("FrequencyShifter");
 
 
 

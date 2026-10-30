@@ -46,7 +46,7 @@ namespace sjf::helpers
             MASK = delayLine.size() - 1;
         }
 
-        size_t getMaxDelayTimeSamps() const
+        [[nodiscard]] size_t getMaxDelayTimeSamps() const
         {
             return delayLine.size() - 2;
         }
@@ -276,7 +276,7 @@ namespace sjf::helpers
 			for ( auto head = 0ul; head < NUM_HEADS; ++head)
 			{
 				const auto dt = t*windowSizeSamps + delayTimeSamps + 2.0f;
-				const auto e = helpers::functions::waveforms::getHannWindow(t + 0.5f);
+				const auto e = helpers::functions::waveforms::getHannWindow(t);
 				sum += delayLine.readSample<InterpType>(dt) * e;
 				t = helpers::functions::waveforms::wrapPhase(t, headOffset);
 			}

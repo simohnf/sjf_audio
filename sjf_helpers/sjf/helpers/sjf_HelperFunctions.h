@@ -641,7 +641,8 @@ namespace waveforms
 
     forcedinline float getHannWindow(const float phase)
     {
-        return getCos(phase) * 0.5f + 0.5f;
+        return 0.5f - getCos(phase) * 0.5f;
+    }
     }
 }
 

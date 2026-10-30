@@ -80,6 +80,11 @@ struct Phasor
         m_phase += m_increment*static_cast<float>(numSamplesToSkip);
         m_phase = m_phase - static_cast<float>(static_cast<int>(m_phase));
     }
+
+	[[nodiscard]] bool willWrap(const size_t numSamples) const
+    {
+	    return static_cast<float>(numSamples)*m_increment + m_phase >= 1.0f;
+    }
 private:
     juce::dsp::ProcessSpec spec{};
 };

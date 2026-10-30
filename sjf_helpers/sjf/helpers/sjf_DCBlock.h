@@ -18,7 +18,7 @@
 namespace sjf::helpers
 {
 /**
- * @brief A high-pass filter module designed to remove low-frequency DC offset transients from an audio signal.
+ * @brief A high-pass filter module designed to remove low-frequency DC offset from an audio signal.
  *
  *
  * @tparam NumChannels Configure the number of channels

@@ -643,6 +643,29 @@ namespace waveforms
     {
         return 0.5f - getCos(phase) * 0.5f;
     }
+
+    forcedinline float getTriWindow(const float phase)
+    {
+        return getTriangle(phase * 0.5f);
+    }
+
+	forcedinline float getSineWindow(const float phase)
+    {
+    	return getSin(phase * 0.5f);
+    }
+
+
+	forcedinline float getSincWindow(const float phase, const size_t ripples = 1ul)
+    {
+    	jassert(ripples > 0ul);
+
+    	return getSin(phase * static_cast<float>(ripples)) / (juce::MathConstants<float>::pi * static_cast<float>(ripples));
+    }
+
+
+	forcedinline float getBoxCarWindow(const float phase)
+    {
+    	return phase < 0.0f || phase > 1.0f ? 0.0f : 1.0f;
     }
 }
 

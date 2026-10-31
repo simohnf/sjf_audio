@@ -51,7 +51,8 @@ struct Phasor
      */
     void setFrequency( const float f, const float sampleRate )
     {
-        setIncrement( f / sampleRate);
+
+        setIncrement( juce::jmin(f, 0.49999f * sampleRate) / sampleRate);
         spec.sampleRate = sampleRate;
     }
 

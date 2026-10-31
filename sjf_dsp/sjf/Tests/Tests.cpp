@@ -18,20 +18,16 @@
 #include <sjf/processors/sjf_Filter_juce.h>
 #include <sjf/processors/sjf_Compressor_juce.h>
 #include <sjf/processors/sjf_Limiter_juce.h>
-
 #include <sjf/processors/sjf_Redux.h>
 #include <sjf/processors/sjf_Utility.h>
 #include <sjf/processors/sjf_StereoSpread.h>
-
 #include <sjf/processors/sjf_Tremolo.h>
 #include <sjf/processors/sjf_SpectralProcessor.h>
-
 #include <sjf/processors/sjf_Gate_juce.h>
-
 #include <sjf/processors/sjf_Ladder_juce.h>
 #include <sjf/processors/sjf_Phaser.h>
-
 #include <sjf/processors/sjf_FrequencyShifter.h>
+#include <sjf/processors/Granulation/sjf_GranularDelay.h>
 
 namespace
 {
@@ -97,6 +93,7 @@ namespace sjf::tests
 	static GenericTests<dsp::Gate> gate("Gate");
 
 	static GenericTests<dsp::FrequencyShifter> freqShifter("FrequencyShifter");
+	static GenericTests<dsp::GranularDelay> gDelay("GranDelay");
 
 
 

@@ -618,7 +618,7 @@ namespace sjf::generic_editor
 						selectorComboBox->addItem(sjf::helpers::ParameterFactory::getNameWithoutParentPrefix(c->getParameterGroup()), i);
 						i++;
 					}
-					selectorComboBox->setSelectedItemIndex(1);
+					selectorComboBox->setSelectedItemIndex(0);
 				}
 
 			}

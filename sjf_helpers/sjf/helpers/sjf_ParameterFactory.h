@@ -1182,7 +1182,7 @@ struct SyncedDurationParameter : sjf::helpers::AudioParametersBase
         {
             const auto mapping = [&](const float x)
             {
-                if (!sync.currentValue)
+                if (!sync.getParameterValue())
                 {
                     return x * spec.sampleRate * 0.001f;
                 }
@@ -1330,7 +1330,7 @@ struct SyncedFrequencyParameter : sjf::helpers::AudioParametersBase
         {
             const auto mapping = [&](const float x)
             {
-                if (!sync.currentValue)
+                if (!sync.getParameterValue())
                 {
                     return x;
                 }

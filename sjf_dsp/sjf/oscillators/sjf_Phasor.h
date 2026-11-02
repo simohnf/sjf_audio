@@ -155,6 +155,11 @@ struct TempoSyncedPhasor
 		return phasor.m_phase;
 	}
 
+	[[nodiscard]] bool willWrap(const size_t numSamples) const
+	{
+		return phasor.willWrap(numSamples);
+	}
+
 private:
 	FrequencyParameter& frequency;
 	Phasor phasor;

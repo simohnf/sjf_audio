@@ -86,14 +86,6 @@ public:
         auto sigImaginaryBlock = hilbert.getImaginaryBlock().getSubBlock(0, numSamples);
 
 
-
-        if (JUCE_LIVE_CONSTANT(false))
-        {
-            outputBlock.getSingleChannelBlock(0).copyFrom(sigRealBlock.getSingleChannelBlock(0));
-            outputBlock.getSingleChannelBlock(1).copyFrom(sigImaginaryBlock.getSingleChannelBlock(0));
-            return;
-        }
-
         const auto spreadBefore = parameters.spread.currentValue;
 
         if (parameters.checkForStateChange())

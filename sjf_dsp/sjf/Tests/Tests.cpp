@@ -28,6 +28,7 @@
 #include <sjf/processors/sjf_Phaser.h>
 #include <sjf/processors/sjf_FrequencyShifter.h>
 #include <sjf/processors/Granulation/sjf_GranularDelay.h>
+#include <sjf/processors/Granulation/sjf_Stretch.h>
 
 namespace
 {
@@ -94,6 +95,7 @@ namespace sjf::tests
 
 	static GenericTests<dsp::FrequencyShifter> freqShifter("FrequencyShifter");
 	static GenericTests<dsp::GranularDelay> gDelay("GranDelay");
+	static GenericTests<dsp::Stretch> stretch("Stretch");
 
 
 

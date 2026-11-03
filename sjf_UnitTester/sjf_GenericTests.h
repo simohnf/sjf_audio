@@ -78,6 +78,18 @@ public:
 			}(), "Failed denormal flushing test. " + message);
 		 });
 
+		testCase("DC Offset Accumulation and Recovery", [&](){
+			String message{};
+			expect([&](){
+				for (auto i = 2000; i < 200000; i *= 2)
+				{
+					spec.sampleRate = i;
+					if (!handlesDCOffset(spec, message))
+						return false;
+				}
+				return true;
+			}(), "Failed DC offset test. " + message);
+		 });
 	}
 
 
@@ -299,6 +311,73 @@ private:
 									+ " (Value: " + String(data[i]) + ")";
 					return false;
 				}
+			}
+		}
+
+		return true;
+	}
+
+	bool handlesDCOffset(const juce::dsp::ProcessSpec& spec, String& failureString)
+	{
+		static constexpr auto dcBlocks = 64;     // Blocks of constant DC
+		static constexpr auto tailBlocks = 256;  // Blocks of silence to allow tail to clear
+		const auto blockSize = static_cast<int>(spec.maximumBlockSize);
+		const auto numChannels = static_cast<int>(spec.numChannels);
+
+		Processor processor;
+		auto params = std::move(createParameters(processor, "Test", "Test")->getAudioProcessorParameterGroup());
+		processor.prepare(spec);
+		processor.reset();
+
+		// 1. Process constant DC offset block
+		juce::AudioBuffer<float> dcBuffer(numChannels, blockSize);
+		for (int c = 0; c < numChannels; ++c)
+			for (int i = 0; i < blockSize; ++i)
+				dcBuffer.setSample(c, i, 1.0f);
+
+		juce::dsp::AudioBlock<float> dcBlock(dcBuffer);
+
+		for (size_t b = 0; b < dcBlocks; ++b)
+		{
+			juce::dsp::ProcessContextReplacing<float> context{ dcBlock };
+			processor.process(context);
+
+			// Assert output stays finite and does not blow up uncontrollably
+			for (int c = 0; c < numChannels; ++c)
+			{
+				const auto* data = dcBuffer.getReadPointer(c);
+				for (int i = 0; i < blockSize; ++i)
+				{
+					if (!std::isfinite(data[i]) || std::abs(data[i]) > 100.0f)
+					{
+						failureString = "DC input caused output explosion at channel "
+										+ String(c) + ", value: " + String(data[i]);
+						return false;
+					}
+				}
+			}
+		}
+
+		// 2. Process silence blocks to test offset recovery
+		juce::AudioBuffer<float> silenceBuffer(numChannels, blockSize);
+		juce::dsp::AudioBlock<float> silenceBlock(silenceBuffer);
+
+		for (size_t b = 0; b < tailBlocks; ++b)
+		{
+			silenceBuffer.clear();
+			juce::dsp::ProcessContextReplacing<float> context{ silenceBlock };
+			processor.process(context);
+		}
+
+		// 3. Verify that output settled back down after silence
+		for (int c = 0; c < numChannels; ++c)
+		{
+			const auto rms = juce::Decibels::gainToDecibels(silenceBuffer.getRMSLevel(c, 0, blockSize));
+			if (rms > -100.0f)
+			{
+				failureString = "DC offset trapped in processor state (Final RMS: "
+								+ String(rms) + " dB on channel " + String(c) + ")";
+				return false;
 			}
 		}
 

@@ -142,7 +142,7 @@ namespace sjf::dsp
 			jassert (inputBlock.getNumSamples() == numSamples);
 
 			diffusionBuffer.clear();
-			auto diffusionBlock = juce::dsp::AudioBlock<float>(diffusionBuffer);
+			auto diffusionBlock = juce::dsp::AudioBlock<float>{diffusionBuffer}.getSubBlock(0, numSamples);
 			diffusionBlock.copyFrom(inputBlock);
 			applyHadamardDirectToBuffer(diffusionBuffer);
 

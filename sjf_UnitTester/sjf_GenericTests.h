@@ -65,7 +65,21 @@ public:
 			}(), "Parameter range conversion faulty. " + message);
 		});
 
+		testCase("Denormal Flushing", [&](){
+			String message{};
+			expect([&](){
+				for (auto i = 2000; i < 200000; i *= 2)
+				{
+					spec.sampleRate = i;
+					if (!flushesDenormalsToZero(spec, message))
+						return false;
+				}
+				return true;
+			}(), "Failed denormal flushing test. " + message);
+		 });
+
 	}
+
 
 private:
 	bool resetsToSteadyState(const juce::dsp::ProcessSpec& spec)
@@ -238,6 +252,58 @@ private:
 		return true;
 	}
 
+	bool flushesDenormalsToZero(const juce::dsp::ProcessSpec& spec, String& failureString)
+	{
+		static constexpr auto numBlocks = 256; // Long decay period (~8000+ samples)
+		const auto blockSize = static_cast<int>(spec.maximumBlockSize);
+		const auto numSamples = blockSize * numBlocks;
+		const auto numChannels = static_cast<int>(spec.numChannels);
+
+		Processor processor;
+		auto params = std::move(createParameters(processor, "Test", "Test")->getAudioProcessorParameterGroup());
+		processor.prepare(spec);
+		processor.reset();
+
+		// 1. Send an initial impulse to excite internal states (filters, delays)
+		juce::AudioBuffer<float> impulseBuffer(numChannels, blockSize);
+		impulseBuffer.clear();
+		for (int c = 0; c < numChannels; ++c)
+			impulseBuffer.setSample(c, 0, 1.0f);
+
+		juce::dsp::AudioBlock<float> impulseBlock(impulseBuffer);
+		juce::dsp::ProcessContextReplacing<float> impulseContext{ impulseBlock };
+		processor.process(impulseContext);
+
+		// 2. Process silence / tiny subnormal noise across multiple blocks
+		juce::AudioBuffer<float> decayBuffer(numChannels, numSamples);
+		decayBuffer.clear();
+
+		juce::dsp::AudioBlock<float> decayBlock(decayBuffer);
+		for (size_t i = 0; i < numBlocks; ++i)
+		{
+			auto subBlock = decayBlock.getSubBlock(i * spec.maximumBlockSize, spec.maximumBlockSize);
+			juce::dsp::ProcessContextReplacing<float> context{ subBlock };
+			processor.process(context);
+		}
+
+		// 3. Scan output for subnormal floats
+		for (int c = 0; c < numChannels; ++c)
+		{
+			const auto* data = decayBuffer.getReadPointer(c);
+			for (int i = 0; i < numSamples; ++i)
+			{
+				if (std::fpclassify(data[i]) == FP_SUBNORMAL)
+				{
+					failureString = "Processor produced subnormal float (denormal) at channel "
+									+ String(c) + ", sample " + String(i)
+									+ " (Value: " + String(data[i]) + ")";
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
 	/*=========//=========//=========//=========//=========//=========
 	//=========//=========//=========//=========//=========//=========
 								Helpers

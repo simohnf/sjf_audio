@@ -138,14 +138,16 @@ struct TempoSyncedPhasor
 	void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo_)
 	{
 		frequency.setPositionInfo(positionInfo_);
-		if (frequency.sync.currentValue)
+		if (frequency.sync.getParameterValue())
 		{
 			auto ppq = frequency.positionInfo.getPpqPosition();
 			if (ppq.hasValue() && frequency.positionInfo.getIsPlaying())
 			{
-				const auto barLength = static_cast<float>(frequency.syncedNumerator.currentValue * 4) / static_cast<float>(frequency.syncedDenominator.currentValue);
-				auto p =  static_cast<float>(*ppq) / barLength;
-				phasor.m_phase = sjf::helpers::functions::waveforms::wrapPhase(p);
+				const auto num = SyncedRatesProvider::Numerator::getValues()[static_cast<size_t>(frequency.syncedNumerator.getParameterValue())];
+				const auto den = SyncedRatesProvider::Denominator::getValues()[static_cast<size_t>(frequency.syncedDenominator.getParameterValue())];
+				const auto periodPPQ = static_cast<double>(num * 4) / static_cast<double>(den);
+				const double positionInPeriod = std::fmod(*ppq, periodPPQ);
+				phasor.m_phase = static_cast<float>(positionInPeriod / periodPPQ);
 			}
 		}
 	}

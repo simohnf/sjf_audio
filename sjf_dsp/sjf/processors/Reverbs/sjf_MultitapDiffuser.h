@@ -130,6 +130,10 @@ public:
         {
             processStaticState(context);
         }
+
+    	juce::dsp::AudioBlock<float>::process(	outputBlock,
+    											outputBlock,
+    											[](const float x){ return sjf::helpers::Waveshapers::Clippers::hard(x, 10.0f); });
     }
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)

@@ -47,6 +47,7 @@ namespace sjf::helpers{
 
         void process(const juce::dsp::ProcessContextReplacing<float>& context)
         {
+            juce::ScopedNoDenormals noDenormals;
 
             [[maybe_unused]] const auto& inputBlock = context.getInputBlock();
             [[maybe_unused]] auto& outputBlock = context.getOutputBlock();

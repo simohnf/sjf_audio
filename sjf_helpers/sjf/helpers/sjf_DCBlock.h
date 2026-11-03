@@ -54,6 +54,8 @@ public:
 	template <typename ProcessContext>
 	void process (const ProcessContext& context) noexcept
 	{
+		juce::ScopedNoDenormals noDenormals;
+
 		if constexpr (ProcessContext::usesSeparateInputAndOutputBlocks())
 			context.getOutputBlock().copyFrom(context.getInputBlock());
 		for (auto c = 0ul; c < context.getOutputBlock().getNumChannels(); ++c)

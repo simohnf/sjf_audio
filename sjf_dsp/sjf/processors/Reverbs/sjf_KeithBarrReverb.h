@@ -196,6 +196,7 @@ public:
     template <typename ProcessContext>
     void process (const ProcessContext& context) noexcept
     {
+    	juce::ScopedNoDenormals noDenormals;
         const auto& inputBlock = context.getInputBlock();
         auto& outputBlock      = context.getOutputBlock();
         const auto numChannels = outputBlock.getNumChannels();

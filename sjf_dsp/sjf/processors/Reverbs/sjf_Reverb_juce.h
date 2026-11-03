@@ -52,6 +52,8 @@ public:
     template <typename ProcessContext>
     void process (const ProcessContext& context) noexcept
     {
+    	juce::ScopedNoDenormals noDenormals;
+
         if (parameters.checkForStateChange())
         {
         	parameters.reset();

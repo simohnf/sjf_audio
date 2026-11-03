@@ -374,6 +374,8 @@ public:
     template <typename ProcessContext>
     void process (const ProcessContext& context) noexcept
     {
+    	juce::ScopedNoDenormals noDenormals;
+
         parameters.checkForStateChange();
 
         if constexpr (hasSaturation)

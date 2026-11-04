@@ -263,7 +263,8 @@ public:
 
 	void setPositionInfo(const juce::AudioPlayHead::PositionInfo& positionInfo)
     {
-	    phasor.setPositionInfo(positionInfo);
+        if constexpr(hasTempoSync)
+            phasor.setPositionInfo(positionInfo);
     }
 
 private:

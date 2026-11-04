@@ -90,6 +90,19 @@ public:
 				return true;
 			}(), "Failed DC offset test. " + message);
 		 });
+
+		testCase("Arbitrary and Changing Block Sizes", [&](){
+			String message{};
+			expect([&](){
+				for (auto i = 2000; i < 200000; i *= 2)
+				{
+					spec.sampleRate = i;
+					if (!handlesVariableBlockSizes(spec, message))
+						return false;
+				}
+				return true;
+			}(), "Failed variable block size test. " + message);
+		});
 	}
 
 
@@ -377,6 +390,91 @@ private:
 			{
 				failureString = "DC offset trapped in processor state (Final RMS: "
 								+ String(rms) + " dB on channel " + String(c) + ")";
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	bool handlesVariableBlockSizes(const juce::dsp::ProcessSpec& spec, String& failureString)
+	{
+		const auto totalSamples = juce::jmax(static_cast<int>(spec.sampleRate), 4192);
+		const auto numChannels = static_cast<int>(spec.numChannels);
+
+		// 1. Prepare input sine wave buffer
+		juce::AudioBuffer<float> inputBuffer(numChannels, totalSamples);
+		fillBufferWithSin(inputBuffer);
+
+
+		// Prepare output storage for reference run and variable run
+		juce::AudioBuffer<float> referenceOutput(numChannels, totalSamples);
+		juce::AudioBuffer<float> variableOutput(numChannels, totalSamples);
+
+		juce::dsp::AudioBlock<float> refBlock(referenceOutput);
+		refBlock.copyFrom(inputBuffer);
+		juce::dsp::AudioBlock<float> varBlock(variableOutput);
+		varBlock.copyFrom(inputBuffer);
+
+		Processor processor;
+		auto params = std::move(createParameters(processor, "Test", "Test")->getAudioProcessorParameterGroup());
+
+		// 2. RUN A: Reference run (processed in max block sizes)
+		{
+
+			auto specForRef = spec;
+			specForRef.maximumBlockSize = static_cast<uint32_t>(spec.maximumBlockSize);
+			processor.prepare(specForRef);
+			processor.reset();
+
+
+			const auto maxBlock = static_cast<size_t>(spec.maximumBlockSize);
+
+			for (auto offset = 0ul; offset < static_cast<size_t>(totalSamples); offset += maxBlock)
+			{
+				const auto numSamplesThisBlock = std::min(maxBlock, static_cast<size_t>(totalSamples) - offset);
+				auto subBlock = refBlock.getSubBlock(offset, numSamplesThisBlock);
+				juce::dsp::ProcessContextReplacing<float> context{ subBlock };
+				processor.process(context);
+			}
+		}
+
+		// 3. RUN B: Variable block run (processed in varying/arbitrary non-power-of-two sizes)
+		{
+			auto specForVar = spec;
+			processor.prepare(specForVar);
+			processor.reset();
+
+			size_t processedSamples = 0;
+			// Sequence of arbitrary prime / odd block sizes to test boundaries
+			static const std::array<size_t, 8> testBlockSizes = { 7, 3, 1, 11, 17, 23, 5, 31 };
+			size_t blockIndex = 0;
+
+			while (processedSamples < static_cast<size_t>(totalSamples))
+			{
+				// Pick block size from arbitrary array or random range
+				auto chunkSize = testBlockSizes[blockIndex % testBlockSizes.size()];
+				chunkSize = std::min(chunkSize, static_cast<size_t>(totalSamples) - processedSamples);
+
+				auto subBlock = varBlock.getSubBlock(processedSamples, chunkSize);
+				juce::dsp::ProcessContextReplacing<float> context{ subBlock };
+				processor.process(context);
+
+				processedSamples += chunkSize;
+				blockIndex++;
+			}
+		}
+
+		// 4. Compare Reference vs Variable output
+		refBlock.addProductOf(varBlock, -1.0f);
+
+		for (int c = 0; c < numChannels; ++c)
+		{
+			const auto rmsDiff = juce::Decibels::gainToDecibels(referenceOutput.getRMSLevel(c, 0, totalSamples));
+			if (rmsDiff > -80.0f)
+			{
+				failureString = "Variable block size mismatch on channel "
+								+ String(c) + " (Difference RMS: " + String{rmsDiff} + " dB); SR: " + juce::String{spec.sampleRate};
 				return false;
 			}
 		}

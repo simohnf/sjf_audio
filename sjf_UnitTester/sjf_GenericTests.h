@@ -103,6 +103,19 @@ public:
 				return true;
 			}(), "Failed variable block size test. " + message);
 		});
+
+		testCase("In-Place vs Separate Buffer Processing", [&](){
+			String message{};
+			expect([&](){
+				for (auto i = 2000; i < 200000; i *= 2)
+				{
+					spec.sampleRate = i;
+					if (!handlesInPlaceAndSeparateBuffers(spec, message))
+						return false;
+				}
+				return true;
+			}(), "Failed in-place vs non-replacing buffer test. " + message);
+		});
 	}
 
 
@@ -176,7 +189,7 @@ private:
 		block1.addProductOf(block3, -1.0f);
 		for ( auto i = 0; i < static_cast<int>(numChannels); i++)
 		{
-			auto rms = juce::Decibels::gainToDecibels(outputBuffer1.getRMSLevel(i, 0, outputBuffer1.getNumSamples()));
+			auto rms = juce::Decibels::gainToDecibels(outputBuffer1.getRMSLevel(i, 0, outputBuffer1.getNumSamples()), -160.0f);
 			if ( rms > -70.0f)
 				return false;
 		}
@@ -292,7 +305,7 @@ private:
 		// 1. Send an initial impulse to excite internal states (filters, delays)
 		juce::AudioBuffer<float> impulseBuffer(numChannels, blockSize);
 		impulseBuffer.clear();
-		for (int c = 0; c < numChannels; ++c)
+		for (auto c = 0; c < numChannels; ++c)
 			impulseBuffer.setSample(c, 0, 1.0f);
 
 		juce::dsp::AudioBlock<float> impulseBlock(impulseBuffer);
@@ -304,7 +317,7 @@ private:
 		decayBuffer.clear();
 
 		juce::dsp::AudioBlock<float> decayBlock(decayBuffer);
-		for (size_t i = 0; i < numBlocks; ++i)
+		for (auto i = 0ul; i < numBlocks; ++i)
 		{
 			auto subBlock = decayBlock.getSubBlock(i * spec.maximumBlockSize, spec.maximumBlockSize);
 			juce::dsp::ProcessContextReplacing<float> context{ subBlock };
@@ -312,10 +325,10 @@ private:
 		}
 
 		// 3. Scan output for subnormal floats
-		for (int c = 0; c < numChannels; ++c)
+		for (auto c = 0; c < numChannels; ++c)
 		{
 			const auto* data = decayBuffer.getReadPointer(c);
-			for (int i = 0; i < numSamples; ++i)
+			for (auto i = 0; i < numSamples; ++i)
 			{
 				if (std::fpclassify(data[i]) == FP_SUBNORMAL)
 				{
@@ -344,22 +357,22 @@ private:
 
 		// 1. Process constant DC offset block
 		juce::AudioBuffer<float> dcBuffer(numChannels, blockSize);
-		for (int c = 0; c < numChannels; ++c)
-			for (int i = 0; i < blockSize; ++i)
+		for (auto c = 0; c < numChannels; ++c)
+			for (auto i = 0; i < blockSize; ++i)
 				dcBuffer.setSample(c, i, 1.0f);
 
 		juce::dsp::AudioBlock<float> dcBlock(dcBuffer);
 
-		for (size_t b = 0; b < dcBlocks; ++b)
+		for (auto b = 0ul; b < dcBlocks; ++b)
 		{
 			juce::dsp::ProcessContextReplacing<float> context{ dcBlock };
 			processor.process(context);
 
 			// Assert output stays finite and does not blow up uncontrollably
-			for (int c = 0; c < numChannels; ++c)
+			for (auto c = 0; c < numChannels; ++c)
 			{
 				const auto* data = dcBuffer.getReadPointer(c);
-				for (int i = 0; i < blockSize; ++i)
+				for (auto i = 0; i < blockSize; ++i)
 				{
 					if (!std::isfinite(data[i]) || std::abs(data[i]) > 100.0f)
 					{
@@ -375,7 +388,7 @@ private:
 		juce::AudioBuffer<float> silenceBuffer(numChannels, blockSize);
 		juce::dsp::AudioBlock<float> silenceBlock(silenceBuffer);
 
-		for (size_t b = 0; b < tailBlocks; ++b)
+		for (auto b = 0ul; b < tailBlocks; ++b)
 		{
 			silenceBuffer.clear();
 			juce::dsp::ProcessContextReplacing<float> context{ silenceBlock };
@@ -383,9 +396,9 @@ private:
 		}
 
 		// 3. Verify that output settled back down after silence
-		for (int c = 0; c < numChannels; ++c)
+		for (auto c = 0; c < numChannels; ++c)
 		{
-			const auto rms = juce::Decibels::gainToDecibels(silenceBuffer.getRMSLevel(c, 0, blockSize));
+			const auto rms = juce::Decibels::gainToDecibels(silenceBuffer.getRMSLevel(c, 0, blockSize), -160.0f);
 			if (rms > -100.0f)
 			{
 				failureString = "DC offset trapped in processor state (Final RMS: "
@@ -468,9 +481,9 @@ private:
 		// 4. Compare Reference vs Variable output
 		refBlock.addProductOf(varBlock, -1.0f);
 
-		for (int c = 0; c < numChannels; ++c)
+		for (auto c = 0; c < numChannels; ++c)
 		{
-			const auto rmsDiff = juce::Decibels::gainToDecibels(referenceOutput.getRMSLevel(c, 0, totalSamples));
+			const auto rmsDiff = juce::Decibels::gainToDecibels(referenceOutput.getRMSLevel(c, 0, totalSamples), -160.0f);
 			if (rmsDiff > -80.0f)
 			{
 				failureString = "Variable block size mismatch on channel "
@@ -481,6 +494,93 @@ private:
 
 		return true;
 	}
+
+	bool handlesInPlaceAndSeparateBuffers(const juce::dsp::ProcessSpec& spec, String& failureString)
+	{
+		static constexpr auto numBlocks = 64;
+		const auto maxBlockSize = static_cast<size_t>(spec.maximumBlockSize);
+		const auto totalSamples = maxBlockSize * numBlocks;
+		const auto numChannels = static_cast<int>(spec.numChannels);
+
+		// 1. Create clean reference input
+		auto inputReference = juce::AudioBuffer<float>{numChannels, static_cast<int>(totalSamples)};
+		fillBufferWithSin(inputReference);
+		const auto inputBlock = juce::dsp::AudioBlock<float>{inputReference};
+
+		// Prepare buffers for In-Place (Replacing)
+		auto inPlaceBuffer = juce::AudioBuffer<float>{numChannels, static_cast<int>(totalSamples)};
+		auto inPlaceBlock = juce::dsp::AudioBlock<float>{inPlaceBuffer};
+		inPlaceBlock.copyFrom(inputBlock);
+
+		// Prepare buffers for Separate (Non-Replacing)
+		auto nonReplacingInput = juce::AudioBuffer<float>{numChannels, static_cast<int>(totalSamples)};
+		auto nonReplacingInBlock = juce::dsp::AudioBlock<float>{nonReplacingInput};
+		nonReplacingInBlock.copyFrom(inputBlock);
+
+
+		juce::AudioBuffer<float> nonReplacingOutput(numChannels, static_cast<int>(totalSamples));
+		auto nonReplacingOutBlock = juce::dsp::AudioBlock<float>{nonReplacingOutput};
+		nonReplacingOutput.clear();
+
+		Processor processor;
+		auto params = std::move(createParameters(processor, "Test", "Test")->getAudioProcessorParameterGroup());
+
+		// 2. RUN A: Process In-Place (ProcessContextReplacing)
+		{
+
+			processor.prepare(spec);
+			processor.reset();
+
+			for (size_t offset = 0; offset < totalSamples; offset += maxBlockSize)
+			{
+				auto subBlock = inPlaceBlock.getSubBlock(offset, maxBlockSize);
+				juce::dsp::ProcessContextReplacing<float> context{ subBlock };
+				processor.process(context);
+			}
+		}
+
+		// 3. RUN B: Process Separate (ProcessContextNonReplacing)
+		{
+			processor.prepare(spec);
+			processor.reset();
+
+			for (size_t offset = 0; offset < totalSamples; offset += maxBlockSize)
+			{
+				auto subInBlock = nonReplacingInBlock.getSubBlock(offset, maxBlockSize);
+				auto subOutBlock = nonReplacingOutBlock.getSubBlock(offset, maxBlockSize);
+				juce::dsp::ProcessContextNonReplacing<float> context{ subInBlock, subOutBlock };
+				processor.process(context);
+			}
+		}
+
+		// 4. CHECK 1: Input Preservation Check (nonReplacingInput must match inputReference)
+		nonReplacingInBlock.subtract(inputBlock);
+		for (auto c = 0; c < numChannels; ++c)
+		{
+			const auto inputMutatedRMS = juce::Decibels::gainToDecibels( nonReplacingInput.getRMSLevel(c, 0, static_cast<int>(totalSamples)), -160.0f);
+			if (inputMutatedRMS > -100.0f)
+			{
+				failureString = "ProcessContextNonReplacing mutated the input buffer on channel "
+								+ String(c) + " (Difference RMS: " + String(inputMutatedRMS) + " dB)";
+				return false;
+			}
+		}
+
+		// 5. CHECK 2: Output Equivalence Check (inPlaceBuffer must match nonReplacingOutput)
+		inPlaceBlock.subtract(nonReplacingOutBlock);
+		for (auto c = 0; c < numChannels; ++c)
+		{
+			const auto rmsDiff = juce::Decibels::gainToDecibels(inPlaceBuffer.getRMSLevel(c, 0, static_cast<int>(totalSamples)), -160.0f);
+			if (rmsDiff > -100.0f)
+			{
+				failureString = "In-place vs separate buffer output mismatch on channel "
+								+ String(c) + " (Difference RMS: " + String(rmsDiff) + " dB)";
+				return false;
+			}
+		}
+		return true;
+	}
+
 	/*=========//=========//=========//=========//=========//=========
 	//=========//=========//=========//=========//=========//=========
 								Helpers
@@ -492,7 +592,7 @@ private:
 		const auto numChannels = buffer.getNumChannels();
 		const auto numSamples = buffer.getNumSamples();
 		const auto chan = buffer.getArrayOfWritePointers()[0];
-		for (int i = 0ul; i < numSamples; i++)
+		for (auto i = 0ul; i < static_cast<size_t>(numSamples); i++)
 			chan[i] = 0.99f * juce::dsp::FastMathApproximations::sin(2.0f * juce::MathConstants<float>::pi * static_cast<float>(i) / static_cast<float>(numSamples));
 
 		for (auto i = 1; i < numChannels; i++)

@@ -342,7 +342,11 @@ namespace utilities
      * static_assert(!found, "MyConfig was not provided in the configurations pack!");
      * @endcode
      */
-    struct DummyStruct{};
+    struct DummyStruct
+    {
+	    template<typename... Args>
+    	DummyStruct(Args...){}
+    };
 
 
     template <typename T>

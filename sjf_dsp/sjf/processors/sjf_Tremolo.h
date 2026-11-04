@@ -57,7 +57,6 @@ namespace sjf::dsp
 			spec = spec_;
 			parameters.prepare(spec);
 			lfo.prepare(spec);
-			dcAdjusterBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
 			reset();
 		}
 
@@ -65,7 +64,6 @@ namespace sjf::dsp
 		{
 			parameters.reset();
 			lfo.reset();
-			dcAdjusterBuffer.clear();
 		}
 
 		template <typename ProcessContext>
@@ -88,8 +86,12 @@ namespace sjf::dsp
 			if constexpr(ProcessContext::usesSeparateInputAndOutputBlocks())
 				outputBlock.copyFrom(inputBlock);
 
-			lfo.process(context);
-			auto lfoBlock = lfo.getLfoOutput().getSubBlock(0, numSamples);
+
+			auto lfoBlock = juce::dsp::AudioBlock<float>{lfoBuffer}.getSubBlock(0, numSamples);
+			const auto lfoContext = juce::dsp::ProcessContextReplacing<float>{lfoBlock};
+
+			lfo.process(lfoContext);
+
 
 			if constexpr (LFO::hasUnipolar)
 			{
@@ -118,10 +120,9 @@ namespace sjf::dsp
 
 
 	private:
+		juce::AudioBuffer<float> lfoBuffer;
 		juce::dsp::ProcessSpec spec{};
-		LFO lfo{minLfoFreq, maxLfoFreq, defaultLfoFreq, centreLfoFreq};
-
-		[[maybe_unused]] juce::AudioBuffer<float> dcAdjusterBuffer;
+		LFO lfo{lfoBuffer, minLfoFreq, maxLfoFreq, defaultLfoFreq, centreLfoFreq};
 };
 
 

@@ -206,17 +206,14 @@ namespace sjf::dsp
                 }
             }
 
-            const auto willWrap = phasor.willWrap(numSamples) || phasor.m_phase < lastPhase*0.5f;
 
-            if (!willWrap)
+            if (phasor.willWrap(numSamples) || phasor.m_phase < lastPhase*0.5f)
             {
-                phasor.skip(numSamples);
-                lastPhase = phasor.m_phase;
-                processInternal<false>(context);
+                processInternal<true>(context);
             }
             else
             {
-                processInternal<true>(context);
+                processInternal<false>(context);
             }
         }
 
@@ -252,7 +249,7 @@ namespace sjf::dsp
             engine.spawn(dt, l, r, g, p );
         }
 
-        template<bool TickPhasor, typename Context>
+        template<bool WillWrap, typename Context>
         void processInternal(const Context& context)
         {
             [[maybe_unused]] const auto& inputBlock = context.getInputBlock();
@@ -262,17 +259,17 @@ namespace sjf::dsp
 
             for (auto i = 0ul; i < numSamples; i++)
             {
-                if constexpr (TickPhasor)
-                {
-                    phasor.process();
+                phasor.process();
 
+                if constexpr (WillWrap)
+                {
                     if (phasor.m_phase < lastPhase)
                     {
                         spawnNewGrain();
                     }
-
-                    lastPhase = phasor.m_phase;
                 }
+
+                lastPhase = phasor.m_phase;
 
                 for (auto c = 0ul; c < static_cast<size_t>(numChannels); c++)
                 {

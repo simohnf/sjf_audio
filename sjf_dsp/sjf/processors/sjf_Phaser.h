@@ -55,6 +55,7 @@ public:
     	}
 
     	lastSample.setSize(static_cast<int>(spec.numChannels), 1);
+
         reset();
     }
 
@@ -88,7 +89,9 @@ public:
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);
 
-    	lfo.process(context);
+    	auto lfoBlock = juce::dsp::AudioBlock<float>{lfoBuffer}.getSubBlock(0, numSamples);
+    	auto lfoContext = juce::dsp::ProcessContextReplacing<float>{lfoBlock};
+    	lfo.process(lfoContext);
 
         if (parameters.checkForStateChange())
         {
@@ -134,7 +137,7 @@ private:
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);
 
-    	auto lfoBlock = lfo.getLfoOutput();
+    	auto lfoBlock = juce::dsp::AudioBlock<float>{lfoBuffer}.getSubBlock(0, numSamples);
     	lfoBlock.add(1.0f);
     	lfoBlock.multiplyBy(0.5f);
     	frequencyRange.setSkewForCentre(calculateSkewForCentreFrequency());
@@ -173,7 +176,7 @@ private:
         jassert (inputBlock.getNumChannels() == numChannels);
         jassert (inputBlock.getNumSamples() == numSamples);
 
-    	auto lfoBlock = lfo.getLfoOutput();
+		auto lfoBlock = juce::dsp::AudioBlock<float>{lfoBuffer}.getSubBlock(0, numSamples);
     	lfoBlock.add(1.0f);
     	lfoBlock.multiplyBy(0.5f);
 
@@ -202,7 +205,8 @@ private:
     }
 
 	std::array<juce::dsp::FirstOrderTPTFilter<float>, NumFilters> filters;
-	LFO lfo;
+	juce::AudioBuffer<float> lfoBuffer;
+	LFO lfo{lfoBuffer};
 	juce::AudioBuffer<float> lastSample;
 	juce::NormalisableRange<float> frequencyRange;
 

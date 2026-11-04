@@ -240,7 +240,7 @@ private:
         }
     }
 
-    template<bool TickSmoothers, bool TickPhasor, typename ProcessContext>
+    template<bool TickSmoothers, bool WillWrap, typename ProcessContext>
     void processInternal(const ProcessContext& context)
     {
         [[maybe_unused]] const auto& inputBlock = context.getInputBlock();
@@ -263,13 +263,13 @@ private:
                 parameters.tickSmoothers();
             }
 
-            if constexpr (TickPhasor)
+            phasor.process();
+            if constexpr (WillWrap)
             {
-                phasor.process();
                 if (phasor.m_phase < lastPhase)
                     spawnNewGrain();
-                lastPhase = phasor.m_phase;
             }
+            lastPhase = phasor.m_phase;
 
             inputs[0] = inputBlock.getChannelPointer (0)[i];
             inputs[1] = inputBlock.getChannelPointer(1)[i];
@@ -283,15 +283,9 @@ private:
             for (auto c = 0ul; c < numChannels; ++c)
                 delayLines[c].writeSample((sjf::helpers::Waveshapers::Clippers::hard(inputs[c] + fbSamples, 5.0f)));
         }
-
-        if constexpr (!TickPhasor)
-        {
-            phasor.skip(numSamples);
-        }
     }
 
     granular::GranulationEngine<16> engine;
-
     std::array<sjf::helpers::DelayLine, 2> delayLines;
     juce::Random jitterEngine;
     Parameters parameters{jitterEngine};

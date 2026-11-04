@@ -69,8 +69,12 @@ public:
     template <typename ProcessContext>
     void process (const ProcessContext& context) noexcept
     {
-		lfo.process(context);
-		output = lfo.getLfoOutput().getSample(0, 0);
+		auto numSamples = context.getOutputBlock().getNumSamples();
+		auto lfoBlock = juce::dsp::AudioBlock<float>{lfoBuffer}.getSubBlock(0, numSamples);
+		auto lfoContext = juce::dsp::ProcessContextReplacing<float>{lfoBlock};
+		lfo.process(lfoContext);
+
+		output = lfoBuffer.getSample(0, 0);
     }
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
@@ -85,8 +89,9 @@ public:
     }
 
 private:
+	juce::AudioBuffer<float> lfoBuffer;
 	juce::String id{};
-	sjf::dsp::oscillators::lfo::LFO<Configurations...> lfo;
+	sjf::dsp::oscillators::lfo::LFO<Configurations...> lfo{lfoBuffer};
 	float output{};
 };
 

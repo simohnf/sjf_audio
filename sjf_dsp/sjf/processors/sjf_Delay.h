@@ -500,8 +500,13 @@ private:
     		return feedback;
     	};
 
-
-        const auto lfoBlock = getLFOBlock(context);
+		auto lfoBlock = juce::dsp::AudioBlock<float>{};
+		if constexpr(hasModulation)
+		{
+			lfoBlock = juce::dsp::AudioBlock<float>{lfoBuffer}.getSubBlock(0, numSamples);
+			auto lfoContext = juce::dsp::ProcessContextReplacing<float>{lfoBlock};
+			lfo.process(lfoContext);
+		}
 
 
         for (size_t i = 0; i < numSamples; ++i)
@@ -517,7 +522,11 @@ private:
                 auto& sample = wptrs[channel][0];
                 auto delayTime = link ? parameters.delayTimes[0].time.currentValue : parameters.delayTimes[channel].time.currentValue;
                 delayTime *= getDelayTimeOffset(channel);
-                delayTime += delayTime * getLFOSample(static_cast<int>(channel), static_cast<int>(i), lfoBlock);
+
+            	if constexpr (hasModulation)
+            	{
+            		delayTime += delayTime * getLFOSample(static_cast<int>(channel), static_cast<int>(i), lfoBlock);
+            	}
 
                 if constexpr (!hasDetune)
                 {
@@ -647,7 +656,8 @@ private:
 
     juce::dsp::ProcessSpec spec{};
     std::array<DelayLine, NUM_CHANNELS> delayLine;
-    [[maybe_unused]] LFO lfo;
+	[[maybe_unused]] juce::AudioBuffer<float> lfoBuffer;
+    [[maybe_unused]] LFO lfo{lfoBuffer};
     helpers::DCBlocker<NUM_CHANNELS> dcBlocker;
     [[maybe_unused]] Filter filter;
     [[maybe_unused]] Saturation saturation;

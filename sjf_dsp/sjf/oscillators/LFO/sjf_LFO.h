@@ -177,9 +177,10 @@ public:
     } parameters;
 
 
-    explicit LFO(const float minFrequency_ = 0.001f, const float maxFrequency_ = 20.0f, const float defaultFrequency_ = 1.0f, const float centreF_ = 1.0f)
+    explicit LFO(juce::AudioBuffer<float>& lfoBuffer_, const float minFrequency_ = 0.001f, const float maxFrequency_ = 20.0f, const float defaultFrequency_ = 1.0f, const float centreF_ = 1.0f)
     : parameters(minFrequency_, maxFrequency_, defaultFrequency_, centreF_)
 	, phasor(parameters.frequency)
+    , lfoBuffer(lfoBuffer_)
     {
         static_assert(!std::is_same_v<helpers::functions::utilities::DummyStruct, LFO>, "You have not included an instance of LFOWaveformProvider in the template arguments");
     }
@@ -191,7 +192,7 @@ public:
         parameters.prepare(spec);
         waveformProvider.prepare(spec);
         phasor.prepare(spec);
-        lfoOutput.setSize(numChannels, static_cast<int>(spec.maximumBlockSize));
+
         if constexpr (hasSmooth)
         {
             for (auto& filter : smoothingFilter)
@@ -200,6 +201,9 @@ public:
                 filter.coefficients = juce::dsp::IIR::Coefficients<float>::makeFirstOrderLowPass(spec.sampleRate, jmin(static_cast<float>(spec.sampleRate * 0.4999), parameters.frequency.frequencyRange.end * 2.5f));
             }
         }
+
+        lfoBuffer.setSize(static_cast<int>(spec.numChannels), static_cast<int>(spec.maximumBlockSize));
+
         reset();
     }
 
@@ -213,12 +217,13 @@ public:
         if constexpr (hasSmooth)
             for (auto& filter : smoothingFilter)
                 filter.reset();
-        lfoOutput.clear();
     }
 
     template <typename ProcessContext>
     void process (const ProcessContext& context) noexcept
     {
+        auto& outputBlock      = context.getOutputBlock();
+
         if constexpr (hasWaveformChoice)
         {
             const auto currentWaveform = static_cast<size_t>(parameters.waveform.currentValue);
@@ -236,7 +241,7 @@ public:
         if constexpr (hasInvert)
         {
             if (parameters.invert.currentValue > 0)
-                lfoOutput.applyGain(parameters.invert.currentValue-1, 0, static_cast<int>(context.getOutputBlock().getNumSamples()), -1.0f);
+                lfoBuffer.applyGain(parameters.invert.currentValue-1, 0, static_cast<int>(context.getOutputBlock().getNumSamples()), -1.0f);
         }
 
         if constexpr(hasSmooth)
@@ -244,16 +249,11 @@ public:
             for ( auto i = 0ul; i < smoothingFilter.size(); ++i)
             {
                 auto& filter = smoothingFilter[i];
-                auto channelBlock = getLfoOutput().getSingleChannelBlock(i);
+                auto channelBlock = outputBlock.getSingleChannelBlock(i);
                 const juce::dsp::ProcessContextReplacing<float> filterContext{channelBlock};
                 filter.process(filterContext);
             }
         }
-    }
-
-    juce::dsp::AudioBlock<float> getLfoOutput()
-    {
-        return juce::dsp::AudioBlock<float>{lfoOutput};
     }
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
@@ -311,7 +311,6 @@ private:
         auto& outputBlock      = context.getOutputBlock();
         const auto numSamples  = outputBlock.getNumSamples();
 
-        auto wptrs = lfoOutput.getArrayOfWritePointers();
 
         auto getOffsetPhase = [phaseOffset = getPhaseOffsetValue()](const size_t channel, const float phase){
             if constexpr (hasPhaseOffset)
@@ -330,18 +329,18 @@ private:
             {
                 // per channel changes if necessary
                 const auto offsetPhase = getOffsetPhase(channel, phase);
-                wptrs[channel][i] = waveformProvider.template processSample<WaveformIndex>(offsetPhase);
+                outputBlock.getChannelPointer(channel)[i] = waveformProvider.template processSample<WaveformIndex>(offsetPhase);
             }
         }
 
     	if constexpr (hasUnipolar)
     	{
-    		getLfoOutput().add(1.0f);
-    		getLfoOutput().multiplyBy(0.5f);
+    		outputBlock.add(1.0f);
+    		outputBlock.multiplyBy(0.5f);
     	}
 
         if constexpr(hasDepth)
-            lfoOutput.applyGain(getDepthValue());
+            outputBlock.multiplyBy(getDepthValue());
 
     }
 
@@ -352,8 +351,6 @@ private:
         auto& outputBlock      = context.getOutputBlock();
         const auto numSamples  = outputBlock.getNumSamples();
 
-
-        auto wptrs = lfoOutput.getArrayOfWritePointers();
 
         auto getOffsetPhase = [](const size_t channel, const float phase, const float phaseOffset){
             if constexpr (hasPhaseOffset)
@@ -385,18 +382,17 @@ private:
             {
                 // per channel changes if necessary
                 const auto offsetPhase = getOffsetPhase(channel, phase, phaseOffset);
-                wptrs[channel][i] = depth * makeUnipolar(waveformProvider.template processSample<WaveformIndex>(offsetPhase));
+                outputBlock.getChannelPointer(channel)[i] = depth * makeUnipolar(waveformProvider.template processSample<WaveformIndex>(offsetPhase));
             }
         }
     }
-
-    juce::AudioBuffer<float> lfoOutput;
 
     juce::dsp::ProcessSpec spec{};
     WaveformProvider waveformProvider;
     Phasor phasor;
     Filters smoothingFilter;
     size_t lastWaveform = 0;
+    juce::AudioBuffer<float>& lfoBuffer;
 };
 
 }

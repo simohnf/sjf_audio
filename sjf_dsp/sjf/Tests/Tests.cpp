@@ -30,6 +30,8 @@
 #include <sjf/processors/Granulation/sjf_GranularDelay.h>
 #include <sjf/processors/Granulation/sjf_Stretch.h>
 
+#include <sjf/processors/Reverbs/sjf_ReverbPlayground.h>
+
 namespace
 {
 	using LFO = sjf::dsp::oscillators::lfo::LFO<sjf::dsp::oscillators::lfo::DefaultWaveformProvider,
@@ -64,7 +66,6 @@ namespace
 namespace sjf::tests
 {
 
-
 	static GenericTests<Delay> delayTestMaximal("Maximal Delay");
 	static GenericTests<sjf::dsp::Delay<>> delayTestMinimal("Minimal Delay");
 	static GenericTests<sjf::dsp::modulation_effects::Chorus> chorus("Chorus");
@@ -86,6 +87,8 @@ namespace sjf::tests
 	static GenericTests<dsp::keith_barr::reverb::Tank<>> rev1 ("KeithBarrReverb");
 	static GenericTests<dsp::MultiTapDiffuser<>> diff1("MTDiffuser");
 	static GenericTests<dsp::RotateDelayDiffuser<>> diff2("RotateDelayDiffuser");
+	static GenericTests<dsp::Reverb> rev("ReverbPlayground");
+
 	static GenericTests<dsp::StereoSpread> spread("StereoSpreader");
 	static GenericTests<dsp::BasicTremolo> tremolo("Tremolo");
 	static GenericTests<dsp::RingMod> ringMod("RingMod");

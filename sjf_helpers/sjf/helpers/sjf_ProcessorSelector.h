@@ -122,8 +122,65 @@ public:
     }
 
     /** Executes only the processor corresponding to activeIndex. */
-    template <typename ProcessContextType>
-    void process (const ProcessContextType& context)
+    template <typename ProcessContext>
+    void process (const ProcessContext& context)
+    {
+	    if constexpr(ProcessContext::usesSeparateInputAndOutputBlocks())
+	    {
+		    context.getOutputBlock().copyFrom(context.getInputBlock());
+	    	const auto contextReplacing = juce::dsp::ProcessContextReplacing<float>{context.getOutputBlock()};
+	    	processInternal(contextReplacing);
+	    }
+    	else
+    	{
+    		processInternal (context);
+    	}
+    }
+
+    //==============================================================================
+    /** Access an individual processor by index at compile-time */
+    template <size_t Index> [[nodiscard]] decltype(auto) get() noexcept       { return std::get<Index> (processors); }
+    template <size_t Index> [[nodiscard]] decltype(auto) get() const noexcept { return std::get<Index> (processors); }
+
+    void setPositionInfo (const juce::AudioPlayHead::PositionInfo& positionInfo)
+    {
+        sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc){ sjf::optional_calls::setPositionInfo (proc, positionInfo); });
+    }
+
+    /** The maximum latency of all the processors.
+     *		Other processors are delayed to align with the maximum latency
+     */
+    int getLatencySamples() const
+    {
+        auto maxLatencySamples = 0;
+
+    	sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc){
+    		maxLatencySamples = jmax(maxLatencySamples, sjf::optional_calls::getLatencySamples (proc));
+    	});
+
+
+
+        return maxLatencySamples;
+    }
+
+
+	void attachToState (juce::ValueTree& parentTree)
+    {
+    	sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc){
+    		sjf::optional_calls::attachToState(proc, parentTree);
+    	});
+    }
+
+	void attachAPVTS(juce::AudioProcessorValueTreeState& apvts)
+    {
+    	sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc){
+    		sjf::optional_calls::attachAPVTS(proc, apvts);
+    	});
+    }
+
+private:
+	template <typename ProcessContextType>
+    void processInternal (const ProcessContextType& context)
     {
 	    {
 			const auto latency = getLatencySamples();
@@ -180,48 +237,7 @@ public:
     	}
     }
 
-    //==============================================================================
-    /** Access an individual processor by index at compile-time */
-    template <size_t Index> [[nodiscard]] decltype(auto) get() noexcept       { return std::get<Index> (processors); }
-    template <size_t Index> [[nodiscard]] decltype(auto) get() const noexcept { return std::get<Index> (processors); }
 
-    void setPositionInfo (const juce::AudioPlayHead::PositionInfo& positionInfo)
-    {
-        sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc){ sjf::optional_calls::setPositionInfo (proc, positionInfo); });
-    }
-
-    /** The maximum latency of all the processors.
-     *		Other processors are delayed to align with the maximum latency
-     */
-    int getLatencySamples() const
-    {
-        auto maxLatencySamples = 0;
-
-    	sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc){
-    		maxLatencySamples = jmax(maxLatencySamples, sjf::optional_calls::getLatencySamples (proc));
-    	});
-
-
-
-        return maxLatencySamples;
-    }
-
-
-	void attachToState (juce::ValueTree& parentTree)
-    {
-    	sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc){
-    		sjf::optional_calls::attachToState(proc, parentTree);
-    	});
-    }
-
-	void attachAPVTS(juce::AudioProcessorValueTreeState& apvts)
-    {
-    	sjf::helpers::functions::utilities::forEach (processors, [&](auto& proc){
-    		sjf::optional_calls::attachAPVTS(proc, apvts);
-    	});
-    }
-
-private:
 	template<typename ProcessContext>
 	void dispatchAndDelay(const ProcessContext& context, const size_t index, const size_t delayLineIndex)
 	{

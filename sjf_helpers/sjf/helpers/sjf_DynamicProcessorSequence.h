@@ -135,48 +135,19 @@ public:
     }
 
     /** Processes context through processors matching the active sequence order. */
-    template <typename ProcessContextType>
-    void process(const ProcessContextType& context_)
+	template <typename ProcessContext>
+	void process (const ProcessContext& context)
     {
-    	#ifndef SJF_AUDIO_TESTS
-    	jassert(apvts); // not asserting in tests because generic tests don't pass in apvts
-		#endif
-
-    	juce::dsp::ProcessContextReplacing<float> context(context_.getOutputBlock());
-    	if constexpr (ProcessContextType::usesSeparateInputAndOutputBlocks())
+    	if constexpr(ProcessContext::usesSeparateInputAndOutputBlocks())
+    	{
     		context.getOutputBlock().copyFrom(context.getInputBlock());
-
-    	const auto activeSequence = sequenceBuffer.getRead();
-    	if (activeSequence[0]==InactiveSlot)
-    	{
-    		// nothing in sequence, just bypass
-    		return;
+    		const auto contextReplacing = juce::dsp::ProcessContextReplacing<float>{context.getOutputBlock()};
+    		processInternal(contextReplacing);
     	}
-
-    	auto latency_ = 0;
-    	auto processDispatch = [&, chunkSize = context.getInputBlock().getNumSamples()](auto& proc, size_t index){
-
-    		const auto pos = sjf::helpers::functions::utilities::advancePositionInfo(positionInfo, latency_, spec);
-
-    		sjf::optional_calls::setPositionInfo(proc, pos);
-
-    		// Reset if processor was inactive in the previous audio block
-    		if (pendingResets[index].exchange(false))
-    			proc.reset();
-
-    		proc.process(context);
-    		latency_ += sjf::optional_calls::getLatencySamples(proc);
-    	};
-
-    	for (auto index : activeSequence)
+    	else
     	{
-    		if (index == InactiveSlot)
-    			break;
-
-    		dispatchIndex(index, processDispatch);
+    		processInternal (context);
     	}
-
-    	latency.store(latency_);
     }
 
 	/** Accesses an individual processor by compile-time index. */
@@ -348,6 +319,47 @@ public:
     }
 
 private:
+	template <typename ProcessContext>
+void processInternal(const ProcessContext& context)
+	{
+		#ifndef SJF_AUDIO_TESTS
+		jassert(apvts); // not asserting in tests because generic tests don't pass in apvts
+		#endif
+
+
+		const auto activeSequence = sequenceBuffer.getRead();
+		if (activeSequence[0]==InactiveSlot)
+		{
+			// nothing in sequence, just bypass
+			return;
+		}
+
+		auto latency_ = 0;
+		auto processDispatch = [&, chunkSize = context.getInputBlock().getNumSamples()](auto& proc, size_t index){
+
+			const auto pos = sjf::helpers::functions::utilities::advancePositionInfo(positionInfo, latency_, spec);
+
+			sjf::optional_calls::setPositionInfo(proc, pos);
+
+			// Reset if processor was inactive in the previous audio block
+			if (pendingResets[index].exchange(false))
+				proc.reset();
+
+			proc.process(context);
+			latency_ += sjf::optional_calls::getLatencySamples(proc);
+		};
+
+		for (auto index : activeSequence)
+		{
+			if (index == InactiveSlot)
+				break;
+
+			dispatchIndex(index, processDispatch);
+		}
+
+		latency.store(latency_);
+	}
+
 	//==============================================================================
 	// VALUETREE LISTENER OVERRIDES
 	//==============================================================================

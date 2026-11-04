@@ -100,19 +100,19 @@ public:
 	    sjf::helpers::functions::utilities::forEach (processors,[](auto& proc) { proc.reset(); });
     }
 
-    template <typename ProcessContextType>
-    void process (const ProcessContextType& context)
+    template <typename ProcessContext>
+    void process (const ProcessContext& context)
     {
-    	auto latency_ = 0;
-
-	    sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){
-	    	const auto pos = sjf::helpers::functions::utilities::advancePositionInfo(positionInfo, latency_, spec);
-
-	    	sjf::optional_calls::setPositionInfo(proc, pos);
-
-	    	latency_ += sjf::optional_calls::getLatencySamples(proc);
-		    proc.process (context);
-	    });
+		if constexpr(ProcessContext::usesSeparateInputAndOutputBlocks())
+		{
+			context.getOutputBlock().copyFrom(context.getInputBlock());
+			const auto contextReplacing = juce::dsp::ProcessContextReplacing<float>{context.getOutputBlock()};
+			processInternal(contextReplacing);
+		}
+		else
+		{
+			processInternal (context);
+		}
     }
 
     //==============================================================================
@@ -148,8 +148,21 @@ public:
 	}
 
 private:
+	template<typename ProcessContext>
+	void processInternal(const ProcessContext& context)
+	{
+		auto latency_ = 0;
 
+		sjf::helpers::functions::utilities::forEach (processors,[&](auto& proc){
+			const auto pos = sjf::helpers::functions::utilities::advancePositionInfo(positionInfo, latency_, spec);
 
+			sjf::optional_calls::setPositionInfo(proc, pos);
+
+			latency_ += sjf::optional_calls::getLatencySamples(proc);
+
+			proc.process (context);
+		});
+	}
     //==============================================================================
     std::tuple<Processors...> processors;
 

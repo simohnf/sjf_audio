@@ -395,7 +395,11 @@ public:
 			dispatchSaturation<false>(0, std::make_index_sequence<Saturation::numSaturators>{}, context);
         }
 
-        dcBlocker.process(context);
+
+    	{
+    		auto dcBlockContext = juce::dsp::ProcessContextReplacing<float>{context.getOutputBlock()};
+    		dcBlocker.process(dcBlockContext);
+    	}
     }
 
     std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)

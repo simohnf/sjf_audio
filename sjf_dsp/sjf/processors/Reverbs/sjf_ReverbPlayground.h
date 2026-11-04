@@ -50,10 +50,16 @@ namespace sjf::dsp
 		template<typename ProcessContext>
 		void process(const ProcessContext& context) noexcept
 		{
-			preDelay.process(context);
-			filter.process(context);
-			inputDiffuser.process(context);
-			tank.process(context);
+			if constexpr(ProcessContext::usesSeparateInputAndOutputBlocks())
+			{
+				context.getOutputBlock().copyFrom(context.getInputBlock());
+				const auto contextReplacing = juce::dsp::ProcessContextReplacing<float>{context.getOutputBlock()};
+				processInternal(contextReplacing);
+			}
+			else
+			{
+				processInternal (context);
+			}
 		}
 
 		std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
@@ -78,6 +84,15 @@ namespace sjf::dsp
 
 
 	private:
+		template<typename ProcessContext>
+		void processInternal(const ProcessContext& context) noexcept
+		{
+			preDelay.process(context);
+			filter.process(context);
+			inputDiffuser.process(context);
+			tank.process(context);
+		}
+
 		/**
 		 * @brief Internal DSP processing sequence: Filter >> Input Diffuser >> Reverb Tank.
 		 */

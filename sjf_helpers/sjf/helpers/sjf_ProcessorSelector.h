@@ -53,7 +53,7 @@ public:
 		}
 
 	private:
-		std::unique_ptr<ParameterFactory> createParameters ( const juce::String& factoryID, const juce::String& factoryName)
+		std::unique_ptr<ParameterFactory> createParameters ( const juce::String& factoryID, const juce::String& factoryName) override
 		{
 			return ParameterFactory::create (factoryID, factoryName);
 		}

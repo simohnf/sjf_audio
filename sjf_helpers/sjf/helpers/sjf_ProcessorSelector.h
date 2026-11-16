@@ -40,14 +40,15 @@ public:
 
 	struct Parameters : AudioParametersBase
 	{
-		ChoiceState selectedProcessor;
+		[[maybe_unused]] ChoiceState selectedProcessor;
 
 
 
 		std::unique_ptr<ParameterFactory> createParameters ( const juce::String& factoryID, const juce::String& factoryName, const StringArray& names)
 		{
 			auto factory = createParameters (factoryID, factoryName);
-			createTrackedParameter(*factory, selectedProcessor, "Type", "Type", names, 0);
+			if (sizeof...(Processors) > 1)
+				createTrackedParameter(*factory, selectedProcessor, "Type", "Type", names, 0);
 			return factory;
 		}
 

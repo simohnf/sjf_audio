@@ -567,7 +567,7 @@ public:
     void prepare (const juce::dsp::ProcessSpec& spec_) {
         spec = spec_;
         masterRamp.reset (spec.sampleRate, 0.020);
-    	for ( auto pp : preprableParameters)
+    	for ( auto pp : preperableParameters)
     		pp.get().prepare(spec);
         reset();
     }
@@ -995,7 +995,7 @@ protected:
         addTrackedChild(boolStates, boolMappings, mappedBoolValues, childParameters_.boolStates, childParameters_.boolMappings, childParameters_.mappedBoolValues);
         addTrackedChild(choiceStates, choiceMappings, mappedChoiceValues, childParameters_.choiceStates, childParameters_.choiceMappings, childParameters_.mappedChoiceValues);
 
-    	preprableParameters.push_back(childParameters_);
+    	preperableParameters.push_back(childParameters_);
     }
 
     juce::dsp::ProcessSpec spec{44100, 32, 2};
@@ -1017,7 +1017,7 @@ private:
 	std::vector<int> mappedChoiceValues;
 
     std::vector<AudioParametersBase*> childParameters;
-	std::vector<std::reference_wrapper<AudioParametersBase>> preprableParameters;
+	std::vector<std::reference_wrapper<AudioParametersBase>> preperableParameters;
 
     juce::LinearSmoothedValue<float> masterRamp;
 

@@ -127,6 +127,9 @@ namespace sjf::helpers
 											   factoryName,
 											   std::forward<Args> (configArgs)...);
         	factory->addChildFactory(parameters.createParameters (factoryID + "OS", factoryName + " Oversampling"));
+
+        	parameters.addChildParameters(&processor.parameters);
+
         	return factory;
         }
 

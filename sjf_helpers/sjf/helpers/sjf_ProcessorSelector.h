@@ -90,6 +90,8 @@ public:
              ), ...);
         }(std::make_index_sequence<sizeof...(Processors)>{});
 
+    	sjf::helpers::functions::utilities::forEach(processors, [&](auto& processor) { parameters.addChildParameters(&processor.parameters); });
+
         return mainFactory;
     }
 

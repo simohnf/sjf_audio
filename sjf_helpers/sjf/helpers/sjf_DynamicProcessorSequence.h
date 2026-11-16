@@ -70,6 +70,14 @@ public:
     // Fixed-capacity sequence payload matching maximum available tuple elements
     using SequenceOrder = std::array<size_t, NumProcessors>;
 
+	struct Parameters : public sjf::helpers::AudioParametersBase
+	{
+		std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName) override
+		{
+			return ParameterFactory::createDynamicProcessorSequence (factoryID, factoryName, NumProcessors);;
+		}
+	} parameters;
+
     ~DynamicProcessorSequence() override {}
 
     //==============================================================================
@@ -87,7 +95,7 @@ public:
     	static_assert (sizeof...(Configs) == sizeof...(Processors),
 			"The number of configuration parameters must match the number of processors!");
 
-    	auto mainFactory = ParameterFactory::createDynamicProcessorSequence (factoryID, factoryName, NumProcessors);
+    	auto mainFactory = parameters.createParameters(factoryID, factoryName);
 
     	if (mainFactory == nullptr)
     	{
@@ -116,6 +124,8 @@ public:
 	    		i++;
 	    	}
 	    }
+
+    	sjf::helpers::functions::utilities::forEach(processors, [&](auto& processor) { parameters.addChildParameters(&processor.parameters); });
 
     	return mainFactory;
     }

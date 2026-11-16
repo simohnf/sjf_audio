@@ -300,6 +300,8 @@ public:
 
         parameters.createParameters (factoryID, factoryName);
 
+    	addChildParameters ();
+    	// parameters.addChildParameters(&processor.parameters);
 
         return factory;
     }
@@ -339,6 +341,12 @@ public:
     }
 
 private:
+
+	void addChildParameters()
+	{
+		if constexpr( requires {processor.parameters;})
+			parameters.addChildParameters(&processor.parameters);
+	}
 
     float getWetTargetLevel()
     {

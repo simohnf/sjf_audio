@@ -45,6 +45,23 @@ public:
     // Enforce that the sequence must contain at least one processor module
     static_assert (sizeof...(Processors) > 0, "ProcessorSequence must be instantiated with at least one Processor type!");
 
+	struct Parameters : public sjf::helpers::AudioParametersBase
+	{
+		std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName, bool supportsChildSubPresets_)
+		{
+			return ParameterFactory::create(factoryID, factoryName, true, supportsChildSubPresets_);
+		}
+
+		private:
+			std::unique_ptr<helpers::ParameterFactory> createParameters (const juce::String&, const juce::String&) override
+			{
+				jassertfalse;
+				return nullptr;
+			}
+
+	} parameters;
+
+
 	explicit ProcessorSequence(const bool allowChildSubPresets = true)
 	: supportsChildSubPresets(allowChildSubPresets)
 	{}
@@ -66,7 +83,7 @@ public:
         static_assert (sizeof...(Configs) == sizeof...(Processors),
             "The number of configuration parameters must match the number of processors!");
 
-        auto mainFactory = ParameterFactory::create (factoryID, factoryName, true, supportsChildSubPresets);
+        auto mainFactory = parameters.createParameters (factoryID, factoryName, supportsChildSubPresets);
 
         if (mainFactory == nullptr)
         {
@@ -84,6 +101,8 @@ public:
                 std::forward<std::tuple_element_t<Is, decltype(configTuple)>> (std::get<Is> (configTuple))
              ), ...);
         }(std::make_index_sequence<sizeof...(Processors)>{});
+
+		sjf::helpers::functions::utilities::forEach(processors, [&](auto& processor) { addChildParameters(processor); });
 
         return mainFactory;
     }
@@ -148,6 +167,13 @@ public:
 	}
 
 private:
+	template<typename Processor>
+	void addChildParameters(Processor& processor)
+	{
+		if constexpr( requires {processor.parameters;})
+			parameters.addChildParameters(&processor.parameters);
+	}
+
 	template<typename ProcessContext>
 	void processInternal(const ProcessContext& context)
 	{

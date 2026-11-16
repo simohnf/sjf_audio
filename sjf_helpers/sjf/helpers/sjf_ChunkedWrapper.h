@@ -33,6 +33,8 @@ namespace sjf::helpers
 template <typename Processor, size_t MAX_CHUNK_SIZE = 32>
 class ChunkedWrapper
 {
+	Processor processor;
+
 public:
     template <typename... Args>
     ChunkedWrapper (Args&&... args) : processor (std::forward<Args> (args)...) {}
@@ -125,8 +127,9 @@ public:
     }
 
     void attachAPVTS(juce::AudioProcessorValueTreeState& apvts) { sjf::optional_calls::attachAPVTS(processor, apvts); }
+
+	typename Processor::Parameters& parameters = processor.parameters;
 private:
-    Processor processor;
     juce::dsp::ProcessSpec spec{};
 	juce::AudioPlayHead::PositionInfo positionInfo{};
 };

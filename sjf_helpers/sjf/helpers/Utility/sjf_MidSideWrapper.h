@@ -186,6 +186,8 @@ public:
     	if constexpr (MonoBass)
     		factory->addChildFactory(monoBass.createParameters(factoryID+"MB", factoryName+" Mono Bass"));
 
+    	parameters.addChildParameters(&processor.parameters);
+
         return factory;
     }
 

@@ -140,6 +140,7 @@ public:
 
         parameters.createParameters (factoryID, factoryName);
 
+    	parameters.addChildParameters(&processor.parameters);
 
         return factory;
     }

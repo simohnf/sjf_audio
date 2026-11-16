@@ -449,7 +449,10 @@ public:
 
 
     	for (auto& processor : processors)
+    	{
     		sjf::optional_calls::attachToSoloSet(processor, &soloSet);
+    		parameters.addChildParameters(&processor.parameters);
+    	}
 
         return factory;
     }

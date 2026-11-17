@@ -337,7 +337,7 @@ private:
 		#endif
 
 
-		const auto activeSequence = sequenceBuffer.getRead();
+		const auto& activeSequence = sequenceBuffer.getRead();
 		if (activeSequence[0]==InactiveSlot)
 		{
 			// nothing in sequence, just bypass

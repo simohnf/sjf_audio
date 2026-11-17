@@ -330,7 +330,7 @@ public:
 
 private:
 	template <typename ProcessContext>
-void processInternal(const ProcessContext& context)
+	void processInternal(const ProcessContext& context)
 	{
 		#ifndef SJF_AUDIO_TESTS
 		jassert(apvts); // not asserting in tests because generic tests don't pass in apvts

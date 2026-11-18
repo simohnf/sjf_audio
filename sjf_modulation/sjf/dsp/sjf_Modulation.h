@@ -306,7 +306,7 @@ namespace sjf::dsp::modulation{
 			// 1. Advance modulators in chain
 			modulators.process(context);
 
-			auto& connections = connectionsBuffer.getRead();
+			const auto& connections = connectionsBuffer.getRead();
 
 			// 2a. Clear previous offsets on all non-active targets
 			connectionRemover.removeAll();

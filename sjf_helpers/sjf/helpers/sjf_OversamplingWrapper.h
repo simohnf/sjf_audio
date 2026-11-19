@@ -47,7 +47,12 @@ namespace sjf::helpers
             {
                 auto factory = ParameterFactory::create (factoryID, factoryName);
                 const auto attributes = AudioParameterChoiceAttributes {}.withAutomatable(false);
-                auto p = createTrackedParameter(*factory, ratio, "Ratio", "Ratio",{"Off", "2X", "4X", "8X", "16X"}, 0, {}, attributes);
+            	auto ratioMapping = [this, max = 48000.0 * std::pow(2.0, 4.0)](int i){
+            		while (spec.sampleRate * std::pow(2.0, i) > max && i > 0)
+            			i--;
+            		return i;
+            	};
+                auto p = createTrackedParameter(*factory, ratio, "Ratio", "Ratio",{"Off", "2X", "4X", "8X", "16X"}, 0, ratioMapping, attributes);
             	if (auto m = dynamic_cast<parameters::ParameterBase*>(p))
             		m->setModulatable(false);
                 p = createTrackedParameter(*factory, filterType, "FilterType", "Filter Type", {"FIR Equiripple", "IIR Polyphase"}, 0, {}, attributes);
@@ -65,7 +70,7 @@ namespace sjf::helpers
         void prepare (const juce::dsp::ProcessSpec& spec_) noexcept
         {
             spec = spec_;
-
+        	parameters.prepare(spec);
             createOversampling();
             prepareProcessorUpsampled();
 

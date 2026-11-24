@@ -397,6 +397,7 @@ private:
 			return;
 		}
 
+		attachAPVTS(*apvts);
 		auto stateTree = apvts->state.getOrCreateChildWithName(factoryId+dynamic_processor_sequence::ids::sequenceTreeId, nullptr);
 
 		if (treeWhichHasBeenChanged == stateTree || treeWhichHasBeenChanged == apvts->state)

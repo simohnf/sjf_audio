@@ -806,7 +806,7 @@ namespace sjf::dsp::modulation{
 		{
 			if (treeWhichHasBeenChanged == apvts->state)
 			{
-				attachToState(treeWhichHasBeenChanged);
+				attachAPVTS(*apvts);
 				if (MessageManager::existsAndIsCurrentThread())
 					publishConnectionsUpdate();
 				else

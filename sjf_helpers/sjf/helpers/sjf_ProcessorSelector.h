@@ -36,6 +36,8 @@ template <typename... Processors>
 class ProcessorSelector
 {
 public:
+	static constexpr size_t NumProcessors = sizeof...(Processors);
+
     static_assert (sizeof...(Processors) > 0, "ProcessorSelector must be instantiated with at least one Processor type!");
 
 	struct Parameters : AudioParametersBase

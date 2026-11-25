@@ -1882,7 +1882,10 @@ namespace sjf::generic_editor
 				addAndMakeVisible(childEditors.back().get());
 				childEditors.back()->buildChildEditors();
 			}
-			onLayoutChanged();
+			juce::MessageManager::callAsync([safeThis = SafePointer(this)](){
+				if (safeThis)
+					safeThis->onLayoutChanged();
+			});
 		}
 
 

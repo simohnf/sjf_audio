@@ -15,6 +15,7 @@
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/helpers/sjf_OptionalCalls.h>
 #include <sjf/helpers/sjf_Passthrough.h>
+#include <sjf/processors/sjf_CrossoverFilter.h>
 
 
 namespace sjf::helpers

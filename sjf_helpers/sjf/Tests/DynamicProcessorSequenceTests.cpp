@@ -95,6 +95,14 @@ struct TestProcessor : juce::AudioProcessor
 
 struct TanhProcessor
 {
+	struct Parameters : sjf::helpers::AudioParametersBase
+	{
+		std::unique_ptr<ParameterFactory> createParameters (const juce::String& factoryID, const juce::String& factoryName)
+		{
+			return ParameterFactory::create(factoryID, factoryName);
+		}
+	} parameters;
+	
     void prepare(const juce::dsp::ProcessSpec&) {}
     void reset() {}
 
